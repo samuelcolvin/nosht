@@ -1,0 +1,10 @@
+*.py[cod]
+.idea/
+env/
+.coverage
+.cache/
+htmlcov/
+media/
+sandbox/
+nginx/prod/keys/
+.pytest_cache/
