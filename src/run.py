@@ -3,20 +3,14 @@ import asyncio
 import logging.config
 import os
 import sys
-from pathlib import Path
 
 import uvloop
 from aiohttp import web
 
-THIS_DIR = Path(__file__).parent
-if not Path(THIS_DIR / 'shared').exists():
-    # when running outside docker
-    sys.path.append(str(THIS_DIR / '..'))
-
-from shared.logs import setup_logging  # NOQA
-from shared.patch import reset_database, run_patch  # NOQA
-from shared.settings import Settings  # NOQA
-from web.main import create_app  # NOQA
+from shared.logs import setup_logging
+from shared.patch import reset_database, run_patch
+from shared.settings import Settings
+from web.main import create_app
 
 
 logger = logging.getLogger('events.web.run')
@@ -29,7 +23,7 @@ if __name__ == '__main__':
     try:
         _, command, *args = sys.argv
     except ValueError:
-        print('no command provided, options are: "reset_database", "patch" or "web"')
+        print('no command provided, options are: "reset_database", "patch", "work", "web" or "run"')
         sys.exit(1)
 
     if command == 'reset_database':

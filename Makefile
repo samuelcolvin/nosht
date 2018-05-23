@@ -4,7 +4,7 @@
 install:
 	pip install -r tests/requirements.txt
 	pip install -r requirements.txt
-	pip install -U aiohttp-devtools
+	pip install -U aiohttp-devtools docker-compose
 
 .PHONY: isort
 isort:
@@ -25,10 +25,18 @@ test:
 testcov: test
 	coverage html
 
+.PHONY: all
+all: testcov lint
 
 .PHONY: build
 build:
 	docker build . -t hufevent
 
-.PHONY: all
-all: testcov lint
+.PHONY: docker-dev
+docker-dev:
+	@echo "running locally for development and testing"
+	@echo "You'll want to run docker-logs in anther window see what's going on"
+	@echo "================================================================================"
+	@echo ""
+	@echo "running docker compose..."
+	docker-compose up -d --build

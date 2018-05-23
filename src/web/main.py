@@ -35,7 +35,7 @@ def setup_routes(app, settings):
         web.get('/api/foobar/', foobar, name='foobar'),
     ])
 
-    if settings.on_heroku:
+    if settings.on_docker:
         js_build = Path('js/build')
         assert js_build.exists()
         logger.info('js directory exists, serving it')

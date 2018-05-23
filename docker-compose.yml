@@ -1,0 +1,46 @@
+version: '3.4'
+
+volumes:
+ pg_data: {}
+ cache_data: {}
+
+services:
+  logs:
+    image: gliderlabs/logspout
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    ports:
+    - 5001:80
+
+  postgres:
+    image: postgres:10.3-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: docker
+    volumes:
+    - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    depends_on:
+    - logs
+
+  web:
+    build: .
+    image: hufevent
+    environment:
+      DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
+      PORT: 8000
+    restart: unless-stopped
+    ports:
+    - 8000:8000
+    depends_on:
+    - postgres
+
+#  worker:
+#    build: .
+#    environment:
+#      DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
+#    restart: unless-stopped
+#    depends_on:
+#    - postgres
+

@@ -1,9 +1,5 @@
-FROM alpine:3.7 as js-build
-RUN apk --no-cache add yarn
-ADD ./js /home/root
-WORKDIR /home/root
-RUN yarn build
-
+# ===============================================
+# python build stage
 FROM python:3.6-alpine3.7 as python-build
 
 RUN apk --no-cache add gcc g++ musl-dev libuv libffi-dev make postgresql-dev
@@ -20,6 +16,22 @@ RUN find /usr/local/lib/python3.6/site-packages \
     -name '*.txt' | xargs rm
 RUN find /usr/local/lib/python3.6/site-packages -name '__pycache__' -delete
 
+# ===============================================
+# js build stage
+FROM alpine:3.7 as js-build
+RUN apk --no-cache add yarn
+WORKDIR /home/root
+
+ADD ./js/package.json /home/root/package.json
+ADD ./js/yarn.lock /home/root/yarn.lock
+RUN yarn
+
+ADD ./js/src /home/root/src
+ADD ./js/public /home/root/public
+RUN yarn build
+
+# ===============================================
+# final image
 FROM python:3.6-alpine3.7
 COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
 COPY --from=js-build /home/root/build /home/root/js/build
