@@ -44,6 +44,10 @@ def setup_logging(disable_existing=False):
                 'handlers': ['events.default', 'sentry'],
                 'level': log_level,
             },
+            'arq': {
+                'handlers': ['events.default', 'sentry'],
+                'level': log_level,
+            },
         },
     }
     logging.config.dictConfig(config)

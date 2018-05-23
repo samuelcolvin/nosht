@@ -2,7 +2,7 @@ version: '3.4'
 
 volumes:
  pg_data: {}
- cache_data: {}
+ redis_data: {}
 
 services:
   logs:
@@ -24,23 +24,35 @@ services:
     depends_on:
     - logs
 
+  redis:
+    image: redis:4-alpine
+    volumes:
+    - redis_data:/data
+    restart: unless-stopped
+    depends_on:
+    - logs
+
   web:
     build: .
     image: hufevent
     environment:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
+      REDIS_URL: 'redis://redis:6379/0'
       PORT: 8000
     restart: unless-stopped
     ports:
     - 8000:8000
     depends_on:
     - postgres
+    - redis
 
-#  worker:
-#    build: .
-#    environment:
-#      DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
-#    restart: unless-stopped
-#    depends_on:
-#    - postgres
+  worker:
+    build: .
+    environment:
+      DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
+      REDIS_URL: 'redis://redis:6379/0'
+    restart: unless-stopped
+    depends_on:
+    - postgres
+    - redis
 

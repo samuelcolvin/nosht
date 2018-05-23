@@ -3,7 +3,7 @@
 .PHONY: install
 install:
 	pip install -r tests/requirements.txt
-	pip install -r requirements.txt
+	pip install -r src/requirements.txt
 	pip install -U aiohttp-devtools docker-compose
 
 .PHONY: isort

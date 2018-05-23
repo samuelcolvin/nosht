@@ -9,7 +9,7 @@ from aiohttp.web_exceptions import HTTPClientError
 from google.auth import jwt as google_jwt
 from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
 
-from shared.settings import Settings
+from .settings import Settings
 
 CERTS = None
 

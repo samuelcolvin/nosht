@@ -7,13 +7,14 @@ from aiohttp import web
 from aiohttp.web_fileresponse import FileResponse
 from aiohttp_session import session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
+from arq import create_pool_lenient
 
-from shared.db import prepare_database
-from shared.logs import setup_logging
-from shared.settings import Settings
-
+from .db import prepare_database
+from .logs import setup_logging
 from .middleware import error_middleware
+from .settings import Settings
 from .views import foobar
+from .worker import MainActor
 
 logger = logging.getLogger('events.web')
 
@@ -21,12 +22,16 @@ logger = logging.getLogger('events.web')
 async def startup(app: web.Application):
     settings: Settings = app['settings']
     await prepare_database(settings, False)
+    redis = await create_pool_lenient(settings.redis_settings, app.loop)
     app.update(
         pg=await asyncpg.create_pool(dsn=settings.pg_dsn, min_size=2),
+        redis=redis,
+        worker=MainActor(settings=settings, existing_redis=redis),
     )
 
 
 async def cleanup(app: web.Application):
+    await app['worker'].close(True)
     await app['pg'].close()
 
 

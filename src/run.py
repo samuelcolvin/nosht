@@ -6,14 +6,15 @@ import sys
 
 import uvloop
 from aiohttp import web
+from arq import RunWorkerProcess
 
-from shared.logs import setup_logging
-from shared.patch import reset_database, run_patch
-from shared.settings import Settings
-from web.main import create_app
+from app.db import reset_database, run_patch
+from app.logs import setup_logging
+from app.settings import Settings
+from app.main import create_app
 
 
-logger = logging.getLogger('events.web.run')
+logger = logging.getLogger('events.run')
 
 
 if __name__ == '__main__':
@@ -23,23 +24,28 @@ if __name__ == '__main__':
     try:
         _, command, *args = sys.argv
     except ValueError:
-        print('no command provided, options are: "reset_database", "patch", "work", "web" or "run"')
+        logger.info('no command provided, options are: "reset_database", "patch", "worker", "web" or "docker-run"')
         sys.exit(1)
+    if command == 'docker-run':
+        command = 'web' if 'PORT' in os.environ else 'worker'
 
     if command == 'reset_database':
-        print('running reset_database...')
+        logger.info('running reset_database...')
         reset_database(settings)
     elif command == 'patch':
-        print('running patch...')
+        logger.info('running patch...')
         live = '--live' in args
         if live:
             args.remove('--live')
         run_patch(settings, live, args[0] if args else None)
     elif command == 'web':
-        print('running web server...')
+        logger.info('running web server...')
         app = create_app(settings=settings)
         port = int(os.getenv('PORT', 8000))
         web.run_app(app, port=settings.port, shutdown_timeout=1, access_log=None, print=lambda *args: None)
+    elif command == 'worker':
+        logger.info('running worker...')
+        RunWorkerProcess('app/worker.py', 'Worker')
     else:
-        print(f'unknown command "{command}"')
+        logger.error(f'unknown command "{command}"')
         sys.exit(1)
