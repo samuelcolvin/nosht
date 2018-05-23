@@ -24,9 +24,7 @@ FROM python:3.6-alpine3.7
 COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
 COPY --from=js-build /home/root/build /home/root/js/build
 
-ADD ./shared /home/root/shared
-ADD ./web/app /home/root/app
-ADD ./web/run.py /home/root/run.py
+ADD ./src /home/root
 
 # print used in numerous places doesn't work properly
 ENV PYTHONUNBUFFERED 1

@@ -16,7 +16,7 @@ if not Path(THIS_DIR / 'shared').exists():
 from shared.logs import setup_logging  # NOQA
 from shared.patch import reset_database, run_patch  # NOQA
 from shared.settings import Settings  # NOQA
-from app.main import create_app  # NOQA
+from web.main import create_app  # NOQA
 
 
 logger = logging.getLogger('events.web.run')

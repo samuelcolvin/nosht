@@ -32,7 +32,7 @@ async def cleanup(app: web.Application):
 
 def setup_routes(app, settings):
     app.add_routes([
-        web.get('/foobar/', foobar, name='foobar'),
+        web.get('/api/foobar/', foobar, name='foobar'),
     ])
 
     if settings.on_heroku:

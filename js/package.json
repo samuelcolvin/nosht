@@ -1,7 +1,18 @@
 {
-  "name": "js",
+  "name": "hufevent",
   "version": "0.1.0",
-  "private": true,
+  "description": "event booking platform",
+  "repository": "git@github.com:samuelcolvin/hufevent.git",
+  "author": "Samuel Colvin <s@muelcolvin.com>",
+  "license": "MIT",
+  "private": false,
+  "homepage": "/",
+  "proxy": {
+    "/api": {
+      "target": "http://localhost:8000/",
+      "ws": false
+    }
+  },
   "dependencies": {
     "react": "^16.3.2",
     "react-dom": "^16.3.2",
@@ -11,6 +22,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint src",
+    "lintfix": "eslint src --fix"
   }
 }

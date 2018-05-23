@@ -38,4 +38,3 @@ class Settings(BaseSettings):
             'port': 'PORT',
             'pg_dsn': 'DATABASE_URL',
         }
-

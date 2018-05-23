@@ -1,0 +1,27 @@
+language: python
+
+addons:
+  postgresql: '9.6'
+
+services:
+- postgresql
+- redis-server
+- docker
+
+cache: pip
+
+python:
+- '3.6'
+
+install:
+- pip install -U pip setuptools
+- make install
+
+script:
+- make lint
+- make test
+- make build
+
+after_success:
+- ls -lha
+- bash <(curl -s https://codecov.io/bash)
