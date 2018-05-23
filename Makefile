@@ -28,10 +28,6 @@ testcov: test
 .PHONY: all
 all: testcov lint
 
-.PHONY: build
-build:
-	docker build . -t hufevent
-
 .PHONY: docker-dev
 docker-dev:
 	@echo "running locally for development and testing"
@@ -40,3 +36,19 @@ docker-dev:
 	@echo ""
 	@echo "running docker compose..."
 	docker-compose up -d --build
+
+.PHONY: build-web
+build-web:
+	docker build . -t hufevent-web
+
+.PHONY: build-worker
+build-worker:
+	docker build . -t hufevent-worker --build-arg MODE=worker
+
+.PHONY: other
+other: build-web build-worker
+	docker tag hufevent-web registry.heroku.com/hufevent/web
+	docker tag hufevent-worker registry.heroku.com/hufevent/worker
+	@# TODO this isn't atomic, can we make it atomic without using two dockerfiles?
+	docker push registry.heroku.com/hufevent/web
+	docker push registry.heroku.com/hufevent/worker

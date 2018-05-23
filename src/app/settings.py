@@ -13,7 +13,7 @@ BASE_DIR = THIS_DIR.parent
 class Settings(BaseSettings):
     pg_dsn: str = 'postgres://postgres:waffle@localhost:5432/events'
     pg_name: str = None
-    redis_settings: Any = 'redis://localhost:6379/0'
+    redis_settings: Any = 'redis://localhost:6379'
     google_siw_client_key = 'xxx'
     auth_key = b'v7RI7qwZB7rxCyrpX4QwpZCUCF7X_HtnMSFuJfZTmfs='
     port: int = 8000
@@ -34,7 +34,6 @@ class Settings(BaseSettings):
         return RedisSettings(
             host=conf.hostname,
             port=conf.port,
-            database=int(conf.path.lstrip('/')),
             password=conf.password
         )
 

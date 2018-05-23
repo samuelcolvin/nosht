@@ -27,7 +27,8 @@ if __name__ == '__main__':
         logger.info('no command provided, options are: "reset_database", "patch", "worker", "web" or "docker-run"')
         sys.exit(1)
     if command == 'docker-run':
-        command = 'web' if 'PORT' in os.environ else 'worker'
+        command = os.getenv('MODE').lower() or 'web'
+        logger.info('"docker-run", using command: "%s"', command)
 
     if command == 'reset_database':
         logger.info('running reset_database...')

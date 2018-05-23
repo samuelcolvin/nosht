@@ -41,6 +41,8 @@ ADD ./src /home/root
 # print used in numerous places doesn't work properly
 ENV PYTHONUNBUFFERED 1
 ENV APP_ON_DOCKER 1
+ARG MODE=web
+ENV MODE $MODE
 WORKDIR /home/root
 RUN adduser -D runuser
 USER runuser

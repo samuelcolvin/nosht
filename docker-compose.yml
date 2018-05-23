@@ -37,7 +37,7 @@ services:
     image: hufevent
     environment:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
-      REDIS_URL: 'redis://redis:6379/0'
+      REDIS_URL: 'redis://redis:6379'
       PORT: 8000
     restart: unless-stopped
     ports:
@@ -50,7 +50,7 @@ services:
     build: .
     environment:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
-      REDIS_URL: 'redis://redis:6379/0'
+      REDIS_URL: 'redis://redis:6379'
     restart: unless-stopped
     depends_on:
     - postgres
