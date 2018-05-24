@@ -1,8 +1,8 @@
 {
-  "name": "hufevent",
+  "name": "nosht",
   "version": "0.1.0",
   "description": "event booking platform",
-  "repository": "git@github.com:samuelcolvin/hufevent.git",
+  "repository": "git@github.com:samuelcolvin/nosht.git",
   "author": "Samuel Colvin <s@muelcolvin.com>",
   "license": "MIT",
   "private": false,

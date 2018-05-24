@@ -3,7 +3,7 @@ from datetime import datetime
 
 from app.utils import json_response
 
-logger = logging.getLogger('events.web')
+logger = logging.getLogger('nosht.web')
 
 
 async def foobar(request):

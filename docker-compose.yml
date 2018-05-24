@@ -34,9 +34,9 @@ services:
 
   web:
     build: .
-    image: hufevent
+    image: nosht
     environment:
-      DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
+      DATABASE_URL: 'postgres://postgres:docker@postgres:5432/nosht'
       REDIS_URL: 'redis://redis:6379'
       PORT: 8000
     restart: unless-stopped
@@ -49,7 +49,7 @@ services:
   worker:
     build: .
     environment:
-      DATABASE_URL: 'postgres://postgres:docker@postgres:5432/events'
+      DATABASE_URL: 'postgres://postgres:docker@postgres:5432/nosht'
       REDIS_URL: 'redis://redis:6379'
     restart: unless-stopped
     depends_on:

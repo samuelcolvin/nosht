@@ -7,7 +7,7 @@ from async_timeout import timeout
 
 from .settings import Settings
 
-logger = logging.getLogger('events.db')
+logger = logging.getLogger('nosht.db')
 patches = []
 
 

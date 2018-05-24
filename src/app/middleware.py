@@ -3,7 +3,7 @@ import logging
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
 
-logger = logging.getLogger('events.web.middleware')
+logger = logging.getLogger('nosht.web.middleware')
 IP_HEADER = 'X-Forwarded-For'
 
 

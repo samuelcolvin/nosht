@@ -16,7 +16,7 @@ from .settings import Settings
 from .views import foobar
 from .worker import MainActor
 
-logger = logging.getLogger('events.web')
+logger = logging.getLogger('nosht.web')
 
 
 async def startup(app: web.Application):
@@ -59,7 +59,7 @@ def create_app(*, settings: Settings=None):
     secret_key = base64.urlsafe_b64decode(settings.auth_key)
     app = web.Application(middlewares=(
         error_middleware,
-        session_middleware(EncryptedCookieStorage(secret_key, cookie_name='events')),
+        session_middleware(EncryptedCookieStorage(secret_key, cookie_name='nosht')),
     ))
     app['settings'] = settings
     app.on_startup.append(startup)

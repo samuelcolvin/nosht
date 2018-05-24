@@ -39,16 +39,16 @@ docker-dev:
 
 .PHONY: build-web
 build-web:
-	docker build . -t hufevent-web
+	docker build . -t nosht-web
 
 .PHONY: build-worker
 build-worker:
-	docker build . -t hufevent-worker --build-arg MODE=worker
+	docker build . -t nosht-worker --build-arg MODE=worker
 
 .PHONY: other
 other: build-web build-worker
-	docker tag hufevent-web registry.heroku.com/hufevent/web
-	docker tag hufevent-worker registry.heroku.com/hufevent/worker
+	docker tag nosht-web registry.heroku.com/nosht/web
+	docker tag nosht-worker registry.heroku.com/nosht/worker
 	@# TODO this isn't atomic, can we make it atomic without using two dockerfiles?
-	docker push registry.heroku.com/hufevent/web
-	docker push registry.heroku.com/hufevent/worker
+	docker push registry.heroku.com/nosht/web
+	docker push registry.heroku.com/nosht/worker

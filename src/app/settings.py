@@ -11,7 +11,7 @@ BASE_DIR = THIS_DIR.parent
 
 
 class Settings(BaseSettings):
-    pg_dsn: str = 'postgres://postgres:waffle@localhost:5432/events'
+    pg_dsn: str = 'postgres://postgres:waffle@localhost:5432/nosht'
     pg_name: str = None
     redis_settings: Any = 'redis://localhost:6379'
     google_siw_client_key = 'xxx'

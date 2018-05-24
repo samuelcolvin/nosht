@@ -4,7 +4,7 @@ from arq import Actor, BaseWorker, concurrent
 
 from .settings import Settings
 
-logger = logging.getLogger('events.worker')
+logger = logging.getLogger('nosht.worker')
 
 
 class MainActor(Actor):

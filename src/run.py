@@ -14,7 +14,7 @@ from app.settings import Settings
 from app.main import create_app
 
 
-logger = logging.getLogger('events.run')
+logger = logging.getLogger('nosht.run')
 
 
 if __name__ == '__main__':

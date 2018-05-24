@@ -19,15 +19,15 @@ def setup_logging(disable_existing=False):
         'version': 1,
         'disable_existing_loggers': disable_existing,
         'formatters': {
-            'events.default': {
+            'nosht.default': {
                 'format': '%(levelname)-7s %(name)25s: %(message)s',
             },
         },
         'handlers': {
-            'events.default': {
+            'nosht.default': {
                 'level': log_level,
                 'class': 'logging.StreamHandler',
-                'formatter': 'events.default',
+                'formatter': 'nosht.default',
             },
             'sentry': {
                 'level': 'WARNING',
@@ -40,12 +40,12 @@ def setup_logging(disable_existing=False):
             },
         },
         'loggers': {
-            'events': {
-                'handlers': ['events.default', 'sentry'],
+            'nosht': {
+                'handlers': ['nosht.default', 'sentry'],
                 'level': log_level,
             },
             'arq': {
-                'handlers': ['events.default', 'sentry'],
+                'handlers': ['nosht.default', 'sentry'],
                 'level': log_level,
             },
         },
