@@ -22,7 +22,7 @@ test:
 
 .PHONY: testcov
 testcov: test
-	coverage html
+	coverage html --rcfile=py/setup.cfg
 
 .PHONY: all
 all: testcov lint
