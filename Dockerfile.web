@@ -29,6 +29,7 @@ RUN yarn
 ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
 RUN yarn build
+RUN rm build/service-worker.js
 
 # ===============================================
 # final image

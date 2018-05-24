@@ -29,7 +29,7 @@ all: testcov lint
 
 .PHONY: build
 build:
-	docker build . -f Dockerfile.web -t nosht-web --quiet
+	docker build . -f Dockerfile.web -t nosht-web
 	docker build . -f Dockerfile.worker -t nosht-worker --quiet
 
 .PHONY: docker-dev
