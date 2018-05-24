@@ -4,7 +4,7 @@ FROM python:3.6-alpine3.7 as python-build
 
 RUN apk --no-cache add gcc g++ musl-dev libuv libffi-dev make postgresql-dev
 
-ADD ./src/requirements.txt /home/root/requirements.txt
+ADD ./py/requirements.txt /home/root/requirements.txt
 RUN pip install -r /home/root/requirements.txt
 # get rid of unnecessary files to keep the size of site-packages and the final image down
 RUN find /usr/local/lib/python3.6/site-packages \
@@ -27,7 +27,7 @@ WORKDIR /home/root
 RUN adduser -D runuser
 USER runuser
 
-ADD ./src/run.py /home/root/run.py
-ADD ./src/shared /home/root/shared
+ADD ./py/run.py /home/root/run.py
+ADD ./py/shared /home/root/shared
 
 CMD ["./run.py", "worker"]

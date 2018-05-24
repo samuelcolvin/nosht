@@ -12,7 +12,6 @@ from shared.db import reset_database, run_patch
 from shared.logs import setup_logging
 from shared.settings import Settings
 
-
 logger = logging.getLogger('nosht.run')
 
 
