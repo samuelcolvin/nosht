@@ -9,12 +9,13 @@ from aiohttp_session import session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from arq import create_pool_lenient
 
-from .db import prepare_database
-from .logs import setup_logging
+from shared.db import prepare_database
+from shared.logs import setup_logging
+from shared.settings import Settings
+from shared.worker import MainActor
+
 from .middleware import error_middleware
-from .settings import Settings
 from .views import foobar
-from .worker import MainActor
 
 logger = logging.getLogger('nosht.web')
 
@@ -40,16 +41,18 @@ def setup_routes(app, settings):
         web.get('/api/foobar/', foobar, name='foobar'),
     ])
 
-    if settings.on_docker:
-        js_build = Path('js/build')
-        assert js_build.exists()
-        logger.info('js directory exists, serving it')
-        index_file = js_build / 'index.html'
+    if not settings.on_docker:
+        logger.info('not on docker, not serving static files')
+        return
+    logger.info('on docker, serving static files')
+    js_build = Path('js/build')
+    assert js_build.exists()
+    index_file = js_build / 'index.html'
 
-        app.add_routes([
-            web.get('/', lambda r: FileResponse(index_file)),
-            web.static('/', js_build, show_index=True),
-        ])
+    app.add_routes([
+        web.get('/', lambda r: FileResponse(index_file)),
+        web.static('/', js_build, show_index=True),
+    ])
 
 
 def create_app(*, settings: Settings=None):

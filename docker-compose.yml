@@ -33,8 +33,7 @@ services:
     - logs
 
   web:
-    build: .
-    image: nosht
+    image: nosht-web
     environment:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/nosht'
       REDIS_URL: 'redis://redis:6379'
@@ -47,7 +46,7 @@ services:
     - redis
 
   worker:
-    build: .
+    image: nosht-worker
     environment:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/nosht'
       REDIS_URL: 'redis://redis:6379'
@@ -55,4 +54,3 @@ services:
     depends_on:
     - postgres
     - redis
-

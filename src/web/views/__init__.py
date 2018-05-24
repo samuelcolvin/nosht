@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from app.utils import json_response
+from web.utils import json_response
 
 logger = logging.getLogger('nosht.web')
 

@@ -28,8 +28,16 @@ testcov: test
 .PHONY: all
 all: testcov lint
 
+.PHONY: build-web
+build-web:
+	docker build . -f Dockerfile.web -t nosht-web
+
+.PHONY: build-worker
+build-worker:
+	docker build . -f Dockerfile.worker -t nosht-worker
+
 .PHONY: docker-dev
-docker-dev:
+docker-dev: build-web build-worker
 	@echo "running locally for development and testing"
 	@echo "You'll want to run docker-logs in anther window see what's going on"
 	@echo "================================================================================"
@@ -37,18 +45,6 @@ docker-dev:
 	@echo "running docker compose..."
 	docker-compose up -d --build
 
-.PHONY: build-web
-build-web:
-	docker build . -t nosht-web
-
-.PHONY: build-worker
-build-worker:
-	docker build . -t nosht-worker --build-arg MODE=worker
-
-.PHONY: other
-other: build-web build-worker
-	docker tag nosht-web registry.heroku.com/nosht/web
-	docker tag nosht-worker registry.heroku.com/nosht/worker
-	@# TODO this isn't atomic, can we make it atomic without using two dockerfiles?
-	docker push registry.heroku.com/nosht/web
-	docker push registry.heroku.com/nosht/worker
+.PHONY: deploy
+deploy:
+	heroku container:push web worker --recursive --app nosht

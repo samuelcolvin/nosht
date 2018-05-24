@@ -1,0 +1,33 @@
+# ===============================================
+# python build stage
+FROM python:3.6-alpine3.7 as python-build
+
+RUN apk --no-cache add gcc g++ musl-dev libuv libffi-dev make postgresql-dev
+
+ADD ./src/requirements.txt /home/root/requirements.txt
+RUN pip install -r /home/root/requirements.txt
+# get rid of unnecessary files to keep the size of site-packages and the final image down
+RUN find /usr/local/lib/python3.6/site-packages \
+    -name '*.pyc' -o \
+    -name '*.pyx' -o \
+    -name '*.pyd' -o \
+    -name '*.c' -o \
+    -name '*.h' -o \
+    -name '*.txt' | xargs rm
+RUN find /usr/local/lib/python3.6/site-packages -name '__pycache__' -delete
+
+# ===============================================
+# final image
+FROM python:3.6-alpine3.7
+COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
+
+ENV PYTHONUNBUFFERED 1
+ENV APP_ON_DOCKER 1
+WORKDIR /home/root
+RUN adduser -D runuser
+USER runuser
+
+ADD ./src/run.py /home/root/run.py
+ADD ./src/shared /home/root/shared
+
+CMD ["./run.py", "worker"]

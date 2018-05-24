@@ -34,16 +34,16 @@ RUN yarn build
 # final image
 FROM python:3.6-alpine3.7
 COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
-COPY --from=js-build /home/root/build /home/root/js/build
 
-ADD ./src /home/root
-
-# print used in numerous places doesn't work properly
 ENV PYTHONUNBUFFERED 1
 ENV APP_ON_DOCKER 1
-ARG MODE=web
-ENV MODE $MODE
 WORKDIR /home/root
 RUN adduser -D runuser
 USER runuser
-CMD ["./run.py", "docker-run"]
+
+ADD ./src/run.py /home/root/run.py
+ADD ./src/shared /home/root/shared
+ADD ./src/web /home/root/web
+COPY --from=js-build /home/root/build /home/root/js/build
+
+CMD ["./run.py", "web"]
