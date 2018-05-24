@@ -2,24 +2,23 @@
 
 .PHONY: install
 install:
-	pip install -r tests/requirements.txt
+	pip install -r py/tests/requirements.txt
 	pip install -r py/requirements.txt
-	pip install -U aiohttp-devtools docker-compose
+	pip install -U ipython aiohttp-devtools docker-compose
 
 .PHONY: isort
 isort:
-	isort -rc -w 120 -sg */run.py py
-	isort -rc -w 120 tests
+	isort -rc -w 120 py
 
 .PHONY: lint
 lint:
-	flake8 py/ tests/
-	pytest py -p no:sugar -q --cache-clear
+	flake8 py
+	pytest -p no:sugar -q --cache-clear --isort py
 	cd js; yarn lint; cd ..
 
 .PHONY: test
 test:
-	pytest --cov=py
+	pytest py --cov=py --cov-config py/setup.cfg
 
 .PHONY: testcov
 testcov: test
@@ -35,11 +34,12 @@ build:
 
 .PHONY: docker-dev
 docker-dev: build
-	@echo "running locally for development and testing"
-	@echo "You'll want to run docker-logs in anther window see what's going on"
-	@echo "================================================================================"
-	@echo ""
-	@echo "running docker compose..."
+	# ================================================================================
+	# running locally for development and testing
+	# You'll want to run docker-logs in anther window see what's going on
+	# ================================================================================
+	#
+	# running docker compose...
 	docker-compose up -d
 
 .PHONY: deploy

@@ -20,7 +20,7 @@ install:
 script:
 - make lint
 - make test
-- make build-web
+- make build
 
 after_success:
 - ls -lha
