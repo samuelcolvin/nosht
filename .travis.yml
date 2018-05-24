@@ -24,4 +24,5 @@ script:
 
 after_success:
 - ls -lha
+- cp py/setup.cfg .
 - bash <(curl -s https://codecov.io/bash)
