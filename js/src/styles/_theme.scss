@@ -1,9 +1,8 @@
 @import 'variables';
 
 body {
-  padding-top: 6rem;
-  // background: $light;
-  background: lighten(red, 20%);
+  // padding-top: 6rem;
+  background: $light;
   padding-bottom: 3rem;
   overflow-y: scroll;
 }
