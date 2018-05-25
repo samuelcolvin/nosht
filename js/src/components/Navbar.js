@@ -10,11 +10,15 @@ import {
   NavLink,
 } from 'reactstrap'
 
+const SWITCH_MENU_HEIGHT = 400
+const STRAP_TOP_DEFAULT = 56
+let STRAP_TOP = STRAP_TOP_DEFAULT
+
 export default class Navbar extends React.Component {
   constructor (props) {
     super(props)
 
-    this.toggle = this.toggle.bind(this)
+    this.close = this.close.bind(this)
     this.set_extra = this.set_extra.bind(this)
     this.state = {
       is_open: false,
@@ -24,60 +28,72 @@ export default class Navbar extends React.Component {
     this.set_extra(y_pos)
 
     let busy = false
+    this.on_desktop = window.innerWidth > 600
+
+    if (this.on_desktop) {
     window.addEventListener('scroll', () => {
       y_pos = window.scrollY
       if (!busy) {
         window.requestAnimationFrame(() => {
           this.set_extra(y_pos)
           // parallax
-          document.getElementById('strap-image').style.top = Math.round(56 + y_pos / 2) + 'px'
+            STRAP_TOP = Math.round(STRAP_TOP_DEFAULT + y_pos / 2) + 'px'
+            document.getElementById('strap-image').style.top = STRAP_TOP
           busy = false
         })
         busy = true
       }
     })
   }
+  }
 
-  toggle () {
-    this.setState({
-      is_open: !this.state.is_open
-    })
+  close () {
+    this.state.is_open && this.setState({ is_open: false })
   }
 
   set_extra () {
-    const switch_height = 400
-    if (window.scrollY > switch_height && !this.state.show_extra) {
+    if (window.scrollY > SWITCH_MENU_HEIGHT && !this.state.show_extra) {
       this.setState({ show_extra: true })
     }
-    if (window.scrollY < switch_height && this.state.show_extra) {
+    if (window.scrollY < SWITCH_MENU_HEIGHT && this.state.show_extra) {
       this.setState({ show_extra: false })
     }
   }
 
   render () {
-    return [
+    const navbar = (
       <NavbarStrap key="1" color="light" light fixed="top" expand="md">
         <div className="container">
-          <NavbarBrand tag={Link} to="/">{process.env.REACT_APP_SITE_NAME}</NavbarBrand>
-          <NavbarToggler onClick={this.toggle} />
+          <NavbarBrand tag={Link} onClick={this.close} to="/">{process.env.REACT_APP_SITE_NAME}</NavbarBrand>
+          <NavbarToggler onClick={() => this.setState({ is_open: !this.state.is_open })} />
           <Collapse isOpen={this.state.is_open} navbar>
             <Nav className="ml-auto" navbar>
               <NavItem>
-                <NavLink tag={Link} to="/foo/">Foo</NavLink>
+                <NavLink tag={Link} onClick={this.close} to="/foo/">Foo</NavLink>
               </NavItem>
               <NavItem>
-                <NavLink tag={Link} to="/bar/">Bar</NavLink>
+                <NavLink tag={Link} onClick={this.close} to="/bar/">Bar</NavLink>
               </NavItem>
             </Nav>
           </Collapse>
         </div>
-      </NavbarStrap>,
+      </NavbarStrap>
+    )
+    if (!this.on_desktop) {
+      return navbar
+    } else {
+      return [
+        navbar,
       <div key="2" className={'extra-menu fixed-top' + (this.state.show_extra ? ' show' : '')}>
         <div className="container">
           <span>Book Now</span>
         </div>
       </div>,
-      <div key="3" id="strap-image" style={{ backgroundImage: 'url("https://nosht.scolvin.com/back/1.jpg")'}}/>,
+        <div key="3" id="strap-image" style={{
+          backgroundImage: 'url("https://nosht.scolvin.com/back/1.jpg")',
+          top: STRAP_TOP
+        }}/>,
     ]
   }
+}
 }

@@ -11,20 +11,20 @@ class _App extends Component {
           <Switch>
             <Route exact path="/" render={props => (
               <div>
-                <h1 className="mt-5">testing</h1>
+                <h1>testing</h1>
                 <p className="lead">this is cool.</p>
               </div>
             )} />
             <Route exact path="/foo/" render={props => (
               <div>
-                <h1 className="mt-5">foo</h1>
+                <h1>foo</h1>
                 <p className="lead">this is cool.</p>
               </div>
             )} />
 
             <Route render={props => (
               <div className="box">
-                <h3>Page not found</h3>
+                <h1>Page not found</h1>
                 <p>The page "{props.location.pathname}" doesn't exist.</p>
               </div>
             )} />

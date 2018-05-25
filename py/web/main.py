@@ -4,7 +4,6 @@ from pathlib import Path
 
 import asyncpg
 from aiohttp import web
-from aiohttp.web_fileresponse import FileResponse
 from aiohttp_session import session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from arq import create_pool_lenient
@@ -16,6 +15,7 @@ from shared.worker import MainActor
 
 from .middleware import error_middleware
 from .views import foobar
+from .views.static import static_handler
 
 logger = logging.getLogger('nosht.web')
 
@@ -36,22 +36,10 @@ async def cleanup(app: web.Application):
     await app['pg'].close()
 
 
-def setup_routes(app, settings):
+def setup_routes(app):
     app.add_routes([
         web.get('/api/foobar/', foobar, name='foobar'),
-    ])
-
-    if not settings.on_docker:
-        logger.info('not on docker, not serving static files')
-        return
-    logger.info('on docker, serving static files')
-    js_build = Path('js/build')
-    assert js_build.exists()
-    index_file = js_build / 'index.html'
-
-    app.add_routes([
-        web.get('/', lambda r: FileResponse(index_file)),
-        web.static('/', js_build, show_index=True),
+        web.get('/{path:.*}', static_handler, name='static'),
     ])
 
 
@@ -64,9 +52,16 @@ def create_app(*, settings: Settings=None):
         error_middleware,
         session_middleware(EncryptedCookieStorage(secret_key, cookie_name='nosht')),
     ))
-    app['settings'] = settings
+
+    static_dir = Path('js/build').resolve()
+    logger.info('serving static files "%s"', static_dir)
+    assert static_dir.exists()
+    app.update(
+        settings=settings,
+        static_dir=static_dir,
+    )
     app.on_startup.append(startup)
     app.on_cleanup.append(cleanup)
 
-    setup_routes(app, settings)
+    setup_routes(app)
     return app
