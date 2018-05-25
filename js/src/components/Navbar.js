@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import {
   Collapse,
   Navbar as NavbarStrap,
@@ -57,15 +58,15 @@ export default class Navbar extends React.Component {
     return [
       <NavbarStrap key="1" color="light" light fixed="top" expand="md">
         <div className="container">
-          <NavbarBrand href="/">{process.env.REACT_APP_SITE_NAME}</NavbarBrand>
+          <NavbarBrand tag={Link} to="/">{process.env.REACT_APP_SITE_NAME}</NavbarBrand>
           <NavbarToggler onClick={this.toggle} />
           <Collapse isOpen={this.state.is_open} navbar>
             <Nav className="ml-auto" navbar>
               <NavItem>
-                <NavLink href="/foo/">Foo</NavLink>
+                <NavLink tag={Link} to="/foo/">Foo</NavLink>
               </NavItem>
               <NavItem>
-                <NavLink href="/bar/">Bar</NavLink>
+                <NavLink tag={Link} to="/bar/">Bar</NavLink>
               </NavItem>
             </Nav>
           </Collapse>

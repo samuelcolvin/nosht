@@ -26,6 +26,7 @@ ADD ./js/package.json /home/root/package.json
 ADD ./js/yarn.lock /home/root/yarn.lock
 RUN yarn
 
+ADD ./js/.env /home/root/.env
 ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
 RUN yarn build
