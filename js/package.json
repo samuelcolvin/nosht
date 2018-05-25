@@ -18,7 +18,8 @@
     "node-sass": "^4.9.0",
     "react": "^16.4.0",
     "react-dom": "^16.4.0",
-    "react-scripts": "2.0.0-next.66cc7a90"
+    "react-scripts": "2.0.0-next.66cc7a90",
+    "reactstrap": "^6.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
