@@ -161,7 +161,7 @@ async def create_demo_data(conn, settings, **kwargs):
     Create some demo data for manual testing.
     """
     await conn.execute("""
-INSERT INTO companies (name, domain) VALUES ('testing', 'localhost');
+INSERT INTO companies (name, domain) VALUES ('testing', 'localhost:3000');
 
 INSERT INTO users (company, type, status, first_name, last_name, email)
 SELECT id, 'admin', 'active', 'joe', 'blogs', 'joe.blogs@example.com' FROM companies;
@@ -173,12 +173,15 @@ WITH values_ (name_, slug_) AS (VALUES
 INSERT INTO categories (company, name, slug)
 SELECT id, name_, slug_ FROM companies, values_;
 
-WITH values_ (cat_slug_, status_, name_, slug_, start_ts_, price_, ticket_limit_) AS (VALUES
-  ('supper-club', 'published'::EVENT_STATUS, 'Franks Great Supper', 'franks-great-supper', date '2020-01-28', 30, 40),
-  ('supper-club', 'pending'::EVENT_STATUS, 'Unpublished Supper', null, date '2020-02-01', 30, 10),
-  ('singing', 'published'::EVENT_STATUS, 'Loud Singing', 'loud-singing', date '2020-02-10', 10.2, 200)
+WITH values_ (cat_slug_, name_, slug_, start_ts_, price_, ticket_limit_) AS (VALUES
+  ('supper-club', 'Franks Great Supper', 'franks-great-supper', date '2020-01-28', 30, 40),
+  ('supper-club', 'Unpublished Supper', null, date '2020-02-01', 30, 10),
+  ('singing', 'Loud Singing', 'loud-singing', date '2020-02-10', 10.2, 200)
 )
-INSERT INTO events (company, category, status, name, slug, start_ts, price, ticket_limit)
-SELECT c.company, c.id, status_, name_, slug_, start_ts_, price_, ticket_limit_  FROM values_
+INSERT INTO events (company, category, name, slug, start_ts, price, ticket_limit)
+SELECT c.company, c.id, name_, slug_, start_ts_, price_, ticket_limit_  FROM values_
 JOIN categories AS c ON cat_slug_=c.slug;
+
+UPDATE events SET status='published' WHERE slug IS NOT NULL;
+UPDATE events SET highlight=TRUE WHERE slug='franks-great-supper';
     """)

@@ -13,8 +13,8 @@ from shared.logs import setup_logging
 from shared.settings import Settings
 from shared.worker import MainActor
 
-from .middleware import error_middleware
-from .views import foobar
+from .middleware import error_middleware, pg_middleware, host_middleware
+from .views.public import index
 from .views.static import static_handler
 
 logger = logging.getLogger('nosht.web')
@@ -36,32 +36,33 @@ async def cleanup(app: web.Application):
     await app['pg'].close()
 
 
-def setup_routes(app):
-    app.add_routes([
-        web.get('/api/foobar/', foobar, name='foobar'),
-        web.get('/{path:.*}', static_handler, name='static'),
-    ])
-
-
 def create_app(*, settings: Settings=None):
     setup_logging()
     settings = settings or Settings()
 
     secret_key = base64.urlsafe_b64decode(settings.auth_key)
     app = web.Application(middlewares=(
-        error_middleware,
         session_middleware(EncryptedCookieStorage(secret_key, cookie_name='nosht')),
+        pg_middleware,
+        host_middleware,
     ))
 
-    static_dir = Path('js/build').resolve()
-    logger.info('serving static files "%s"', static_dir)
-    assert static_dir.exists()
-    app.update(
-        settings=settings,
-        static_dir=static_dir,
-    )
+    app['settings'] = settings
     app.on_startup.append(startup)
     app.on_cleanup.append(cleanup)
 
-    setup_routes(app)
-    return app
+    app.add_routes([
+        web.get('/', index, name='index'),
+    ])
+
+    wrapper_app = web.Application(middlewares=(error_middleware,))
+    this_dir = Path(__file__).parent
+    static_dir = (this_dir / '../../js/build').resolve()
+    assert static_dir.exists()
+    logger.info('serving static files "%s"', static_dir)
+    wrapper_app['static_dir'] = static_dir
+    wrapper_app.add_subapp('/api/', app)
+    wrapper_app.add_routes([
+        web.get('/{path:.*}', static_handler, name='static'),
+    ])
+    return wrapper_app

@@ -61,6 +61,8 @@ export default class Navbar extends React.Component {
   }
 
   render () {
+    const categories = this.props.company_data ? this.props.company_data.categories : []
+    const company = this.props.company_data ? this.props.company_data.company : {}
     const navbar = (
       <NavbarStrap key="1" color="light" light fixed="top" expand="md">
         <div className="container">
@@ -68,12 +70,11 @@ export default class Navbar extends React.Component {
           <NavbarToggler onClick={() => this.setState({ is_open: !this.state.is_open })} />
           <Collapse isOpen={this.state.is_open} navbar>
             <Nav className="ml-auto" navbar>
-              <NavItem>
-                <NavLink tag={Link} onClick={this.close} to="/foo/">Foo</NavLink>
-              </NavItem>
-              <NavItem>
-                <NavLink tag={Link} onClick={this.close} to="/bar/">Bar</NavLink>
-              </NavItem>
+              {categories.map((cat, i) => (
+                <NavItem key={i}>
+                  <NavLink tag={Link} onClick={this.close} to={`/${cat.slug}/`}>{cat.name}</NavLink>
+                </NavItem>
+              ))}
             </Nav>
           </Collapse>
         </div>
@@ -82,18 +83,19 @@ export default class Navbar extends React.Component {
     if (!this.on_desktop) {
       return navbar
     } else {
+      const image = company.image || 'https://nosht.scolvin.com/back/1.jpg'
       return [
         navbar,
-      <div key="2" className={'extra-menu fixed-top' + (this.state.show_extra ? ' show' : '')}>
-        <div className="container">
-          <span>Book Now</span>
-        </div>
-      </div>,
+        <div key="2" className={'extra-menu fixed-top' + (this.state.show_extra ? ' show' : '')}>
+          <div className="container">
+            <span>Book Now</span>
+          </div>
+        </div>,
         <div key="3" id="strap-image" style={{
-          backgroundImage: 'url("https://nosht.scolvin.com/back/1.jpg")',
+          backgroundImage: `url("${image}")`,
           top: STRAP_TOP
         }}/>,
-    ]
+      ]
+    }
   }
-}
 }

@@ -14,8 +14,6 @@ async def static_handler(request):
     directory = request.app['static_dir']
     if request_path == '':
         return FileResponse(directory / 'index.html')
-    if request_path.startswith('api/'):
-        raise HTTPNotFound()
 
     try:
         filename = Path(request_path)
@@ -37,4 +35,3 @@ async def static_handler(request):
         return FileResponse(filepath)
     else:
         return FileResponse(directory / 'index.html')
-

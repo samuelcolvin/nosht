@@ -41,7 +41,7 @@ body {
 
 main.container {
   background: white;
-  height: 1000px;
+  min-height: 1000px;
   padding: 30px 20px;
   box-sizing: border-box;
 }
@@ -53,3 +53,16 @@ main.container {
     border-radius: 6px;
   }
 }
+
+.index-card {
+  color: $text-colour;
+  transition: all 200ms ease;
+  &:hover {
+    //color: $text-colour;
+    text-decoration: none !important;
+  }
+  .card {
+    margin-bottom: $spacer;
+  }
+}
+

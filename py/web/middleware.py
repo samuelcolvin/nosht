@@ -2,6 +2,9 @@ import logging
 
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
+from asyncpg import Connection
+
+from .utils import JsonErrors
 
 logger = logging.getLogger('nosht.web.middleware')
 IP_HEADER = 'X-Forwarded-For'
@@ -59,3 +62,20 @@ async def error_middleware(request, handler):
         if r.status > 310:
             await log_warning(request, r)
     return r
+
+
+@middleware
+async def pg_middleware(request, handler):
+    async with request.app['pg'].acquire() as conn:
+        request['conn'] = conn
+        return await handler(request)
+
+
+@middleware
+async def host_middleware(request, handler):
+    conn: Connection = request['conn']
+    company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', request.host)
+    if not company_id:
+        return JsonErrors.HTTPNotFound(message='no company found for this host')
+    request['company_id'] = company_id
+    return await handler(request)

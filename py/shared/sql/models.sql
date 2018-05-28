@@ -5,7 +5,7 @@ CREATE TYPE CURRENCY AS ENUM ('gbp', 'usd', 'eur');
 CREATE TABLE companies (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
-  domain VARCHAR(255) NOT NULL UNIQUE,
+  domain VARCHAR(255) NOT NULL,
   s3_access_key VARCHAR(128),
   s3_secret_key VARCHAR(128),
   s3_bucket VARCHAR(255),
@@ -13,8 +13,9 @@ CREATE TABLE companies (
   stripe_public_key VARCHAR(63),
   stripe_secret_key VARCHAR(63),
   currency CURRENCY NOT NULL DEFAULT 'gbp',
-  default_image VARCHAR(255)
+  image VARCHAR(255)
 );
+CREATE UNIQUE INDEX company_domain ON companies USING btree (domain);
 
 
 CREATE TYPE USER_TYPES AS ENUM ('guest', 'host', 'admin');
@@ -61,12 +62,15 @@ CREATE TABLE categories (
   company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
   name VARCHAR(63) NOT NULL,
   slug VARCHAR(63) NOT NULL,
+  live BOOLEAN DEFAULT TRUE,
+  sort_index INT,
   event_content TEXT,
   host_advice TEXT,
-  tickets EVENT_TYPES NOT NULL DEFAULT 'ticket_sales',
+  event_type EVENT_TYPES NOT NULL DEFAULT 'ticket_sales',
   suggested_price NUMERIC(7, 2),
   suggested_images VARCHAR(255)[] NOT NULL DEFAULT ARRAY[]::VARCHAR(255)[],
   image VARCHAR(255),
+  image_thumb VARCHAR(255),
   CHECK (suggested_price > 1)
 );
 CREATE UNIQUE INDEX category_slug ON categories USING btree (company, slug);
@@ -80,6 +84,7 @@ CREATE TABLE events (
   status EVENT_STATUS NOT NULL DEFAULT 'pending',
   name VARCHAR(63) NOT NULL,
   slug VARCHAR(63),
+  highlight BOOLEAN NOT NULL DEFAULT FALSE,
   start_ts TIMESTAMP NOT NULL,
   duration INTERVAL,
   short_description VARCHAR(140),
@@ -89,6 +94,7 @@ CREATE TABLE events (
   ticket_limit INT CONSTRAINT ticket_limit_gt_0 CHECK (ticket_limit > 0),
   tickets_sold INT NOT NULL DEFAULT 0,
   image VARCHAR(255),
+  image_thumb VARCHAR(255),
   CONSTRAINT ticket_limit_check CHECK (tickets_sold <= ticket_limit)
 );
 CREATE UNIQUE INDEX event_slug ON events USING btree (company, slug);
