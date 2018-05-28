@@ -153,3 +153,32 @@ async def run_logic_sql(conn, settings, **kwargs):
     run logic.sql code.
     """
     await conn.execute(settings.logic_sql)
+
+
+@patch
+async def create_demo_data(conn, settings, **kwargs):
+    """
+    Create some demo data for manual testing.
+    """
+    await conn.execute("""
+INSERT INTO companies (name, domain) VALUES ('testing', 'localhost');
+
+INSERT INTO users (company, type, status, first_name, last_name, email)
+SELECT id, 'admin', 'active', 'joe', 'blogs', 'joe.blogs@example.com' FROM companies;
+
+WITH values_ (name_, slug_) AS (VALUES
+  ('Supper Club', 'supper-club'),
+  ('Singing', 'singing')
+)
+INSERT INTO categories (company, name, slug)
+SELECT id, name_, slug_ FROM companies, values_;
+
+WITH values_ (cat_slug_, status_, name_, slug_, start_ts_, price_, ticket_limit_) AS (VALUES
+  ('supper-club', 'published'::EVENT_STATUS, 'Franks Great Supper', 'franks-great-supper', date '2020-01-28', 30, 40),
+  ('supper-club', 'pending'::EVENT_STATUS, 'Unpublished Supper', null, date '2020-02-01', 30, 10),
+  ('singing', 'published'::EVENT_STATUS, 'Loud Singing', 'loud-singing', date '2020-02-10', 10.2, 200)
+)
+INSERT INTO events (company, category, status, name, slug, start_ts, price, ticket_limit)
+SELECT c.company, c.id, status_, name_, slug_, start_ts_, price_, ticket_limit_  FROM values_
+JOIN categories AS c ON cat_slug_=c.slug;
+    """)
