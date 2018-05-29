@@ -13,7 +13,7 @@ from shared.logs import setup_logging
 from shared.settings import Settings
 from shared.worker import MainActor
 
-from .middleware import error_middleware, pg_middleware, host_middleware
+from .middleware import error_middleware, host_middleware, pg_middleware
 from .views.public import index
 from .views.static import static_handler
 

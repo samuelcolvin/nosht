@@ -1,4 +1,5 @@
 import logging
+
 from asyncpg import Connection
 
 from web.utils import raw_json_response
@@ -14,23 +15,23 @@ SELECT json_build_object(
 )
 FROM (
   SELECT array_to_json(array_agg(row_to_json(t))) AS categories FROM (
-    SELECT id, name, slug, image_thumb 
-    FROM categories 
+    SELECT id, name, slug, image_thumb
+    FROM categories
     WHERE company=$1 AND live=TRUE
     ORDER BY sort_index
   ) AS t
 ) AS categories,
 (
   SELECT array_to_json(array_agg(row_to_json(t))) AS highlight_events FROM (
-    SELECT id, name, slug, image_thumb 
-    FROM events 
+    SELECT id, name, slug, image_thumb
+    FROM events
     WHERE company=$1 AND highlight IS TRUE AND start_ts > now()
     ORDER BY start_ts
   ) AS t
 ) AS highlight_events,
 (
   SELECT id, name, image
-  FROM companies 
+  FROM companies
   WHERE id=$1
 ) AS company;
 """

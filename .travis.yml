@@ -13,17 +13,8 @@ python:
 
 cache:
   pip: true
-  directories:
-    - $HOME/dcache
-
-before_cache:
-# Save tagged docker images
-- >
-  mkdir -p $HOME/docker && docker images -a --format '{{.ID}}' |
-  xargs -n 2 -t sh -c 'test -e $HOME/dcache/$1.tar.gz || docker save $0 | gzip -2 > $HOME/dcache/$1.tar.gz'
 
 install:
-- if [[ -d $HOME/dcache ]]; then ls $HOME/dcache/*.tar.gz | xargs -I {file} sh -c "zcat {file} | docker load"; fi
 - pip install -U pip setuptools
 - make install
 
