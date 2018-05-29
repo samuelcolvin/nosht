@@ -2,7 +2,7 @@
 # python build stage
 FROM python:3.6-alpine3.7 as python-build
 
-RUN apk --no-cache add gcc g++ musl-dev libuv libffi-dev make postgresql-dev
+RUN apk add -U gcc g++ musl-dev libuv libffi-dev make openssl-dev
 
 ADD ./py/requirements.txt /home/root/requirements.txt
 RUN pip install -r /home/root/requirements.txt
