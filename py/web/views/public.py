@@ -15,7 +15,7 @@ SELECT json_build_object(
 )
 FROM (
   SELECT array_to_json(array_agg(row_to_json(t))) AS categories FROM (
-    SELECT id, name, slug, image_thumb
+    SELECT id, name, slug, image
     FROM categories
     WHERE company=$1 AND live=TRUE
     ORDER BY sort_index
@@ -23,7 +23,7 @@ FROM (
 ) AS categories,
 (
   SELECT array_to_json(array_agg(row_to_json(t))) AS highlight_events FROM (
-    SELECT id, name, slug, image_thumb
+    SELECT id, name, slug, image
     FROM events
     WHERE company=$1 AND highlight IS TRUE AND start_ts > now()
     ORDER BY start_ts

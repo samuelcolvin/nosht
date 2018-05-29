@@ -70,7 +70,6 @@ CREATE TABLE categories (
   suggested_price NUMERIC(7, 2),
   suggested_images VARCHAR(255)[] NOT NULL DEFAULT ARRAY[]::VARCHAR(255)[],
   image VARCHAR(255),
-  image_thumb VARCHAR(255),
   CHECK (suggested_price > 1)
 );
 CREATE UNIQUE INDEX category_slug ON categories USING btree (company, slug);
@@ -94,7 +93,6 @@ CREATE TABLE events (
   ticket_limit INT CONSTRAINT ticket_limit_gt_0 CHECK (ticket_limit > 0),
   tickets_sold INT NOT NULL DEFAULT 0,
   image VARCHAR(255),
-  image_thumb VARCHAR(255),
   CONSTRAINT ticket_limit_check CHECK (tickets_sold <= ticket_limit)
 );
 CREATE UNIQUE INDEX event_slug ON events USING btree (company, slug);

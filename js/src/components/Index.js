@@ -3,12 +3,11 @@ import { Link } from 'react-router-dom'
 import { Card, CardImg, CardTitle, CardText, CardSubtitle, CardBody, Row, Col } from 'reactstrap';
 
 const Event = ({event}) => {
-  const img = event.image_thumb || 'https://placeholdit.imgix.net/~text?txtsize=33&txt=256%C3%97128&w=256&h=128'
   return (
     <Col sm="4">
       <Link className="index-card" to={`/${event.slug}/`}>
         <Card>
-          <CardImg top width="100%" src={img} alt={event.name} />
+          <CardImg top width="100%" src={event.image + '/thumb.jpg'} alt={event.name} />
           <CardBody>
             <CardTitle>{event.name}</CardTitle>
             <CardSubtitle>Card subtitle</CardSubtitle>

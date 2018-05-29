@@ -1,11 +1,13 @@
 import asyncio
 import logging
 import os
+from datetime import datetime
 
 import asyncpg
 from async_timeout import timeout
 
 from .settings import Settings
+from .utils import slugify
 
 logger = logging.getLogger('nosht.db')
 patches = []
@@ -155,33 +157,86 @@ async def run_logic_sql(conn, settings, **kwargs):
     await conn.execute(settings.logic_sql)
 
 
+CATS = [
+    {
+        'name': 'Supper Club',
+        'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+        'events': [
+
+            {
+                'cat': 'supper-club',
+                'status': 'published',
+                'highlight': True,
+                'name': "Frank's Great Supper",
+                'start': datetime(2020, 1, 28),
+                'price': 30,
+                'ticket_limit': 40,
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+            },
+            {
+                'cat': 'supper-club',
+                'status': 'published',
+                'highlight': True,
+                'name': "Jane's Great Supper",
+                'start': datetime(2020, 2, 10),
+                'price': 25,
+                'ticket_limit': None,
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/YEcz6kUlsc',
+            }
+        ]
+    },
+    {
+
+        'name': 'Singing',
+        'image': 'https://nosht.scolvin.com/cat/mountains/options/zwaxBXpsyu',
+        'events': [
+            {
+                'cat': 'singing',
+                'status': 'published',
+                'highlight': True,
+                'name': 'Loud Singing',
+                'start': datetime(2020, 2, 15),
+                'price': 25,
+                'ticket_limit': None,
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
+            },
+            {
+                'cat': 'singing',
+                'status': 'published',
+                'highlight': True,
+                'name': 'Quiet Singing',
+                'start': datetime(2020, 2, 15),
+                'price': 25,
+                'ticket_limit': None,
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
+            },
+        ]
+    }
+]
+
+
 @patch
 async def create_demo_data(conn, settings, **kwargs):
     """
     Create some demo data for manual testing.
     """
+
+    company_id = await conn.fetchval("""
+    INSERT INTO companies (name, domain) VALUES ('testing', 'localhost:3000') RETURNING id""")
+
     await conn.execute("""
-INSERT INTO companies (name, domain) VALUES ('testing', 'localhost:3000');
+    INSERT INTO users (company, type, status, first_name, last_name, email)
+    VALUES ($1, 'admin', 'active', 'joe', 'blogs', 'joe.blogs@example.com')
+        """, company_id)
 
-INSERT INTO users (company, type, status, first_name, last_name, email)
-SELECT id, 'admin', 'active', 'joe', 'blogs', 'joe.blogs@example.com' FROM companies;
-
-WITH values_ (name_, slug_) AS (VALUES
-  ('Supper Club', 'supper-club'),
-  ('Singing', 'singing')
-)
-INSERT INTO categories (company, name, slug)
-SELECT id, name_, slug_ FROM companies, values_;
-
-WITH values_ (cat_slug_, name_, slug_, start_ts_, price_, ticket_limit_) AS (VALUES
-  ('supper-club', 'Franks Great Supper', 'franks-great-supper', date '2020-01-28', 30, 40),
-  ('supper-club', 'Unpublished Supper', null, date '2020-02-01', 30, 10),
-  ('singing', 'Loud Singing', 'loud-singing', date '2020-02-10', 10.2, 200)
-)
-INSERT INTO events (company, category, name, slug, start_ts, price, ticket_limit)
-SELECT c.company, c.id, name_, slug_, start_ts_, price_, ticket_limit_  FROM values_
-JOIN categories AS c ON cat_slug_=c.slug;
-
-UPDATE events SET status='published' WHERE slug IS NOT NULL;
-UPDATE events SET highlight=TRUE WHERE slug='franks-great-supper';
-    """)
+    for cat in CATS:
+        cat_id = await conn.fetchval("""
+    INSERT INTO categories (company, name, slug, image) VALUES ($1, $2, $3, $4) RETURNING id
+    """, company_id, cat['name'], slugify(cat['name']), cat['image'])
+        events = [
+            [company_id, cat_id, e['name'], e['status'], slugify(e['name']), e['start'], e['price'], e['ticket_limit']]
+            for e in cat['events']
+        ]
+        await conn.executemany("""
+INSERT INTO events (company, category, name, status, slug, start_ts, price, ticket_limit) 
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""", events)
