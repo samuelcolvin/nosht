@@ -238,5 +238,5 @@ async def create_demo_data(conn, settings, **kwargs):
             for e in cat['events']
         ]
         await conn.executemany("""
-INSERT INTO events (company, category, name, status, slug, start_ts, price, ticket_limit) 
+INSERT INTO events (company, category, name, status, slug, start_ts, price, ticket_limit)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""", events)
