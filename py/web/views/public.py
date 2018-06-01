@@ -23,7 +23,7 @@ FROM (
 ) AS categories,
 (
   SELECT array_to_json(array_agg(row_to_json(t))) AS highlight_events FROM (
-    SELECT id, name, slug, image
+    SELECT id, name, slug, image, short_description, location, start_ts, EXTRACT(epoch FROM duration)::int AS duration
     FROM events
     WHERE company=$1 AND highlight IS TRUE AND start_ts > now()
     ORDER BY start_ts

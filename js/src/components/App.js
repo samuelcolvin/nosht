@@ -23,7 +23,6 @@ class _App extends Component {
   async componentDidMount () {
     try {
       const data = await this.requests.get('')
-      console.log('data', data)
       this.setState({company_data: data, loaded: true})
     } catch (err) {
       this.setState({error: err})

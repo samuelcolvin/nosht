@@ -1,9 +1,12 @@
 import asyncio
 import logging
 import os
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
+from textwrap import shorten
 
-import asyncpg
+import lorem
+from buildpg import Values, asyncpg
 from async_timeout import timeout
 
 from .settings import Settings
@@ -22,7 +25,7 @@ async def lenient_conn(settings: Settings, with_db=True):
     for retry in range(8, -1, -1):
         try:
             async with timeout(2):
-                conn = await asyncpg.connect(dsn=dsn)
+                conn = await asyncpg.connect_b(dsn=dsn)
         except (asyncpg.PostgresError, OSError) as e:
             if retry == 0:
                 raise
@@ -164,22 +167,24 @@ CATS = [
         'events': [
 
             {
-                'cat': 'supper-club',
                 'status': 'published',
                 'highlight': True,
                 'name': "Frank's Great Supper",
-                'start': datetime(2020, 1, 28),
+                'start_ts': datetime(2020, 1, 28, 19, 0),
+                'duration': timedelta(hours=2),
                 'price': 30,
+                'location': '31 Testing Road, London',
                 'ticket_limit': 40,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
             },
             {
-                'cat': 'supper-club',
                 'status': 'published',
                 'highlight': True,
                 'name': "Jane's Great Supper",
-                'start': datetime(2020, 2, 10),
+                'start_ts': datetime(2020, 2, 10, 18, 0),
+                'duration': timedelta(hours=3),
                 'price': 25,
+                'location': '253 Brixton Road, London',
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/YEcz6kUlsc',
             }
@@ -191,22 +196,24 @@ CATS = [
         'image': 'https://nosht.scolvin.com/cat/mountains/options/zwaxBXpsyu',
         'events': [
             {
-                'cat': 'singing',
                 'status': 'published',
                 'highlight': True,
                 'name': 'Loud Singing',
-                'start': datetime(2020, 2, 15),
+                'start_ts': datetime(2020, 2, 15),
+                'duration': None,
                 'price': 25,
+                'location': 'Big Church, London',
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
             },
             {
-                'cat': 'singing',
                 'status': 'published',
-                'highlight': True,
+                'highlight': False,
                 'name': 'Quiet Singing',
-                'start': datetime(2020, 2, 15),
+                'start_ts': datetime(2020, 2, 15),
+                'duration': None,
                 'price': 25,
+                'location': 'Small Church, London',
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
             },
@@ -220,9 +227,9 @@ async def create_demo_data(conn, settings, **kwargs):
     """
     Create some demo data for manual testing.
     """
-
     company_id = await conn.fetchval("""
-    INSERT INTO companies (name, domain) VALUES ('testing', 'localhost:3000') RETURNING id""")
+    INSERT INTO companies (name, domain) VALUES ('testing', 'localhost:3000') RETURNING id
+    """)
 
     await conn.execute("""
     INSERT INTO users (company, type, status, first_name, last_name, email)
@@ -230,13 +237,19 @@ async def create_demo_data(conn, settings, **kwargs):
         """, company_id)
 
     for cat in CATS:
-        cat_id = await conn.fetchval("""
-    INSERT INTO categories (company, name, slug, image) VALUES ($1, $2, $3, $4) RETURNING id
-    """, company_id, cat['name'], slugify(cat['name']), cat['image'])
-        events = [
-            [company_id, cat_id, e['name'], e['status'], slugify(e['name']), e['start'], e['price'], e['ticket_limit']]
+        cat_id = await conn.fetchval_b("""
+    INSERT INTO categories (:values__names) VALUES :values RETURNING id
+    """, values=Values(company=company_id, name=cat['name'], slug=slugify(cat['name']), image=cat['image']))
+
+        await conn.executemany_b("""
+INSERT INTO events (:values__names)
+VALUES :values""", [
+            Values(
+                company=company_id,
+                category=cat_id,
+                slug=slugify(e['name']),
+                short_description=shorten(lorem.paragraph(), width=random.randint(100, 140), placeholder='...'),
+                long_description=lorem.text(),
+                **e)
             for e in cat['events']
-        ]
-        await conn.executemany("""
-INSERT INTO events (company, category, name, status, slug, start_ts, price, ticket_limit)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""", events)
+        ])
