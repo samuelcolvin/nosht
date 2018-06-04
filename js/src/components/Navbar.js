@@ -2,7 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import {
   Collapse,
-  Navbar as NavbarStrap,
+  Navbar as NavbarBootstrap,
   NavbarToggler,
   NavbarBrand,
   Nav,
@@ -11,8 +11,19 @@ import {
 } from 'reactstrap'
 
 const SWITCH_MENU_HEIGHT = 400
-const STRAP_TOP_DEFAULT = 56
-let STRAP_TOP = STRAP_TOP_DEFAULT
+const BACK_TOP_DEFAULT = 56
+let BACK_TOP = BACK_TOP_DEFAULT
+
+const ExtraMenu = ({menu, show_extra}) => {
+  if (!menu) {
+    return <div/>
+  }
+  return <div className={'extra-menu fixed-top' + (show_extra ? ' show' : '')}>
+    <div className="container">
+      {menu.map((item, i) => <span key={i}>{item.name}</span>)}
+    </div>
+  </div>
+}
 
 export default class Navbar extends React.Component {
   constructor (props) {
@@ -37,8 +48,8 @@ export default class Navbar extends React.Component {
         window.requestAnimationFrame(() => {
           this.set_extra(y_pos)
           // parallax
-            STRAP_TOP = Math.round(STRAP_TOP_DEFAULT + y_pos / 2) + 'px'
-            document.getElementById('strap-image').style.top = STRAP_TOP
+            BACK_TOP = Math.round(BACK_TOP_DEFAULT + y_pos / 2) + 'px'
+            document.getElementById('background-image').style.top = BACK_TOP
           busy = false
         })
         busy = true
@@ -62,9 +73,8 @@ export default class Navbar extends React.Component {
 
   render () {
     const categories = this.props.company_data ? this.props.company_data.categories : []
-    const company = this.props.company_data ? this.props.company_data.company : {}
     const navbar = (
-      <NavbarStrap key="1" color="light" light fixed="top" expand="md">
+      <NavbarBootstrap key="1" color="light" light fixed="top" expand="md">
         <div className="container">
           <NavbarBrand tag={Link} onClick={this.close} to="/">{process.env.REACT_APP_SITE_NAME}</NavbarBrand>
           <NavbarToggler onClick={() => this.setState({ is_open: !this.state.is_open })} />
@@ -78,22 +88,17 @@ export default class Navbar extends React.Component {
             </Nav>
           </Collapse>
         </div>
-      </NavbarStrap>
+      </NavbarBootstrap>
     )
     if (!this.on_desktop) {
       return navbar
     } else {
-      const image = company.image || 'https://nosht.scolvin.com/back/1.jpg'
       return [
         navbar,
-        <div key="2" className={'extra-menu fixed-top' + (this.state.show_extra ? ' show' : '')}>
-          <div className="container">
-            <span>Book Now</span>
-          </div>
-        </div>,
-        <div key="3" id="strap-image" style={{
-          backgroundImage: `url("${image}")`,
-          top: STRAP_TOP
+        <ExtraMenu key="2" menu={this.props.extra_menu} show_extra={this.state.show_extra}/>,
+        <div key="3" id="background-image" style={{
+          backgroundImage: `url("${this.props.background}/main.jpg")`,
+          top: BACK_TOP
         }}/>,
       ]
     }

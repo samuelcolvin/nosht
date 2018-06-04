@@ -28,9 +28,8 @@ body {
   }
 }
 
-#strap-image {
-  background-color: #A2AFB8;
-  background-repeat: no-repeat;
+#background-image {
+  background: #A2AFB8 no-repeat;
   background-size: 1920px auto;
   width: 100%;
   height: 80vh;
@@ -54,15 +53,20 @@ main.container {
   }
 }
 
-.index-card {
-  color: $text-colour;
-  transition: all 200ms ease;
-  &:hover {
-    //color: $text-colour;
-    text-decoration: none !important;
+.card-grid {
+  a {
+    color: $text-colour;
+    &:hover {
+      text-decoration: none !important;
+      .card {
+        transform: translateY(-1px);
+        border: 1px solid rgba(0,0,0,0.3);
+        box-shadow: 0 7px 14px rgba(0,0,0,0.3), 0 3px 6px rgba(0,0,0,0.3);
+      }
+    }
   }
   .card {
-    margin-bottom: $spacer;
+    transition: all 200ms ease;
     height: 100%;
   }
   .card-body {

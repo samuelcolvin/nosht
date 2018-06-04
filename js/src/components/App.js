@@ -2,8 +2,32 @@ import React, { Component } from 'react'
 import {Route, Switch, withRouter } from 'react-router-dom'
 
 import {get, post} from '../utils'
+import Error from './Error'
 import Navbar from './Navbar'
-import Index from './Index'
+import Index from './pages/Index'
+import Category from './pages/Category'
+
+
+const Routes = ({app}) => (
+    <Switch>
+      <Route exact path="/" render={() => (
+        <Index setRootState={s => app.setState(s)} company_data={app.state.company_data}/>
+      )} />
+
+      <Route path="/:category/" render={props => (
+        <Category setRootState={s => app.setState(s)}
+                  company_data={app.state.company_data}
+                  slug={props.match.params.category}/>
+      )} />
+
+      <Route render={props => (
+        <div>
+          <h1>Page not found</h1>
+          <p>The page "{props.location.pathname}" doesn't exist.</p>
+        </div>
+      )} />
+    </Switch>
+)
 
 class _App extends Component {
   constructor (props) {
@@ -11,7 +35,8 @@ class _App extends Component {
     this.state = {
       page_title: null,
       company_data: null,
-      loaded: false,
+      background: null,
+      extra_menu: null,
       error: null,
     }
     this.requests = {
@@ -23,7 +48,7 @@ class _App extends Component {
   async componentDidMount () {
     try {
       const data = await this.requests.get('')
-      this.setState({company_data: data, loaded: true})
+      this.setState({company_data: data})
     } catch (err) {
       this.setState({error: err})
     }
@@ -40,31 +65,16 @@ class _App extends Component {
   }
 
   render () {
-    return (
-      <div>
-        <Navbar company_data={this.state.company_data}/>
-        <main className="container">
-          <Switch>
-            <Route exact path="/" render={() => (
-              <Index setRootState={s => this.setState(s)} company_data={this.state.company_data}/>
-            )} />
-            <Route exact path="/foo/" render={props => (
-              <div>
-                <h1>foo</h1>
-                <p className="lead">this is cool.</p>
-              </div>
-            )} />
-
-            <Route render={props => (
-              <div>
-                <h1>Page not found</h1>
-                <p>The page "{props.location.pathname}" doesn't exist.</p>
-              </div>
-            )} />
-          </Switch>
-        </main>
-      </div>
-    )
+    return [
+      <Navbar company_data={this.state.company_data}
+              background={this.state.background}
+              extra_menu={this.state.extra_menu}/>,
+      <main className="container">
+        {this.state.error ? <Error error={this.state.error}/>
+          : this.state.company_data ? <Routes app={this}/>
+          : <div>loading...</div>}
+      </main>
+    ]
   }
 }
 

@@ -15,7 +15,7 @@ SELECT json_build_object(
 )
 FROM (
   SELECT array_to_json(array_agg(row_to_json(t))) AS categories FROM (
-    SELECT id, name, slug, image
+    SELECT id, name, slug, image, description
     FROM categories
     WHERE company=$1 AND live=TRUE
     ORDER BY sort_index
@@ -23,9 +23,11 @@ FROM (
 ) AS categories,
 (
   SELECT array_to_json(array_agg(row_to_json(t))) AS highlight_events FROM (
-    SELECT id, name, slug, image, short_description, location, start_ts, EXTRACT(epoch FROM duration)::int AS duration
-    FROM events
-    WHERE company=$1 AND highlight IS TRUE AND start_ts > now()
+    SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location, e.start_ts, 
+      EXTRACT(epoch FROM e.duration)::int AS duration
+    FROM events AS e
+    JOIN categories as c on e.category = c.id
+    WHERE c.company=$1 AND e.highlight IS TRUE AND e.start_ts > now()
     ORDER BY start_ts
   ) AS t
 ) AS highlight_events,

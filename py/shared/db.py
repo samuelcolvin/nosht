@@ -163,7 +163,9 @@ async def run_logic_sql(conn, settings, **kwargs):
 CATS = [
     {
         'name': 'Supper Club',
+        'description': 'Eat, drink & discuss middle aged, middle class things like house prices and consumerist guilt',
         'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+        'sort_index': 1,
         'events': [
 
             {
@@ -193,7 +195,9 @@ CATS = [
     {
 
         'name': 'Singing',
+        'description': 'Sing loudly and badly in the company of other people too polite to comment',
         'image': 'https://nosht.scolvin.com/cat/mountains/options/zwaxBXpsyu',
+        'sort_index': 2,
         'events': [
             {
                 'status': 'published',
@@ -227,9 +231,10 @@ async def create_demo_data(conn, settings, **kwargs):
     """
     Create some demo data for manual testing.
     """
+    image = 'https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G'
     company_id = await conn.fetchval("""
-    INSERT INTO companies (name, domain) VALUES ('testing', 'localhost:3000') RETURNING id
-    """)
+    INSERT INTO companies (name, domain, image) VALUES ('testing', 'localhost:3000', $1) RETURNING id
+    """, image)
 
     await conn.execute("""
     INSERT INTO users (company, type, status, first_name, last_name, email)
@@ -237,19 +242,19 @@ async def create_demo_data(conn, settings, **kwargs):
         """, company_id)
 
     for cat in CATS:
+        events = cat.pop('events')
         cat_id = await conn.fetchval_b("""
     INSERT INTO categories (:values__names) VALUES :values RETURNING id
-    """, values=Values(company=company_id, name=cat['name'], slug=slugify(cat['name']), image=cat['image']))
+    """, values=Values(company=company_id, slug=slugify(cat['name']), **cat))
 
         await conn.executemany_b("""
 INSERT INTO events (:values__names)
 VALUES :values""", [
             Values(
-                company=company_id,
                 category=cat_id,
                 slug=slugify(e['name']),
                 short_description=shorten(lorem.paragraph(), width=random.randint(100, 140), placeholder='...'),
                 long_description=lorem.text(),
                 **e)
-            for e in cat['events']
+            for e in events
         ])

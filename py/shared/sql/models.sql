@@ -63,6 +63,7 @@ CREATE TABLE categories (
   name VARCHAR(63) NOT NULL,
   slug VARCHAR(63) NOT NULL,
   live BOOLEAN DEFAULT TRUE,
+  description VARCHAR(140),
   sort_index INT,
   event_content TEXT,
   host_advice TEXT,
@@ -78,7 +79,6 @@ CREATE UNIQUE INDEX category_slug ON categories USING btree (company, slug);
 CREATE TYPE EVENT_STATUS AS ENUM ('pending', 'published', 'suspended');
 CREATE TABLE events (
   id SERIAL PRIMARY KEY,
-  company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
   category INT NOT NULL REFERENCES categories ON DELETE CASCADE,
   status EVENT_STATUS NOT NULL DEFAULT 'pending',
   name VARCHAR(63) NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE events (
   image VARCHAR(255),
   CONSTRAINT ticket_limit_check CHECK (tickets_sold <= ticket_limit)
 );
-CREATE UNIQUE INDEX event_slug ON events USING btree (company, slug);
+CREATE UNIQUE INDEX event_slug ON events USING btree (category, slug);
 
 
 CREATE TABLE tickets (
