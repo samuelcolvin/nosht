@@ -18,11 +18,13 @@ const ExtraMenu = ({menu, show_extra}) => {
   if (!menu) {
     return <div/>
   }
-  return <div className={'extra-menu fixed-top' + (show_extra ? ' show' : '')}>
-    <div className="container">
-      {menu.map((item, i) => <span key={i}>{item.name}</span>)}
+  return (
+    <div className={'extra-menu fixed-top' + (show_extra ? ' show' : '')}>
+      <div className="container">
+        {menu.map((item, i) => <span key={i}>{item.name}</span>)}
+      </div>
     </div>
-  </div>
+  )
 }
 
 export default class Navbar extends React.Component {
@@ -73,15 +75,16 @@ export default class Navbar extends React.Component {
 
   render () {
     const categories = this.props.company_data ? this.props.company_data.categories : []
+    const company = this.props.company_data ? this.props.company_data.company : {}
     const navbar = (
       <NavbarBootstrap key="1" color="light" light fixed="top" expand="md">
         <div className="container">
-          <NavbarBrand tag={Link} onClick={this.close} to="/">{process.env.REACT_APP_SITE_NAME}</NavbarBrand>
+          <NavbarBrand tag={Link} onClick={this.close} to="/">{company.name}</NavbarBrand>
           <NavbarToggler onClick={() => this.setState({ is_open: !this.state.is_open })} />
           <Collapse isOpen={this.state.is_open} navbar>
             <Nav className="ml-auto" navbar>
               {categories.map((cat, i) => (
-                <NavItem key={i}>
+                <NavItem key={i} active={cat.slug === this.props.active_page}>
                   <NavLink tag={Link} onClick={this.close} to={`/${cat.slug}/`}>{cat.name}</NavLink>
                 </NavItem>
               ))}

@@ -162,7 +162,7 @@ async def run_logic_sql(conn, settings, **kwargs):
 
 CATS = [
     {
-        'name': 'Supper Club',
+        'name': 'Supper Clubs',
         'description': 'Eat, drink & discuss middle aged, middle class things like house prices and consumerist guilt',
         'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
         'sort_index': 1,
@@ -194,7 +194,7 @@ CATS = [
     },
     {
 
-        'name': 'Singing',
+        'name': 'Singing Events',
         'description': 'Sing loudly and badly in the company of other people too polite to comment',
         'image': 'https://nosht.scolvin.com/cat/mountains/options/zwaxBXpsyu',
         'sort_index': 2,
@@ -214,12 +214,12 @@ CATS = [
                 'status': 'published',
                 'highlight': False,
                 'name': 'Quiet Singing',
-                'start_ts': datetime(2020, 2, 15),
+                'start_ts': datetime(2020, 2, 20),
                 'duration': None,
                 'price': 25,
                 'location': 'Small Church, London',
                 'ticket_limit': None,
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
             },
         ]
     }
@@ -233,7 +233,7 @@ async def create_demo_data(conn, settings, **kwargs):
     """
     image = 'https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G'
     company_id = await conn.fetchval("""
-    INSERT INTO companies (name, domain, image) VALUES ('testing', 'localhost:3000', $1) RETURNING id
+    INSERT INTO companies (name, domain, image) VALUES ('Testing', 'localhost:3000', $1) RETURNING id
     """, image)
 
     await conn.execute("""

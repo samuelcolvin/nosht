@@ -2,7 +2,7 @@
 # python build stage
 FROM python:3.6-alpine3.7 as python-build
 
-RUN apk add -U gcc g++ musl-dev libuv libffi-dev make openssl-dev
+RUN apk add -U gcc g++ musl-dev libuv libffi-dev make openssl-dev git
 
 ADD ./py/requirements.txt /home/root/requirements.txt
 RUN pip install -r /home/root/requirements.txt
@@ -27,25 +27,30 @@ ADD ./js/yarn.lock /home/root/yarn.lock
 RUN yarn
 
 ADD ./js/.env /home/root/.env
+ADD ./favicons/env.production /home/root/.env.production
 ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
+ADD ./favicons/* /home/root/public/
+RUN rm /home/root/public/env.production
 RUN yarn build
 RUN rm build/service-worker.js
+RUN find build/ -type f
 
 # ===============================================
 # final image
 FROM python:3.6-alpine3.7
 COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
+COPY --from=python-build /lib/* /lib/
 
 ENV PYTHONUNBUFFERED 1
 ENV APP_ON_DOCKER 1
-WORKDIR /home/root
+WORKDIR /home/root/py
 RUN adduser -D runuser
 USER runuser
 
-ADD ./py/run.py /home/root/run.py
-ADD ./py/shared /home/root/shared
-ADD ./py/web /home/root/web
+ADD ./py/run.py /home/root/py/run.py
+ADD ./py/shared /home/root/py/shared
+ADD ./py/web /home/root/py/web
 COPY --from=js-build /home/root/build /home/root/js/build
 
 CMD ["./run.py", "web"]

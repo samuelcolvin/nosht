@@ -18,6 +18,9 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: docker
+    ports:
+    # to connect: `pgcli postgre://postgres:docker@localhost:54320/nosht`
+    - 54320:5432
     volumes:
     - pg_data:/var/lib/postgresql/data
     restart: unless-stopped

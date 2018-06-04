@@ -14,7 +14,7 @@ from shared.settings import Settings
 from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
-from .views.public import index
+from .views.public import category, index
 from .views.static import static_handler
 
 logger = logging.getLogger('nosht.web')
@@ -53,6 +53,7 @@ def create_app(*, settings: Settings=None):
 
     app.add_routes([
         web.get('/', index, name='index'),
+        web.get('/cat/{category}/', category, name='category'),
     ])
 
     wrapper_app = web.Application(middlewares=(error_middleware,))

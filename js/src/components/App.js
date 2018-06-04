@@ -14,9 +14,17 @@ const Routes = ({app}) => (
         <Index setRootState={s => app.setState(s)} company_data={app.state.company_data}/>
       )} />
 
+      <Route path="/:category/:event/" render={props => (
+        <div>
+          <h1>event page</h1>
+        </div>
+      )} />
+
       <Route path="/:category/" render={props => (
         <Category setRootState={s => app.setState(s)}
+                  requests={app.requests}
                   company_data={app.state.company_data}
+                  location={props.location}
                   slug={props.match.params.category}/>
       )} />
 
@@ -37,6 +45,7 @@ class _App extends Component {
       company_data: null,
       background: null,
       extra_menu: null,
+      active_page: null,
       error: null,
     }
     this.requests = {
@@ -54,8 +63,12 @@ class _App extends Component {
     }
   }
 
-  componentDidUpdate () {
-    let next_title = process.env.REACT_APP_SITE_NAME
+  componentDidUpdate (prevProps) {
+    if (this.props.location !== prevProps.location) {
+      window.scrollTo(0, 0)
+    }
+
+    let next_title = this.state.company_data ? this.state.company_data.company.name : ''
     if (this.state.page_title) {
       next_title += ' - ' + this.state.page_title
     }
@@ -66,10 +79,12 @@ class _App extends Component {
 
   render () {
     return [
-      <Navbar company_data={this.state.company_data}
+      <Navbar key={1}
+              company_data={this.state.company_data}
               background={this.state.background}
-              extra_menu={this.state.extra_menu}/>,
-      <main className="container">
+              extra_menu={this.state.extra_menu}
+              active_page={this.state.active_page}/>,
+      <main key={2} className="container">
         {this.state.error ? <Error error={this.state.error}/>
           : this.state.company_data ? <Routes app={this}/>
           : <div>loading...</div>}

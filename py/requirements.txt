@@ -10,3 +10,5 @@ lorem==0.1.1
 pydantic==0.9.1
 raven==6.8.0
 uvloop==0.9.1
+# TODO
+git+git://github.com/samuelcolvin/buildpg.git@master#egg=buildpg

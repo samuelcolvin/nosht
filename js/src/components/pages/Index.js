@@ -26,8 +26,10 @@ const Category = ({cat}) => {
 export default class Index extends Component {
   componentDidMount () {
     this.props.setRootState({
+      page_title: null,
       background: this.props.company_data.company.image,
       extra_menu: null,
+      active_page: null,
     })
   }
 
