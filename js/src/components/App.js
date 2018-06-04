@@ -87,7 +87,7 @@ class _App extends Component {
       <main key={2} className="container">
         {this.state.error ? <Error error={this.state.error}/>
           : this.state.company_data ? <Routes app={this}/>
-          : <div>loading...</div>}
+          : <small className="text-muted">loading...</small>}
       </main>
     ]
   }

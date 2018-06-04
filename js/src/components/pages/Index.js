@@ -7,7 +7,7 @@ import Events from '../Events'
 
 const Category = ({cat}) => {
   return (
-    <Col md="4">
+    <Col md="4" className="box-container">
       <Link className="index-card" to={`/${cat.slug}/`}>
         <Card>
           <CardImg top width="100%" src={cat.image + '/thumb.jpg'} alt={cat.name} />

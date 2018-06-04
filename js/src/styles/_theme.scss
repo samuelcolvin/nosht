@@ -65,8 +65,12 @@ main.container {
       }
     }
   }
+  .box-container {
+    margin-bottom: 1rem;
+  }
   .card {
     transition: all 200ms ease;
+    margin-bottom: 1rem;
     height: 100%;
   }
   .card-body {

@@ -1,24 +1,15 @@
-import React, {Component} from 'react'
+import React from 'react'
 import Events from '../Events'
+import OnUpdate from '../OnUpdate'
 
-export default class Category extends Component {
+
+export default class Category extends OnUpdate {
   constructor (props) {
     super(props)
     this.state = {
       events: [],
     }
-    this.setup = this.setup.bind(this)
     this.cat_info = this.cat_info.bind(this)
-  }
-
-  componentDidUpdate (prevProps) {
-    if (this.props.location.pathname !== prevProps.location.pathname) {
-      this.setup()
-    }
-  }
-
-  componentDidMount () {
-    this.setup()
   }
 
   async setup () {
@@ -30,7 +21,7 @@ export default class Category extends Component {
       active_page: this.props.slug,
     })
     try {
-      const data = await this.props.requests.get(`cat/${this.props.slug}/`)
+      const data = await this.requests.get(`cat/${this.props.slug}/`)
       this.setState({events: data.events})
     } catch (err) {
       this.props.setRootState({error: err})
@@ -42,7 +33,6 @@ export default class Category extends Component {
   }
 
   render () {
-    console.log(this.state.events)
     return (
       <div className="card-grid">
         <div>

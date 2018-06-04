@@ -42,6 +42,17 @@ docker-dev: build
 	# running docker compose...
 	docker-compose up -d
 
-.PHONY: deploy
-deploy:
-	heroku container:push web worker --recursive --app nosht
+.PHONY: heroku-release
+heroku-push: build
+	docker tag nosht-web registry.heroku.com/nosht/web
+	docker push registry.heroku.com/nosht/web
+	docker tag nosht-worker registry.heroku.com/nosht/worker
+	docker push registry.heroku.com/nosht/worker
+
+.PHONY: heroku-release
+heroku-release:
+	heroku container:release web worker -a nosht
+
+.PHONY: heroku-pgcli
+heroku-pgcli:
+	pgcli `heroku config:get DATABASE_URL -a nosht`

@@ -15,7 +15,7 @@ export const When = ({event}) => {
 
 const Event = ({event}) => {
   return (
-    <Col md="4">
+    <Col md="4" className="box-container">
       <Link to={`/${event.cat_slug}/${event.slug}/`}>
         <Card>
           <CardImg top width="100%" src={event.image + '/thumb.jpg'} alt={event.name} />
