@@ -6,7 +6,7 @@ from asyncpg import Connection
 
 from .utils import JsonErrors
 
-logger = logging.getLogger('nosht.web.middleware')
+logger = logging.getLogger('nosht.web.mware')
 IP_HEADER = 'X-Forwarded-For'
 
 

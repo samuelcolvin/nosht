@@ -27,7 +27,7 @@ export default class Index extends Component {
   componentDidMount () {
     this.props.setRootState({
       page_title: null,
-      background: this.props.company_data.company.image,
+      background: null,
       extra_menu: null,
       active_page: null,
     })

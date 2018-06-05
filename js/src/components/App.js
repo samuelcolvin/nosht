@@ -2,8 +2,9 @@ import React, { Component } from 'react'
 import {Route, Switch, withRouter } from 'react-router-dom'
 
 import {get, post} from '../utils'
-import { Error, Loading } from './Utils'
+import { Error, NotFound, Loading } from './utils/Errors'
 import Navbar from './Navbar'
+import Footer from './Footer'
 import Index from './pages/Index'
 import Category from './pages/Category'
 import Event from './pages/Event'
@@ -15,15 +16,15 @@ const Routes = ({app}) => (
         <Index setRootState={s => app.setState(s)} company_data={app.state.company_data}/>
       )} />
 
-      <Route path="/:category/:event/" render={props => (
-      <Event setRootState={s => app.setState(s)}
-             requests={app.requests}
-             company_data={app.state.company_data}
-             location={props.location}
-             match={props.match}/>
+      <Route exact={true} path="/:category/:event/" render={props => (
+        <Event setRootState={s => app.setState(s)}
+               requests={app.requests}
+               company_data={app.state.company_data}
+               location={props.location}
+               match={props.match}/>
       )} />
 
-      <Route path="/:category/" render={props => (
+      <Route exact={true} path="/:category/" render={props => (
         <Category setRootState={s => app.setState(s)}
                   requests={app.requests}
                   company_data={app.state.company_data}
@@ -32,10 +33,7 @@ const Routes = ({app}) => (
       )} />
 
       <Route render={props => (
-        <div>
-          <h1>Page not found</h1>
-          <p>The page "{props.location.pathname}" doesn't exist.</p>
-        </div>
+        <NotFound location={props.props}/>
       )} />
     </Switch>
 )
@@ -69,6 +67,9 @@ class _App extends Component {
   componentDidUpdate (prevProps) {
     if (this.props.location !== prevProps.location) {
       window.scrollTo(0, 0)
+      if (this.state.error) {
+        this.setState({error: null})
+      }
     }
 
     let next_title = this.state.company_data ? this.state.company_data.company.name : ''
@@ -88,10 +89,11 @@ class _App extends Component {
               extra_menu={this.state.extra_menu}
               active_page={this.state.active_page}/>,
       <main key={2} className="container">
-        {this.state.error ? <Error error={this.state.error}/>
+        {this.state.error ? <Error error={this.state.error} location={this.props.location}/>
           : this.state.company_data ? <Routes app={this}/>
             : <Loading/>}
-      </main>
+      </main>,
+      <Footer key={3}/>
     ]
   }
 }

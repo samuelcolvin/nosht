@@ -34,7 +34,8 @@ async def lenient_conn(settings: Settings, with_db=True):
                 logger.warning('pg temporary connection error "%s", %d retries remaining...', e, retry)
                 await asyncio.sleep(1)
         else:
-            logger.info('pg connection successful, version: %s', await conn.fetchval('SELECT version()'))
+            l = logger.debug if retry == 8 else logger.info
+            l('pg connection successful, version: %s', await conn.fetchval('SELECT version()'))
             return conn
 
 
@@ -62,7 +63,7 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
                 if overwrite_existing:
                     logger.debug('database already exists...')
                 else:
-                    logger.info('database already exists ✓')
+                    logger.debug('database already exists ✓')
                     return False
         finally:
             await conn.close()
@@ -77,7 +78,7 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
                 if overwrite_existing:
                     logger.debug('database already exists...')
                 else:
-                    logger.info('database already exists, skipping creation')
+                    logger.debug('database already exists, skipping creation')
                     return False
             else:
                 logger.debug('database did not exist, now created')

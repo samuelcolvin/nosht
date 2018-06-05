@@ -20,7 +20,7 @@ def setup_logging(disable_existing=False):
         'disable_existing_loggers': disable_existing,
         'formatters': {
             'nosht.default': {
-                'format': '%(levelname)-7s %(name)14s: %(message)s',
+                'format': '%(levelname)-7s %(name)16s: %(message)s',
             },
         },
         'handlers': {

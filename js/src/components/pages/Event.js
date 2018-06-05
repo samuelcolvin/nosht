@@ -2,7 +2,9 @@ import React, { Component } from 'react'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import { Row, Col, Button } from 'reactstrap'
 import { load_script_callback } from '../../utils'
-import { Loading, OnUpdate, Markdown } from '../Utils'
+import { Loading, NotFound } from '../utils/Errors'
+import OnUpdate from '../utils/OnUpdate'
+import Markdown from '../utils/Markdown'
 import { When } from '../Events'
 
 const GOOGLE_MAPS_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY
@@ -58,11 +60,16 @@ export default class Event extends OnUpdate {
   async setup () {
     let event
     const params = this.props.match.params
+    this.props.setRootState({active_page: params.category})
     try {
       const data = await this.requests.get(`event/${params.category}/${params.event}/`)
       event = data.event
     } catch (error) {
-      this.props.setRootState({ error })
+      if (error.status === 404) {
+        this.setState({ event: 404 })
+      } else {
+        this.props.setRootState({ error })
+      }
       return
     }
     this.setState({ event })
@@ -70,7 +77,6 @@ export default class Event extends OnUpdate {
       page_title: event.name,
       background: event.image,
       extra_menu: [{name: 'Book Now', to: '/'}],
-      active_page: params.category,
     })
   }
 
@@ -78,6 +84,8 @@ export default class Event extends OnUpdate {
     const event = this.state.event
     if (!event) {
       return <Loading/>
+    } else if (event === 404) {
+      return <NotFound location={this.props.location}/>
     }
     return (
       <div>

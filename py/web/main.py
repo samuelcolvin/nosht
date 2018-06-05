@@ -61,7 +61,7 @@ def create_app(*, settings: Settings=None):
     this_dir = Path(__file__).parent
     static_dir = (this_dir / '../../js/build').resolve()
     assert static_dir.exists()
-    logger.info('serving static files "%s"', static_dir)
+    logger.debug('serving static files "%s"', static_dir)
     wrapper_app['static_dir'] = static_dir
     wrapper_app.add_subapp('/api/', app)
     wrapper_app.add_routes([

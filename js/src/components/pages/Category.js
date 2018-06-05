@@ -1,6 +1,7 @@
 import React from 'react'
 import Events from '../Events'
-import {OnUpdate} from '../Utils'
+import { NotFound } from '../utils/Errors'
+import OnUpdate from '../utils/OnUpdate'
 
 
 export default class Category extends OnUpdate {
@@ -14,6 +15,9 @@ export default class Category extends OnUpdate {
 
   async setup () {
     const cat = this.cat_info()
+    if (!cat) {
+      return
+    }
     this.props.setRootState({
       page_title: cat.name,
       background: cat.image,
@@ -33,6 +37,10 @@ export default class Category extends OnUpdate {
   }
 
   render () {
+    const cat = this.cat_info()
+    if (!cat) {
+      return <NotFound location={this.props.location}/>
+    }
     return (
       <div className="card-grid">
         <div>

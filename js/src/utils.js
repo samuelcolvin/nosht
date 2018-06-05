@@ -71,10 +71,7 @@ export const request = (method, path, config) => {
   // await sleep(2000)
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    const on_error = msg => {
-      console.error('request error', msg, url, xhr)
-      reject(msg)
-    }
+    const on_error = (user_msg, error_details) => reject({user_msg, url, xhr, error_details, status: xhr.status})
     xhr.open(method, url)
     xhr.setRequestHeader('Accept', 'application/json')
     xhr.onload = () => {
@@ -82,14 +79,14 @@ export const request = (method, path, config) => {
         try {
           resolve(JSON.parse(xhr.responseText))
         } catch (error) {
-          on_error(`error decoding json: ${error}`)
+          on_error('Error decoding json', error)
         }
       } else {
-        on_error(`wrong response code ${xhr.status}, Response: ${xhr.responseText.substr(0, 500)}`)
+        on_error(`Unexpected response ${xhr.status}`)
       }
     }
     xhr.onerror = () => {
-      on_error(`Error requesting data ${xhr.statusText}: ${xhr.status}`)
+      on_error('Unable to connect to the server, check your internet connection')
     }
     xhr.send(config.send_data || null)
   })
