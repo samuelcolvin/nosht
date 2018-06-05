@@ -2,6 +2,7 @@ import logging
 
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
+from aiohttp_session import get_session
 from asyncpg import Connection
 
 from .utils import JsonErrors
@@ -71,11 +72,26 @@ async def pg_middleware(request, handler):
         return await handler(request)
 
 
+USER_COMPANY_SQL = """
+SELECT c.id
+FROM users
+JOIN companies AS c ON c.id=company
+WHERE c.domain=$1 AND users.id=$2
+"""
+
+
 @middleware
 async def host_middleware(request, handler):
     conn: Connection = request['conn']
-    company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', request.host)
+    request['session'] = await get_session(request)
+    user = request['session'].get('user')
+    if user:
+        company_id = await conn.fetchval(USER_COMPANY_SQL, request.host, user)
+        msg = 'company not found for this host and user'
+    else:
+        company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', request.host)
+        msg = 'no company found for this host'
     if not company_id:
-        return JsonErrors.HTTPNotFound(message='no company found for this host')
+        return JsonErrors.HTTPNotFound(message=msg)
     request['company_id'] = company_id
     return await handler(request)

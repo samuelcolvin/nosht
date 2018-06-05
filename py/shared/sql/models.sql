@@ -18,12 +18,12 @@ CREATE TABLE companies (
 CREATE UNIQUE INDEX company_domain ON companies USING btree (domain);
 
 
-CREATE TYPE USER_TYPES AS ENUM ('guest', 'host', 'admin');
+CREATE TYPE USER_ROLE AS ENUM ('guest', 'host', 'admin');
 CREATE TYPE USER_STATUS AS ENUM ('pending', 'active', 'suspended');
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
-  type USER_TYPES NOT NULL,
+  role USER_ROLE NOT NULL,
   status USER_STATUS NOT NULL DEFAULT 'pending',
   first_name VARCHAR(255),
   last_name VARCHAR(255),

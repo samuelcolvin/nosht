@@ -14,6 +14,7 @@ from shared.settings import Settings
 from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
+from .views.auth import login
 from .views.public import category, event, index
 from .views.static import static_handler
 
@@ -55,6 +56,8 @@ def create_app(*, settings: Settings=None):
         web.get('/', index, name='index'),
         web.get('/cat/{category}/', category, name='category'),
         web.get('/event/{category}/{event}/', event, name='event'),
+        # web.post('/login/', login, name='login'),
+        web.route('*', '/login/', login, name='login'),
     ])
 
     wrapper_app = web.Application(middlewares=(error_middleware,))

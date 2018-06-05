@@ -1,17 +1,16 @@
-import logging
+import json
 
 from asyncpg import Connection
 
 from web.utils import JsonErrors, raw_json_response
-
-logger = logging.getLogger('nosht.web')
 
 
 company_sql = """
 SELECT json_build_object(
   'categories', categories,
   'highlight_events', highlight_events,
-  'company', row_to_json(company)
+  'company', row_to_json(company),
+  'user', user_data
 )
 FROM (
   SELECT array_to_json(array_agg(row_to_json(t))) AS categories FROM (
@@ -35,14 +34,27 @@ FROM (
   SELECT id, name, image
   FROM companies
   WHERE id=$1
-) AS company;
+) AS company,
+(
+  SELECT 
+    CASE WHEN $2::int IS NULL
+    THEN null
+    ELSE (
+      SELECT row_to_json(t) AS user_data FROM (
+        SELECT id, first_name || ' ' || last_name AS name
+        FROM users
+        WHERE id=$2
+    ) AS t)
+    END
+) AS user_data;
 """
 
 
 async def index(request):
     conn: Connection = request['conn']
     company_id = request['company_id']
-    json_str = await conn.fetchval(company_sql, company_id)
+    user_id = request['session'].get('user', None)
+    json_str = await conn.fetchval(company_sql, company_id, user_id)
     return raw_json_response(json_str)
 
 

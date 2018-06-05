@@ -167,14 +167,14 @@ USERS = [
         'first_name': 'Frank',
         'last_name': 'Spencer',
         'email': 'frank@example.com',
-        'type': 'admin',
+        'role': 'admin',
         'status': 'active',
     },
     {
         'first_name': 'Jane',
         'last_name': 'Dow',
         'email': 'jane@example.com',
-        'type': 'host',
+        'role': 'host',
         'status': 'pending',
     },
 ]
@@ -296,11 +296,6 @@ async def create_demo_data(conn, settings, **kwargs):
         user_lookup[user['email']] = await conn.fetchval_b("""
         INSERT INTO users (:values__names) VALUES :values RETURNING id
         """, values=Values(company=company_id, **user))
-
-    await conn.execute("""
-    INSERT INTO users (company, type, status, first_name, last_name, email)
-    VALUES ($1, 'admin', 'active', 'joe', 'blogs', 'joe.blogs@example.com')
-        """, company_id)
 
     for cat in CATS:
         events = cat.pop('events')

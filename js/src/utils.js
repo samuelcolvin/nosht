@@ -82,6 +82,15 @@ export const request = (method, path, config) => {
           on_error('Error decoding json', error)
         }
       } else {
+        try {
+          const response_data = JSON.parse(xhr.responseText)
+          if (response_data.message) {
+            on_error(`Unexpected response ${xhr.status}: ${response_data.message}`)
+            return
+          }
+        } catch (e) {
+          // ignore and use normal error
+        }
         on_error(`Unexpected response ${xhr.status}`)
       }
     }

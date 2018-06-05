@@ -83,14 +83,9 @@ def raw_json_response(json_str, status_=200):
     )
 
 
-def json_response(request, *, status_=200, list_=None, **data):
-    if JSON_CONTENT_TYPE in request.headers.get('Accept', ''):
-        to_json = json.dumps
-    else:
-        to_json = pretty_json
-
+def json_response(*, status_=200, list_=None, **data):
     return Response(
-        body=to_json(data if list_ is None else list_).encode(),
+        body=json.dumps(data if list_ is None else list_).encode(),
         status=status_,
         content_type=JSON_CONTENT_TYPE,
     )
