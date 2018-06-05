@@ -2,7 +2,7 @@ import logging
 
 from asyncpg import Connection
 
-from web.utils import raw_json_response, JsonErrors
+from web.utils import JsonErrors, raw_json_response
 
 logger = logging.getLogger('nosht.web')
 

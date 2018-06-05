@@ -21,7 +21,7 @@ const ExtraMenu = ({menu, show_extra}) => {
   return (
     <div className={'extra-menu fixed-top' + (show_extra ? ' show' : '')}>
       <div className="container">
-        {menu.map((item, i) => <span key={i}>{item.name}</span>)}
+        {menu.map((item, i) => <Link key={i} to={item.to}>{item.name}</Link>)}
       </div>
     </div>
   )

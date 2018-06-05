@@ -6,8 +6,9 @@ from datetime import datetime, timedelta
 from textwrap import shorten
 
 import lorem
-from buildpg import Values, asyncpg
 from async_timeout import timeout
+
+from buildpg import Values, asyncpg
 
 from .settings import Settings
 from .utils import slugify
@@ -251,18 +252,18 @@ CATS = [
 ]
 
 EVENT_LONG_DESCRIPTION = """
-Sit quisquam quisquam eius sed tempora. Aliquam labore **quisquam** tempora _voluptatem_. 
+Sit quisquam quisquam eius sed tempora. Aliquam labore **quisquam** tempora _voluptatem_.
 Porro eius eius etincidunt sit etincidunt. Adipisci dolor amet eius. [Magnam quaerat](https://www.example.com).
 
-Neque labore est numquam dolorem. Quiquia ipsum ut dolore dolore porro. Voluptatem consectetur amet ipsum adipisci 
-dolor aliquam. Quiquia modi tempora tempora non amet aliquam. Aliquam eius quiquia voluptatem. Numquam numquam 
+Neque labore est numquam dolorem. Quiquia ipsum ut dolore dolore porro. Voluptatem consectetur amet ipsum adipisci
+dolor aliquam. Quiquia modi tempora tempora non amet aliquam. Aliquam eius quiquia voluptatem. Numquam numquam
 etincidunt neque non est est consectetur.
 
 ## Lists
 
 Example of list:
-* Tempora ut aliquam consectetur aliquam. 
-* Dolorem quaerat porro ipsum. Sed ipsum tempora est. Neque 
+* Tempora ut aliquam consectetur aliquam.
+* Dolorem quaerat porro ipsum. Sed ipsum tempora est. Neque
 * amet amet quisquam dolore labore magnam.
 
 Numbered:

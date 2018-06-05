@@ -66,7 +66,7 @@ export default class Event extends OnUpdate {
     this.props.setRootState({
       page_title: event.name,
       background: event.image,
-      extra_menu: null,
+      extra_menu: [{name: 'Book Now', to: '/'}],
       active_page: params.category,
     })
   }
@@ -79,13 +79,13 @@ export default class Event extends OnUpdate {
     return (
       <div className="card-grid">
         <Row>
-          <Col md="8">
+          <Col>
             <h1>{event.name}</h1>
             <p className="lead">
               {event.short_description}
             </p>
           </Col>
-          <Col md="4" className="text-right">
+          <Col md="3" className="text-right">
             <Button color="primary" size="lg" className="hover-raise">Book Now</Button>
           </Col>
         </Row>
