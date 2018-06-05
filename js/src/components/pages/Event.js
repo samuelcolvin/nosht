@@ -1,19 +1,20 @@
 import React, { Component } from 'react'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import { Row, Col, Button } from 'reactstrap'
-import { load_script } from '../../utils'
+import { load_script_callback } from '../../utils'
 import { Loading, OnUpdate, Markdown } from '../Utils'
 import { When } from '../Events'
+
+const GOOGLE_MAPS_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY
+const GOOGLE_MAPS_JS = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=<callback-function>`
 
 class Map extends Component {
   constructor (props) {
     super(props)
     this.update_map = this.update_map.bind(this)
-    this.loaded = false
   }
 
   async componentDidMount () {
-    await load_script('https://maps.googleapis.com/maps/api/js?key=' + process.env.REACT_APP_GOOGLE_MAPS_KEY)
     this.update_map()
   }
 
@@ -21,19 +22,21 @@ class Map extends Component {
     this.update_map()
   }
 
-  update_map () {
+  async update_map () {
     const el = document.getElementById('event-map')
-    if (window.google && el && !this.loaded) {
-      this.loaded = true
-      const map = new window.google.maps.Map(el, {
-        center: this.props.location,
-        zoom: 14,
-        fullscreenControl: false,
-      })
+    if (!el) {
+      return
+    }
+    await load_script_callback(GOOGLE_MAPS_JS)
+    if (el.childElementCount === 0) {
       new window.google.maps.Marker({
         position: this.props.location,
-        map: map,
         title: this.props.location.name,
+        map: new window.google.maps.Map(el, {
+          center: this.props.location,
+          zoom: 14,
+          fullscreenControl: false,
+        }),
       })
     }
   }
@@ -77,7 +80,7 @@ export default class Event extends OnUpdate {
       return <Loading/>
     }
     return (
-      <div className="card-grid">
+      <div>
         <Row>
           <Col>
             <h1>{event.name}</h1>

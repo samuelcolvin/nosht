@@ -1,13 +1,37 @@
 import format from 'date-fns/format'
 
+const _add_script = (url, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.onerror = e => reject(e)
+  document.body.appendChild(script)
+  setTimeout(() => reject(`script "${url}" timed out`), 8000)
+  return script
+}
+
 export const load_script = url => {
   return new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = url
-    script.onload = () => resolve()
-    script.onreadystatechange = () => resolve()
-    script.onerror = () => reject()
-    document.body.appendChild(script)
+    if (document.querySelector(`script[src="${url}"`)) {
+      // script already loaded
+      resolve()
+    } else {
+      const script = _add_script(url, reject)
+      script.onload = () => resolve()
+      // script.onreadystatechange = () => resolve()
+    }
+  })
+}
+
+export const load_script_callback = url => {
+  return new Promise((resolve, reject) => {
+    url = url.replace('<callback-function>', '_load_script_complete')
+    if (document.querySelector(`script[src="${url}"`)) {
+      // script already loaded, but wait to resolve to make sure the callback has been called
+      setTimeout(() => resolve(), 100)
+    } else {
+      window._load_script_complete = () => resolve()
+      _add_script(url, reject)
+    }
   })
 }
 
