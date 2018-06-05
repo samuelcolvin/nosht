@@ -1,11 +1,11 @@
-import React, { Component } from 'react'
+import React, {Component} from 'react'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import { Row, Col, Button } from 'reactstrap'
-import { load_script_callback } from '../../utils'
-import { Loading, NotFound } from '../utils/Errors'
+import {Row, Col, Button} from 'reactstrap'
+import {load_script_callback} from '../../utils'
+import {Loading, NotFound} from '../utils/Errors'
 import OnUpdate from '../utils/OnUpdate'
 import Markdown from '../utils/Markdown'
-import { When } from '../Events'
+import {When} from '../Events'
 
 const GOOGLE_MAPS_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY
 const GOOGLE_MAPS_JS = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=<callback-function>`
@@ -66,13 +66,13 @@ export default class Event extends OnUpdate {
       event = data.event
     } catch (error) {
       if (error.status === 404) {
-        this.setState({ event: 404 })
+        this.setState({event: 404})
       } else {
-        this.props.setRootState({ error })
+        this.props.setRootState({error})
       }
       return
     }
-    this.setState({ event })
+    this.setState({event})
     this.props.setRootState({
       page_title: event.name,
       background: event.image,

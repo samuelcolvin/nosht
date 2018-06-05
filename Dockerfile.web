@@ -27,11 +27,10 @@ ADD ./js/yarn.lock /home/root/yarn.lock
 RUN yarn
 
 ADD ./js/.env /home/root/.env
-ADD ./favicons/env.production /home/root/.env.production
+ADD ./deploy-settings/*.* /home/root/
 ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
-ADD ./favicons/* /home/root/public/
-RUN rm /home/root/public/env.production
+ADD ./deploy-settings/favicons/* /home/root/public/
 RUN yarn build
 RUN rm build/service-worker.js
 RUN find build/ -type f

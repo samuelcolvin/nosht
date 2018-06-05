@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import {Link} from 'react-router-dom'
 import {
   Collapse,
   Navbar as NavbarBootstrap,
@@ -61,15 +61,15 @@ export default class Navbar extends React.Component {
   }
 
   close () {
-    this.state.is_open && this.setState({ is_open: false })
+    this.state.is_open && this.setState({is_open: false})
   }
 
   set_extra (y_pos) {
     if (y_pos > SWITCH_MENU_HEIGHT && !this.state.show_extra) {
-      this.setState({ show_extra: true })
+      this.setState({show_extra: true})
     }
     if (y_pos < SWITCH_MENU_HEIGHT && this.state.show_extra) {
-      this.setState({ show_extra: false })
+      this.setState({show_extra: false})
     }
   }
 
@@ -82,7 +82,7 @@ export default class Navbar extends React.Component {
           <NavbarBrand tag={Link} onClick={this.close} to="/">
             {company.name || process.env.REACT_APP_SITE_NAME}
           </NavbarBrand>
-          <NavbarToggler onClick={() => this.setState({ is_open: !this.state.is_open })} />
+          <NavbarToggler onClick={() => this.setState({is_open: !this.state.is_open})} />
           <Collapse isOpen={this.state.is_open} navbar>
             <Nav className="ml-auto" navbar>
               {categories.map((cat, i) => (

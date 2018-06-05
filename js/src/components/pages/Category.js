@@ -1,6 +1,6 @@
 import React from 'react'
 import Events from '../Events'
-import { NotFound } from '../utils/Errors'
+import {NotFound} from '../utils/Errors'
 import OnUpdate from '../utils/OnUpdate'
 
 
@@ -28,7 +28,7 @@ export default class Category extends OnUpdate {
       const data = await this.requests.get(`cat/${this.props.match.params.category}/`)
       this.setState({events: data.events})
     } catch (error) {
-      this.props.setRootState({ error })
+      this.props.setRootState({error})
     }
   }
 

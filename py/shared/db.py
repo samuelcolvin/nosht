@@ -34,8 +34,8 @@ async def lenient_conn(settings: Settings, with_db=True):
                 logger.warning('pg temporary connection error "%s", %d retries remaining...', e, retry)
                 await asyncio.sleep(1)
         else:
-            l = logger.debug if retry == 8 else logger.info
-            l('pg connection successful, version: %s', await conn.fetchval('SELECT version()'))
+            log = logger.debug if retry == 8 else logger.info
+            log('pg connection successful, version: %s', await conn.fetchval('SELECT version()'))
             return conn
 
 

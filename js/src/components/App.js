@@ -1,8 +1,8 @@
-import React, { Component } from 'react'
-import {Route, Switch, withRouter } from 'react-router-dom'
+import React, {Component} from 'react'
+import {Route, Switch, withRouter} from 'react-router-dom'
 
 import {get, post} from '../utils'
-import { Error, NotFound, Loading } from './utils/Errors'
+import {Error, NotFound, Loading} from './utils/Errors'
 import Navbar from './Navbar'
 import Footer from './Footer'
 import Index from './pages/Index'

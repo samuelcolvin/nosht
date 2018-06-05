@@ -21,6 +21,7 @@ install:
 script:
 - make lint
 - make test
+- mkdir -p deploy-settings/favicons
 - make build
 
 after_success:

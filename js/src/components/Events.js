@@ -1,6 +1,6 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
-import { Card, CardImg, CardTitle, CardText, CardSubtitle, CardBody, Row, Col } from 'reactstrap'
+import {Link} from 'react-router-dom'
+import {Card, CardImg, CardTitle, CardText, CardSubtitle, CardBody, Row, Col} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {chunk_array, format_date, format_datetime, format_duration} from '../utils'
 

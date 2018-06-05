@@ -12,7 +12,7 @@ export const Error = ({error, location}) => {
   )
 }
 
-export const NotFound = ({ location }) => (
+export const NotFound = ({location}) => (
   <div>
     <h1>Page not found</h1>
     <p>The page "{location.pathname}" doesn't exist.</p>

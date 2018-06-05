@@ -1,6 +1,6 @@
-import React, { Component } from 'react'
-import { Link } from 'react-router-dom'
-import { Card, CardImg, CardTitle, CardText, CardBody, Row, Col } from 'reactstrap'
+import React, {Component} from 'react'
+import {Link} from 'react-router-dom'
+import {Card, CardImg, CardTitle, CardText, CardBody, Row, Col} from 'reactstrap'
 import {chunk_array} from '../../utils'
 import Events from '../Events'
 
