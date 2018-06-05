@@ -1,6 +1,6 @@
 import React from 'react'
 import Events from '../Events'
-import OnUpdate from '../OnUpdate'
+import {OnUpdate} from '../Utils'
 
 
 export default class Category extends OnUpdate {
@@ -18,18 +18,18 @@ export default class Category extends OnUpdate {
       page_title: cat.name,
       background: cat.image,
       extra_menu: null,
-      active_page: this.props.slug,
+      active_page: this.props.match.params.category,
     })
     try {
-      const data = await this.requests.get(`cat/${this.props.slug}/`)
+      const data = await this.requests.get(`cat/${this.props.match.params.category}/`)
       this.setState({events: data.events})
-    } catch (err) {
-      this.props.setRootState({error: err})
+    } catch (error) {
+      this.props.setRootState({ error })
     }
   }
 
   cat_info () {
-    return this.props.company_data.categories.find(c => c.slug === this.props.slug)
+    return this.props.company_data.categories.find(c => c.slug === this.props.match.params.category)
   }
 
   render () {

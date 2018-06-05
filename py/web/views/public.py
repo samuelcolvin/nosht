@@ -23,7 +23,7 @@ FROM (
 ) AS categories,
 (
   SELECT array_to_json(array_agg(row_to_json(t))) AS highlight_events FROM (
-    SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location, e.start_ts, 
+    SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location, e.start_ts,
       EXTRACT(epoch FROM e.duration)::int AS duration
     FROM events AS e
     JOIN categories as c on e.category = c.id
@@ -50,7 +50,7 @@ category_sql = """
 SELECT json_build_object('events', events)
 FROM (
   SELECT array_to_json(array_agg(row_to_json(t))) AS events FROM (
-    SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location, e.start_ts, 
+    SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location, e.start_ts,
       EXTRACT(epoch FROM e.duration)::int AS duration
     FROM events AS e
     JOIN categories as c on e.category = c.id
@@ -74,21 +74,28 @@ async def category(request):
 event_sql = """
 SELECT json_build_object('event', row_to_json(event))
 FROM (
-  SELECT e.id, 
+  SELECT e.id,
          e.name,
-         e.image, 
-         e.short_description, 
-         e.long_description, 
-         e.location, 
-         e.location_lat, 
-         e.location_lng, 
+         e.image,
+         e.short_description,
+         e.long_description,
+         c.event_content AS category_content,
+         json_build_object(
+           'name', e.location,
+           'lat', e.location_lat,
+           'lng', e.location_lng
+         ) AS location,
          e.price,
-         e.start_ts, 
+         e.start_ts,
          EXTRACT(epoch FROM e.duration)::int AS duration,
-         e.ticket_limit - e.tickets_sold AS remaining
+         e.ticket_limit,
+         e.tickets_sold,
+         h.id AS host_id,
+         h.first_name || ' ' || h.last_name AS host_name
   FROM events AS e
-  JOIN categories as c on e.category = c.id
-  WHERE c.company=$1 AND c.slug=$2 AND e.slug=$3 AND status='published'
+  JOIN categories AS c ON e.category = c.id
+  JOIN users AS h ON e.host = h.id
+  WHERE c.company=$1 AND c.slug=$2 AND e.slug=$3 AND e.status='published'
 ) AS event;
 """
 

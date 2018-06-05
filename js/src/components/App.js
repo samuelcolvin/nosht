@@ -2,10 +2,11 @@ import React, { Component } from 'react'
 import {Route, Switch, withRouter } from 'react-router-dom'
 
 import {get, post} from '../utils'
-import Error from './Error'
+import { Error, Loading } from './Utils'
 import Navbar from './Navbar'
 import Index from './pages/Index'
 import Category from './pages/Category'
+import Event from './pages/Event'
 
 
 const Routes = ({app}) => (
@@ -15,9 +16,11 @@ const Routes = ({app}) => (
       )} />
 
       <Route path="/:category/:event/" render={props => (
-        <div>
-          <h1>event page</h1>
-        </div>
+      <Event setRootState={s => app.setState(s)}
+             requests={app.requests}
+             company_data={app.state.company_data}
+             location={props.location}
+             match={props.match}/>
       )} />
 
       <Route path="/:category/" render={props => (
@@ -25,7 +28,7 @@ const Routes = ({app}) => (
                   requests={app.requests}
                   company_data={app.state.company_data}
                   location={props.location}
-                  slug={props.match.params.category}/>
+                  match={props.match}/>
       )} />
 
       <Route render={props => (
@@ -87,7 +90,7 @@ class _App extends Component {
       <main key={2} className="container">
         {this.state.error ? <Error error={this.state.error}/>
           : this.state.company_data ? <Routes app={this}/>
-          : <small className="text-muted">loading...</small>}
+            : <Loading/>}
       </main>
     ]
   }

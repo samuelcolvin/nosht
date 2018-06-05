@@ -20,6 +20,7 @@
     "@fortawesome/react-fontawesome": "^0.0.20",
     "bootstrap": "^4.1.1",
     "date-fns": "^1.29.0",
+    "marked": "^0.4.0",
     "node-sass": "^4.9.0",
     "react": "^16.4.0",
     "react-dom": "^16.4.0",

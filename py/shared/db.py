@@ -160,6 +160,23 @@ async def run_logic_sql(conn, settings, **kwargs):
     await conn.execute(settings.logic_sql)
 
 
+USERS = [
+    {
+        'first_name': 'Frank',
+        'last_name': 'Spencer',
+        'email': 'frank@example.com',
+        'type': 'admin',
+        'status': 'active',
+    },
+    {
+        'first_name': 'Jane',
+        'last_name': 'Dow',
+        'email': 'jane@example.com',
+        'type': 'host',
+        'status': 'pending',
+    },
+]
+
 CATS = [
     {
         'name': 'Supper Clubs',
@@ -176,8 +193,11 @@ CATS = [
                 'duration': timedelta(hours=2),
                 'price': 30,
                 'location': '31 Testing Road, London',
+                'location_lat': 51.479415,
+                'location_lng': -0.132098,
                 'ticket_limit': 40,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+                'host_email': 'frank@example.com',
             },
             {
                 'status': 'published',
@@ -187,8 +207,11 @@ CATS = [
                 'duration': timedelta(hours=3),
                 'price': 25,
                 'location': '253 Brixton Road, London',
+                'location_lat': 51.514412,
+                'location_lng': -0.073994,
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/YEcz6kUlsc',
+                'host_email': 'jane@example.com',
             }
         ]
     },
@@ -209,6 +232,7 @@ CATS = [
                 'location': 'Big Church, London',
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
+                'host_email': 'frank@example.com',
             },
             {
                 'status': 'published',
@@ -220,10 +244,39 @@ CATS = [
                 'location': 'Small Church, London',
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+                'host_email': 'frank@example.com',
             },
         ]
     }
 ]
+
+EVENT_LONG_DESCRIPTION = """
+Sit quisquam quisquam eius sed tempora. Aliquam labore **quisquam** tempora _voluptatem_. 
+Porro eius eius etincidunt sit etincidunt. Adipisci dolor amet eius. [Magnam quaerat](https://www.example.com).
+
+Neque labore est numquam dolorem. Quiquia ipsum ut dolore dolore porro. Voluptatem consectetur amet ipsum adipisci 
+dolor aliquam. Quiquia modi tempora tempora non amet aliquam. Aliquam eius quiquia voluptatem. Numquam numquam 
+etincidunt neque non est est consectetur.
+
+## Lists
+
+Example of list:
+* Tempora ut aliquam consectetur aliquam. 
+* Dolorem quaerat porro ipsum. Sed ipsum tempora est. Neque 
+* amet amet quisquam dolore labore magnam.
+
+Numbered:
+1. whatever
+1. whenever
+1. whichever
+
+### Table
+
+| foo | bar |
+| --- | --- |
+| baz | bim |
+
+"""
 
 
 @patch
@@ -235,6 +288,12 @@ async def create_demo_data(conn, settings, **kwargs):
     company_id = await conn.fetchval("""
     INSERT INTO companies (name, domain, image) VALUES ('Testing', 'localhost:3000', $1) RETURNING id
     """, image)
+
+    user_lookup = {}
+    for user in USERS:
+        user_lookup[user['email']] = await conn.fetchval_b("""
+        INSERT INTO users (:values__names) VALUES :values RETURNING id
+        """, values=Values(company=company_id, **user))
 
     await conn.execute("""
     INSERT INTO users (company, type, status, first_name, last_name, email)
@@ -252,9 +311,10 @@ INSERT INTO events (:values__names)
 VALUES :values""", [
             Values(
                 category=cat_id,
+                host=user_lookup[e.pop('host_email')],
                 slug=slugify(e['name']),
                 short_description=shorten(lorem.paragraph(), width=random.randint(100, 140), placeholder='...'),
-                long_description=lorem.text(),
+                long_description=EVENT_LONG_DESCRIPTION,
                 **e)
             for e in events
         ])
