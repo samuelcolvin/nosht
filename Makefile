@@ -29,6 +29,10 @@ all: testcov lint
 
 .PHONY: build
 build:
+	@ # this makes sure build will work even if the deploy-settings directory doesn't exist
+	mkdir -p deploy-settings/favicons
+	touch deploy-settings/env.production
+	touch deploy-settings/favicons/favicon-16x16.png
 	docker build . -f Dockerfile.web -t nosht-web
 	docker build . -f Dockerfile.worker -t nosht-worker --quiet
 

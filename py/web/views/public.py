@@ -1,5 +1,3 @@
-import json
-
 from asyncpg import Connection
 
 from web.utils import JsonErrors, raw_json_response
@@ -36,15 +34,17 @@ FROM (
   WHERE id=$1
 ) AS company,
 (
-  SELECT 
-    CASE WHEN $2::int IS NULL
-    THEN null
+  SELECT
+    CASE WHEN $2::int IS NULL THEN (
+      null
+    )
     ELSE (
       SELECT row_to_json(t) AS user_data FROM (
         SELECT id, first_name || ' ' || last_name AS name
         FROM users
         WHERE id=$2
-    ) AS t)
+      ) AS t
+    )
     END
 ) AS user_data;
 """
