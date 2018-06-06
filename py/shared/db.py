@@ -7,7 +7,6 @@ from textwrap import shorten
 
 import lorem
 from async_timeout import timeout
-
 from buildpg import Values, asyncpg
 
 from .settings import Settings
