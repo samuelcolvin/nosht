@@ -53,7 +53,7 @@ FROM (
 async def index(request):
     conn: Connection = request['conn']
     company_id = request['company_id']
-    user_id = request['session'].get('user', None)
+    user_id = request['session'].get('user_id', None)
     json_str = await conn.fetchval(company_sql, company_id, user_id)
     return raw_json_response(json_str)
 

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Login Form</title>
+    <!-- TODO add 'sha256-...' to script-src -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'none';
+      script-src 'unsafe-inline';
+      style-src http://localhost:3000 https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/;
+      connect-src http://localhost:3000;
+    ">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/login/styles.css">
+  </head>
+
+  <body class="pt-2 px-1">
+    <form id="login-form" action="/api/login/" method="POST" data-origin="http://localhost:3000">
+
+      <small class="error mb-2" id="user-error"></small>
+
+      <div class="form-item">
+        <input type="email" id="email" class="form-control" placeholder="Email address" required autofocus>
+        <label for="email">Email address</label>
+      </div>
+
+      <div class="form-item">
+        <input type="password" id="password" class="form-control" placeholder="Password" required>
+        <label for="password">Password</label>
+      </div>
+
+      <button class="btn btn-lg btn-primary btn-block" type="submit">Log in</button>
+    </form>
+    <script>
+      const form = document.getElementById('login-form')
+      const user_error = document.getElementById('user-error')
+      const origin = form.getAttribute('data-origin')
+      const email_el = document.getElementById('email')
+      const password_el = document.getElementById('password')
+
+      function on_error (user_msg, xhr, details) {
+        console.warn('Error:', user_msg, xhr, details, form)
+        window.parent.postMessage(JSON.stringify({
+          status: 'client_error',
+          user_msg,
+          details,
+          origin,
+          xhr_status: xhr.status,
+          xhr_response: xhr.responseText,
+          method: form.method,
+          action: form.action,
+        }), origin)
+      }
+
+      function on_submit (e) {
+        e.preventDefault()
+        email_el.readOnly = true
+        password_el.readOnly = true
+        user_error.innerText = ''
+
+        const data = JSON.stringify({
+          email: email_el.value,
+          password: password_el.value
+        })
+
+        const xhr = new XMLHttpRequest()
+        xhr.open(form.method, form.action)
+        xhr.setRequestHeader('Accept', 'application/json')
+        xhr.onload = function () {
+          let data
+          try {
+            data = JSON.parse(xhr.responseText)
+          } catch (error) {
+            on_error('Error decoding response', xhr, error)
+          }
+          if (xhr.status === 470) {
+            user_error.innerText = 'Email address or password incorrect.'
+            email_el.readOnly = false
+            password_el.readOnly = false
+          } else if (xhr.status === 200) {
+            window.parent.postMessage(JSON.stringify(data), origin)
+          } else {
+            on_error('Unexpected response ' + xhr.status, xhr)
+          }
+        }
+        xhr.onerror = function (e) {on_error('Network Error', xhr, e)}
+        xhr.send(data)
+      }
+
+      form.addEventListener('submit', on_submit, true)
+    </script>
+  </body>
+</html>

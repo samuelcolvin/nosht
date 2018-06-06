@@ -8,6 +8,7 @@ import Footer from './Footer'
 import Index from './pages/Index'
 import Category from './pages/Category'
 import Event from './pages/Event'
+import Login from './pages/Login'
 
 
 const Routes = ({app}) => (
@@ -16,7 +17,13 @@ const Routes = ({app}) => (
         <Index setRootState={s => app.setState(s)} company_data={app.state.company_data}/>
       )} />
 
-      <Route exact={true} path="/:category/:event/" render={props => (
+      <Route exact path="/login/" render={() => (
+        <Login setRootState={s => app.setState(s)}
+               requests={app.requests}
+               company_data={app.state.company_data}/>
+      )} />
+
+      <Route exact path="/:category/:event/" render={props => (
         <Event setRootState={s => app.setState(s)}
                requests={app.requests}
                company_data={app.state.company_data}
@@ -24,7 +31,7 @@ const Routes = ({app}) => (
                match={props.match}/>
       )} />
 
-      <Route exact={true} path="/:category/" render={props => (
+      <Route exact path="/:category/" render={props => (
         <Category setRootState={s => app.setState(s)}
                   requests={app.requests}
                   company_data={app.state.company_data}

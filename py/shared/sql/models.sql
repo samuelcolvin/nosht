@@ -34,7 +34,7 @@ CREATE TABLE users (
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   active_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE UNIQUE INDEX user_email ON users USING btree (company, email);
+CREATE UNIQUE INDEX user_email ON users USING btree (company, email, status);
 
 
 CREATE TYPE ACTION_TYPES AS ENUM (

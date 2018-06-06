@@ -1,6 +1,7 @@
 import datetime
 import json
 from decimal import Decimal
+from typing import TypeVar, Type
 from uuid import UUID
 
 from aiohttp import ClientSession
@@ -8,6 +9,7 @@ from aiohttp.web import Response
 from aiohttp.web_exceptions import HTTPClientError
 from google.auth import jwt as google_jwt
 from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
+from pydantic import ValidationError
 
 from shared.settings import Settings
 
@@ -83,20 +85,56 @@ def raw_json_response(json_str, status_=200):
     )
 
 
-def json_response(*, status_=200, list_=None, **data):
+def json_response(*, status_=200, list_=None, headers_=None, **data):
     return Response(
         body=json.dumps(data if list_ is None else list_).encode(),
         status=status_,
         content_type=JSON_CONTENT_TYPE,
+        headers=headers_
     )
+
+
+T = TypeVar('Model')
+
+
+async def parse_request(request, model: Type[T], *, error_headers=None) -> T:
+    error_details = None
+    try:
+        data = await request.json()
+    except ValueError as e:
+        error_msg = f'Error decoding data: {e}'
+    else:
+        try:
+            return model.parse_obj(data)
+        except ValidationError as e:
+            error_msg = 'Invalid Data'
+            error_details = e.errors_dict
+
+    raise JsonErrors.HTTPBadRequest(
+        message=error_msg,
+        details=error_details,
+        headers_=error_headers
+    )
+
+
+IP_HEADER = 'X-Forwarded-For'
+
+
+def get_ip(request):
+    ips = request.headers.get(IP_HEADER)
+    if ips:
+        return ips.split(',', 1)[0].strip(' ')
+    else:
+        return request.remote
 
 
 class JsonErrors:
     class _HTTPClientErrorJson(HTTPClientError):
-        def __init__(self, **data):
+        def __init__(self, headers_=None, **data):
             super().__init__(
                 text=pretty_lenient_json(data),
                 content_type=JSON_CONTENT_TYPE,
+                headers=headers_,
             )
 
     class HTTPBadRequest(_HTTPClientErrorJson):

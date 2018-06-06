@@ -1,0 +1,54 @@
+:root {
+  --input-padding-x: .75rem;
+  --input-padding-y: .75rem;
+}
+
+.error {
+  color: #cc1010;
+  height: 16px;
+  display: block;
+}
+
+.form-item {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.form-item > input, .form-item > label {
+  padding: var(--input-padding-y) var(--input-padding-x);
+}
+
+.form-item > label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  margin-bottom: 0;
+  line-height: 1.5;
+  color: #495057;
+  border: 1px solid transparent;
+  border-radius: .25rem;
+  transition: all .1s ease-in-out;
+  user-select: none;
+}
+
+.form-item input:-ms-input-placeholder, .form-item input::-ms-input-placeholder {
+  color: transparent;
+}
+
+.form-item input::placeholder {
+  color: transparent;
+}
+
+.form-item input:not(:placeholder-shown) {
+  padding-top: calc(var(--input-padding-y) + var(--input-padding-y) * (2 / 3));
+  padding-bottom: calc(var(--input-padding-y) / 3);
+}
+
+.form-item input:not(:placeholder-shown) ~ label {
+  padding-top: calc(var(--input-padding-y) / 3);
+  padding-bottom: calc(var(--input-padding-y) / 3);
+  font-size: 12px;
+  color: #777;
+}

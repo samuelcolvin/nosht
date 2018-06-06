@@ -7,14 +7,16 @@ from aiohttp import web
 from aiohttp_session import session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from arq import create_pool_lenient
+from cryptography import fernet
 
 from shared.db import prepare_database
 from shared.logs import setup_logging
 from shared.settings import Settings
+from shared.utils import mk_password
 from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
-from .views.auth import login
+from .views.auth import authenticate_token, login, logout
 from .views.public import category, event, index
 from .views.static import static_handler
 
@@ -41,14 +43,17 @@ def create_app(*, settings: Settings=None):
     setup_logging()
     settings = settings or Settings()
 
-    secret_key = base64.urlsafe_b64decode(settings.auth_key)
     app = web.Application(middlewares=(
-        session_middleware(EncryptedCookieStorage(secret_key, cookie_name='nosht')),
+        session_middleware(EncryptedCookieStorage(settings.auth_key, cookie_name='nosht')),
         pg_middleware,
         host_middleware,
     ))
 
-    app['settings'] = settings
+    app.update(
+        settings=settings,
+        auth_fernet=fernet.Fernet(settings.auth_key),
+        dummy_password_hash=mk_password(settings.dummy_password, settings)
+    )
     app.on_startup.append(startup)
     app.on_cleanup.append(cleanup)
 
@@ -56,8 +61,10 @@ def create_app(*, settings: Settings=None):
         web.get('/', index, name='index'),
         web.get('/cat/{category}/', category, name='category'),
         web.get('/event/{category}/{event}/', event, name='event'),
-        # web.post('/login/', login, name='login'),
-        web.route('*', '/login/', login, name='login'),
+
+        web.post('/login/', login, name='login'),
+        web.post('/auth-token/', authenticate_token, name='auth-token'),
+        web.post('/logout/', logout, name='logout'),
     ])
 
     wrapper_app = web.Application(middlewares=(error_middleware,))

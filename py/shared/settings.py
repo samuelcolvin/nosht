@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from arq import RedisSettings
-from pydantic import BaseSettings, validator
+from pydantic import BaseSettings, conint, validator
 
 THIS_DIR = Path(__file__).parent
 BASE_DIR = THIS_DIR.parent
@@ -15,10 +15,14 @@ class Settings(BaseSettings):
     pg_name: str = None
     redis_settings: Any = 'redis://localhost:6379'
     google_siw_client_key = 'xxx'
-    auth_key = b'v7RI7qwZB7rxCyrpX4QwpZCUCF7X_HtnMSFuJfZTmfs='
+    auth_key = 'v7RI7qwZB7rxCyrpX4QwpZCUCF7X_HtnMSFuJfZTmfs='
     port: int = 8000
     on_docker: bool = False
     on_heroku: bool = False
+    min_password_length: conint(gt=5) = 7
+    bcrypt_work_factor = 12
+    # used for hashing when the user in the db has no password
+    dummy_password = '_dummy_password_'
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):

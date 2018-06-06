@@ -11,7 +11,7 @@ from async_timeout import timeout
 from buildpg import Values, asyncpg
 
 from .settings import Settings
-from .utils import slugify
+from .utils import slugify, mk_password
 
 logger = logging.getLogger('nosht.db')
 patches = []
@@ -169,6 +169,7 @@ USERS = [
         'email': 'frank@example.com',
         'role': 'admin',
         'status': 'active',
+        'password': 'testing',
     },
     {
         'first_name': 'Jane',
@@ -176,6 +177,7 @@ USERS = [
         'email': 'jane@example.com',
         'role': 'host',
         'status': 'pending',
+        'password': 'testing',
     },
 ]
 
@@ -295,7 +297,7 @@ async def create_demo_data(conn, settings, **kwargs):
     for user in USERS:
         user_lookup[user['email']] = await conn.fetchval_b("""
         INSERT INTO users (:values__names) VALUES :values RETURNING id
-        """, values=Values(company=company_id, **user))
+        """, values=Values(company=company_id, password_hash=mk_password(user.pop('password'), settings), **user))
 
     for cat in CATS:
         events = cat.pop('events')

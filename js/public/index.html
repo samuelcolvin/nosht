@@ -3,7 +3,6 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="theme-color" content="#000000">
     <title>%REACT_APP_SITE_NAME%</title>
 
     <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png">
@@ -13,6 +12,14 @@
     <link rel="mask-icon" href="%PUBLIC_URL%/safari-pinned-tab.svg" color="#%REACT_APP_THEME_COLOUR%">
     <meta name="msapplication-TileColor" content="#%REACT_APP_THEME_COLOUR%">
     <meta name="theme-color" content="#%REACT_APP_THEME_COLOUR%">
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' https://use.fontawesome.com https://maps.googleapis.com;
+      font-src data: https://fonts.gstatic.com;
+      style-src 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' https://maps.googleapis.com https://maps.gstatic.com %REACT_APP_CSP_IMAGE%;
+      connect-src 'self' %REACT_APP_CSP_CONNECT%;
+    ">
 
     <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/regular.js" crossorigin="anonymous"></script>
     <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/solid.js" crossorigin="anonymous"></script>

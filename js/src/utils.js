@@ -82,8 +82,9 @@ export const request = (method, path, config) => {
           on_error('Error decoding json', error)
         }
       } else {
+        let response_data
         try {
-          const response_data = JSON.parse(xhr.responseText)
+          response_data = JSON.parse(xhr.responseText)
           if (response_data.message) {
             on_error(`Unexpected response ${xhr.status}: ${response_data.message}`)
             return
@@ -91,11 +92,11 @@ export const request = (method, path, config) => {
         } catch (e) {
           // ignore and use normal error
         }
-        on_error(`Unexpected response ${xhr.status}`)
+        on_error(`Unexpected response ${xhr.status}`, response_data)
       }
     }
-    xhr.onerror = () => {
-      on_error('Unable to connect to the server, check your internet connection')
+    xhr.onerror = error => {
+      on_error('Unable to connect to the server, check your internet connection', error)
     }
     xhr.send(config.send_data || null)
   })

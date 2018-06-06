@@ -5,18 +5,9 @@ from aiohttp.web_middlewares import middleware
 from aiohttp_session import get_session
 from asyncpg import Connection
 
-from .utils import JsonErrors
+from .utils import JsonErrors, get_ip
 
 logger = logging.getLogger('nosht.web.mware')
-IP_HEADER = 'X-Forwarded-For'
-
-
-def get_ip(request):
-    ips = request.headers.get(IP_HEADER)
-    if ips:
-        return ips.split(',', 1)[0].strip(' ')
-    else:
-        return request.remote
 
 
 async def log_extra(request, response=None):
