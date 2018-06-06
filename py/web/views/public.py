@@ -1,4 +1,4 @@
-from asyncpg import Connection
+from buildpg.asyncpg import Connection
 
 from web.utils import JsonErrors, raw_json_response
 

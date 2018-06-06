@@ -10,6 +10,7 @@ import Category from './pages/Category'
 import Event from './pages/Event'
 import Login from './pages/Login'
 import Logout from './pages/Logout'
+import Settings from './pages/Settings'
 
 
 const Routes = ({app}) => (
@@ -31,6 +32,13 @@ const Routes = ({app}) => (
                 requests={app.requests}/>
       )} />
 
+      <Route path="/settings/" render={props => (
+        <Settings setRootState={s => app.setState(s)}
+                  set_message={app.set_message}
+                  location={props.location}
+                  requests={app.requests}/>
+      )} />
+
       <Route exact path="/:category/:event/" render={props => (
         <Event setRootState={s => app.setState(s)}
                requests={app.requests}
@@ -48,7 +56,7 @@ const Routes = ({app}) => (
       )} />
 
       <Route render={props => (
-        <NotFound location={props.props}/>
+        <NotFound location={props.location}/>
       )} />
     </Switch>
 )

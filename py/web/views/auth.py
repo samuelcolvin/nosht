@@ -1,12 +1,45 @@
 import json
+from functools import wraps
 from time import time
 
 import bcrypt
-from aiohttp_session import get_session
+from aiohttp_session import get_session, new_session
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, EmailStr, constr
 
 from web.utils import JsonErrors, get_ip, json_response, parse_request
+
+
+def permission_wrapper(coro, *roles):
+    @wraps(coro)
+    async def roles_permissions_wrapper(request):
+        session = await get_session(request)
+        user_role = session.get('user_role')
+        if user_role is None:
+            raise JsonErrors.HTTPUnauthorized(message='authentication required')
+        if user_role not in roles:
+            raise JsonErrors.HTTPForbidden(message='role must be in: {}'.format(', '.join(roles)))
+        else:
+            # TODO check session age
+            return await coro(request)
+
+    return roles_permissions_wrapper
+
+
+def is_admin(coro):
+    return permission_wrapper(coro, 'admin')
+
+
+def is_host(coro):
+    return permission_wrapper(coro, 'host')
+
+
+def is_admin_or_host(coro):
+    return permission_wrapper(coro, 'admin', 'host')
+
+
+def is_auth(coro):
+    return permission_wrapper(coro, 'admin', 'host', 'guest')
 
 
 class LoginModel(BaseModel):
@@ -37,7 +70,7 @@ async def login(request):
         password_hash = password_hash or request.app['dummy_password_hash']
 
         if bcrypt.checkpw(m.password.encode(), password_hash.encode()):
-            auth_session = {'user_id': user['id']}
+            auth_session = {'user_id': user['id'], 'user_role': user['role']}
             auth_token = request.app['auth_fernet'].encrypt(json.dumps(auth_session).encode()).decode()
             return json_response(status='success', auth_token=auth_token, user=user, headers_=h)
 
@@ -58,8 +91,8 @@ async def authenticate_token(request):
     try:
         auth_session = json.loads(request.app['auth_fernet'].decrypt(m.token, ttl=10).decode())
     except InvalidToken:
-        raise JsonErrors.HTTPBadRequest('invalid auth token')
-    session = await get_session(request)
+        raise JsonErrors.HTTPBadRequest(message='invalid auth token')
+    session = await new_session(request)
     session.update(auth_session)
     extra = json.dumps({
         'ip': get_ip(request),
@@ -69,6 +102,7 @@ async def authenticate_token(request):
     return json_response(status='success')
 
 
+@is_auth
 async def logout(request):
     session = await get_session(request)
     extra = json.dumps({
@@ -76,6 +110,7 @@ async def logout(request):
         'ua': request.headers.get('User-Agent'),
         'age': int(time()) - session.created,
     })
-    user_id = session.pop('user_id')
+    user_id = session['user_id']
+    session.invalidate()
     await request['conn'].execute(record_event, request['company_id'], user_id, 'logout', extra)
     return json_response(status='success')

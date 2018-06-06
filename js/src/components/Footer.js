@@ -6,12 +6,22 @@ import {Row, Col} from 'reactstrap'
 const Footer = ({user}) => {
   let menu = [
     {name: 'Login', to: '/login/'},
+    {name: 'Create Event', to: '/signup/'},
   ]
   if (user) {
-    menu = [
-      {name: 'Account Settings', to: '/account/'},
-      {name: 'Logout', to: '/logout/'},
-    ]
+    if (user.role === 'admin') {
+      menu = [
+        {name: 'Settings', to: '/settings/events/'},
+        {name: 'Create Event', to: '/create/'},
+      ]
+    } else {
+      menu = [
+        {name: 'Account Settings', to: '/account/'},
+        {name: 'My Events', to: '/my-events/'},
+        {name: 'Create Event', to: '/create/'},
+      ]
+    }
+    menu.push({name: 'Logout', to: '/logout/'})
   }
   return (
     <footer className="footer">

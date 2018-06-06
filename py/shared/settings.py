@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     bcrypt_work_factor = 12
     # used for hashing when the user in the db has no password
     dummy_password = '_dummy_password_'
+    s3_access_key: str = None
+    s3_secret_key: str = None
+    s3_bucket: str = None
+    s3_domain: str = None
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):
