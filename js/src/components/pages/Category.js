@@ -33,7 +33,7 @@ export default class Category extends OnUpdate {
   }
 
   cat_info () {
-    return this.props.company_data.categories.find(c => c.slug === this.props.match.params.category)
+    return this.props.company.categories.find(c => c.slug === this.props.match.params.category)
   }
 
   render () {

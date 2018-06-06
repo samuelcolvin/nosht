@@ -34,8 +34,8 @@ export default class Index extends Component {
   }
 
   render () {
-    const categories = this.props.company_data.categories
-    const events = this.props.company_data.highlight_events
+    const categories = this.props.company.categories
+    const events = this.props.company.highlight_events
     return (
       <div className="card-grid">
         <div>

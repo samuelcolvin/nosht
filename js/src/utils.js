@@ -35,6 +35,8 @@ export const load_script_callback = url => {
   })
 }
 
+export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
 export const make_url = path => {
   return window.location.origin + '/api/' + path
 }

@@ -11,7 +11,7 @@ from async_timeout import timeout
 from buildpg import Values, asyncpg
 
 from .settings import Settings
-from .utils import slugify, mk_password
+from .utils import mk_password, slugify
 
 logger = logging.getLogger('nosht.db')
 patches = []

@@ -1,7 +1,7 @@
 import datetime
 import json
 from decimal import Decimal
-from typing import TypeVar, Type
+from typing import Type, TypeVar
 from uuid import UUID
 
 from aiohttp import ClientSession

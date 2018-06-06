@@ -6,9 +6,7 @@ import {Row, Col} from 'reactstrap'
 export default class Login extends Component {
   constructor (props) {
     super(props)
-    this.state = {
-      redirect_to: null
-    }
+    this.state = {redirect_to: null}
     this.on_message = this.on_message.bind(this)
   }
 
@@ -29,7 +27,9 @@ export default class Login extends Component {
       this.props.setRootState({error})
       return
     }
+    this.props.setRootState({user: data.user})
     this.setState({redirect_to: '/'})
+    this.props.set_message({icon: 'user', message: `Logged in successfully as ${data.user.name}`})
   }
 
   componentDidMount () {

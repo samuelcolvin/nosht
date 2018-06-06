@@ -1,0 +1,32 @@
+import React, {Component} from 'react'
+import {Redirect} from 'react-router'
+import {Loading} from '../utils/Errors'
+
+
+export default class Logout extends Component {
+  constructor (props) {
+    super(props)
+    this.state = {finished: false}
+  }
+
+  async componentDidMount () {
+    try {
+      await this.props.requests.post('logout/')
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+    this.props.setRootState({user: null})
+    this.setState({finished: true})
+    this.props.set_message({icon: 'user', message: 'Logged out successfully'})
+  }
+
+  render () {
+    if (this.state.finished) {
+      return <Redirect to="/"/>
+    }
+    return (
+      <Loading/>
+    )
+  }
+}

@@ -2,7 +2,6 @@ from asyncpg import Connection
 
 from web.utils import JsonErrors, raw_json_response
 
-
 company_sql = """
 SELECT json_build_object(
   'categories', categories,
@@ -40,7 +39,7 @@ FROM (
     )
     ELSE (
       SELECT row_to_json(t) AS user_data FROM (
-        SELECT id, first_name || ' ' || last_name AS name
+        SELECT id, first_name || ' ' || last_name AS name, role, status
         FROM users
         WHERE id=$2
       ) AS t

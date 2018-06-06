@@ -4,8 +4,7 @@ from time import time
 import bcrypt
 from aiohttp_session import get_session
 from cryptography.fernet import InvalidToken
-
-from pydantic import BaseModel, EmailStr, constr, validator
+from pydantic import BaseModel, EmailStr, constr
 
 from web.utils import JsonErrors, get_ip, json_response, parse_request
 
@@ -16,7 +15,7 @@ class LoginModel(BaseModel):
 
 
 get_user_sql = """
-SELECT id, first_name || ' ' || last_name AS name, role, password_hash
+SELECT id, first_name || ' ' || last_name AS name, role, status, password_hash
 FROM users
 WHERE company=$1 AND email=$2 AND status='active'
 """
@@ -28,17 +27,19 @@ async def login(request):
     if m.password != request.app['settings'].dummy_password:
         r = await request['conn'].fetchrow(get_user_sql, request['company_id'], m.email)
         if r:
-            user_id, name, role, password_hash = r
+            user = dict(r)
+            password_hash = user.pop('password_hash')
         else:
             # still try hashing to avoid timing attack
-            user_id, name, role, password_hash = 0, '-', '-', None
+            user = dict()
+            password_hash = None
 
         password_hash = password_hash or request.app['dummy_password_hash']
 
         if bcrypt.checkpw(m.password.encode(), password_hash.encode()):
-            auth_session = {'user_id': user_id}
+            auth_session = {'user_id': user['id']}
             auth_token = request.app['auth_fernet'].encrypt(json.dumps(auth_session).encode()).decode()
-            return json_response(status='success', auth_token=auth_token, user={'name': name, 'role': role}, headers_=h)
+            return json_response(status='success', auth_token=auth_token, user=user, headers_=h)
 
     return json_response(status='invalid', message='invalid email or password', headers_=h, status_=470)
 
@@ -48,7 +49,7 @@ class AuthTokenModel(BaseModel):
 
 
 record_event = """
-INSERT INTO actions (company, user_id, type, extra) VALUES ($1, $2, $4, $3)
+INSERT INTO actions (company, user_id, type, extra) VALUES ($1, $2, $3, $4)
 """
 
 
@@ -76,5 +77,5 @@ async def logout(request):
         'age': int(time()) - session.created,
     })
     user_id = session.pop('user_id')
-    await request['conn'].execute(record_event, request['company_id'], user_id, 'login', extra)
+    await request['conn'].execute(record_event, request['company_id'], user_id, 'logout', extra)
     return json_response(status='success')

@@ -1,5 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
+import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {
   Collapse,
   Navbar as NavbarBootstrap,
@@ -14,14 +15,21 @@ const SWITCH_MENU_HEIGHT = 400
 const BACK_TOP_DEFAULT = 56
 let BACK_TOP = BACK_TOP_DEFAULT
 
-const ExtraMenu = ({menu, show_extra}) => {
-  if (!menu) {
-    return <div/>
-  }
+const ExtraMenu = ({menu, message, show_extra}) => {
   return (
-    <div className={'extra-menu fixed-top' + (show_extra ? ' show' : '')}>
+    <div className={'extra-menu fixed-top' + ((show_extra && menu) || message ? ' show' : '')}>
       <div className="container">
-        {menu.map((item, i) => <Link key={i} to={item.to}>{item.name}</Link>)}
+        <div>
+          {message &&
+            <span className="item">
+              {message.icon && <FontAwesomeIcon icon={message.icon} className="mr-2" />}
+              <span>{message.message || message}</span>
+            </span>
+          }
+        </div>
+        <div className="right">
+          {(menu || []).map((item, i) => <Link className="item" key={i} to={item.to}>{item.name}</Link>)}
+        </div>
       </div>
     </div>
   )
@@ -74,8 +82,8 @@ export default class Navbar extends React.Component {
   }
 
   render () {
-    const categories = this.props.company_data ? this.props.company_data.categories : []
-    const company = this.props.company_data ? this.props.company_data.company : {}
+    const categories = this.props.company ? this.props.company.categories : []
+    const company = this.props.company ? this.props.company.company : {}
     const navbar = (
       <NavbarBootstrap key="1" color="light" light fixed="top" expand="md">
         <div className="container">
@@ -101,7 +109,10 @@ export default class Navbar extends React.Component {
       const background = this.props.background || company.image
       return [
         navbar,
-        <ExtraMenu key="2" menu={this.props.extra_menu} show_extra={this.state.show_extra}/>,
+        <ExtraMenu key="2"
+          menu={this.props.extra_menu}
+          message={this.props.message}
+          show_extra={this.state.show_extra}/>,
         <div key="3" id="background-image" style={{
           backgroundImage: `url("${background}/main.jpg")`,
           top: BACK_TOP
