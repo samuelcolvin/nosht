@@ -3,7 +3,7 @@ import logging
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
 from aiohttp_session import get_session
-from asyncpg import Connection
+from buildpg.asyncpg import BuildPgConnection
 
 from .utils import JsonErrors, get_ip
 
@@ -73,7 +73,7 @@ WHERE c.domain=$1 AND users.id=$2
 
 @middleware
 async def host_middleware(request, handler):
-    conn: Connection = request['conn']
+    conn: BuildPgConnection = request['conn']
     request['session'] = await get_session(request)
     user = request['session'].get('user')
     if user:

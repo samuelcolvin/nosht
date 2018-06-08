@@ -4,6 +4,7 @@ aiohttp-session==2.5.1
 arq==0.13
 asyncpg==0.15.0
 bcrypt==3.1.4
+buildpg==0.0.1
 cchardet==2.1.1
 cryptography==2.2.2
 google-auth==1.4.1
@@ -11,5 +12,3 @@ lorem==0.1.1
 pydantic[email]==0.9.1
 raven==6.8.0
 uvloop==0.9.1
-# TODO
-git+git://github.com/samuelcolvin/buildpg.git@master#egg=buildpg

@@ -1,11 +1,11 @@
 import logging
 from pathlib import Path
 
-import asyncpg
 from aiohttp import web
 from aiohttp_session import session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from arq import create_pool_lenient
+from buildpg import asyncpg
 from cryptography import fernet
 
 from shared.db import prepare_database
@@ -16,6 +16,7 @@ from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
 from .views.auth import authenticate_token, login, logout
+from .views.bread import CategoryBread
 from .views.public import category, event, index
 from .views.static import static_handler
 
@@ -27,7 +28,7 @@ async def startup(app: web.Application):
     await prepare_database(settings, False)
     redis = await create_pool_lenient(settings.redis_settings, app.loop)
     app.update(
-        pg=await asyncpg.create_pool(dsn=settings.pg_dsn, min_size=2),
+        pg=await asyncpg.create_pool_b(dsn=settings.pg_dsn, min_size=2),
         redis=redis,
         worker=MainActor(settings=settings, existing_redis=redis),
     )
@@ -64,6 +65,8 @@ def create_app(*, settings: Settings=None):
         web.post('/login/', login, name='login'),
         web.post('/auth-token/', authenticate_token, name='auth-token'),
         web.post('/logout/', logout, name='logout'),
+
+        *CategoryBread.routes('/categories/')
     ])
 
     wrapper_app = web.Application(middlewares=(error_middleware,))
