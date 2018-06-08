@@ -2,22 +2,30 @@ import React, {Component} from 'react'
 import {Route, Switch, Link} from 'react-router-dom'
 import {Row, Col} from 'reactstrap'
 import {NotFound} from '../utils/Errors'
+import {EventsList, CategoriesList, UsersList} from './SettingsLists'
 
 const title = s => s.replace(/^\w/, c => c.toUpperCase())
 const PAGES = [
-  'events',
-  'categories',
-  'users',
-  'company',
-  'export',
+  {name: 'events', uri: '/settings/events/', component: EventsList},
+  {name: 'categories', uri: '/settings/categories/', component: CategoriesList},
+  {name: 'users', uri: '/settings/users/', component: UsersList},
+  {name: 'company', uri: '/settings/company/', component: null},
+  {name: 'export', uri: '/settings/export/', component: null},
 ]
 
 const MenuItem = ({page, location}) => {
-  const to = `/settings/${page}/`
-  const active = location.pathname === to ? ' active' : ''
-  return <Link to={to} className={'list-group-item list-group-item-action' + active}>
-    {title(page)}
+  const active = location.pathname.startsWith(page.uri) ? ' active' : ''
+  return <Link to={page.uri} className={'list-group-item list-group-item-action' + active}>
+    {title(page.name)}
   </Link>
+}
+
+const MenuPage = ({page, props}) => {
+  if (!page.component) {
+    return <div>TODO {page.name}</div>
+  }
+  const MenuComponent = page.component
+  return <MenuComponent setRootState={props.setRootState} requests={props.requests}/>
 }
 
 export default class Settings extends Component {
@@ -32,19 +40,17 @@ export default class Settings extends Component {
         <Col md="3">
         <div className="list-group">
           {PAGES.map(p => (
-            <MenuItem key={p} page={p} location={this.props.location}/>
+            <MenuItem key={p.uri} page={p} location={this.props.location}/>
           ))}
         </div>
         </Col>
         <Col md="9">
           <Switch>
-            <Route exact path="/settings/categories/" render={() => (
-              <div>Categories</div>
-            )} />
-
-            <Route exact path="/settings/events/" render={() => (
-              <div>Events</div>
-            )} />
+            {PAGES.map(p => (
+              <Route key={p.uri} exact path={p.uri} render={() => (
+                <MenuPage page={p} props={this.props}/>
+              )} />
+            ))}
 
             <Route render={props => (
               <NotFound location={props.location}/>

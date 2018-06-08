@@ -16,7 +16,7 @@ from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
 from .views.auth import authenticate_token, login, logout
-from .views.bread import CategoryBread
+from .views.bread import CategoryBread, EventBread, UserBread
 from .views.public import category, event, index
 from .views.static import static_handler
 
@@ -66,7 +66,9 @@ def create_app(*, settings: Settings=None):
         web.post('/auth-token/', authenticate_token, name='auth-token'),
         web.post('/logout/', logout, name='logout'),
 
-        *CategoryBread.routes('/categories/')
+        *CategoryBread.routes('/categories/'),
+        *EventBread.routes('/events/'),
+        *UserBread.routes('/users/'),
     ])
 
     wrapper_app = web.Application(middlewares=(error_middleware,))
