@@ -118,9 +118,10 @@ export const post = (path, data, config) => {
 }
 
 const DF = 'Do MMM'
+const DFY = 'Do MMM YYYY'
 const DTF = 'Do MMM, h:mma'
 
-export const format_date = ts => format(new Date(ts), DF)
+export const format_date = (ts, y) => format(new Date(ts), y ? DFY : DF)
 export const format_datetime = ts => format(new Date(ts), DTF)
 
 export const format_event_start = (ts, duration) => duration === null ? format_date(ts) : format_datetime(ts)

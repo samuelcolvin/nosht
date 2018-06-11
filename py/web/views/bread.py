@@ -88,6 +88,11 @@ class UserBread(NoshtBread):
         V('role').as_('role_type'),
         'email'
     )
+    retrieve_fields = browse_fields + (
+        'phone_number',
+        'created_ts',
+        'active_ts',
+    )
 
     def where(self):
         return Where(V('company') == self.request['company_id'])

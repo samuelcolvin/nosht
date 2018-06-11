@@ -2,30 +2,35 @@ import React, {Component} from 'react'
 import {Route, Switch, Link} from 'react-router-dom'
 import {Row, Col} from 'reactstrap'
 import {NotFound} from '../utils/Errors'
+import {as_title} from '../../utils'
 import {EventsList, CategoriesList, UsersList} from './SettingsLists'
+import {EventsDetails, CategoriesDetails, UsersDetails} from './SettingsDetails'
 
-const title = s => s.replace(/^\w/, c => c.toUpperCase())
 const PAGES = [
-  {name: 'events', uri: '/settings/events/', component: EventsList},
-  {name: 'categories', uri: '/settings/categories/', component: CategoriesList},
-  {name: 'users', uri: '/settings/users/', component: UsersList},
-  {name: 'company', uri: '/settings/company/', component: null},
-  {name: 'export', uri: '/settings/export/', component: null},
+  {name: 'events', list_comp: EventsList, details_comp: EventsDetails},
+  {name: 'categories', list_comp: CategoriesList, details_comp: CategoriesDetails},
+  {name: 'users', list_comp: UsersList, details_comp: UsersDetails},
+  {name: 'company', list_comp: null, details_comp: null},
+  {name: 'export', list_comp: null, details_comp: null},
 ]
 
+const list_uri = page => `/settings/${page.name}/`
+const details_uri = page => `/settings/${page.name}/:id/`
+
 const MenuItem = ({page, location}) => {
-  const active = location.pathname.startsWith(page.uri) ? ' active' : ''
-  return <Link to={page.uri} className={'list-group-item list-group-item-action' + active}>
-    {title(page.name)}
+  const uri = list_uri(page)
+  const active = location.pathname.startsWith(uri) ? ' active' : ''
+  return <Link to={uri} className={'list-group-item list-group-item-action' + active}>
+    {as_title(page.name)}
   </Link>
 }
 
-const MenuPage = ({page, props}) => {
-  if (!page.component) {
-    return <div>TODO {page.name}</div>
+const RenderComp = ({page, props, comp_name}) => {
+  const Comp = page[comp_name]
+  if (Comp) {
+    return <Comp setRootState={props.setRootState} requests={props.requests} location={props.location}/>
   }
-  const MenuComponent = page.component
-  return <MenuComponent setRootState={props.setRootState} requests={props.requests}/>
+  return <div>TODO {page.name}</div>
 }
 
 export default class Settings extends Component {
@@ -40,15 +45,20 @@ export default class Settings extends Component {
         <Col md="3">
         <div className="list-group">
           {PAGES.map(p => (
-            <MenuItem key={p.uri} page={p} location={this.props.location}/>
+            <MenuItem key={p.name} page={p} location={this.props.location}/>
           ))}
         </div>
         </Col>
         <Col md="9">
           <Switch>
             {PAGES.map(p => (
-              <Route key={p.uri} exact path={p.uri} render={() => (
-                <MenuPage page={p} props={this.props}/>
+              <Route key={p.name} exact path={list_uri(p)} render={() => (
+                <RenderComp page={p} props={this.props} comp_name="list_comp"/>
+              )} />
+            ))}
+            {PAGES.map(p => (
+              <Route key={p.name + '-details'} path={details_uri(p)} render={() => (
+                <RenderComp page={p} props={this.props} comp_name="details_comp"/>
               )} />
             ))}
 
