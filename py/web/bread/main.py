@@ -22,7 +22,7 @@ from functools import update_wrapper, wraps
 from typing import List, Tuple
 
 from aiohttp import web
-from buildpg import Var, funcs
+from buildpg import RawDangerous, Var, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Clauses, From, Join, Limit, OrderBy, Select, Where
 from pydantic import BaseModel
@@ -46,6 +46,7 @@ class BaseBread:
     table_as: str = None
     name: str = None
     pk_field: str = 'id'
+    log_print = False
 
     def __init__(self, method, request):
         self.method: Method = method
@@ -185,7 +186,7 @@ class ReadBread(BaseBread):
 
     def browse_limit(self) -> Limit:
         if self.browse_limit_value:
-            return Limit(self.browse_limit_value)
+            return Limit(RawDangerous(self.browse_limit_value))
 
     @as_clauses
     async def browse_items_query(self):
@@ -208,6 +209,7 @@ class ReadBread(BaseBread):
             self.browse_sql,
             items_query=await self.browse_items_query(),
             count_query=await self.browse_count_query(),
+            print_=self.log_print,
         )
         return raw_json_response(json_str or '[]')
 
@@ -220,7 +222,11 @@ class ReadBread(BaseBread):
         yield Limit(1)
 
     async def retrieve(self, pk) -> web.Response:
-        return await self._fetchval_response(self.retrieve_sql, query=await self.retrieve_query(pk))
+        return await self._fetchval_response(
+            self.retrieve_sql,
+            query=await self.retrieve_query(pk),
+            print_=self.log_print,
+        )
 
     async def options(self) -> web.Response:
         pass

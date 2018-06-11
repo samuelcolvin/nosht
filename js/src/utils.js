@@ -38,7 +38,7 @@ export const load_script_callback = url => {
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 export const make_url = path => {
-  return window.location.origin + '/api/' + path
+  return window.location.origin + '/api/' + path.replace(/^\//, '')
 }
 
 export const request = (method, path, config) => {
@@ -123,6 +123,9 @@ const DTF = 'Do MMM, h:mma'
 export const format_date = ts => format(new Date(ts), DF)
 export const format_datetime = ts => format(new Date(ts), DTF)
 
+export const format_event_start = (ts, duration) => duration === null ? format_date(ts) : format_datetime(ts)
+export const format_event_duration = duration => duration === null ? 'All day' : format_duration(duration)
+
 export const format_duration = seconds => {
   let minutes = Math.round(seconds / 60)
   if (minutes === 60) {
@@ -151,3 +154,5 @@ export const chunk_array = (array, size) => {
   }
   return results
 }
+
+export const as_title = s => s.replace(/(_|\b)\w/g, l => l.toUpperCase().replace('_', ' '))

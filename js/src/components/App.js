@@ -100,7 +100,9 @@ class _App extends Component {
 
   componentDidUpdate (prevProps) {
     if (this.props.location !== prevProps.location) {
-      window.scrollTo(0, 0)
+      if (window.scrollY > 400) {
+        window.scrollTo(0, 0)
+      }
       if (this.state.error) {
         this.setState({error: null})
       }
@@ -124,7 +126,9 @@ class _App extends Component {
               message={this.state.message}
               active_page={this.state.active_page}/>,
       <main key={2} className="container">
-        {this.state.error ? <Error error={this.state.error} location={this.props.location}/>
+        {this.state.error ? <Error error={this.state.error}
+                                   location={this.props.location}
+                                   set_message={this.set_message}/>
           : this.state.company ? <Routes app={this}/>
             : <Loading/>}
       </main>,

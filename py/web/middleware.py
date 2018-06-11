@@ -75,9 +75,9 @@ WHERE c.domain=$1 AND users.id=$2
 async def host_middleware(request, handler):
     conn: BuildPgConnection = request['conn']
     request['session'] = await get_session(request)
-    user = request['session'].get('user')
-    if user:
-        company_id = await conn.fetchval(USER_COMPANY_SQL, request.host, user)
+    user_id = request['session'].get('user_id')
+    if user_id:
+        company_id = await conn.fetchval(USER_COMPANY_SQL, request.host, user_id)
         msg = 'company not found for this host and user'
     else:
         company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', request.host)

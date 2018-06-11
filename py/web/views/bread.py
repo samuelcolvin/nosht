@@ -1,11 +1,22 @@
 from buildpg import V, funcs
-from buildpg.clauses import Join, Where
+from buildpg.clauses import Join, RawDangerous, Where
 from pydantic import BaseModel, EmailStr
 
 from web.bread import Bread
+from web.utils import JsonErrors
 
 
-class CategoryBread(Bread):
+class NoshtBread(Bread):
+    async def check_permissions(self, method):
+        session = self.request['session']
+        user_role = session.get('user_role')
+        if user_role is None:
+            raise JsonErrors.HTTPUnauthorized(message='authorisation required')
+        elif user_role != 'admin':
+            raise JsonErrors.HTTPForbidden(message='permission denied')
+
+
+class CategoryBread(NoshtBread):
     class Model(BaseModel):
         name: str
         live: bool
@@ -21,7 +32,6 @@ class CategoryBread(Bread):
     browse_fields = (
         'id',
         'name',
-        'slug',
         'live',
         'description',
     )
@@ -35,7 +45,7 @@ class CategoryBread(Bread):
         return Where(V('company') == self.request['company_id'])
 
 
-class EventBread(Bread):
+class EventBread(NoshtBread):
     class Model(BaseModel):
         category: int
         name: str
@@ -46,9 +56,8 @@ class EventBread(Bread):
 
     browse_fields = (
         'e.id',
-        V('c.name').as_('category'),
         'e.name',
-        'e.slug',
+        V('c.name').as_('category'),
         'e.highlight',
         'e.start_ts',
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
@@ -62,17 +71,23 @@ class EventBread(Bread):
         return Where(V('c.company') == self.request['company_id'])
 
 
-class UserBread(Bread):
+class UserBread(NoshtBread):
     class Model(BaseModel):
-        role: str  # TODO enum
         status: str
         first_name: str
         last_name: str
+        role: str  # TODO enum
         email: EmailStr
 
     model = Model
     table = 'users'
     browse_order_by_fields = V('active_ts').desc(),
+    browse_fields = (
+        'id',
+        V('first_name').cat(RawDangerous("' '")).cat(V('last_name')).as_('name'),
+        V('role').as_('role_type'),
+        'email'
+    )
 
     def where(self):
         return Where(V('company') == self.request['company_id'])

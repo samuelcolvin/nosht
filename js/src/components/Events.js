@@ -2,16 +2,12 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import {Card, CardImg, CardTitle, CardText, CardSubtitle, CardBody, Row, Col} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {chunk_array, format_date, format_datetime, format_duration} from '../utils'
+import {chunk_array, format_event_start, format_event_duration} from '../utils'
 
 
-export const When = ({event}) => {
-  if (event.duration) {
-    return <span>{format_datetime(event.start_ts)} &bull; {format_duration(event.duration)}</span>
-  } else {
-    return <span>{format_date(event.start_ts)} &bull; All day</span>
-  }
-}
+export const When = ({event}) => (
+  <span>{format_event_start(event.start_ts, event.duration)} &bull; {format_event_duration(event.duration)}</span>
+)
 
 const Event = ({event}) => {
   return (
