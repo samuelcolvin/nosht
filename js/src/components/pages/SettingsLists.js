@@ -4,7 +4,6 @@ import {RenderList} from '../utils/Renderers'
 export class EventsList extends RenderList {
   constructor (props) {
     super(props)
-    this.title = 'Events'
     this.formats = {
       start_ts: {
         title: 'Date',
@@ -17,17 +16,7 @@ export class EventsList extends RenderList {
   }
 }
 
-export class CategoriesList extends RenderList {
-  constructor (props) {
-    super(props)
-    this.title = 'Categories'
-  }
-}
+export class CategoriesList extends RenderList {}
 
 
-export class UsersList extends RenderList {
-  constructor (props) {
-    super(props)
-    this.title = 'Users'
-  }
-}
+export class UsersList extends RenderList {}

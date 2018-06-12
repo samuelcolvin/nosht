@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     redis_settings: Any = 'redis://localhost:6379'
     google_siw_client_key = 'xxx'
     auth_key = 'v7RI7qwZB7rxCyrpX4QwpZCUCF7X_HtnMSFuJfZTmfs='
+    cookie_inactive_time = 25 * 3600
     port: int = 8000
     on_docker: bool = False
     on_heroku: bool = False

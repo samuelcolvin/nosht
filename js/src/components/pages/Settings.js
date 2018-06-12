@@ -25,10 +25,15 @@ const MenuItem = ({page, location}) => {
   </Link>
 }
 
-const RenderComp = ({page, props, comp_name}) => {
+const RenderComp = ({page, props, parent, comp_name}) => {
   const Comp = page[comp_name]
   if (Comp) {
-    return <Comp setRootState={props.setRootState} requests={props.requests} location={props.location}/>
+    return <Comp page={page}
+                 match={props.match}
+                 setRootState={parent.props.setRootState}
+                 requests={parent.props.requests}
+                 location={props.location}
+                 history={props.history}/>
   }
   return <div>TODO {page.name}</div>
 }
@@ -52,20 +57,19 @@ export default class Settings extends Component {
         <Col md="9">
           <Switch>
             {PAGES.map(p => (
-              <Route key={p.name} exact path={list_uri(p)} render={() => (
-                <RenderComp page={p} props={this.props} comp_name="list_comp"/>
+              <Route key={p.name} exact path={list_uri(p)} render={props => (
+                <RenderComp page={p} props={props} parent={this} comp_name="list_comp"/>
               )} />
             ))}
             {PAGES.map(p => (
-              <Route key={p.name + '-details'} path={details_uri(p)} render={() => (
-                <RenderComp page={p} props={this.props} comp_name="details_comp"/>
+              <Route key={p.name + '-details'} path={details_uri(p)} render={props => (
+                <RenderComp page={p} props={props} parent={this} comp_name="details_comp"/>
               )} />
             ))}
 
-            <Route render={props => (
-              <NotFound location={props.location}/>
-            )} />
+            <Route component={NotFound} />
           </Switch>
+
         </Col>
       </Row>
     )

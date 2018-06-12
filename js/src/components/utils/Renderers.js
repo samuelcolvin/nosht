@@ -1,7 +1,7 @@
 import React, {Component} from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {Row, Col, ButtonGroup, Button} from 'reactstrap'
+import {Row, Col, ButtonGroup, Button, Modal, ModalHeader, ModalBody, ModalFooter} from 'reactstrap'
 import {as_title} from '../../utils'
 import {Loading} from './Errors'
 
@@ -17,17 +17,22 @@ export class RenderItem extends Component {
     this.render_value = this.render_value.bind(this)
     this.got_data = this.got_data.bind(this)
     this.render_loaded = this.render_loaded.bind(this)
+    this.get_uri = this.get_uri.bind(this)
     this.formats = {}
-    this.title = null
+  }
+
+  get_uri () {
+    return `/${this.props.page.name}/`
   }
 
   async componentDidMount () {
     this.props.setRootState({
-      page_title: this.title,
+      page_title: as_title(this.props.page.name),
     })
     let data = null
+    const uri = this.get_uri()
     try {
-      data = await this.requests.get(this.props.location.pathname.replace(/^\/settings/, ''))
+      data = await this.requests.get(uri)
     } catch (error) {
       this.props.setRootState({error})
       return
@@ -119,14 +124,19 @@ export class RenderDetails extends RenderItem {
     this.state = {
       item: null,
     }
-    this.extra = this.extra.bind()
+    this.extra = this.extra.bind(this)
+    this.id = this.props.match.params.id
     this.buttons = []
+  }
+
+  get_uri () {
+    return `/${this.props.page.name}/${this.id}/`
   }
 
   async got_data (data) {
     this.setState({item: data})
     this.props.setRootState({
-      page_title: data.name || this.title,
+      page_title: data.name || as_title(this.props.page.name),
     })
   }
 
@@ -153,7 +163,7 @@ export class RenderDetails extends RenderItem {
             <Col md={4} className="text-right">
               <ButtonGroup vertical={true}>
                 {this.buttons.map(b => (
-                  <Button key={b.name}>{b.name}</Button>
+                  <Button key={b.name} tag={Link} to={b.link}>{b.name}</Button>
                 ))}
               </ButtonGroup>
             </Col>
@@ -163,5 +173,51 @@ export class RenderDetails extends RenderItem {
         {this.extra()}
       </div>,
     ]
+  }
+}
+
+export class ModalForm extends React.Component {
+  constructor (props) {
+    super(props)
+    this.regex = /edit\/$/
+    this.path_match = () => Boolean(this.props.location.pathname.match(this.regex))
+    this.state = {
+      modal: this.path_match()
+    }
+    this.toggle = this.toggle.bind(this)
+  }
+
+  toggle () {
+    if (this.state.modal) {
+      this.props.history.push(this.props.parent_uri)
+    }
+    this.setState({
+      modal: !this.state.modal
+    })
+  }
+
+  componentDidUpdate (prevProps) {
+    if (this.props.location !== prevProps.location) {
+      this.setState({
+        modal: this.path_match(),
+      })
+    }
+  }
+
+  render () {
+    return (
+      <div>
+        <Modal isOpen={this.state.modal} toggle={this.toggle} className={this.props.className}>
+          <ModalHeader toggle={this.toggle}>{this.props.title}</ModalHeader>
+          <ModalBody>
+            this is the body
+          </ModalBody>
+          <ModalFooter>
+            <Button color="secondary" onClick={this.toggle}>{this.props.cancel || 'Cancel'}</Button>
+            <Button color="primary" onClick={this.toggle}>{this.props.save || 'Save'}</Button>
+          </ModalFooter>
+        </Modal>
+      </div>
+    )
   }
 }

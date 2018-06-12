@@ -88,7 +88,9 @@ export const request = (method, path, config) => {
         try {
           response_data = JSON.parse(xhr.responseText)
           if (response_data.message) {
-            on_error(`Unexpected response ${xhr.status}: ${response_data.message}`)
+            on_error(xhr.status === 401 ?
+              response_data.message : `Unexpected response ${xhr.status}: ${response_data.message}`
+            )
             return
           }
         } catch (e) {

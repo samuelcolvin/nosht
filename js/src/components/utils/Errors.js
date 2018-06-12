@@ -4,7 +4,7 @@ import {Redirect} from 'react-router'
 export class Error extends Component {
   componentWillMount () {
     if (this.props.error.status === 401) {
-      this.props.set_message({icon: 'ban', message: 'Login Required'})
+      this.props.set_message({icon: 'ban', message: this.props.error.user_msg || 'Login Required'})
     } else if (this.props.error.status !== 404) {
       console.warn('caught error:', this.props)
     }

@@ -4,14 +4,15 @@ from pydantic import BaseModel, EmailStr
 
 from web.bread import Bread
 from web.utils import JsonErrors
+from .auth import check_session_age
 
 
 class NoshtBread(Bread):
     async def check_permissions(self, method):
-        session = self.request['session']
-        user_role = session.get('user_role')
+        check_session_age(self.request)
+        user_role = self.request['session'].get('user_role')
         if user_role is None:
-            raise JsonErrors.HTTPUnauthorized(message='authorisation required')
+            raise JsonErrors.HTTPUnauthorized(message='Authentication required to view this page')
         elif user_role != 'admin':
             raise JsonErrors.HTTPForbidden(message='permission denied')
 
