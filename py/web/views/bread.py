@@ -42,6 +42,8 @@ class CategoryBread(NoshtBread):
         'sort_index',
         'event_content',
         'host_advice',
+        'image',
+        'suggested_images',
     )
 
     def where(self):

@@ -1,5 +1,5 @@
 import {format_date} from '../../utils'
-import {RenderList, RenderDetails} from '../utils/Renderers'
+import {RenderList, RenderDetails} from '../utils/Settings'
 
 export class UsersList extends RenderList {}
 

@@ -1,10 +1,10 @@
 import React from 'react'
 import Events from '../Events'
 import {NotFound} from '../utils/Errors'
-import OnUpdate from '../utils/OnUpdate'
+import PromptUpdate from '../utils/PromptUpdate'
 
 
-export default class Category extends OnUpdate {
+export default class Category extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -13,7 +13,7 @@ export default class Category extends OnUpdate {
     this.cat_info = this.cat_info.bind(this)
   }
 
-  async setup () {
+  async get_data () {
     const cat = this.cat_info()
     if (!cat) {
       return
@@ -25,7 +25,7 @@ export default class Category extends OnUpdate {
       active_page: this.props.match.params.category,
     })
     try {
-      const data = await this.requests.get(`cat/${this.props.match.params.category}/`)
+      const data = await this.props.requests.get(`cat/${this.props.match.params.category}/`)
       this.setState({events: data.events})
     } catch (error) {
       this.props.setRootState({error})
@@ -38,15 +38,17 @@ export default class Category extends OnUpdate {
 
   render () {
     const cat = this.cat_info()
+    const prompt_update = <PromptUpdate {...this.props} get_data={this.get_data.bind(this)}/>
     if (!cat) {
-      return <NotFound location={this.props.location}/>
+      return <NotFound location={this.props.location}>{prompt_update}</NotFound>
     }
     return (
       <div className="card-grid">
         <div>
-          <h1>{this.cat_info().name}</h1>
+          <h1>{cat.name}</h1>
           <Events events={this.state.events}/>
         </div>
+        {prompt_update}
       </div>
     )
   }

@@ -1,17 +1,12 @@
 import React from 'react'
 import {Modal, ModalHeader} from 'reactstrap'
-import Form from './Form'
-
-
-const get_name = WrappedComponent => (
-  WrappedComponent.displayName || WrappedComponent.name || 'Component'
-)
+import {get_component_name} from '../utils/Errors'
 
 export default function AsModal (WrappedComponent) {
   class AsModal extends React.Component {
     constructor (props) {
       super(props)
-      this.regex = props.regex || props.mode === 'edit' ? /edit\/$/ : /add\/$/
+      this.regex = props.regex || (props.mode === 'edit' ? /edit\/$/ : /add\/$/)
       this.path_match = () => Boolean(this.props.location.pathname.match(this.regex))
       this.state = {
         shown: this.path_match()
@@ -39,7 +34,7 @@ export default function AsModal (WrappedComponent) {
 
     render () {
       const s = this.props.page.singular
-      const title = this.props.title || this.props.mode === 'edit' ? `Edit ${s}` : `Add ${s}`
+      const title = this.props.title || (this.props.mode === 'edit' ? `Edit ${s}` : `Add ${s}`)
       return (
         <Modal isOpen={this.state.shown} toggle={() => this.toggle()} size='lg'>
           <ModalHeader toggle={() => this.toggle()}>{title}</ModalHeader>
@@ -48,8 +43,6 @@ export default function AsModal (WrappedComponent) {
       )
     }
   }
-  AsModal.displayName = `AsModal(${get_name(WrappedComponent)})`
+  AsModal.displayName = `AsModal(${get_component_name(WrappedComponent)})`
   return AsModal
 }
-
-export const ModelForm = AsModal(Form)

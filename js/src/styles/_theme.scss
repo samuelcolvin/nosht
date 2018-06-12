@@ -133,3 +133,24 @@ textarea {
   color: $form-feedback-invalid-color;
   height: 23px;
 }
+
+.dropzone {
+  width: 100%;
+  min-height: 200px;
+  border-radius: 4px;
+  border: 1px dashed black;
+  padding: 10px;
+  color: #444;
+  text-align: center;
+  .previews {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .file-preview {
+    padding: 5px;
+    width: 200px;
+    max-height: 200px;
+    font-size: 14px;
+  }
+}

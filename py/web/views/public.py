@@ -10,7 +10,7 @@ SELECT json_build_object(
   'user', user_data
 )
 FROM (
-  SELECT array_to_json(array_agg(row_to_json(t))) AS categories FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS categories FROM (
     SELECT id, name, slug, image, description
     FROM categories
     WHERE company=$1 AND live=TRUE
@@ -18,7 +18,7 @@ FROM (
   ) AS t
 ) AS categories,
 (
-  SELECT array_to_json(array_agg(row_to_json(t))) AS highlight_events FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS highlight_events FROM (
     SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location, e.start_ts,
       EXTRACT(epoch FROM e.duration)::int AS duration
     FROM events AS e
@@ -60,7 +60,7 @@ async def index(request):
 category_sql = """
 SELECT json_build_object('events', events)
 FROM (
-  SELECT array_to_json(array_agg(row_to_json(t))) AS events FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS events FROM (
     SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location, e.start_ts,
       EXTRACT(epoch FROM e.duration)::int AS duration
     FROM events AS e

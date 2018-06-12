@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {Row, Col, ButtonGroup, Button} from 'reactstrap'
+import {ButtonGroup, Button} from 'reactstrap'
 import {as_title} from '../../utils'
 import {Loading} from './Errors'
 
@@ -9,9 +9,9 @@ export const render_bool = v => (
   <FontAwesomeIcon icon={v ? 'check' : 'times'} />
 )
 
-const Buttons = ({buttons, vertical, className}) => (
-  buttons && <div className={className}>
-    <ButtonGroup vertical={vertical}>
+const Buttons = ({buttons, className}) => (
+  buttons && <div className="text-right mb-2">
+    <ButtonGroup>
       {buttons.map(b => (
         <Button key={b.name} tag={Link} to={b.link}>{b.name}</Button>
       ))}
@@ -29,7 +29,6 @@ export class RenderItem extends React.Component {
     this.got_data = this.got_data.bind(this)
     this.render_loaded = this.render_loaded.bind(this)
     this.get_uri = this.get_uri.bind(this)
-    this.extra = this.extra.bind(this)
     this.formats = {}
   }
 
@@ -109,7 +108,7 @@ export class RenderList extends RenderItem {
     const keys = Object.keys(this.state.items[0])
     keys.splice(keys.indexOf('id'), 1)
     return [
-      <Buttons key={1} buttons={this.state.buttons} className="text-right mb-2"/>,
+      <Buttons key={1} buttons={this.state.buttons}/>,
       <table key={2} className="table">
         <thead>
           <tr>
@@ -170,26 +169,26 @@ export class RenderDetails extends RenderItem {
     }
     keys.splice(keys.indexOf('_response_status'), 1)
     return [
-      <Row key={1}>
-        <Col md={8}>
-          {keys.map((key, i) => (
-            <div key={key} className="item-detail">
-              <div className="key">
-                {this.render_key(key)}
-              </div>
-              <div className="value">
-                {this.render_value(this.state.item, key)}
-              </div>
+      <Buttons key={1} buttons={this.state.buttons}/>,
+      <div key={2} className="mb-4">
+        {keys.map((key, i) => (
+          <div key={key} className="item-detail">
+            <div className="key">
+              {this.render_key(key)}
             </div>
-          ))}
-        </Col>
-        <Col md={4} className="text-right">
-          <Buttons buttons={this.state.buttons} vertical={true}/>
-        </Col>
-      </Row>,
-      <div key={2}>
+            <div className="value">
+              {this.render_value(this.state.item, key)}
+            </div>
+          </div>
+        ))}
+      </div>,
+      <div key={3}>
         {this.extra()}
       </div>,
     ]
   }
 }
+
+export const ImageThumbnail = ({image, alt}) => (
+  image ? <img src={image + '/thumb.jpg'} alt={alt} className="img-thumbnail"/> : <span>&mdash;</span>
+)

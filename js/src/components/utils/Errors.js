@@ -1,6 +1,10 @@
 import React from 'react'
 import {Redirect} from 'react-router'
 
+export const get_component_name = WrappedComponent => (
+  WrappedComponent.displayName || WrappedComponent.name || 'Component'
+)
+
 export class Error extends React.Component {
   componentWillMount () {
     if (this.props.error.status === 401) {
@@ -29,13 +33,17 @@ export class Error extends React.Component {
   }
 }
 
-export const NotFound = ({location, url}) => (
+export const NotFound = ({location, url, children}) => (
   <div>
     <h1>Page not found</h1>
     <p>The page <code>{url || location.pathname}</code> doesn't exist.</p>
+    {children}
   </div>
 )
 
-export const Loading = () => (
-  <small className="text-muted">loading...</small>
+export const Loading = ({children}) => (
+  <small className="text-muted">
+    loading...
+    {children}
+  </small>
 )

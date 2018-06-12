@@ -19,6 +19,7 @@ from .views.auth import authenticate_token, login, logout
 from .views.bread import CategoryBread, EventBread, UserBread
 from .views.public import category, event, index
 from .views.static import static_handler
+from .views.upload import upload
 
 logger = logging.getLogger('nosht.web')
 
@@ -69,6 +70,7 @@ def create_app(*, settings: Settings=None):
         *CategoryBread.routes('/categories/'),
         *EventBread.routes('/events/'),
         *UserBread.routes('/users/'),
+        web.post('/testing/', upload),
     ])
 
     wrapper_app = web.Application(middlewares=(error_middleware,))

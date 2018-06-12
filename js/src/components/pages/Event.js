@@ -3,7 +3,7 @@ import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
 import {load_script_callback} from '../../utils'
 import {Loading, NotFound} from '../utils/Errors'
-import OnUpdate from '../utils/OnUpdate'
+import PromptUpdate from '../utils/PromptUpdate'
 import Markdown from '../utils/Markdown'
 import {When} from '../Events'
 
@@ -49,7 +49,7 @@ class Map extends React.Component {
 }
 
 
-export default class Event extends OnUpdate {
+export default class Event extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -57,12 +57,12 @@ export default class Event extends OnUpdate {
     }
   }
 
-  async setup () {
+  async get_data () {
     let event
     const params = this.props.match.params
     this.props.setRootState({active_page: params.category})
     try {
-      const data = await this.requests.get(`event/${params.category}/${params.event}/`)
+      const data = await this.props.requests.get(`event/${params.category}/${params.event}/`)
       event = data.event
     } catch (error) {
       if (error.status === 404) {
@@ -82,10 +82,11 @@ export default class Event extends OnUpdate {
 
   render () {
     const event = this.state.event
+    const prompt_update = <PromptUpdate {...this.props} get_data={this.get_data.bind(this)}/>
     if (!event) {
-      return <Loading/>
+      return <Loading>{prompt_update}</Loading>
     } else if (event === 404) {
-      return <NotFound location={this.props.location}/>
+      return <NotFound location={this.props.location}>{prompt_update}</NotFound>
     }
     return (
       <div>
@@ -128,6 +129,7 @@ export default class Event extends OnUpdate {
           <h2>About {event.name}</h2>
           <Markdown content={event.long_description}/>
         </div>
+        {prompt_update}
       </div>
     )
   }

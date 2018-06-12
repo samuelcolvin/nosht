@@ -1,6 +1,7 @@
 import React from 'react'
 import {Button, Form as BootstrapForm, ModalBody, ModalFooter} from 'reactstrap'
 import Input from './Input'
+import AsModal from './Modal'
 
 export default class Form extends React.Component {
   constructor (props) {
@@ -41,11 +42,14 @@ export default class Form extends React.Component {
       if (this.props.mode === 'edit') {
         this.props.set_message(`${this.props.page.singular} updated`)
         this.props.update && this.props.update()
-        this.props.toggle_model(this.props.parent_uri)
       } else {
         this.props.set_message(`${this.props.page.singular} added`)
-        this.props.toggle_model(this.props.parent_uri + `${r.pk}/`)
+        if (this.props.go_to_new) {
+          this.props.toggle_model(this.props.parent_uri + `${r.pk}/`)
+          return
+        }
       }
+      this.props.toggle_model(this.props.parent_uri)
     }
   }
 
@@ -86,3 +90,5 @@ export default class Form extends React.Component {
     )
   }
 }
+
+export const ModelForm = AsModal(Form)

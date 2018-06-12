@@ -1,5 +1,5 @@
 import {format_event_start, format_event_duration} from '../../utils'
-import {RenderList, RenderDetails} from '../utils/Renderers'
+import {RenderList, RenderDetails} from '../utils/Settings'
 
 export class EventsList extends RenderList {
   constructor (props) {
