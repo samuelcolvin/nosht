@@ -38,7 +38,11 @@ export const load_script_callback = url => {
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 export const make_url = path => {
+  if (path.match(/^https?:\//)) {
+    return path
+  } else {
   return window.location.origin + '/api/' + path.replace(/^\//, '')
+}
 }
 
 export const request = (method, path, config) => {
@@ -79,7 +83,11 @@ export const request = (method, path, config) => {
     xhr.onload = () => {
       if (config.expected_statuses.includes(xhr.status)) {
         try {
-          resolve(JSON.parse(xhr.responseText))
+          const data = JSON.parse(xhr.responseText)
+          if (typeof data === 'object') {
+            data.response_status = xhr.status
+          }
+          resolve(data)
         } catch (error) {
           on_error('Error decoding json', error)
         }
@@ -112,11 +120,16 @@ export const get = (path, args, config) => {
   return request('GET', path, config)
 }
 
-
 export const post = (path, data, config) => {
   config = config || {}
   config.send_data = data
   return request('POST', path, config)
+}
+
+export const put = (path, data, config) => {
+  config = config || {}
+  config.send_data = data
+  return request('PUT', path, config)
 }
 
 const DF = 'Do MMM'

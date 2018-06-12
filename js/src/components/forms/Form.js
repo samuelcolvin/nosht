@@ -1,13 +1,14 @@
 import React from 'react'
-import {Button, Form as BootstrapForm} from 'reactstrap'
+import {Button, Form as BootstrapForm, ModalBody, ModalFooter} from 'reactstrap'
 import Input from './Input'
 
 export default class Form extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
-      submitted: false,
+      disabled: false,
       form_data: {},
+      errors: {},
     }
     this.submit = this.submit.bind(this)
     this.set_form_data = this.set_form_data.bind(this)
@@ -15,8 +16,22 @@ export default class Form extends React.Component {
 
   async submit (e) {
     e.preventDefault()
-    await this.props.root.requests.post('enquiry', this.state.form_data, {expected_statuses: [200, 201]})
-    this.setState({submitted: true})
+    this.setState({disabled: true})
+    const method = this.props.method === 'put' ? this.props.requests.put : this.props.requests.post
+    let r
+    try {
+      r = await method(this.props.action, this.state.form_data, {expected_statuses: [200, 201, 400]})
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+    if (r.response_status === 400) {
+      console.log('error', r)
+    } else {
+      this.props.set_message(`${this.props.page.singular} updated`)
+      this.props.update && this.props.update()
+      this.props.toggle_model()
+    }
   }
 
   set_form_data (name, value) {
@@ -26,19 +41,21 @@ export default class Form extends React.Component {
   }
 
   render () {
-    const fields = [
-      {name: 'testing', title: 'Title'}
-    ]
     return (
-      <BootstrapForm>
-
-        {fields.map((field, i) => (
-          <Input key={i}
-                  field={field}
-                  value={this.state.form_data[field.value]}
-                  set_value={v => this.set_form_data(field.name, v)}/>
-        ))}
-        <Button>Submit</Button>
+      <BootstrapForm onSubmit={this.submit}>
+        <ModalBody>
+            {(this.props.fields || []).map((field, i) => (
+              <Input key={i}
+                      field={field}
+                      value={this.state.form_data[field.name]}
+                      disabled={this.state.disabled}
+                      set_value={v => this.set_form_data(field.name, v)}/>
+            ))}
+        </ModalBody>
+        <ModalFooter>
+          <Button type="button" color="secondary" onClick={this.props.toggle_model}>{this.props.cancel || 'Cancel'}</Button>
+          <Button type="submit" color="primary">{this.props.save || 'Save'}</Button>
+        </ModalFooter>
       </BootstrapForm>
     )
   }

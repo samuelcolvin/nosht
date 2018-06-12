@@ -1,45 +1,61 @@
 import React from 'react'
-import {Button, Form as BootstrapForm, FormGroup, Label, Input as BsInput, FormText} from 'reactstrap'
+import {FormGroup, Label, Input as BsInput, CustomInput, FormText} from 'reactstrap'
+import {as_title} from '../../utils'
 
-const GeneralInput = ({field, value, onChange, custom_type, step}) => (
+const HelpText = ({field}) => (
+  field.help_text ? <FormText>{field.help_text}</FormText> : <span/>
+)
+
+const GeneralInput = ({field, disabled, value, onChange, custom_type, step}) => (
   <FormGroup>
     <Label for={field.name}>{field.title}</Label>
     <BsInput type={custom_type || field.type || 'text'}
+             disabled={disabled}
              step={step || null}
              name={field.name}
              id={field.name}
              required={field.required}
              maxLength={field.max_length || 255}
-             placeholder={field.title}
-             value={value}
-             onChange={onChange}/> />
+             placeholder={field.placeholder}
+             value={value || ''}
+             onChange={onChange}/>
+    <HelpText field={field}/>
   </FormGroup>
 )
 
-const Checkbox = ({field, value, onChange}) => (
-  <FormGroup check>
+const Checkbox = ({field, disabled, value, onChange}) => (
+  <FormGroup className="py-2" check>
     <Label check>
       <BsInput type="checkbox"
+               disabled={disabled}
                name={field.name}
                required={field.required}
-               checked={value}
+               checked={value || false}
                onChange={onChange}/>
       {field.title}
     </Label>
+    <HelpText field={field}/>
   </FormGroup>
 )
 
-const Select = ({field, value, onChange}) => (
+const Select = ({field, disabled, value, onChange}) => (
   <FormGroup>
     <Label for={field.name}>{field.title}</Label>
-    <Input type="select" name={field.name} id={field.name}>
+    <CustomInput type="select"
+                 disabled={disabled}
+                 name={field.name}
+                 id={field.name}
+                 required={field.required}
+                 onChange={onChange}>
       <option value="">---------</option>
       {field.choices && field.choices.map((choice, i) => (
         <option key={i} value={choice.value}>
+          {/*TODO set select*/}
           {choice.display_name}
         </option>
       ))}
-    </Input>
+    </CustomInput>
+    <HelpText field={field}/>
   </FormGroup>
 )
 
@@ -84,7 +100,7 @@ const IntegerInput = ({field, value, onChange}) => (
 )
 
 const INPUT_LOOKUP = {
-  'checkbox': Checkbox,
+  'bool': Checkbox,
   'select': Select,
   'datetime': DatetimeInput,
   'integer': IntegerInput,
@@ -104,8 +120,9 @@ export default class Input extends React.Component {
 
   render () {
     const InputComp = INPUT_LOOKUP[this.props.field.type] || GeneralInput
+    this.props.field.title = this.props.field.title || as_title(this.props.field.name)
     return (
-      <InputComp field={this.props.field} value={this.props.value || ''} onChange={this.on_change}/>
+      <InputComp {...this.props} onChange={this.on_change}/>
     )
   }
 }

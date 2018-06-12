@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {Row, Col, ButtonGroup, Button, Modal, ModalHeader, ModalBody, ModalFooter} from 'reactstrap'
+import {Row, Col, ButtonGroup, Button} from 'reactstrap'
 import {as_title} from '../../utils'
 import {Loading} from './Errors'
 
@@ -15,6 +15,7 @@ export class RenderItem extends React.Component {
     this.requests = this.props.requests
     this.render_key = this.render_key.bind(this)
     this.render_value = this.render_value.bind(this)
+    this.update = this.update.bind(this)
     this.got_data = this.got_data.bind(this)
     this.render_loaded = this.render_loaded.bind(this)
     this.get_uri = this.get_uri.bind(this)
@@ -25,10 +26,14 @@ export class RenderItem extends React.Component {
     return `/${this.props.page.name}/`
   }
 
-  async componentDidMount () {
+  componentDidMount () {
     this.props.setRootState({
       page_title: as_title(this.props.page.name),
     })
+    this.update()
+  }
+
+  async update () {
     let data = null
     const uri = this.get_uri()
     try {

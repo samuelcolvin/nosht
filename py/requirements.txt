@@ -9,6 +9,6 @@ cchardet==2.1.1
 cryptography==2.2.2
 google-auth==1.4.1
 lorem==0.1.1
-pydantic[email]==0.9.1
+pydantic[email]==0.10
 raven==6.8.0
 uvloop==0.9.1

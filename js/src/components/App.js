@@ -1,7 +1,7 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 
-import {get, post, sleep} from '../utils'
+import {get, post, put, sleep} from '../utils'
 import {Error, NotFound, Loading} from './utils/Errors'
 import Navbar from './Navbar'
 import Footer from './Footer'
@@ -19,45 +19,43 @@ const Routes = ({app}) => (
         <Index setRootState={s => app.setState(s)} company={app.state.company}/>
       )} />
 
-      <Route exact path="/login/" render={() => (
+      <Route exact path="/login/" render={props => (
         <Login setRootState={s => app.setState(s)}
                requests={app.requests}
                set_message={app.set_message}
-               company={app.state.company}/>
+               company={app.state.company}
+               {...props}/>
       )} />
 
-      <Route exact path="/logout/" render={() => (
+      <Route exact path="/logout/" render={props => (
         <Logout setRootState={s => app.setState(s)}
                 set_message={app.set_message}
-                requests={app.requests}/>
+                requests={app.requests}
+                {...props}/>
       )} />
 
       <Route path="/settings/" render={props => (
         <Settings setRootState={s => app.setState(s)}
                   set_message={app.set_message}
-                  location={props.location}
-                  requests={app.requests}/>
+                  requests={app.requests}
+                  {...props}/>
       )} />
 
       <Route exact path="/:category/:event/" render={props => (
         <Event setRootState={s => app.setState(s)}
                requests={app.requests}
                company={app.state.company}
-               location={props.location}
-               match={props.match}/>
+                  {...props}/>
       )} />
 
       <Route exact path="/:category/" render={props => (
         <Category setRootState={s => app.setState(s)}
                   requests={app.requests}
                   company={app.state.company}
-                  location={props.location}
-                  match={props.match}/>
+                  {...props}/>
       )} />
 
-      <Route render={props => (
-        <NotFound location={props.location}/>
-      )} />
+      <Route component={NotFound} />
     </Switch>
 )
 
@@ -77,6 +75,7 @@ class _App extends React.Component {
     this.requests = {
       get: async (...args) => get(...args),
       post: async (...args) => post(...args),
+      put: async (...args) => put(...args),
     }
     this.set_message = this.set_message.bind(this)
   }

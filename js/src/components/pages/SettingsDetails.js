@@ -1,7 +1,7 @@
 import React from 'react'
 import {format_event_start, format_event_duration, format_date} from '../../utils'
-import {RenderDetails, ModalForm} from '../utils/Renderers'
-
+import {RenderDetails} from '../utils/Renderers'
+import {ModelForm} from '../forms/Modal'
 
 
 export class EventsDetails extends RenderDetails {
@@ -29,6 +29,12 @@ export class EventsDetails extends RenderDetails {
   }
 }
 
+const CAT_FIELDS = [
+  {name: 'name'},
+  {name: 'live', type: 'bool'},
+  {name: 'description', type: 'textarea'},
+]
+
 export class CategoriesDetails extends RenderDetails {
   constructor (props) {
     super(props)
@@ -42,7 +48,13 @@ export class CategoriesDetails extends RenderDetails {
   }
 
   extra () {
-    return <ModalForm history={this.props.history} location={this.props.location} parent_uri={this.uri}/>
+    return <ModelForm {...this.props}
+                      parent_uri={this.uri}
+                      title="Edit Category"
+                      method="put"
+                      update={this.update}
+                      action={`/${this.props.page.name}/${this.id}/`}
+                      fields={CAT_FIELDS}/>
   }
 }
 

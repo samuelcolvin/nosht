@@ -1,48 +1,53 @@
 import React from 'react'
-import {Button, Modal, ModalHeader, ModalBody, ModalFooter} from 'reactstrap'
+import {Modal, ModalHeader} from 'reactstrap'
+import Form from './Form'
 
-export default class ModalForm extends React.Component {
-  constructor (props) {
-    super(props)
-    this.regex = /edit\/$/
-    this.path_match = () => Boolean(this.props.location.pathname.match(this.regex))
-    this.state = {
-      modal: this.path_match()
+
+const get_name = WrappedComponent => (
+  WrappedComponent.displayName || WrappedComponent.name || 'Component'
+)
+
+export default function AsModal (WrappedComponent) {
+  class AsModal extends React.Component {
+    constructor (props) {
+      super(props)
+      this.regex = props.regex || /edit\/$/
+      this.path_match = () => Boolean(this.props.location.pathname.match(this.regex))
+      this.state = {
+        shown: this.path_match()
+      }
+      this.toggle = this.toggle.bind(this)
     }
-    this.toggle = this.toggle.bind(this)
-  }
 
-  toggle () {
-    if (this.state.modal) {
-      this.props.history.push(this.props.parent_uri)
-    }
-    this.setState({
-      modal: !this.state.modal
-    })
-  }
-
-  componentDidUpdate (prevProps) {
-    if (this.props.location !== prevProps.location) {
+    toggle () {
+      const shown_changed = !this.state.shown
       this.setState({
-        modal: this.path_match(),
+        shown: shown_changed
       })
+      if (!this.state.shown_changed) {
+        this.props.history.push(this.props.parent_uri)
+      }
+    }
+
+    componentDidUpdate (prevProps) {
+      if (this.props.location !== prevProps.location) {
+        this.setState({
+          shown: this.path_match(),
+        })
+      }
+    }
+
+    render () {
+      return (
+        <Modal isOpen={this.state.shown} toggle={this.toggle}>
+          <ModalHeader toggle={this.toggle}>{this.props.title}</ModalHeader>
+          <WrappedComponent toggle_model={this.toggle} {...this.props}/>
+        </Modal>
+      )
     }
   }
-
-  render () {
-    return (
-      <div>
-        <Modal isOpen={this.state.modal} toggle={this.toggle} className={this.props.className}>
-          <ModalHeader toggle={this.toggle}>{this.props.title}</ModalHeader>
-          <ModalBody>
-            {this.props.children}
-          </ModalBody>
-          <ModalFooter>
-            <Button color="secondary" onClick={this.toggle}>{this.props.cancel || 'Cancel'}</Button>
-            <Button color="primary" onClick={this.toggle}>{this.props.save || 'Save'}</Button>
-          </ModalFooter>
-        </Modal>
-      </div>
-    )
-  }
+  AsModal.displayName = `AsModal(${get_name(WrappedComponent)})`
+  return AsModal
 }
+
+export const ModelForm = AsModal(Form)

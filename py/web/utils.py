@@ -108,7 +108,7 @@ async def parse_request(request, model: Type[T], *, error_headers=None) -> T:
             return model.parse_obj(data)
         except ValidationError as e:
             error_msg = 'Invalid Data'
-            error_details = e.errors_dict
+            error_details = e.errors()
 
     raise JsonErrors.HTTPBadRequest(
         message=error_msg,

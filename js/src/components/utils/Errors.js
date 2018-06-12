@@ -6,14 +6,14 @@ export class Error extends React.Component {
     if (this.props.error.status === 401) {
       this.props.set_message({icon: 'ban', message: this.props.error.user_msg || 'Login Required'})
     } else if (this.props.error.status !== 404) {
-      console.warn('caught error:', this.props)
+      console.warn('caught error:', this.props.error)
     }
   }
 
   render () {
     const error = this.props.error
     if (error.status === 404) {
-      return <NotFound location={this.props.location}/>
+      return <NotFound location={this.props.location} url={error.url}/>
     } else if (error.status === 401 && this.props.location.pathname !== '/login/') {
       return <Redirect to="/login/"/>
     } else {
@@ -29,10 +29,10 @@ export class Error extends React.Component {
   }
 }
 
-export const NotFound = ({location}) => (
+export const NotFound = ({location, url}) => (
   <div>
     <h1>Page not found</h1>
-    <p>The page <code>{location.pathname}</code> doesn't exist.</p>
+    <p>The page <code>{url || location.pathname}</code> doesn't exist.</p>
   </div>
 )
 

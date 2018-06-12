@@ -20,11 +20,11 @@ class NoshtBread(Bread):
 class CategoryBread(NoshtBread):
     class Model(BaseModel):
         name: str
-        live: bool
-        description: str
-        sort_index: int
-        event_content: str
-        host_advice: str
+        live: bool = True
+        description: str = None
+        sort_index: int = 1
+        event_content: str = None
+        host_advice: str = None
 
     model = Model
     table = 'categories'

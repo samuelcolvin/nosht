@@ -1,1 +1,1 @@
-from .main import ReadBread, WriteBread, Bread  # noqa
+from .main import ReadBread, Bread  # noqa
