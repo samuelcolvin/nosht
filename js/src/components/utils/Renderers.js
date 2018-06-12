@@ -9,6 +9,16 @@ export const render_bool = v => (
   <FontAwesomeIcon icon={v ? 'check' : 'times'} />
 )
 
+const Buttons = ({buttons, vertical, className}) => (
+  buttons && <div className={className}>
+    <ButtonGroup vertical={vertical}>
+      {buttons.map(b => (
+        <Button key={b.name} tag={Link} to={b.link}>{b.name}</Button>
+      ))}
+    </ButtonGroup>
+  </div>
+)
+
 export class RenderItem extends React.Component {
   constructor (props) {
     super(props)
@@ -19,6 +29,7 @@ export class RenderItem extends React.Component {
     this.got_data = this.got_data.bind(this)
     this.render_loaded = this.render_loaded.bind(this)
     this.get_uri = this.get_uri.bind(this)
+    this.extra = this.extra.bind(this)
     this.formats = {}
   }
 
@@ -57,6 +68,8 @@ export class RenderItem extends React.Component {
     return as_title(key)
   }
 
+  extra () {}
+
   render_value (item, key) {
     const fmt = this.formats[key]
     const v = item[key]
@@ -88,14 +101,16 @@ export class RenderList extends RenderItem {
     this.state = {
       items: null,
       count: null,
+      buttons: null,
     }
   }
 
   render_loaded () {
     const keys = Object.keys(this.state.items[0])
     keys.splice(keys.indexOf('id'), 1)
-    return (
-      <table className="table">
+    return [
+      <Buttons key={1} buttons={this.state.buttons} className="text-right mb-2"/>,
+      <table key={2} className="table">
         <thead>
           <tr>
             {keys.map((key, i) => (
@@ -118,8 +133,11 @@ export class RenderList extends RenderItem {
             </tr>
           ))}
         </tbody>
-      </table>
-    )
+      </table>,
+      <div key={3}>
+        {this.extra()}
+      </div>
+    ]
   }
 }
 
@@ -130,7 +148,6 @@ export class RenderDetails extends RenderItem {
       item: null,
       buttons: []
     }
-    this.extra = this.extra.bind(this)
     this.id = this.props.match.params.id
     this.skip_keys = ['id']
   }
@@ -146,13 +163,12 @@ export class RenderDetails extends RenderItem {
     })
   }
 
-  extra () {}
-
   render_loaded () {
     const keys = Object.keys(this.state.item)
     for (let key of this.skip_keys) {
       keys.splice(keys.indexOf(key), 1)
     }
+    keys.splice(keys.indexOf('_response_status'), 1)
     return [
       <Row key={1}>
         <Col md={8}>
@@ -167,15 +183,9 @@ export class RenderDetails extends RenderItem {
             </div>
           ))}
         </Col>
-          {this.state.buttons && (
-            <Col md={4} className="text-right">
-              <ButtonGroup vertical={true}>
-                {this.state.buttons.map(b => (
-                  <Button key={b.name} tag={Link} to={b.link}>{b.name}</Button>
-                ))}
-              </ButtonGroup>
-            </Col>
-          )}
+        <Col md={4} className="text-right">
+          <Buttons buttons={this.state.buttons} vertical={true}/>
+        </Col>
       </Row>,
       <div key={2}>
         {this.extra()}

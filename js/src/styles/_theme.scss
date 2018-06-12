@@ -124,3 +124,12 @@ main.container {
     min-width: 200px;
   }
 }
+
+textarea {
+  height: 120px;
+}
+
+.form-error {
+  color: $form-feedback-invalid-color;
+  height: 23px;
+}

@@ -2,8 +2,10 @@ from buildpg import V, funcs
 from buildpg.clauses import Join, RawDangerous, Where
 from pydantic import BaseModel, EmailStr
 
+from shared.utils import slugify
 from web.bread import Bread
 from web.utils import JsonErrors
+
 from .auth import check_session
 
 
@@ -45,6 +47,13 @@ class CategoryBread(NoshtBread):
     def where(self):
         return Where(V('company') == self.request['company_id'])
 
+    def add_modify_data(self, data):
+        data.update(
+            company=self.request['company_id'],
+            slug=slugify(data['name'])
+        )
+        return data
+
 
 class EventBread(NoshtBread):
     class Model(BaseModel):
@@ -61,11 +70,12 @@ class EventBread(NoshtBread):
         V('c.name').as_('category'),
         'e.highlight',
         'e.start_ts',
-        'e.slug',
-        V('c.slug').as_('cat_slug'),
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
-    retrieve_fields = browse_fields
+    retrieve_fields = browse_fields + (
+        'e.slug',
+        V('c.slug').as_('cat_slug'),
+    )
 
     def join(self):
         return Join(V('categories').as_('c').on(V('c.id') == V('e.category')))

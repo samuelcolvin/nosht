@@ -3,8 +3,9 @@ import {Route, Switch, Link} from 'react-router-dom'
 import {Row, Col} from 'reactstrap'
 import {NotFound} from '../utils/Errors'
 import {as_title} from '../../utils'
-import {EventsList, CategoriesList, UsersList} from './SettingsLists'
-import {EventsDetails, CategoriesDetails, UsersDetails} from './SettingsDetails'
+import {EventsList, EventsDetails} from './SettingsEvents'
+import {UsersList, UsersDetails} from './SettingsUsers'
+import {CategoriesList, CategoriesDetails} from './SettingsCats'
 
 const PAGES = [
   {name: 'events', singular: 'Event', list_comp: EventsList, details_comp: EventsDetails},
@@ -15,6 +16,7 @@ const PAGES = [
 ]
 
 const list_uri = page => `/settings/${page.name}/`
+const list_match_uri = page => `/settings/${page.name}/(add/)?`
 const details_uri = page => `/settings/${page.name}/:id/`
 
 const MenuItem = ({page, location}) => {
@@ -52,7 +54,7 @@ export default class Settings extends React.Component {
         <Col md="9">
           <Switch>
             {PAGES.map(p => (
-              <Route key={p.name} exact path={list_uri(p)} render={props => (
+              <Route key={p.name} exact path={list_match_uri(p)} render={props => (
                 <RenderComp page={p} route_props={props} parent={this} comp_name="list_comp"/>
               )} />
             ))}

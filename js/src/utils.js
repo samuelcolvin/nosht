@@ -85,7 +85,7 @@ export const request = (method, path, config) => {
         try {
           const data = JSON.parse(xhr.responseText)
           if (typeof data === 'object') {
-            data.response_status = xhr.status
+            data._response_status = xhr.status
           }
           resolve(data)
         } catch (error) {

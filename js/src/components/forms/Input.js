@@ -1,15 +1,16 @@
 import React from 'react'
-import {FormGroup, Label, Input as BsInput, CustomInput, FormText} from 'reactstrap'
+import {FormGroup, Label, Input as BsInput, CustomInput, FormText, FormFeedback} from 'reactstrap'
 import {as_title} from '../../utils'
 
 const HelpText = ({field}) => (
   field.help_text ? <FormText>{field.help_text}</FormText> : <span/>
 )
 
-const GeneralInput = ({field, disabled, value, onChange, custom_type, step}) => (
+const GeneralInput = ({field, error, disabled, value, onChange, custom_type, step}) => (
   <FormGroup>
     <Label for={field.name}>{field.title}</Label>
     <BsInput type={custom_type || field.type || 'text'}
+             invalid={!!error}
              disabled={disabled}
              step={step || null}
              name={field.name}
@@ -19,6 +20,7 @@ const GeneralInput = ({field, disabled, value, onChange, custom_type, step}) => 
              placeholder={field.placeholder}
              value={value || ''}
              onChange={onChange}/>
+    {error && <FormFeedback>{error}</FormFeedback>}
     <HelpText field={field}/>
   </FormGroup>
 )
@@ -27,6 +29,7 @@ const Checkbox = ({field, disabled, value, onChange}) => (
   <FormGroup className="py-2" check>
     <Label check>
       <BsInput type="checkbox"
+               label={field.title}
                disabled={disabled}
                name={field.name}
                required={field.required}
@@ -50,7 +53,7 @@ const Select = ({field, disabled, value, onChange}) => (
       <option value="">---------</option>
       {field.choices && field.choices.map((choice, i) => (
         <option key={i} value={choice.value}>
-          {/*TODO set select*/}
+          {/*TODO set selected*/}
           {choice.display_name}
         </option>
       ))}
@@ -59,8 +62,12 @@ const Select = ({field, disabled, value, onChange}) => (
   </FormGroup>
 )
 
+const IntegerInput = props => (
+  <GeneralInput {...props} custom_type="number" step="1"/>
+)
+
 // TODO change
-const DatetimeInput = ({field, value, onChange}) => {
+const DatetimeInput = ({field, disabled, value, onChange}) => {
   // could use https://stackoverflow.com/a/31162426/949890
   const re_match = value.match(/(.*?)T(.*)/)
   const render_values = {
@@ -95,10 +102,6 @@ const DatetimeInput = ({field, value, onChange}) => {
   )
 }
 
-const IntegerInput = ({field, value, onChange}) => (
-  <GeneralInput field={field} value={value} onChange={onChange} custom_type="number" step="1"/>
-)
-
 const INPUT_LOOKUP = {
   'bool': Checkbox,
   'select': Select,
@@ -113,8 +116,7 @@ export default class Input extends React.Component {
   }
 
   on_change (event) {
-    const field = this.props.field
-    const value = field.type === 'checkbox' ? event.target.checked : event.target.value
+    const value = this.props.field.type === 'bool' ? event.target.checked : event.target.value
     this.props.set_value(value)
   }
 

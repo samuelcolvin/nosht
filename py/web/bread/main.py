@@ -240,13 +240,9 @@ class Bread(ReadBread):
     PUT /{pk}/ 200,400,403,404
     DELETE /{pk}/ 200,400,403,404
     """
+    # TODO, could we do this returning json?
     add_sql = """
-    SELECT json_build_object(
-      'id', id
-    )
-    FROM (
-      INSERT INTO :table (:values__names) VALUES :values RETURNING id
-    ) AS id
+    INSERT INTO :table (:values__names) VALUES :values RETURNING :pk_field
     """
 
     edit_sql = """
@@ -261,13 +257,14 @@ class Bread(ReadBread):
     async def add(self) -> web.Response:
         m = await parse_request(self.request, self.model)
         data = self.add_modify_data(m.dict())
-        json_str = await self.conn.fetchval_b(
+        pk = await self.conn.fetchval_b(
             self.add_sql,
             table=Var(self.table),
-            values=Values(data),
-            print_=self.log_print,
+            values=Values(**data),
+            pk_field=Var(self.pk_field),
+            print_=self.log_print or True,
         )
-        return raw_json_response(json_str, status_=201)
+        return json_response(status='ok', pk=pk)
 
     async def add_options(self) -> web.Response:
         pass

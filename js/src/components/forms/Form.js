@@ -9,6 +9,7 @@ export default class Form extends React.Component {
       disabled: false,
       form_data: {},
       errors: {},
+      form_error: null,
     }
     this.submit = this.submit.bind(this)
     this.set_form_data = this.set_form_data.bind(this)
@@ -16,8 +17,12 @@ export default class Form extends React.Component {
 
   async submit (e) {
     e.preventDefault()
-    this.setState({disabled: true})
-    const method = this.props.method === 'put' ? this.props.requests.put : this.props.requests.post
+    if (Object.keys(this.state.form_data).length === 0) {
+      this.setState({form_error: 'No data entered'})
+      return
+    }
+    this.setState({disabled: true, errors: {}, form_error: null})
+    const method = this.props.mode === 'edit' ? this.props.requests.put : this.props.requests.post
     let r
     try {
       r = await method(this.props.action, this.state.form_data, {expected_statuses: [200, 201, 400]})
@@ -25,12 +30,22 @@ export default class Form extends React.Component {
       this.props.setRootState({error})
       return
     }
-    if (r.response_status === 400) {
-      console.log('error', r)
+    if (r._response_status === 400) {
+      console.log('form error', r)
+      const errors = {}
+      for (let e of (r.details || [])) {
+        errors[e.loc[0]] = e.msg
+      }
+      this.setState({disabled: false, errors, form_error: Object.keys(errors).length ? null : 'Error occurred'})
     } else {
-      this.props.set_message(`${this.props.page.singular} updated`)
-      this.props.update && this.props.update()
-      this.props.toggle_model()
+      if (this.props.mode === 'edit') {
+        this.props.set_message(`${this.props.page.singular} updated`)
+        this.props.update && this.props.update()
+        this.props.toggle_model(this.props.parent_uri)
+      } else {
+        this.props.set_message(`${this.props.page.singular} added`)
+        this.props.toggle_model(this.props.parent_uri + `${r.pk}/`)
+      }
     }
   }
 
@@ -41,20 +56,31 @@ export default class Form extends React.Component {
   }
 
   render () {
+    const initial = this.props.initial || {}
+    const get_value = field => {
+      const v = this.state.form_data[field.name]
+      return v === undefined ? initial[field.name] : v
+    }
     return (
       <BootstrapForm onSubmit={this.submit}>
         <ModalBody>
-            {(this.props.fields || []).map((field, i) => (
-              <Input key={i}
-                      field={field}
-                      value={this.state.form_data[field.name]}
-                      disabled={this.state.disabled}
-                      set_value={v => this.set_form_data(field.name, v)}/>
-            ))}
+          <div className="form-error text-right">{this.state.form_error}</div>
+          {(this.props.fields || []).map((field, i) => (
+            <Input key={i}
+                    field={field}
+                    value={get_value(field)}
+                    error={this.state.errors[field.name]}
+                    disabled={this.state.disabled}
+                    set_value={v => this.set_form_data(field.name, v)}/>
+          ))}
         </ModalBody>
         <ModalFooter>
-          <Button type="button" color="secondary" onClick={this.props.toggle_model}>{this.props.cancel || 'Cancel'}</Button>
-          <Button type="submit" color="primary">{this.props.save || 'Save'}</Button>
+          <Button type="button" color="secondary" onClick={() => this.props.toggle_model()}>
+            {this.props.cancel || 'Cancel'}
+          </Button>
+          <Button type="submit" color="primary">
+            {this.props.save || 'Save'}
+          </Button>
         </ModalFooter>
       </BootstrapForm>
     )
