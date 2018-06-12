@@ -1,4 +1,4 @@
-import React, {Component} from 'react'
+import React from 'react'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
 import {load_script_callback} from '../../utils'
@@ -10,7 +10,7 @@ import {When} from '../Events'
 const GOOGLE_MAPS_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY
 const GOOGLE_MAPS_JS = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=<callback-function>`
 
-class Map extends Component {
+class Map extends React.Component {
   constructor (props) {
     super(props)
     this.update_map = this.update_map.bind(this)

@@ -1,7 +1,7 @@
-import React, {Component} from 'react'
+import React from 'react'
 import {Redirect} from 'react-router'
 
-export class Error extends Component {
+export class Error extends React.Component {
   componentWillMount () {
     if (this.props.error.status === 401) {
       this.props.set_message({icon: 'ban', message: this.props.error.user_msg || 'Login Required'})

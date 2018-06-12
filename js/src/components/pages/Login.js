@@ -1,9 +1,9 @@
-import React, {Component} from 'react'
+import React from 'react'
 import {Redirect} from 'react-router'
 import {Row, Col} from 'reactstrap'
 
 
-export default class Login extends Component {
+export default class Login extends React.Component {
   constructor (props) {
     super(props)
     this.state = {redirect_to: null}
@@ -34,6 +34,7 @@ export default class Login extends Component {
 
   componentDidMount () {
     window.addEventListener('message', this.on_message)
+    this.props.setRootState({user: null})
   }
 
   render () {

@@ -4,12 +4,12 @@ from pydantic import BaseModel, EmailStr
 
 from web.bread import Bread
 from web.utils import JsonErrors
-from .auth import check_session_age
+from .auth import check_session
 
 
 class NoshtBread(Bread):
     async def check_permissions(self, method):
-        check_session_age(self.request)
+        await check_session(self.request, 'admin')
         user_role = self.request['session'].get('user_role')
         if user_role is None:
             raise JsonErrors.HTTPUnauthorized(message='Authentication required to view this page')
@@ -61,6 +61,8 @@ class EventBread(NoshtBread):
         V('c.name').as_('category'),
         'e.highlight',
         'e.start_ts',
+        'e.slug',
+        V('c.slug').as_('cat_slug'),
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
     retrieve_fields = browse_fields

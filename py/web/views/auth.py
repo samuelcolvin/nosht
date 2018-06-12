@@ -3,38 +3,50 @@ from functools import wraps
 from time import time
 
 import bcrypt
-from aiohttp_session import get_session, new_session
+from aiohttp_session import new_session
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, EmailStr, constr
 
 from web.utils import JsonErrors, get_ip, json_response, parse_request
 
 
-def check_session_age(request):
+async def invalidate_session(request, reason):
     session = request['session']
-    if not session.new:
-        last_active = session['last_active']
-        now = int(time())
-        age = now - last_active
-        if age > request.app['settings'].cookie_inactive_time:
-            session.invalidate()
-            raise JsonErrors.HTTPUnauthorized(message="Session expired, you'll need to login again")
-        else:
-            session['last_active'] = now
+    extra = json.dumps({
+        'ip': get_ip(request),
+        'ua': request.headers.get('User-Agent'),
+        'age': int(time()) - session.created,
+        'reason': reason,
+    })
+    user_id = session['user_id']
+    session.invalidate()
+    await request['conn'].execute(record_event, request['company_id'], user_id, 'logout', extra)
+
+
+async def check_session(request, roles):
+    session = request['session']
+    user_role = session.get('user_role')
+    if user_role is None:
+        raise JsonErrors.HTTPUnauthorized(message='Authentication required to view this page')
+
+    if user_role not in roles:
+        raise JsonErrors.HTTPForbidden(message='role must be in: {}'.format(', '.join(roles)))
+
+    last_active = session['last_active']
+    now = int(time())
+    age = now - last_active
+    if age > request.app['settings'].cookie_inactive_time:
+        await invalidate_session(request, 'expired')
+        raise JsonErrors.HTTPUnauthorized(message="Session expired, you'll need to login again")
+    else:
+        session['last_active'] = now
 
 
 def permission_wrapper(coro, *roles):
     @wraps(coro)
     async def roles_permissions_wrapper(request):
-        check_session_age(request)
-        user_role = request['session'].get('user_role')
-        if user_role is None:
-            raise JsonErrors.HTTPUnauthorized(message='Authentication required to view this page')
-        if user_role not in roles:
-            raise JsonErrors.HTTPForbidden(message='role must be in: {}'.format(', '.join(roles)))
-        else:
-            # TODO check session age
-            return await coro(request)
+        await check_session(request, roles)
+        return await coro(request)
 
     return roles_permissions_wrapper
 
@@ -117,13 +129,5 @@ async def authenticate_token(request):
 
 @is_auth
 async def logout(request):
-    session = await get_session(request)
-    extra = json.dumps({
-        'ip': get_ip(request),
-        'ua': request.headers.get('User-Agent'),
-        'age': int(time()) - session.created,
-    })
-    user_id = session['user_id']
-    session.invalidate()
-    await request['conn'].execute(record_event, request['company_id'], user_id, 'logout', extra)
+    await invalidate_session(request, 'logout')
     return json_response(status='success')

@@ -1,6 +1,6 @@
-import React, {Component} from 'react'
+import React from 'react'
 
-export default class OnUpdate extends Component {
+export default class OnUpdate extends React.Component {
   constructor (props) {
     super(props)
     this.requests = this.props.requests

@@ -7,6 +7,7 @@ import {RenderDetails, ModalForm} from '../utils/Renderers'
 export class EventsDetails extends RenderDetails {
   constructor (props) {
     super(props)
+    this.skip_keys = ['id', 'slug', 'cat_slug']
     this.formats = {
       start_ts: {
         title: 'Date',
@@ -17,15 +18,27 @@ export class EventsDetails extends RenderDetails {
       }
     }
   }
+
+  async got_data (data) {
+    super.got_data(data)
+    this.setState({
+      buttons: [
+        {name: 'View Public Page', link: `/${data.cat_slug}/${data.slug}/`}
+      ]
+    })
+  }
 }
 
 export class CategoriesDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = `/settings/categories/${this.id}/`
-    this.buttons = [
-      {name: 'Edit', link: this.uri + 'edit/'}
-    ]
+    this.state = {
+      item: null,
+      buttons: [
+        {name: 'Edit', link: this.uri + 'edit/'}
+      ]
+    }
   }
 
   extra () {

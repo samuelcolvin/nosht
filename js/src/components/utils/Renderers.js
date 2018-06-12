@@ -1,4 +1,4 @@
-import React, {Component} from 'react'
+import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, ButtonGroup, Button, Modal, ModalHeader, ModalBody, ModalFooter} from 'reactstrap'
@@ -9,7 +9,7 @@ export const render_bool = v => (
   <FontAwesomeIcon icon={v ? 'check' : 'times'} />
 )
 
-export class RenderItem extends Component {
+export class RenderItem extends React.Component {
   constructor (props) {
     super(props)
     this.requests = this.props.requests
@@ -123,10 +123,11 @@ export class RenderDetails extends RenderItem {
     super(props)
     this.state = {
       item: null,
+      buttons: []
     }
     this.extra = this.extra.bind(this)
     this.id = this.props.match.params.id
-    this.buttons = []
+    this.skip_keys = ['id']
   }
 
   get_uri () {
@@ -144,7 +145,9 @@ export class RenderDetails extends RenderItem {
 
   render_loaded () {
     const keys = Object.keys(this.state.item)
-    keys.splice(keys.indexOf('id'), 1)
+    for (let key of this.skip_keys) {
+      keys.splice(keys.indexOf(key), 1)
+    }
     return [
       <Row key={1}>
         <Col md={8}>
@@ -159,10 +162,10 @@ export class RenderDetails extends RenderItem {
             </div>
           ))}
         </Col>
-          {this.buttons && (
+          {this.state.buttons && (
             <Col md={4} className="text-right">
               <ButtonGroup vertical={true}>
-                {this.buttons.map(b => (
+                {this.state.buttons.map(b => (
                   <Button key={b.name} tag={Link} to={b.link}>{b.name}</Button>
                 ))}
               </ButtonGroup>
@@ -173,51 +176,5 @@ export class RenderDetails extends RenderItem {
         {this.extra()}
       </div>,
     ]
-  }
-}
-
-export class ModalForm extends React.Component {
-  constructor (props) {
-    super(props)
-    this.regex = /edit\/$/
-    this.path_match = () => Boolean(this.props.location.pathname.match(this.regex))
-    this.state = {
-      modal: this.path_match()
-    }
-    this.toggle = this.toggle.bind(this)
-  }
-
-  toggle () {
-    if (this.state.modal) {
-      this.props.history.push(this.props.parent_uri)
-    }
-    this.setState({
-      modal: !this.state.modal
-    })
-  }
-
-  componentDidUpdate (prevProps) {
-    if (this.props.location !== prevProps.location) {
-      this.setState({
-        modal: this.path_match(),
-      })
-    }
-  }
-
-  render () {
-    return (
-      <div>
-        <Modal isOpen={this.state.modal} toggle={this.toggle} className={this.props.className}>
-          <ModalHeader toggle={this.toggle}>{this.props.title}</ModalHeader>
-          <ModalBody>
-            this is the body
-          </ModalBody>
-          <ModalFooter>
-            <Button color="secondary" onClick={this.toggle}>{this.props.cancel || 'Cancel'}</Button>
-            <Button color="primary" onClick={this.toggle}>{this.props.save || 'Save'}</Button>
-          </ModalFooter>
-        </Modal>
-      </div>
-    )
   }
 }

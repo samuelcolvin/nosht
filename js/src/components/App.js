@@ -1,4 +1,4 @@
-import React, {Component} from 'react'
+import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 
 import {get, post, sleep} from '../utils'
@@ -61,7 +61,7 @@ const Routes = ({app}) => (
     </Switch>
 )
 
-class _App extends Component {
+class _App extends React.Component {
   constructor (props) {
     super(props)
     this.state = {

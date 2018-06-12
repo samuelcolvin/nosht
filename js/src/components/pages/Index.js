@@ -1,4 +1,4 @@
-import React, {Component} from 'react'
+import React from 'react'
 import {Link} from 'react-router-dom'
 import {Card, CardImg, CardTitle, CardText, CardBody, Row, Col} from 'reactstrap'
 import {chunk_array} from '../../utils'
@@ -23,7 +23,7 @@ const Category = ({cat}) => {
   )
 }
 
-export default class Index extends Component {
+export default class Index extends React.Component {
   componentDidMount () {
     this.props.setRootState({
       page_title: null,

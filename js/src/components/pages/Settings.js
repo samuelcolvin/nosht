@@ -1,4 +1,4 @@
-import React, {Component} from 'react'
+import React from 'react'
 import {Route, Switch, Link} from 'react-router-dom'
 import {Row, Col} from 'reactstrap'
 import {NotFound} from '../utils/Errors'
@@ -38,7 +38,7 @@ const RenderComp = ({page, props, parent, comp_name}) => {
   return <div>TODO {page.name}</div>
 }
 
-export default class Settings extends Component {
+export default class Settings extends React.Component {
   constructor (props) {
     super(props)
     this.state = {finished: false}
