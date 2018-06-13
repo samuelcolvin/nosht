@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+from aiohttp.web import Response
 from aiohttp.web_exceptions import HTTPForbidden, HTTPNotFound
 from aiohttp.web_fileresponse import FileResponse
 
@@ -31,7 +32,10 @@ async def static_handler(request):
         logger.warning('error resolving path %r', request_path, exc_info=True)
         raise HTTPNotFound() from exc
 
-    if filepath.is_file():
+    if request_path == 'login/iframe.html':
+        content = filepath.read_text().replace('localhost:3000', request.headers['Host'])
+        return Response(text=content, content_type='text/html')
+    elif filepath.is_file():
         return FileResponse(filepath)
     else:
         return FileResponse(directory / 'index.html')

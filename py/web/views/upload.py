@@ -7,7 +7,6 @@ from web.utils import JsonErrors, json_response
 
 from .auth import is_admin
 
-
 CAT_IMAGE_SQL = """
 SELECT co.slug, cat.slug
 FROM categories AS cat

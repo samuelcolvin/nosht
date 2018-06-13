@@ -31,8 +31,6 @@ ADD ./deploy-settings/*.* /home/root/
 ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
 ADD ./deploy-settings/favicons/* /home/root/public/
-ENV ROOT_URL $ROOT_URL
-RUN yarn pre-build
 RUN yarn build
 RUN rm build/service-worker.js
 RUN find build/ -type f
