@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     redis_settings: Any = 'redis://localhost:6379'
     google_siw_client_key = 'xxx'
     auth_key = 'v7RI7qwZB7rxCyrpX4QwpZCUCF7X_HtnMSFuJfZTmfs='
-    cookie_inactive_time = 25 * 3600
+    cookie_max_age = 25 * 3600
+    cookie_update_age = 600
     port: int = 8000
     on_docker: bool = False
     on_heroku: bool = False
@@ -24,8 +25,8 @@ class Settings(BaseSettings):
     bcrypt_work_factor = 12
     # used for hashing when the user in the db has no password
     dummy_password = '_dummy_password_'
-    s3_access_key: str = None
-    s3_secret_key: str = None
+    aws_access_key: str = None
+    aws_secret_key: str = None
     s3_bucket: str = None
     s3_domain: str = None
 

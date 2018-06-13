@@ -33,25 +33,21 @@ export class CategoriesList extends RenderList {
 
 const ImageList = ({images}) => (
   images.length ? (
-    <table className="table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Preview</th>
-        </tr>
-      </thead>
-      <tbody>
-        {images.map((image, i) => (
-          <tr key={i}>
-            <td>{image}</td>
-            <td>
-              <ImageThumbnail image={image} alt={image}/>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  ) : <small>No suggested Images</small>
+    <div>
+      <h4>Suggested Images</h4>
+      <table className="table">
+        <tbody>
+          {images.map((image, i) => (
+            <tr key={i}>
+              <td>
+                <ImageThumbnail image={image} alt={image}/>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : <small>No Suggested Images</small>
 )
 
 export class CategoriesDetails extends RenderDetails {
@@ -61,7 +57,7 @@ export class CategoriesDetails extends RenderDetails {
     this.skip_keys = ['id', 'suggested_images']
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
-      {name: 'Add Image', link: this.uri + 'add-image/'},
+      {name: 'Add Images', link: this.uri + 'add-image/'},
     ]
     this.formats = {
       image: {

@@ -41,7 +41,7 @@ export const make_url = path => {
   if (path.match(/^https?:\//)) {
     return path
   } else {
-  return window.location.origin + '/api/' + path.replace(/^\//, '')
+  return window.location.origin + path.replace(/^(\/)?/, '/api/')
 }
 }
 

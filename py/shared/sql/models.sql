@@ -5,6 +5,7 @@ CREATE TYPE CURRENCY AS ENUM ('gbp', 'usd', 'eur');
 CREATE TABLE companies (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL UNIQUE,
+  slug VARCHAR(255) NOT NULL UNIQUE,
   domain VARCHAR(255) NOT NULL,
   stripe_public_key VARCHAR(63),
   stripe_secret_key VARCHAR(63),

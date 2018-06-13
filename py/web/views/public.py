@@ -1,4 +1,4 @@
-from buildpg.asyncpg import Connection
+from buildpg.asyncpg import BuildPgConnection
 
 from web.utils import JsonErrors, raw_json_response
 
@@ -50,7 +50,7 @@ FROM (
 
 
 async def index(request):
-    conn: Connection = request['conn']
+    conn: BuildPgConnection = request['conn']
     company_id = request['company_id']
     user_id = request['session'].get('user_id', None)
     json_str = await conn.fetchval(company_sql, company_id, user_id)
@@ -73,7 +73,7 @@ FROM (
 
 
 async def category(request):
-    conn: Connection = request['conn']
+    conn: BuildPgConnection = request['conn']
     company_id = request['company_id']
     category_slug = request.match_info['category']
     json_str = await conn.fetchval(category_sql, company_id, category_slug)
@@ -112,7 +112,7 @@ FROM (
 
 
 async def event(request):
-    conn: Connection = request['conn']
+    conn: BuildPgConnection = request['conn']
     company_id = request['company_id']
     category_slug = request.match_info['category']
     event_slug = request.match_info['event']

@@ -17,9 +17,22 @@ class DropForm extends React.Component {
     var formData = new FormData()
     formData.append('image', file)
     var xhr = new XMLHttpRequest()
-    xhr.open('POST', '/api/testing/', true)
-    xhr.onload = event => this.setState({[key]: {status: 'complete', file: file}})
-    xhr.onerror = () => console.error('file reading has failed')
+    const url = this.props.action.replace(/^(\/)?/, '/api/')
+    xhr.open('POST', url, true)
+    const failed = event => {
+      console.warn('uploading file failed', xhr, event)
+      this.setState({[key]: {status: 'upload failed', file: file}})
+    }
+    xhr.onload = event => {
+      if (xhr.status === 200) {
+        this.setState({[key]: {status: 'complete', file: file}})
+        this.props.update && this.props.update()
+      } else {
+        failed(event)
+      }
+    }
+    xhr.onerror = failed
+    xhr.onabort = failed
     xhr.send(formData)
   }
 
@@ -28,7 +41,9 @@ class DropForm extends React.Component {
     const state_keys = Object.keys(this.state)
     for (let f of accepted_files) {
       const k = file_key(f)
-      if (!state_keys.includes(k)) {
+      if (state_keys.includes(k)) {
+        refused_files.push(f)
+      } else {
         extra_state[k] = {status: 'pending', file: f}
         this.upload_file(k, f)
       }

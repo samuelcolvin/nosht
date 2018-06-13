@@ -11,13 +11,17 @@ logger = logging.getLogger('nosht.web.mware')
 
 
 async def log_extra(request, response=None):
+    try:
+        response_text = await request.text()
+    except UnicodeDecodeError:
+        response_text = None
     return {'data': dict(
         request_url=str(request.rel_url),
         request_ip=get_ip(request),
         request_method=request.method,
         request_host=request.host,
         request_headers=dict(request.headers),
-        request_text=await request.text(),
+        request_text=response_text,
         response_status=getattr(response, 'status', None),
         response_headers=dict(getattr(response, 'headers', {})),
         response_text=getattr(response, 'text', None)

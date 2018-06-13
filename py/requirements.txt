@@ -1,3 +1,4 @@
+aiobotocore==0.9.2
 aiodns==1.1.1
 aiohttp==3.2.1
 aiohttp-session==2.5.1

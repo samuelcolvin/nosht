@@ -35,10 +35,10 @@ async def check_session(request, roles):
     last_active = session['last_active']
     now = int(time())
     age = now - last_active
-    if age > request.app['settings'].cookie_inactive_time:
+    if age > request.app['settings'].cookie_max_age:
         await invalidate_session(request, 'expired')
         raise JsonErrors.HTTPUnauthorized(message="Session expired, you'll need to login again")
-    else:
+    elif age > request.app['settings'].cookie_update_age:
         session['last_active'] = now
 
 

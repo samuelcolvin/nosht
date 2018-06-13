@@ -289,7 +289,7 @@ async def create_demo_data(conn, settings, **kwargs):
     """
     image = 'https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G'
     company_id = await conn.fetchval("""
-    INSERT INTO companies (name, domain, image) VALUES ('Testing', 'localhost:3000', $1) RETURNING id
+    INSERT INTO companies (name, slug, domain, image) VALUES ('Testing', 'testing', 'localhost:3000', $1) RETURNING id
     """, image)
 
     user_lookup = {}
