@@ -2,7 +2,7 @@
 # python build stage
 FROM python:3.6-alpine3.7 as python-build
 
-RUN apk add -U gcc g++ musl-dev libuv libffi-dev make openssl-dev git
+RUN apk add -U gcc g++ musl-dev zlib-dev libuv libffi-dev make openssl-dev git jpeg-dev openjpeg libjpeg-turbo tiff-dev
 
 ADD ./py/requirements.txt /home/root/requirements.txt
 RUN pip install -r /home/root/requirements.txt
@@ -21,6 +21,7 @@ RUN find /usr/local/lib/python3.6/site-packages -name '__pycache__' -delete
 FROM python:3.6-alpine3.7
 COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
 COPY --from=python-build /lib/* /lib/
+COPY --from=python-build /usr/lib/* /usr/lib/
 
 ENV PYTHONUNBUFFERED 1
 ENV APP_ON_DOCKER 1
