@@ -33,7 +33,10 @@ async def static_handler(request):
         raise HTTPNotFound() from exc
 
     if request_path == 'login/iframe.html':
-        content = filepath.read_text().replace('localhost:3000', request.headers['Host'])
+        # request.url.scheme doesn't work as https is terminated, could use https forward header or referer
+        scheme = 'https' if request.app['settings'].on_heroku else 'http'
+        new_root = f'{scheme}://{request.headers["Host"]}'
+        content = filepath.read_text().replace('http://localhost:3000', new_root)
         return Response(text=content, content_type='text/html')
     elif filepath.is_file():
         return FileResponse(filepath)

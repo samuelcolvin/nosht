@@ -74,6 +74,7 @@ def create_app(*, settings: Settings=None):
     ])
 
     wrapper_app = web.Application(middlewares=(error_middleware,))
+    wrapper_app['settings'] = settings
     this_dir = Path(__file__).parent
     static_dir = (this_dir / '../../js/build').resolve()
     assert static_dir.exists()
