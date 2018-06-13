@@ -1,0 +1,6 @@
+aiohttp-devtools
+devtools
+docker-compose
+pgcli
+ipython
+httpie

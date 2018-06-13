@@ -19,7 +19,7 @@ from .views.auth import authenticate_token, login, logout
 from .views.bread import CategoryBread, EventBread, UserBread
 from .views.public import category, event, index
 from .views.static import static_handler
-from .views.upload import category_image
+from .views.admin import category_image
 
 logger = logging.getLogger('nosht.web')
 

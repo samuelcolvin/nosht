@@ -33,6 +33,12 @@ class DropForm extends React.Component {
     }
     xhr.onerror = failed
     xhr.onabort = failed
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const percentage = e.loaded / e.total * 100
+        console.log(`uploaded: ${percentage}`)
+      }
+    }
     xhr.send(formData)
   }
 
