@@ -60,3 +60,8 @@ heroku-release:
 .PHONY: heroku-pgcli
 heroku-pgcli:
 	pgcli `heroku config:get DATABASE_URL -a nosht`
+
+.PHONY: heroku-set-auth-key
+heroku-set-auth-key:
+	heroku config:set -a nosht \
+	APP_AUTH_KEY=`python -c "from cryptography import fernet;print(fernet.Fernet.generate_key().decode())"`
