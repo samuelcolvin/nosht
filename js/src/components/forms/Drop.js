@@ -30,7 +30,7 @@ class DropForm extends React.Component {
     xhr.onload = event => {
       if (xhr.status === 200) {
         this.setState({[key]: {progress: 100, icon: 'check', file}})
-        this.props.update && this.props.update()
+        this.props.update && setTimeout(() => this.props.update(), 1000)
       } else if (xhr.status === 413) {
         failed(event, 'Image too large')
       } else {
@@ -72,6 +72,7 @@ class DropForm extends React.Component {
     for (let xhr of this.uploads) {
       xhr.abort()
     }
+    this.props.update && this.props.update()
   }
 
   render () {

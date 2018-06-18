@@ -1,7 +1,9 @@
 import logging
+from pathlib import Path
 
 from arq import Actor, BaseWorker, concurrent
 
+from .images import resize_upload
 from .settings import Settings
 
 logger = logging.getLogger('nosht.worker')
@@ -14,8 +16,8 @@ class MainActor(Actor):
         super().__init__(**kwargs)
 
     @concurrent
-    async def testing(self):
-        logger.info('running testing job!')
+    async def resize_upload_image(self, image_path, upload_path):
+        await resize_upload(Path(image_path), Path(upload_path), self.settings)
 
 
 class Worker(BaseWorker):

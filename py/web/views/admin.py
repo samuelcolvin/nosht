@@ -3,7 +3,7 @@ from pathlib import Path
 from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
 from buildpg.asyncpg import BuildPgConnection
 
-from shared.images import check_size_save, list_images, resize_upload
+from shared.images import check_size_save, list_images
 from web.utils import JsonErrors, json_response
 
 from .auth import is_admin
@@ -38,8 +38,7 @@ async def category_add_image(request):
 
     upload_path = await _get_cat_img_path(request)
 
-    # TODO move to worker
-    await resize_upload(Path(file_path), upload_path, request.app['settings'])
+    await request.app['worker'].resize_upload_image(file_path, str(upload_path))
     return json_response(status='success')
 
 
