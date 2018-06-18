@@ -27,7 +27,6 @@ export class RenderItem extends React.Component {
     this.render_value = this.render_value.bind(this)
     this.update = this.update.bind(this)
     this.got_data = this.got_data.bind(this)
-    this.render_loaded = this.render_loaded.bind(this)
     this.get_uri = this.get_uri.bind(this)
     this.formats = {}
   }
@@ -80,18 +79,6 @@ export class RenderItem extends React.Component {
       return v
     }
   }
-
-  render_loaded () {
-    return <div>todo</div>
-  }
-
-  render () {
-    if (this.state.item || this.state.items) {
-      return this.render_loaded()
-    } else {
-      return <Loading/>
-    }
-  }
 }
 
 export class RenderList extends RenderItem {
@@ -104,7 +91,10 @@ export class RenderList extends RenderItem {
     }
   }
 
-  render_loaded () {
+  render () {
+    if (!this.state.items) {
+      return <Loading/>
+    }
     const keys = Object.keys(this.state.items[0])
     keys.splice(keys.indexOf('id'), 1)
     return [
@@ -162,7 +152,10 @@ export class RenderDetails extends RenderItem {
     })
   }
 
-  render_loaded () {
+  render () {
+    if (!this.state.item) {
+      return <Loading/>
+    }
     const keys = Object.keys(this.state.item)
     for (let key of this.skip_keys) {
       keys.splice(keys.indexOf(key), 1)

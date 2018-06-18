@@ -32,7 +32,7 @@ export class CategoriesList extends RenderList {
 }
 
 const ImageList = ({images}) => (
-  images.length ? (
+  (images && images.length) ? (
     <div>
       <h4>Suggested Images</h4>
       <table className="table">
@@ -54,7 +54,7 @@ export class CategoriesDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = `/settings/categories/${this.id}/`
-    this.skip_keys = ['id', 'suggested_images']
+    this.skip_keys = ['id', 'images']
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
       {name: 'Add Images', link: this.uri + 'add-image/'},
@@ -66,9 +66,21 @@ export class CategoriesDetails extends RenderDetails {
     }
   }
 
+  async got_data (data) {
+    let r
+    try {
+      r = await this.requests.get(`/categories/${this.id}/images/`)
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+    data.images = r.images
+    await super.got_data(data)
+  }
+
   extra () {
     return [
-      <ImageList key="1" images={this.state.item.suggested_images}/>,
+      <ImageList key="1" images={this.state.item.images}/>,
       <ModelForm {...this.props}
                  key="2"
                  parent_uri={this.uri}

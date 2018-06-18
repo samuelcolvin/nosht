@@ -1,9 +1,12 @@
 import React from 'react'
-import {Button, ModalBody, ModalFooter} from 'reactstrap'
+import {Button, ModalBody, ModalFooter, Progress} from 'reactstrap'
 import Dropzone from 'react-dropzone'
+import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {error_response} from '../../utils'
 import AsModal from './Modal'
 
 const file_key = f => `${f.name}-${f.size}`
+const failed_icon = 'minus-circle'
 
 
 class DropForm extends React.Component {
@@ -11,6 +14,7 @@ class DropForm extends React.Component {
     super()
     this.state = {}
     this.upload_file = this.upload_file.bind(this)
+    this.uploads = []
   }
 
   upload_file (key, file) {
@@ -19,43 +23,55 @@ class DropForm extends React.Component {
     var xhr = new XMLHttpRequest()
     const url = this.props.action.replace(/^(\/)?/, '/api/')
     xhr.open('POST', url, true)
-    const failed = event => {
-      console.warn('uploading file failed', xhr, event)
-      this.setState({[key]: {status: 'upload failed', file: file}})
+    const failed = (event, reason) => {
+      // console.warn('uploading file failed', xhr, event)
+      this.setState({[key]: {icon: failed_icon, message: reason || 'A problem occurred', file}})
     }
     xhr.onload = event => {
       if (xhr.status === 200) {
-        this.setState({[key]: {status: 'complete', file: file}})
+        this.setState({[key]: {progress: 100, icon: 'check', file}})
         this.props.update && this.props.update()
+      } else if (xhr.status === 413) {
+        failed(event, 'Image too large')
       } else {
-        failed(event)
+        const response_data = error_response(xhr)
+        failed(event, response_data.message)
       }
     }
     xhr.onerror = failed
-    xhr.onabort = failed
     xhr.upload.onprogress = e => {
       if (e.lengthComputable) {
-        const percentage = e.loaded / e.total * 100
-        console.log(`uploaded: ${percentage}`)
+        this.setState({[key]: {
+          progress: e.loaded / e.total * 100,
+          file,
+        }})
       }
     }
     xhr.send(formData)
+    this.uploads.push(xhr)
   }
 
   onDrop (accepted_files, refused_files) {
-    const extra_state = {}
-    const state_keys = Object.keys(this.state)
-    for (let f of accepted_files) {
-      const k = file_key(f)
-      if (state_keys.includes(k)) {
-        refused_files.push(f)
+    const extra_state = {already_uploaded: false}
+    for (let file of accepted_files) {
+      const k = file_key(file)
+      if (Object.keys(this.state).includes(k)) {
+        extra_state.already_uploaded = true
       } else {
-        extra_state[k] = {status: 'pending', file: f}
-        this.upload_file(k, f)
+        extra_state[k] = {file}
+        this.upload_file(k, file)
       }
     }
-    extra_state.files_refused = Boolean(refused_files.length)
+    for (let file of refused_files) {
+      extra_state[file_key(file)] = {file, icon: failed_icon, message: 'Not a valid image'}
+    }
     this.setState(extra_state)
+  }
+
+  componentWillUnmount () {
+    for (let xhr of this.uploads) {
+      xhr.abort()
+    }
   }
 
   render () {
@@ -70,16 +86,22 @@ class DropForm extends React.Component {
           <div className="previews">
             {Object.values(this.state).filter(item => item.file).map((item, i) => (
               <div key={i} className="file-preview">
-                <img src={item.file.preview} alt={item.file.name} className="img-thumbnail"/>
-                {item.file.name} {item.status}
+                <div>
+                  <img src={item.file.preview} alt={item.file.name} className="img-thumbnail"/>
+                </div>
+                <div>
+                  {item.progress && <Progress value={item.progress} className="mt-1" />}
+                </div>
+                {item.icon && <FontAwesomeIcon icon={item.icon} className="mt-1" />}
+                {item.message && <div className="mt-1">{item.message}</div>}
               </div>
             ))}
           </div>
         </Dropzone>
-        {this.state.files_refused && (
-          <div className="form-error mt-1">
-            Some files were refused for upload as they were not valid images.
-          </div>
+        {this.state.already_uploaded && (
+          <small className="form-error mt-1">
+            File already uploaded.
+          </small>
         )}
       </ModalBody>,
       <ModalFooter key="2">

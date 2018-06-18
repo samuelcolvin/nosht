@@ -43,7 +43,6 @@ class CategoryBread(NoshtBread):
         'event_content',
         'host_advice',
         'image',
-        'suggested_images',
     )
 
     def where(self):

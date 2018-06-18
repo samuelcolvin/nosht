@@ -1,10 +1,12 @@
 import asyncio
 import logging
 import random
+import re
 import string
 from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import List
 
 import aiobotocore
 from PIL import Image
@@ -21,23 +23,39 @@ def check_size_save(image_data: bytes) -> str:
     img = Image.open(BytesIO(image_data))
     width, height = SMALL_SIZE
     if img.width < width or img.height < height:
-        raise ValueError(f'image too small: {img.size} < {SMALL_SIZE}')
+        raise ValueError(f'too small: {img.width}x{img.height}<{SMALL_SIZE[0]}x{SMALL_SIZE[1]}')
     del img
     with NamedTemporaryFile(delete=False) as f:
         f.write(image_data)
     return f.name
 
 
+def _s3_auth(settings: Settings):
+    return dict(
+        aws_access_key_id=settings.aws_access_key,
+        aws_secret_access_key=settings.aws_secret_key,
+    )
+
+
+async def list_images(path: Path, settings: Settings) -> List[str]:
+    session = aiobotocore.get_session()
+    files = set()
+    async with session.create_client('s3', region_name='eu-west-1', **_s3_auth(settings)) as client:
+        paginator = client.get_paginator('list_objects_v2')
+        async for result in paginator.paginate(Bucket=settings.s3_bucket, Prefix=str(path)):
+            for c in result.get('Contents', []):
+                p = re.sub(r'/(?:main|thumb)\.jpg$', '', c['Key'])
+                url = f'{settings.s3_domain}/{p}'
+                files.add(url)
+    return list(files)
+
+
 async def _upload(upload_path: Path, main_img: bytes, thumb_img: bytes, settings: Settings) -> str:
     r = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
     upload_path = upload_path / r
 
-    auth = dict(
-        aws_access_key_id=settings.aws_access_key,
-        aws_secret_access_key=settings.aws_secret_key,
-    )
     session = aiobotocore.get_session()
-    async with session.create_client('s3', region_name='eu-west-1', **auth) as client:
+    async with session.create_client('s3', region_name='eu-west-1', **_s3_auth(settings)) as client:
         logger.info('uploading to %s', upload_path)
         await asyncio.gather(
             client.put_object(

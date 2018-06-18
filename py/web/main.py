@@ -15,11 +15,11 @@ from shared.utils import mk_password
 from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
+from .views.admin import category_add_image, category_images
 from .views.auth import authenticate_token, login, logout
 from .views.bread import CategoryBread, EventBread, UserBread
 from .views.public import category, event, index
 from .views.static import static_handler
-from .views.admin import category_image
 
 logger = logging.getLogger('nosht.web')
 
@@ -68,12 +68,16 @@ def create_app(*, settings: Settings=None):
         web.post('/logout/', logout, name='logout'),
 
         *CategoryBread.routes('/categories/'),
-        web.post('/categories/{cat_id:\d+}/add-image/', category_image, name='categories-add-image'),
+        web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
+        web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
         *EventBread.routes('/events/'),
         *UserBread.routes('/users/'),
     ])
 
-    wrapper_app = web.Application(middlewares=(error_middleware,))
+    wrapper_app = web.Application(
+        client_max_size=settings.max_request_size,
+        middlewares=(error_middleware,),
+    )
     wrapper_app['settings'] = settings
     this_dir = Path(__file__).parent
     static_dir = (this_dir / '../../js/build').resolve()

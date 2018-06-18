@@ -114,7 +114,7 @@ export default class Navbar extends React.Component {
           message={this.props.message}
           show_extra={this.state.show_extra}/>,
         <div key="3" id="background-image" style={{
-          backgroundImage: `url("${background}/main.jpg")`,
+          backgroundImage: background ? `url("${background}/main.jpg")` : null,
           top: BACK_TOP
         }}/>,
       ]

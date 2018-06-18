@@ -134,6 +134,7 @@ textarea {
   height: 23px;
 }
 
+$item-size: 220px;
 .dropzone {
   width: 100%;
   min-height: 200px;
@@ -149,8 +150,12 @@ textarea {
   }
   .file-preview {
     padding: 5px;
-    width: 200px;
-    max-height: 200px;
-    font-size: 14px;
+    width: $item-size;
+    font-size: 13px;
+    img {
+      width: $item-size;
+      max-height: $item-size;
+      object-fit: cover;
+    }
   }
 }

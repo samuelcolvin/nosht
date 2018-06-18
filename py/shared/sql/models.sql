@@ -66,7 +66,6 @@ CREATE TABLE categories (
   host_advice TEXT,
   event_type EVENT_TYPES NOT NULL DEFAULT 'ticket_sales',
   suggested_price NUMERIC(7, 2),
-  suggested_images VARCHAR(255)[] NOT NULL DEFAULT ARRAY[]::VARCHAR(255)[],
   image VARCHAR(255),
   CHECK (suggested_price > 1)
 );

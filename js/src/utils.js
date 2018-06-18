@@ -35,14 +35,25 @@ export const load_script_callback = url => {
   })
 }
 
+export const error_response = xhr => {
+  let response_data = {}
+  try {
+    response_data = JSON.parse(xhr.responseText)
+  } catch (e) {
+    // ignore and use normal error
+  }
+  response_data.message = response_data.message || `Unexpected response ${xhr.status}`
+  return response_data
+}
+
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 export const make_url = path => {
   if (path.match(/^https?:\//)) {
     return path
   } else {
-  return window.location.origin + path.replace(/^(\/)?/, '/api/')
-}
+    return window.location.origin + path.replace(/^(\/)?/, '/api/')
+  }
 }
 
 export const request = (method, path, config) => {
@@ -92,19 +103,8 @@ export const request = (method, path, config) => {
           on_error('Error decoding json', error)
         }
       } else {
-        let response_data
-        try {
-          response_data = JSON.parse(xhr.responseText)
-          if (response_data.message) {
-            on_error(xhr.status === 401 ?
-              response_data.message : `Unexpected response ${xhr.status}: ${response_data.message}`
-            )
-            return
-          }
-        } catch (e) {
-          // ignore and use normal error
-        }
-        on_error(`Unexpected response ${xhr.status}`, response_data)
+        const response_data = error_response(xhr)
+        on_error(response_data.message, response_data)
       }
     }
     xhr.onerror = error => {

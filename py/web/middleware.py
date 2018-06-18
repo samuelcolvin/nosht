@@ -13,7 +13,8 @@ logger = logging.getLogger('nosht.web.mware')
 async def log_extra(request, response=None):
     try:
         response_text = await request.text()
-    except UnicodeDecodeError:
+    except Exception:
+        # UnicodeDecodeError or HTTPRequestEntityTooLarge by maybe other things too
         response_text = None
     return {'data': dict(
         request_url=str(request.rel_url),

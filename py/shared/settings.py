@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     aws_secret_key: str = None
     s3_bucket: str = None
     s3_domain: str = None
+    max_request_size = 10*1024**2  # 10MB
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):
@@ -59,5 +60,5 @@ class Settings(BaseSettings):
         fields = {
             'port': 'PORT',
             'pg_dsn': 'DATABASE_URL',
-            'redis_settings': 'REDIS_URL',
+            'redis_settings': 'REDISCLOUD_URL',
         }
