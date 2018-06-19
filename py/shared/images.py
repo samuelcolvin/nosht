@@ -3,10 +3,10 @@ import logging
 import random
 import re
 import string
+from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from typing import List
+from typing import Set
 
 import aiobotocore
 from PIL import Image
@@ -18,54 +18,62 @@ LARGE_SIZE = 3840, 1000
 SMALL_SIZE = 1920, 500
 
 
-def check_size_save(image_data: bytes) -> str:
-    # TODO catch invalid images
-    img = Image.open(BytesIO(image_data))
+@contextmanager
+def check_size_save(image_data: bytes):
+    try:
+        img = Image.open(BytesIO(image_data))
+    except OSError:
+        raise ValueError('invalid image')
     width, height = SMALL_SIZE
     if img.width < width or img.height < height:
         raise ValueError(f'too small: {img.width}x{img.height}<{SMALL_SIZE[0]}x{SMALL_SIZE[1]}')
-    del img
-    with NamedTemporaryFile(delete=False) as f:
-        f.write(image_data)
-    return f.name
 
 
-def _s3_auth(settings: Settings):
-    return dict(
+def create_s3_session(settings: Settings):
+    auth = dict(
         aws_access_key_id=settings.aws_access_key,
         aws_secret_access_key=settings.aws_secret_key,
     )
-
-
-async def list_images(path: Path, settings: Settings) -> List[str]:
     session = aiobotocore.get_session()
+    return session.create_client('s3', region_name='eu-west-1', **auth)
+
+
+async def list_images(path: Path, settings: Settings) -> Set[str]:
     files = set()
-    async with session.create_client('s3', region_name='eu-west-1', **_s3_auth(settings)) as client:
-        paginator = client.get_paginator('list_objects_v2')
+    async with create_s3_session(settings) as s3:
+        paginator = s3.get_paginator('list_objects_v2')
         async for result in paginator.paginate(Bucket=settings.s3_bucket, Prefix=str(path)):
             for c in result.get('Contents', []):
                 p = re.sub(r'/(?:main|thumb)\.jpg$', '', c['Key'])
                 url = f'{settings.s3_domain}/{p}'
                 files.add(url)
-    return list(files)
+    return files
+
+
+async def delete_image(image: str, settings: Settings):
+    path = Path(re.sub('^https?://.*?/', '', image))
+    async with create_s3_session(settings) as s3:
+        await asyncio.gather(
+            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'main.jpg')),
+            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'thumb.jpg')),
+        )
 
 
 async def _upload(upload_path: Path, main_img: bytes, thumb_img: bytes, settings: Settings) -> str:
     r = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
     upload_path = upload_path / r
 
-    session = aiobotocore.get_session()
-    async with session.create_client('s3', region_name='eu-west-1', **_s3_auth(settings)) as client:
+    async with create_s3_session(settings) as s3:
         logger.info('uploading to %s', upload_path)
         await asyncio.gather(
-            client.put_object(
+            s3.put_object(
                 Bucket=settings.s3_bucket,
                 Key=str(upload_path / 'main.jpg'),
                 Body=main_img,
                 ContentType='image/jpeg',
                 ACL='public-read',
             ),
-            client.put_object(
+            s3.put_object(
                 Bucket=settings.s3_bucket,
                 Key=str(upload_path / 'thumb.jpg'),
                 Body=thumb_img,
@@ -76,8 +84,8 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: bytes, settings
     return f'{settings.s3_domain}/{upload_path}'
 
 
-async def resize_upload(image_path: Path, upload_path: Path, settings: Settings) -> str:
-    img = Image.open(image_path)
+async def resize_upload(image_data: bytes, upload_path: Path, settings: Settings) -> str:
+    img = Image.open(BytesIO(image_data))
 
     for width, height in (LARGE_SIZE, SMALL_SIZE):
         if img.width >= width and img.height >= height:

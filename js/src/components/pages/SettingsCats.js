@@ -1,4 +1,5 @@
 import React from 'react'
+import {Row, Col, ButtonGroup, Button} from 'reactstrap'
 import {RenderList, RenderDetails, ImageThumbnail} from '../utils/Settings'
 import {ModelForm} from '../forms/Form'
 import {ModelDropForm} from '../forms/Drop'
@@ -31,21 +32,30 @@ export class CategoriesList extends RenderList {
   }
 }
 
-const ImageList = ({images}) => (
-  (images && images.length) ? (
+const ImageList = ({suggested_images, default_image, image_action}) => (
+  (suggested_images && suggested_images.length) ? (
     <div>
       <h4>Suggested Images</h4>
-      <table className="table">
-        <tbody>
-          {images.map((image, i) => (
-            <tr key={i}>
-              <td>
-                <ImageThumbnail image={image} alt={image}/>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {suggested_images.map((image, i) => (
+        <Row key={i} className="mt-2 pt-2 border-top">
+          <Col sm={8}>
+            <ImageThumbnail image={image} alt={image}/>
+          </Col>
+          <Col className="text-right">
+            <ButtonGroup>
+                <Button onClick={() => image_action('set-default', image)} disabled={default_image === image}>
+                  Use for Category
+                </Button>
+                <Button
+                  color="danger"
+                  onClick={() => image_action('delete', image)}
+                  disabled={default_image === image}>
+                  Delete
+                </Button>
+            </ButtonGroup>
+          </Col>
+        </Row>
+      ))}
     </div>
   ) : <small>No Suggested Images</small>
 )
@@ -54,7 +64,7 @@ export class CategoriesDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = `/settings/categories/${this.id}/`
-    this.skip_keys = ['id', 'images']
+    this.skip_keys = ['id', 'suggested_images']
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
       {name: 'Add Images', link: this.uri + 'add-image/'},
@@ -67,6 +77,9 @@ export class CategoriesDetails extends RenderDetails {
   }
 
   async got_data (data) {
+    // this avoids a fouk while suggested_images are being updated
+    data.suggested_images = (this.state.item && this.state.item.suggested_images) || []
+    await super.got_data(data)
     let r
     try {
       r = await this.requests.get(`/categories/${this.id}/images/`)
@@ -74,13 +87,28 @@ export class CategoriesDetails extends RenderDetails {
       this.props.setRootState({error})
       return
     }
-    data.images = r.images
-    await super.got_data(data)
+    const item = Object.assign({}, this.state.item)
+    item.suggested_images = r.images
+    this.setState({item})
+  }
+
+  async image_action (action, image) {
+    try {
+      await this.requests.post(`/categories/${this.id}/${action}/`, {image})
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+    this.update()
   }
 
   extra () {
     return [
-      <ImageList key="1" images={this.state.item.images}/>,
+      <ImageList
+        key="1"
+        image_action={this.image_action.bind(this)}
+        default_image={this.state.item.image}
+        suggested_images={this.state.item.suggested_images}/>,
       <ModelForm {...this.props}
                  key="2"
                  parent_uri={this.uri}
