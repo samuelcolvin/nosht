@@ -38,7 +38,11 @@ export default function AsModal (WrappedComponent) {
       return (
         <Modal isOpen={this.state.shown} toggle={() => this.toggle()} size='lg'>
           <ModalHeader toggle={() => this.toggle()}>{title}</ModalHeader>
-          <WrappedComponent toggle_model={this.toggle} {...this.props}/>
+          <WrappedComponent
+            {...this.props}
+            finished={this.toggle}
+            form_body_class="modal-body"
+            form_footer_class="modal-footer"/>
         </Modal>
       )
     }

@@ -159,3 +159,34 @@ $item-size: 220px;
     }
   }
 }
+
+.react-datepicker-wrapper input{
+  width: 250px;
+}
+ul.react-datepicker__time-list {
+  padding: 0;
+  overflow-x: hidden;
+}
+.react-datepicker__header {
+  height: 55px;
+  background-color: #f7f7f7 !important;
+}
+.react-datepicker {
+  border: 1px solid rgba(0,0,0,.2) !important;
+  div {
+    border: none !important;
+  }
+}
+.react-datepicker__time-container {
+  width: 110px !important;
+}
+.react-datepicker__time-box {
+  width: 100px !important;
+}
+.react-datepicker__navigation--next--with-time:not(.react-datepicker__navigation--next--with-today-button) {
+  right: 110px !important;
+}
+li.react-datepicker__time-list-item {
+  padding: 5.5px 0 !important;  // 5.5px is required to get the scroll position right when opening the popover
+  width: 110px !important;
+}

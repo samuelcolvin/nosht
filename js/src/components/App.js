@@ -10,6 +10,7 @@ import Category from './pages/Category'
 import Event from './pages/Event'
 import Login from './pages/Login'
 import Logout from './pages/Logout'
+import CreateEvent from './pages/CreateEvent'
 import Settings from './pages/Settings'
 
 
@@ -39,6 +40,13 @@ const Routes = ({app}) => (
                   set_message={app.set_message}
                   requests={app.requests}
                   {...props}/>
+      )} />
+
+      <Route path="/create/" render={props => (
+        <CreateEvent setRootState={s => app.setState(s)}
+                     set_message={app.set_message}
+                     requests={app.requests}
+                     {...props}/>
       )} />
 
       <Route exact path="/:category/:event/" render={props => (

@@ -25,6 +25,7 @@ export class CategoriesList extends RenderList {
   extra () {
     return <ModelForm {...this.props}
                       parent_uri={this.uri}
+                      success_msg={`${this.props.page.singular} added`}
                       mode="add"
                       action='/categories/add/'
                       go_to_new={true}
@@ -113,6 +114,7 @@ export class CategoriesDetails extends RenderDetails {
                  key="2"
                  parent_uri={this.uri}
                  mode="edit"
+                 success_msg={`${this.props.page.singular} updated`}
                  initial={this.state.item}
                  update={this.update}
                  action={`/categories/${this.id}/`}

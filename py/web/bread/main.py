@@ -262,7 +262,7 @@ class Bread(ReadBread):
             table=Var(self.table),
             values=Values(**data),
             pk_field=Var(self.pk_field),
-            print_=self.log_print or True,
+            print_=self.log_print,
         )
         return json_response(status='ok', pk=pk)
 

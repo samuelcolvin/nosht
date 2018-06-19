@@ -16,6 +16,7 @@ from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
 from .views.admin import category_add_image, category_default_image, category_delete_image, category_images
+from .views.events import event_categories
 from .views.auth import authenticate_token, login, logout
 from .views.bread import CategoryBread, EventBread, UserBread
 from .views.public import category, event, index
@@ -60,7 +61,14 @@ def create_app(*, settings: Settings=None):
 
     app.add_routes([
         web.get('/', index, name='index'),
+
+        web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
+        web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
+        web.post('/categories/{cat_id:\d+}/set-default/', category_default_image, name='categories-set-default'),
+        web.post('/categories/{cat_id:\d+}/delete/', category_delete_image, name='categories-delete'),
         web.get('/cat/{category}/', category, name='category'),
+
+        web.get('/event/categories/', event_categories, name='event-categories'),
         web.get('/event/{category}/{event}/', event, name='event'),
 
         web.post('/login/', login, name='login'),
@@ -68,10 +76,6 @@ def create_app(*, settings: Settings=None):
         web.post('/logout/', logout, name='logout'),
 
         *CategoryBread.routes('/categories/'),
-        web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
-        web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
-        web.post('/categories/{cat_id:\d+}/set-default/', category_default_image, name='categories-set-default'),
-        web.post('/categories/{cat_id:\d+}/delete/', category_delete_image, name='categories-delete'),
         *EventBread.routes('/events/'),
         *UserBread.routes('/users/'),
     ])

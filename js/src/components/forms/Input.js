@@ -1,7 +1,10 @@
 import React from 'react'
 import {FormGroup, Label, Input as BsInput, CustomInput, FormText, FormFeedback} from 'reactstrap'
+import DatePicker from 'react-datepicker'
+import moment from 'moment'
 import {as_title} from '../../utils'
 
+window.moment = moment
 const HelpText = ({field}) => (
   field.help_text ? <FormText>{field.help_text}</FormText> : <span/>
 )
@@ -54,7 +57,7 @@ const Select = ({field, disabled, value, onChange}) => (
       {field.choices && field.choices.map((choice, i) => (
         <option key={i} value={choice.value}>
           {/*TODO set selected*/}
-          {choice.display_name}
+          {choice.display_name || choice.value}
         </option>
       ))}
     </CustomInput>
@@ -66,40 +69,41 @@ const IntegerInput = props => (
   <GeneralInput {...props} custom_type="number" step="1"/>
 )
 
-// TODO change
-const DatetimeInput = ({field, disabled, value, onChange}) => {
-  // could use https://stackoverflow.com/a/31162426/949890
-  const re_match = value.match(/(.*?)T(.*)/)
-  const render_values = {
-    date: re_match ? re_match[1] : '',
-    time: re_match ? re_match[2] : '',
+class DatetimeInput extends React.Component {
+  constructor (props) {
+    super(props)
+    this.state = {all_day: false}
   }
 
-  const onChange_ = (event) => {
-    render_values[event.target.getAttribute('type')] = event.target.value
-    onChange({target: {value: render_values.date + 'T' + render_values.time}})
+  render () {
+    const field = this.props.field
+    return (
+      <FormGroup>
+        <Label for={field.name}>{field.title}</Label>
+        <div className="d-flex justify-content-start">
+          <DatePicker
+            selected={this.props.value && moment(this.props.value.dt)}
+            disabled={this.props.disabled}
+            onChange={m => this.props.onChange(m && {dt: m.format(), ad: this.state.all_day})}
+            showTimeSelect={!this.state.all_day}
+            timeFormat="LT"
+            required={field.required}
+            dateFormat={this.state.all_day ? 'LL' : 'LLL'}
+            placeholderText={this.state.all_day ? 'Click to select a date' : 'Click to select a date and time'}
+            className="form-control"/>
+
+          <label className="m-2">
+            <input type="checkbox"
+                   className="mx-2"
+                   disabled={this.props.disabled}
+                   checked={this.state.all_day}
+                   onChange={e => this.setState({all_day: e.target.checked})}/>
+            All Day
+          </label>
+        </div>
+      </FormGroup>
+    )
   }
-  const required = field.required || render_values.date !== '' || render_values.time !== ''
-  return (
-    <label>
-      {field.title}
-      <div>
-        <input type="date"
-               className="date"
-               name={field.name + '-date'}
-               required={required}
-               value={render_values.date}
-               onChange={onChange_}/>
-        <input type="time"
-               className="time"
-               step="300"
-               name={field.name + '-time'}
-               required={required}
-               value={render_values.time}
-               onChange={onChange_}/>
-      </div>
-    </label>
-  )
 }
 
 const INPUT_LOOKUP = {
@@ -109,22 +113,19 @@ const INPUT_LOOKUP = {
   'integer': IntegerInput,
 }
 
-export default class Input extends React.Component {
-  constructor (props) {
-    super(props)
-    this.on_change = this.on_change.bind(this)
-  }
-
-  on_change (event) {
-    const value = this.props.field.type === 'bool' ? event.target.checked : event.target.value
-    this.props.set_value(value)
-  }
-
-  render () {
-    const InputComp = INPUT_LOOKUP[this.props.field.type] || GeneralInput
-    this.props.field.title = this.props.field.title || as_title(this.props.field.name)
-    return (
-      <InputComp {...this.props} onChange={this.on_change}/>
+const Input = props => {
+  const on_change = event => {
+    const value = (
+      props.field.type === 'bool' ? event.target.checked :
+      props.field.type === 'datetime' ? event :
+      event.target.value
     )
+    props.set_value(value)
   }
+
+  const InputComp = INPUT_LOOKUP[props.field.type] || GeneralInput
+  props.field.title = props.field.title || as_title(props.field.name)
+  return <InputComp {...props} onChange={on_change}/>
 }
+
+export default Input

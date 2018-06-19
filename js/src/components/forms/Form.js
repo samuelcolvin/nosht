@@ -1,9 +1,9 @@
 import React from 'react'
-import {Button, Form as BootstrapForm, ModalBody, ModalFooter} from 'reactstrap'
+import {Button, ButtonGroup, Form as BootstrapForm} from 'reactstrap'
 import Input from './Input'
 import AsModal from './Modal'
 
-export default class Form extends React.Component {
+export class Form extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -32,24 +32,16 @@ export default class Form extends React.Component {
       return
     }
     if (r._response_status === 400) {
-      console.log('form error', r)
+      console.warn('form error', r)
       const errors = {}
       for (let e of (r.details || [])) {
         errors[e.loc[0]] = e.msg
       }
       this.setState({disabled: false, errors, form_error: Object.keys(errors).length ? null : 'Error occurred'})
     } else {
-      if (this.props.mode === 'edit') {
-        this.props.set_message(`${this.props.page.singular} updated`)
-        this.props.update && this.props.update()
-      } else {
-        this.props.set_message(`${this.props.page.singular} added`)
-        if (this.props.go_to_new) {
-          this.props.toggle_model(this.props.parent_uri + `${r.pk}/`)
-          return
-        }
-      }
-      this.props.toggle_model(this.props.parent_uri)
+      this.props.update && this.props.update()
+      this.props.set_message(this.props.success_msg)
+      this.props.finished(this.props.parent_uri + (this.props.go_to_new ? `${r.pk}/`: ''))
     }
   }
 
@@ -57,6 +49,7 @@ export default class Form extends React.Component {
     const form_data = Object.assign({}, this.state.form_data)
     form_data[name] = value
     this.setState({form_data})
+    this.props.onChange && this.props.onChange(form_data)
   }
 
   render () {
@@ -67,7 +60,7 @@ export default class Form extends React.Component {
     }
     return (
       <BootstrapForm onSubmit={this.submit}>
-        <ModalBody>
+        <div className={this.props.form_body_class}>
           <div className="form-error text-right">{this.state.form_error}</div>
           {(this.props.fields || []).map((field, i) => (
             <Input key={i}
@@ -77,15 +70,17 @@ export default class Form extends React.Component {
                     disabled={this.state.disabled}
                     set_value={v => this.set_form_data(field.name, v)}/>
           ))}
-        </ModalBody>
-        <ModalFooter>
-          <Button type="button" color="secondary" onClick={() => this.props.toggle_model()}>
-            {this.props.cancel || 'Cancel'}
-          </Button>
-          <Button type="submit" color="primary">
-            {this.props.save || 'Save'}
-          </Button>
-        </ModalFooter>
+        </div>
+        <div className={this.props.form_footer_class || 'text-right'}>
+          <ButtonGroup>
+            <Button type="button" color="secondary" onClick={() => this.props.finished && this.props.finished()}>
+              {this.props.cancel || 'Cancel'}
+            </Button>
+            <Button type="submit" color="primary">
+              {this.props.save || 'Save'}
+            </Button>
+          </ButtonGroup>
+        </div>
       </BootstrapForm>
     )
   }
