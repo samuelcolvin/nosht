@@ -1,8 +1,19 @@
 import React from 'react'
-import {FormGroup, Label, Input as BsInput, CustomInput, FormText, FormFeedback} from 'reactstrap'
+import {
+  FormGroup,
+  Label,
+  Input as BsInput,
+  CustomInput,
+  FormText,
+  FormFeedback,
+  InputGroup,
+  InputGroupAddon,
+  Button
+} from 'reactstrap'
 import DatePicker from 'react-datepicker'
 import moment from 'moment'
 import {as_title} from '../../utils'
+import Map from '../utils/Map'
 
 window.moment = moment
 const HelpText = ({field}) => (
@@ -106,18 +117,108 @@ class DatetimeInput extends React.Component {
   }
 }
 
+class Location extends React.Component {
+  constructor (props) {
+    super(props)
+    this.state = {address: '', error: null}
+    this.update = this.update.bind(this)
+    this.search = this.search.bind(this)
+  }
+
+  geocode (lookup) {
+    return new Promise((resolve, reject) => {
+      window.gmaps_geocoder.geocode(lookup, (results, status) => {
+        if (status === 'OK') {
+          resolve(results[0])
+        } else {
+          reject()
+        }
+      })
+    })
+  }
+
+  async search () {
+    let latlng
+    try {
+      const loc = await this.geocode({'address': this.state.address})
+      latlng = loc.geometry.location
+    } catch (e) {
+      this.setState({error: 'location not found'})
+      this.props.onChange(null)
+      return
+    }
+    this.update(latlng)
+  }
+
+  async on_ondrag (e) {
+    let address
+    if (!this.state.address) {
+      try {
+        const loc = await this.geocode({'location': e.latLng})
+        address = loc.formatted_address
+      } catch (e) {
+        this.setState({error: 'location not found'})
+        this.props.onChange(null)
+        return
+      }
+      this.setState({address: address})
+    }
+    this.update(e.latLng, address)
+  }
+
+  update (loc, address) {
+    this.props.onChange({lat: loc.lat(), lng: loc.lng(), name: address || this.state.address})
+    this.setState({error: null})
+  }
+
+  on_key_press (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      this.search()
+    }
+  }
+
+  render () {
+    const field = this.props.field
+    // NOTE: this is hardcoded as central london for now
+    const loc = this.props.value || {lat: 51.507382, lng: -0.127654, name: '', zoom: 12}
+    return (
+      <FormGroup>
+        <Label for={field.name}>{field.title}</Label>
+        <InputGroup>
+          <BsInput type="text"
+                   invalid={!!this.state.error}
+                   disabled={this.props.disabled}
+                   required={field.required}
+                   placeholder={field.placeholder}
+                   value={this.state.address}
+                   onKeyPress={this.on_key_press.bind(this)}
+                   onChange={e => this.setState({address: e.target.value})}/>
+          <InputGroupAddon addonType="append">
+            <Button onClick={this.search}>Search</Button>
+          </InputGroupAddon>
+        </InputGroup>
+        <Map location={loc} on_drag={this.on_ondrag.bind(this)}/>
+        {this.state.error && <FormFeedback style={{display: 'block'}}>{this.state.error}</FormFeedback>}
+        <HelpText field={field}/>
+      </FormGroup>
+    )
+  }
+}
+
 const INPUT_LOOKUP = {
   'bool': Checkbox,
   'select': Select,
   'datetime': DatetimeInput,
   'integer': IntegerInput,
+  'location': Location,
 }
 
 const Input = props => {
   const on_change = event => {
     const value = (
       props.field.type === 'bool' ? event.target.checked :
-      props.field.type === 'datetime' ? event :
+      props.field.type === 'datetime' || props.field.type === 'location' ? event :
       event.target.value
     )
     props.set_value(value)

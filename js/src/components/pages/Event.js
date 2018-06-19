@@ -1,53 +1,11 @@
 import React from 'react'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
-import {load_script_callback} from '../../utils'
 import {Loading, NotFound} from '../utils/Errors'
 import PromptUpdate from '../utils/PromptUpdate'
 import Markdown from '../utils/Markdown'
+import Map from '../utils/Map'
 import {When} from '../Events'
-
-const GOOGLE_MAPS_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY
-const GOOGLE_MAPS_JS = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=<callback-function>`
-
-class Map extends React.Component {
-  constructor (props) {
-    super(props)
-    this.update_map = this.update_map.bind(this)
-  }
-
-  async componentDidMount () {
-    this.update_map()
-  }
-
-  componentDidUpdate () {
-    this.update_map()
-  }
-
-  async update_map () {
-    const el = document.getElementById('event-map')
-    if (!el) {
-      return
-    }
-    await load_script_callback(GOOGLE_MAPS_JS)
-    if (el.childElementCount === 0) {
-      new window.google.maps.Marker({
-        position: this.props.location,
-        title: this.props.location.name,
-        map: new window.google.maps.Map(el, {
-          center: this.props.location,
-          zoom: 14,
-          fullscreenControl: false,
-        }),
-      })
-    }
-  }
-
-  render () {
-    return this.props.location.lat && this.props.location.lng && <div id="event-map" className="mt-2"/>
-  }
-}
-
 
 export default class Event extends React.Component {
   constructor (props) {

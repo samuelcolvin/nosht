@@ -27,11 +27,11 @@ export default class CreateEvent extends React.Component {
   fields () {
     const c = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
     return [
-      {name: 'name'},
+      {name: 'name', required: true},
       {name: 'private_event', type: 'bool'},
       {name: 'category', type: 'select', choices: c, required: true},
-      {name: 'date', title: 'Event Start', type: 'datetime'},
-      // {name: 'location', type: 'location'},
+      {name: 'date', title: 'Event Start', type: 'datetime', required: true},
+      {name: 'location', type: 'location', help_text: 'Drag the marker to set the exact event location.'},
       {name: 'ticket_limit', type: 'integer'},
       {name: 'description', type: 'textarea'},
     ]
