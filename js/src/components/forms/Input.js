@@ -1,7 +1,7 @@
 import React from 'react'
 import {
   FormGroup,
-  Label,
+  Label as BsLabel,
   Input as BsInput,
   CustomInput,
   FormText,
@@ -15,14 +15,20 @@ import moment from 'moment'
 import {as_title} from '../../utils'
 import Map from '../utils/Map'
 
-window.moment = moment
+const Label = ({field, children}) => (
+  <BsLabel for={field.name} className={field.required && 'required'}>
+    {children}
+    {field.title}
+  </BsLabel>
+)
+
 const HelpText = ({field}) => (
-  field.help_text ? <FormText>{field.help_text}</FormText> : <span/>
+  <FormText>{field.help_text} {field.required && <span>(required)</span>}</FormText>
 )
 
 const GeneralInput = ({field, error, disabled, value, onChange, custom_type, step}) => (
   <FormGroup>
-    <Label for={field.name}>{field.title}</Label>
+    <Label field={field}/>
     <BsInput type={custom_type || field.type || 'text'}
              invalid={!!error}
              disabled={disabled}
@@ -33,7 +39,7 @@ const GeneralInput = ({field, error, disabled, value, onChange, custom_type, ste
              maxLength={field.max_length || 255}
              placeholder={field.placeholder}
              value={value || ''}
-             onChange={onChange}/>
+             onChange={e => onChange(e.target.value)}/>
     {error && <FormFeedback>{error}</FormFeedback>}
     <HelpText field={field}/>
   </FormGroup>
@@ -41,15 +47,14 @@ const GeneralInput = ({field, error, disabled, value, onChange, custom_type, ste
 
 const Checkbox = ({field, disabled, value, onChange}) => (
   <FormGroup className="py-2" check>
-    <Label check>
+    <Label field={field}>
       <BsInput type="checkbox"
                label={field.title}
                disabled={disabled}
                name={field.name}
                required={field.required}
                checked={value || false}
-               onChange={onChange}/>
-      {field.title}
+               onChange={e => onChange(e.target.checked)}/>
     </Label>
     <HelpText field={field}/>
   </FormGroup>
@@ -57,13 +62,13 @@ const Checkbox = ({field, disabled, value, onChange}) => (
 
 const Select = ({field, disabled, value, onChange}) => (
   <FormGroup>
-    <Label for={field.name}>{field.title}</Label>
+    <Label field={field}/>
     <CustomInput type="select"
                  disabled={disabled}
                  name={field.name}
                  id={field.name}
                  required={field.required}
-                 onChange={onChange}>
+                 onChange={e => onChange(e.target.value)}>
       <option value="">---------</option>
       {field.choices && field.choices.map((choice, i) => (
         <option key={i} value={choice.value}>
@@ -90,7 +95,7 @@ class DatetimeInput extends React.Component {
     const field = this.props.field
     return (
       <FormGroup>
-        <Label for={field.name}>{field.title}</Label>
+        <Label field={field}/>
         <div className="d-flex justify-content-start">
           <DatePicker
             selected={this.props.value && moment(this.props.value.dt)}
@@ -117,7 +122,7 @@ class DatetimeInput extends React.Component {
   }
 }
 
-class Location extends React.Component {
+class GeoLocation extends React.Component {
   constructor (props) {
     super(props)
     this.state = {address: '', error: null}
@@ -184,7 +189,7 @@ class Location extends React.Component {
     const loc = this.props.value || {lat: 51.507382, lng: -0.127654, name: '', zoom: 12}
     return (
       <FormGroup>
-        <Label for={field.name}>{field.title}</Label>
+        <Label field={field}/>
         <InputGroup>
           <BsInput type="text"
                    invalid={!!this.state.error}
@@ -198,7 +203,7 @@ class Location extends React.Component {
             <Button onClick={this.search}>Search</Button>
           </InputGroupAddon>
         </InputGroup>
-        <Map location={loc} on_drag={this.on_ondrag.bind(this)}/>
+        <Map geolocation={loc} on_drag={this.on_ondrag.bind(this)}/>
         {this.state.error && <FormFeedback style={{display: 'block'}}>{this.state.error}</FormFeedback>}
         <HelpText field={field}/>
       </FormGroup>
@@ -211,22 +216,13 @@ const INPUT_LOOKUP = {
   'select': Select,
   'datetime': DatetimeInput,
   'integer': IntegerInput,
-  'location': Location,
+  'geolocation': GeoLocation,
 }
 
 const Input = props => {
-  const on_change = event => {
-    const value = (
-      props.field.type === 'bool' ? event.target.checked :
-      props.field.type === 'datetime' || props.field.type === 'location' ? event :
-      event.target.value
-    )
-    props.set_value(value)
-  }
-
   const InputComp = INPUT_LOOKUP[props.field.type] || GeneralInput
   props.field.title = props.field.title || as_title(props.field.name)
-  return <InputComp {...props} onChange={on_change}/>
+  return <InputComp {...props} onChange={props.set_value}/>
 }
 
 export default Input

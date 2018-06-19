@@ -24,7 +24,7 @@ export default class Map extends React.Component {
     if (!el) {
       return
     }
-    const loc = this.props.location
+    const loc = this.props.geolocation
     await load_script_callback(GOOGLE_MAPS_JS)
     if (el.childElementCount === 0) {
       this.map = new window.google.maps.Map(el, {
@@ -54,12 +54,11 @@ export default class Map extends React.Component {
   }
 
   render () {
-    const loc = this.props.location || {}
+    const loc = this.props.geolocation || {}
     if (Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
       return <div id={MAP_ID} className="mt-2" style={{height: this.props.height || 300}}/>
     } else {
       return <div/>
     }
-
   }
 }

@@ -66,8 +66,7 @@ class BaseBread:
 
     @classmethod
     def _routes(cls, root, name) -> Generator[web.RouteDef, None, None]:
-        return
-        yield
+        raise NotImplementedError
 
     @classmethod
     def view(cls, method: Method):
@@ -141,6 +140,8 @@ class ReadBread(BaseBread):
     """
     filter_model: BaseModel = None
 
+    browse_enabled = False
+    retrieve_enabled = False
     browse_fields: List[str] = None
     browse_order_by_fields: List[str] = None
     browse_limit_value = 50
@@ -228,10 +229,11 @@ class ReadBread(BaseBread):
 
     @classmethod
     def _routes(cls, root, name) -> List[web.RouteDef]:
-        yield from super()._routes(root, name)
-        yield web.get(root + '/', cls.view(Method.browse), name=f'{name}-browse')
-        yield web.get(root + '/{pk:\d+}/', cls.view(Method.retrieve), name=f'{name}-retrieve')
-        # yield web.options(root + '/', cls.view(Method.options), name=f'{name}-options')
+        if cls.browse_enabled:
+            yield web.get(root + '/', cls.view(Method.browse), name=f'{name}-browse')
+            # yield web.options(root + '/', cls.view(Method.options), name=f'{name}-options')
+        if cls.retrieve_enabled:
+            yield web.get(root + '/{pk:\d+}/', cls.view(Method.retrieve), name=f'{name}-retrieve')
 
 
 class Bread(ReadBread):
@@ -240,6 +242,9 @@ class Bread(ReadBread):
     PUT /{pk}/ 200,400,403,404
     DELETE /{pk}/ 200,400,403,404
     """
+    add_enabled = False
+    edit_enabled = False
+    delete_enabled = False
     # TODO, could we do this returning json?
     add_sql = """
     INSERT INTO :table (:values__names) VALUES :values RETURNING :pk_field
@@ -251,12 +256,12 @@ class Bread(ReadBread):
     :where
     """
 
-    def add_modify_data(self, data):
+    def modify_data_add(self, data):
         return data
 
     async def add(self) -> web.Response:
         m = await parse_request(self.request, self.model)
-        data = self.add_modify_data(m.dict())
+        data = self.modify_data_add(m.dict())
         pk = await self.conn.fetchval_b(
             self.add_sql,
             table=Var(self.table),
@@ -269,6 +274,9 @@ class Bread(ReadBread):
     async def add_options(self) -> web.Response:
         pass
 
+    def modify_data_edit(self, data):
+        return data
+
     async def edit(self, pk) -> web.Response:
         try:
             input_data = await self.request.json()
@@ -278,6 +286,7 @@ class Bread(ReadBread):
         if not input_data:
             raise JsonErrors.HTTPBadRequest(message=f'no input data')
 
+        input_data = self.modify_data_edit(input_data)
         current = await self.conn.fetchval_b(
             self.retrieve_sql,
             query=await self.retrieve_query(pk),
@@ -287,6 +296,7 @@ class Bread(ReadBread):
             raise JsonErrors.HTTPNotFound(message=f'{self.meta["single_title"]} not found')
 
         current_data = json.loads(current)
+        input_data = self.modify_data_edit(input_data)
         check_data = {**current_data, **input_data}
 
         try:
@@ -317,8 +327,11 @@ class Bread(ReadBread):
     @classmethod
     def _routes(cls, root, name) -> List[web.RouteDef]:
         yield from super()._routes(root, name)
-        yield web.post(root + '/add/', cls.view(Method.add), name=f'{name}-add')
-        # yield web.options(root + '/add/', cls.view(Method.add_options), name=f'{name}-add-options')
-        yield web.put(root + '/{pk:\d+}/', cls.view(Method.edit), name=f'{name}-edit')
-        # yield web.options(root + '/{pk:\d+}/', cls.view(Method.edit_options), name=f'{name}-edit-options')
-        yield web.delete(root + '/{pk:\d+}/', cls.view(Method.delete), name=f'{name}-delete')
+        if cls.add_enabled:
+            yield web.post(root + '/add/', cls.view(Method.add), name=f'{name}-add')
+            # yield web.options(root + '/add/', cls.view(Method.add_options), name=f'{name}-add-options')
+        if cls.edit_enabled:
+            yield web.put(root + '/{pk:\d+}/', cls.view(Method.edit), name=f'{name}-edit')
+            # yield web.options(root + '/{pk:\d+}/', cls.view(Method.edit_options), name=f'{name}-edit-options')
+        if cls.delete_enabled:
+            yield web.delete(root + '/{pk:\d+}/', cls.view(Method.delete), name=f'{name}-delete')

@@ -31,10 +31,15 @@ export default class CreateEvent extends React.Component {
       {name: 'private_event', type: 'bool'},
       {name: 'category', type: 'select', choices: c, required: true},
       {name: 'date', title: 'Event Start', type: 'datetime', required: true},
-      {name: 'location', type: 'location', help_text: 'Drag the marker to set the exact event location.'},
+      {name: 'location', type: 'geolocation', help_text: 'Drag the marker to set the exact event location.'},
       {name: 'ticket_limit', type: 'integer'},
-      {name: 'description', type: 'textarea'},
+      {name: 'description', type: 'textarea', required: true},
     ]
+  }
+
+  finished (r) {
+    console.log('finished', r)
+    this.props.history.goBack()
   }
 
   render () {
@@ -44,7 +49,12 @@ export default class CreateEvent extends React.Component {
       <Row>
         <Col md={8}>
           <h1>Create Event</h1>
-          <Form fields={this.fields()} onChange={d => this.setState({form_data: d})}/>
+          <Form fields={this.fields()}
+                action="/event/create/"
+                requests={this.props.requests}
+                setRootState={this.props.setRootState}
+                onChange={d => this.setState({form_data: d})}
+                finished={this.finished.bind(this)}/>
         </Col>
         <Col md={4}>
           {cat && <Markdown content={cat.host_advice}/>}

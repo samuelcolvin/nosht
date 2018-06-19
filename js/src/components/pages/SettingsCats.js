@@ -5,10 +5,10 @@ import {ModelForm} from '../forms/Form'
 import {ModelDropForm} from '../forms/Drop'
 
 const CAT_FIELDS = [
-  {name: 'name'},
+  {name: 'name', required: true},
   {name: 'live', type: 'bool'},
   {name: 'sort_index', type: 'integer'},
-  {name: 'description', type: 'textarea'},
+  {name: 'description', type: 'textarea', required: true},
   {name: 'event_content', type: 'textarea'},
   {name: 'host_advice', type: 'textarea'},
 ]
@@ -28,7 +28,6 @@ export class CategoriesList extends RenderList {
                       success_msg={`${this.props.page.singular} added`}
                       mode="add"
                       action='/categories/add/'
-                      go_to_new={true}
                       fields={CAT_FIELDS}/>
   }
 }

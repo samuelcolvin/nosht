@@ -76,7 +76,7 @@ export default class Event extends React.Component {
           </span>
         </div>
 
-        <Map location={event.location}/>
+        <Map geolocation={event.location}/>
 
         {event.category_content && (
           <div className="pt-3">

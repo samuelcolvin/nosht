@@ -40,8 +40,8 @@ export class Form extends React.Component {
       this.setState({disabled: false, errors, form_error: Object.keys(errors).length ? null : 'Error occurred'})
     } else {
       this.props.update && this.props.update()
-      this.props.set_message(this.props.success_msg)
-      this.props.finished(this.props.parent_uri + (this.props.go_to_new ? `${r.pk}/`: ''))
+      this.props.success_msg && this.props.set_message(this.props.success_msg)
+      this.props.finished(r)
     }
   }
 

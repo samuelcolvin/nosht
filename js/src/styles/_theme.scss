@@ -128,6 +128,20 @@ textarea {
   height: 120px;
 }
 
+.form-group {
+  label.required {
+    font-weight: 700;
+    &::after {
+      content: "\22C6";
+      color: #c00;
+      font-size: 120%;
+      margin-left: 2px;
+      line-height: 18px;
+    }
+  }
+}
+
+
 .form-error {
   color: $form-feedback-invalid-color;
   height: 23px;

@@ -14,13 +14,13 @@ export default function AsModal (WrappedComponent) {
       this.toggle = this.toggle.bind(this)
     }
 
-    toggle (next_uri) {
-      const shown_changed = !this.state.shown
+    toggle (r) {
+      const shown_new = !this.state.shown
       this.setState({
-        shown: shown_changed
+        shown: shown_new
       })
-      if (!this.state.shown_changed) {
-        this.props.history.push(next_uri || this.props.parent_uri)
+      if (!this.state.shown_new) {
+        this.props.history.push(this.props.parent_uri + (r && r.pk ? `${r.pk}/`: ''))
       }
     }
 
