@@ -4,7 +4,7 @@
 install:
 	pip install -r py/tests/requirements.txt
 	pip install -r py/requirements.txt
-	pip install -U ipython aiohttp-devtools docker-compose
+	pip install -r py/requirements-dev.txt
 
 .PHONY: isort
 isort:
@@ -33,8 +33,9 @@ build:
 	mkdir -p deploy-settings/favicons
 	touch deploy-settings/env.production
 	touch deploy-settings/favicons/favicon-16x16.png
-	docker build . -f Dockerfile.web -t nosht-web
-	docker build . -f Dockerfile.worker -t nosht-worker --quiet
+	docker build . -f docker/Dockerfile.base -t nosht-python-build
+	docker build . -f docker/Dockerfile.web -t nosht-web
+	docker build . -f docker/Dockerfile.worker -t nosht-worker --quiet
 
 .PHONY: docker-dev
 docker-dev: build
@@ -44,7 +45,15 @@ docker-dev: build
 	# ================================================================================
 	#
 	# running docker compose...
-	docker-compose up -d
+	docker-compose -f docker/docker-compose.yml up -d
+
+.PHONY: docker-dev-stop
+docker-dev-stop:
+	docker-compose -f docker/docker-compose.yml stop
+
+.PHONY: dev-pgcli
+dev-pgcli:
+	pgcli postgres://postgres:docker@localhost:54320/nosht
 
 .PHONY: heroku-release
 heroku-push: build

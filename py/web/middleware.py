@@ -1,4 +1,5 @@
 import logging
+import re
 
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
@@ -74,6 +75,7 @@ FROM users
 JOIN companies AS c ON c.id=company
 WHERE c.domain=$1 AND users.id=$2
 """
+REMOVE_PORT = re.compile(r':\d{2,}$')
 
 
 @middleware
@@ -81,11 +83,14 @@ async def host_middleware(request, handler):
     conn: BuildPgConnection = request['conn']
     request['session'] = await get_session(request)
     user_id = request['session'].get('user_id')
+
+    # port is removed as won't matter and messes up on localhost:3000/8000
+    host = REMOVE_PORT.sub('', request.host)
     if user_id:
-        company_id = await conn.fetchval(USER_COMPANY_SQL, request.host, user_id)
+        company_id = await conn.fetchval(USER_COMPANY_SQL, host, user_id)
         msg = 'company not found for this host and user'
     else:
-        company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', request.host)
+        company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', host)
         msg = 'no company found for this host'
     if not company_id:
         return JsonErrors.HTTPNotFound(message=msg)

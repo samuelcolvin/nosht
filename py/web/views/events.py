@@ -7,7 +7,7 @@ from pydantic import BaseModel, constr
 
 from web.auth import check_session, is_admin_or_host
 from web.bread import Bread
-from web.utils import json_response, parse_request, raw_json_response
+from web.utils import raw_json_response
 
 category_sql = """
 SELECT json_build_object('categories', categories)

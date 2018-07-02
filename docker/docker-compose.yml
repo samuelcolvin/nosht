@@ -39,7 +39,7 @@ services:
     image: nosht-web
     environment:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/nosht'
-      REDIS_URL: 'redis://redis:6379'
+      REDISCLOUD_URL: 'redis://redis:6379'
       PORT: 8000
     restart: unless-stopped
     ports:
@@ -52,7 +52,7 @@ services:
     image: nosht-worker
     environment:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/nosht'
-      REDIS_URL: 'redis://redis:6379'
+      REDISCLOUD_URL: 'redis://redis:6379'
     restart: unless-stopped
     depends_on:
     - postgres
