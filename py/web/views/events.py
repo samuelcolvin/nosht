@@ -47,7 +47,7 @@ class EventBread(Bread):
 
         location: LocationModel
         ticket_limit: int = None
-        description: str
+        long_description: str
 
     browse_enabled = True
     retrieve_enabled = True

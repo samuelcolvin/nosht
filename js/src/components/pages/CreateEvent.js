@@ -33,7 +33,7 @@ export default class CreateEvent extends React.Component {
       {name: 'date', title: 'Event Start', type: 'datetime', required: true},
       {name: 'location', type: 'geolocation', help_text: 'Drag the marker to set the exact event location.'},
       {name: 'ticket_limit', type: 'integer'},
-      {name: 'description', type: 'textarea', required: true},
+      {name: 'long_description', title: 'Description', type: 'textarea', required: true},
     ]
   }
 
@@ -50,7 +50,7 @@ export default class CreateEvent extends React.Component {
         <Col md={8}>
           <h1>Create Event</h1>
           <Form fields={this.fields()}
-                action="/event/create/"
+                action="/events/add/"
                 requests={this.props.requests}
                 setRootState={this.props.setRootState}
                 onChange={d => this.setState({form_data: d})}

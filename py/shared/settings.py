@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     pg_dsn: str = 'postgres://postgres:waffle@localhost:5432/nosht'
     pg_name: str = None
     redis_settings: Any = 'redis://localhost:6379'
+    redis_db: int = 1
     google_siw_client_key = 'xxx'
     auth_key = 'v7RI7qwZB7rxCyrpX4QwpZCUCF7X_HtnMSFuJfZTmfs='
     cookie_max_age = 25 * 3600
@@ -45,7 +46,8 @@ class Settings(BaseSettings):
         return RedisSettings(
             host=conf.hostname,
             port=conf.port,
-            password=conf.password
+            password=conf.password,
+            database=int((conf.path or '0').strip('/')),
         )
 
     @property
