@@ -67,9 +67,12 @@ class FakePgPool:
         pass
 
 
-async def startup_modify_app(app):
+async def pre_startup_app(app):
+    app._subapps[0]['pg'] = FakePgPool(app['test_conn'])
+
+
+async def post_startup_app(app):
     inner_app = app._subapps[0]
-    inner_app['pg'] = FakePgPool(app['test_conn'])
     inner_app['worker']._concurrency_enabled = False
     await inner_app['worker'].startup()
 
@@ -83,6 +86,7 @@ async def shutdown_modify_app(app):
 async def cli(settings, db_conn, test_client):
     app = create_app(settings=settings)
     app['test_conn'] = db_conn
-    app.on_startup.append(startup_modify_app)
+    app.on_startup.insert(0, pre_startup_app)
+    app.on_startup.append(post_startup_app)
     app.on_shutdown.append(shutdown_modify_app)
     return await test_client(app)

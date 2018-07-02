@@ -31,7 +31,7 @@ async def startup(app: web.Application):
     await prepare_database(settings, False)
     redis = await create_pool_lenient(settings.redis_settings, app.loop)
     app.update(
-        pg=await asyncpg.create_pool_b(dsn=settings.pg_dsn, min_size=2),
+        pg=app.get('pg') or await asyncpg.create_pool_b(dsn=settings.pg_dsn, min_size=2),
         redis=redis,
         worker=MainActor(settings=settings, existing_redis=redis),
     )
@@ -88,7 +88,7 @@ def create_app(*, settings: Settings=None):
     wrapper_app['settings'] = settings
     this_dir = Path(__file__).parent
     static_dir = (this_dir / '../../js/build').resolve()
-    assert static_dir.exists()
+    assert static_dir.exists(), f'js static directory "{static_dir}" does not exists'
     logger.debug('serving static files "%s"', static_dir)
     wrapper_app['static_dir'] = static_dir
     wrapper_app.add_subapp('/api/', app)

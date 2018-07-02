@@ -13,11 +13,12 @@ isort:
 .PHONY: lint
 lint:
 	flake8 py
-	pytest -p no:sugar -q --cache-clear --isort py
+	pytest -p no:sugar -q --cache-clear --isort py --ignore=py/tests
 	cd js; yarn lint; cd ..
 
 .PHONY: test
 test:
+	mkdir -p js/build
 	pytest py --cov=py --cov-config py/setup.cfg
 
 .PHONY: testcov
