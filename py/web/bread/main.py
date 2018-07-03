@@ -101,7 +101,10 @@ class BaseBread:
         }
 
     def from_(self) -> From:
-        return From(Var(self.table).as_('e'))
+        v = Var(self.table)
+        if self.table_as:
+            v = v.as_(self.table_as)
+        return From(v)
 
     def join(self) -> Join:
         pass
@@ -109,9 +112,15 @@ class BaseBread:
     def where(self) -> Where:
         pass
 
+    def pk_ref(self) -> Var:
+        if self.table_as:
+            return Var(self.table_as + '.' + self.pk_field)
+        else:
+            return Var(self.pk_field)
+
     def where_pk(self, pk) -> Where:
         where = self.where()
-        is_pk = Var(self.pk_field) == pk
+        is_pk = self.pk_ref() == pk
         if where:
             where.logic = where.logic & is_pk
         else:
@@ -173,7 +182,7 @@ class ReadBread(BaseBread):
             f = self.browse_fields
         elif self.method == Method.retrieve:
             f = self.retrieve_fields
-        f = f or [self.pk_field] + list(self.model.__fields__.keys())
+        f = f or [self.pk_ref()] + list(self.model.__fields__.keys())
         return Select(f)
 
     def browse_order_by(self) -> OrderBy:
@@ -256,12 +265,12 @@ class Bread(ReadBread):
     :where
     """
 
-    def modify_data_add(self, data):
+    def prepare_add_data(self, data):
         return data
 
     async def add(self) -> web.Response:
         m = await parse_request(self.request, self.model)
-        data = self.modify_data_add(m.dict())
+        data = self.prepare_add_data(m.dict())
         pk = await self.conn.fetchval_b(
             self.add_sql,
             table=Var(self.table),
@@ -274,7 +283,7 @@ class Bread(ReadBread):
     async def add_options(self) -> web.Response:
         pass
 
-    def modify_data_edit(self, data):
+    def prepare_edit_data(self, data):
         return data
 
     async def edit(self, pk) -> web.Response:
@@ -286,7 +295,7 @@ class Bread(ReadBread):
         if not input_data:
             raise JsonErrors.HTTPBadRequest(message=f'no input data')
 
-        input_data = self.modify_data_edit(input_data)
+        input_data = self.prepare_edit_data(input_data)
         current = await self.conn.fetchval_b(
             self.retrieve_sql,
             query=await self.retrieve_query(pk),
@@ -296,7 +305,7 @@ class Bread(ReadBread):
             raise JsonErrors.HTTPNotFound(message=f'{self.meta["single_title"]} not found')
 
         current_data = json.loads(current)
-        input_data = self.modify_data_edit(input_data)
+        input_data = self.prepare_edit_data(input_data)
         check_data = {**current_data, **input_data}
 
         try:

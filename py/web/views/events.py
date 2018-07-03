@@ -1,10 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from textwrap import shorten
+from typing import Optional
 
 from buildpg import V, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
 from pydantic import BaseModel, constr
 
+from shared.utils import slugify
 from web.auth import check_session, is_admin_or_host
 from web.bread import Bread
 from web.utils import raw_json_response
@@ -36,9 +39,9 @@ class EventBread(Bread):
 
         class DateModel(BaseModel):
             dt: datetime
-            ad: bool
+            dur: Optional[int]
 
-        date: DateModel = None
+        date: DateModel
 
         class LocationModel(BaseModel):
             lat: float
@@ -56,7 +59,7 @@ class EventBread(Bread):
 
     model = Model
     table = 'events'
-    pk_field = 'e.id'
+    table_as = 'e'
 
     browse_fields = (
         'e.id',
@@ -70,6 +73,23 @@ class EventBread(Bread):
         'e.slug',
         V('c.slug').as_('cat_slug'),
     )
+
+    def prepare_add_data(self, data):
+        date = data.pop('date')
+        dt: datetime = date['dt']
+        duration: Optional[int] = date['dur']
+        loc = data.pop('location')
+        data.update(
+            start_ts=datetime(dt.year, dt.month, dt.day) if duration is None else dt.replace(tzinfo=None),
+            duration=duration and timedelta(seconds=duration),
+            location=loc['name'],
+            location_lat=loc['lat'],
+            location_lng=loc['lng'],
+            short_description=shorten(data['long_description'], width=140, placeholder='…'),
+            slug=slugify(data['name']),
+            host=self.request['session'].get('user_id'),
+        )
+        return data
 
     async def check_permissions(self, method):
         await check_session(self.request, 'admin', 'host')

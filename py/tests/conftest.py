@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 from datetime import datetime
 from textwrap import shorten
@@ -90,6 +91,7 @@ class Factory:
                           last_name='Spencer',
                           email='frank@example.com',
                           role='admin',
+                          status='active',
                           **kwargs):
         user_id = await self.conn.fetchval_b(
             'INSERT INTO users (:values__names) VALUES :values RETURNING id',
@@ -100,6 +102,7 @@ class Factory:
                 last_name=last_name,
                 email=email,
                 role=role,
+                status=status,
                 **kwargs,
             )
         )
@@ -158,6 +161,19 @@ async def factory(db_conn, settings):
     return Factory(db_conn, settings)
 
 
+@pytest.fixture
+def login(cli):
+    async def f(email='frank@example.com', password='testing'):
+        r = await cli.post('/api/login/', data=json.dumps(dict(email=email, password=password)))
+        assert r.status == 200, await r.text()
+        data = await r.json()
+        r = await cli.post('/api/auth-token/', data=json.dumps({'token': data['auth_token']}))
+        assert r.status == 200, await r.text()
+        assert len(cli.session.cookie_jar) == 1
+
+    return f
+
+
 class FakePgPool:
     def __init__(self, conn):
         self.conn = conn
@@ -191,10 +207,10 @@ async def shutdown_modify_app(app):
 
 
 @pytest.fixture
-async def cli(settings, db_conn, test_client):
+async def cli(settings, db_conn, aiohttp_client):
     app = create_app(settings=settings)
     app['test_conn'] = db_conn
     app.on_startup.insert(0, pre_startup_app)
     app.on_startup.append(post_startup_app)
     app.on_shutdown.append(shutdown_modify_app)
-    return await test_client(app)
+    return await aiohttp_client(app)

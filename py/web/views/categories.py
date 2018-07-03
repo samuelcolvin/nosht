@@ -129,7 +129,7 @@ class CategoryBread(Bread):
     def where(self):
         return Where(V('company') == self.request['company_id'])
 
-    def modify_data_add(self, data):
+    def prepare_add_data(self, data):
         data.update(
             company=self.request['company_id'],
             slug=slugify(data['name'])

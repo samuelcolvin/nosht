@@ -6,7 +6,7 @@ from shared.db import create_demo_data
 async def test_create_demo_data(cli, db_conn, settings):
     await create_demo_data(db_conn, settings, company_host='127.0.0.1')
     r = await cli.get('/api/')
-    assert r.status == 200
+    assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
         'categories': [

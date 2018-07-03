@@ -8,7 +8,11 @@ import {
   FormFeedback,
   InputGroup,
   InputGroupAddon,
-  Button
+  Button,
+  InputGroupButtonDropdown,
+  DropdownToggle,
+  DropdownMenu,
+  DropdownItem
 } from 'reactstrap'
 import DatePicker from 'react-datepicker'
 import moment from 'moment'
@@ -85,38 +89,62 @@ const IntegerInput = props => (
   <GeneralInput {...props} custom_type="number" step="1"/>
 )
 
+const DURATIONS = [
+  {value: null, title: 'All Day'},
+  {value: 1800, title: '30 minutes'},
+  {value: 3600 * 1, title: '1 hour'},
+  {value: 3600 * 2, title: '2 hours'},
+  {value: 3600 * 3, title: '3 hours'},
+  {value: 3600 * 4, title: '4 hours'},
+  {value: 3600 * 6, title: '6 hours'},
+  {value: 3600 * 8, title: '8 hours'},
+]
+
 class DatetimeInput extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {all_day: false}
+    this.state = {
+      duration: null,
+      drop_open: false,
+    }
   }
 
   render () {
     const field = this.props.field
+    const all_day = !this.state.duration
     return (
       <FormGroup>
         <Label field={field}/>
-        <div className="d-flex justify-content-start">
+        <InputGroup>
           <DatePicker
             selected={this.props.value && moment(this.props.value.dt)}
             disabled={this.props.disabled}
-            onChange={m => this.props.onChange(m && {dt: m.format(), ad: this.state.all_day})}
-            showTimeSelect={!this.state.all_day}
+            onChange={m => this.props.onChange(m && {dt: m.format(), dur: this.state.duration})}
+            showTimeSelect={!all_day}
             timeFormat="LT"
             required={field.required}
-            dateFormat={this.state.all_day ? 'LL' : 'LLL'}
-            placeholderText={this.state.all_day ? 'Click to select a date' : 'Click to select a date and time'}
+            dateFormat={all_day ? 'LL' : 'LLL'}
+            placeholderText={all_day ? 'Click to select a date' : 'Click to select a date and time'}
             className="form-control"/>
-
-          <label className="m-2">
-            <input type="checkbox"
-                   className="mx-2"
-                   disabled={this.props.disabled}
-                   checked={this.state.all_day}
-                   onChange={e => this.setState({all_day: e.target.checked})}/>
-            All Day
-          </label>
-        </div>
+          <InputGroupButtonDropdown
+              addonType="append"
+              isOpen={this.state.drop_open}
+              toggle={() => this.setState({drop_open: !this.state.drop_open})}>
+            <DropdownToggle caret>
+              Duration ({DURATIONS.find(d => d.value === this.state.duration).title})
+            </DropdownToggle>
+            <DropdownMenu>
+             {DURATIONS.map((d, i) => (
+                <DropdownItem
+                    key={i}
+                    active={d.value === this.state.duration}
+                    onClick={() => this.setState({duration: d.value})}>
+                  {d.title}
+                </DropdownItem>
+             ))}
+            </DropdownMenu>
+          </InputGroupButtonDropdown>
+        </InputGroup>
       </FormGroup>
     )
   }

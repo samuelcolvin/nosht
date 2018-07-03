@@ -6,7 +6,7 @@ async def test_root(cli, factory: Factory):
     await factory.create_cat()
 
     r = await cli.get('/api/')
-    assert r.status == 200
+    assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
         'categories': [
