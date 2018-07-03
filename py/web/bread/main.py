@@ -251,6 +251,7 @@ class Bread(ReadBread):
     PUT /{pk}/ 200,400,403,404
     DELETE /{pk}/ 200,400,403,404
     """
+    edit_model = None
     add_enabled = False
     edit_enabled = False
     delete_enabled = False
@@ -278,7 +279,7 @@ class Bread(ReadBread):
             pk_field=Var(self.pk_field),
             print_=self.log_print,
         )
-        return json_response(status='ok', pk=pk)
+        return json_response(status='ok', pk=pk, status_=201)
 
     async def add_options(self) -> web.Response:
         pass
@@ -287,41 +288,19 @@ class Bread(ReadBread):
         return data
 
     async def edit(self, pk) -> web.Response:
-        try:
-            input_data = await self.request.json()
-        except ValueError as e:
-            raise JsonErrors.HTTPBadRequest(message=f'Error decoding data: {e}')
+        m = await parse_request(self.request, self.edit_model or self.model)
+        raw_data = await self.request.json()
+        data = m.dict(include=raw_data.keys())
 
-        if not input_data:
-            raise JsonErrors.HTTPBadRequest(message=f'no input data')
+        data = self.prepare_edit_data(data)
 
-        input_data = self.prepare_edit_data(input_data)
-        current = await self.conn.fetchval_b(
-            self.retrieve_sql,
-            query=await self.retrieve_query(pk),
-            print_=self.log_print,
-        )
-        if not current:
-            raise JsonErrors.HTTPNotFound(message=f'{self.meta["single_title"]} not found')
-
-        current_data = json.loads(current)
-        input_data = self.prepare_edit_data(input_data)
-        check_data = {**current_data, **input_data}
-
-        try:
-            m = self.model.parse_obj(check_data)
-        except ValidationError as e:
-            raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=e.errors())
-
-        save_data = m.dict(include=input_data.keys())
-
-        if not save_data:
+        if not data:
             raise JsonErrors.HTTPBadRequest(message=f'no data to save')
 
         await self.conn.execute_b(
             self.edit_sql,
             table=Var(self.table),
-            values=SetValues(**save_data),
+            values=SetValues(**data),
             where=self.where_pk(pk),
             print_=self.log_print,
         )

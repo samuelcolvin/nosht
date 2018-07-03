@@ -36,6 +36,7 @@ class EventBread(Bread):
     class Model(BaseModel):
         name: constr(max_length=63)
         category: int
+        private: bool = False
 
         class DateModel(BaseModel):
             dt: datetime
@@ -72,24 +73,11 @@ class EventBread(Bread):
     retrieve_fields = browse_fields + (
         'e.slug',
         V('c.slug').as_('cat_slug'),
+        'e.location',
+        'e.location_lat',
+        'e.location_lng',
+        'e.long_description',
     )
-
-    def prepare_add_data(self, data):
-        date = data.pop('date')
-        dt: datetime = date['dt']
-        duration: Optional[int] = date['dur']
-        loc = data.pop('location')
-        data.update(
-            start_ts=datetime(dt.year, dt.month, dt.day) if duration is None else dt.replace(tzinfo=None),
-            duration=duration and timedelta(seconds=duration),
-            location=loc['name'],
-            location_lat=loc['lat'],
-            location_lng=loc['lng'],
-            short_description=shorten(data['long_description'], width=140, placeholder='…'),
-            slug=slugify(data['name']),
-            host=self.request['session'].get('user_id'),
-        )
-        return data
 
     async def check_permissions(self, method):
         await check_session(self.request, 'admin', 'host')
@@ -104,3 +92,29 @@ class EventBread(Bread):
         if user_role != 'admin':
             logic &= V('e.host') == session['user_id']
         return Where(logic)
+
+    def prepare_add_data(self, data):
+        date = data.pop('date')
+        dt: datetime = date['dt']
+        duration: Optional[int] = date['dur']
+        loc = data.pop('location')
+        data.update(
+            public=not data.pop('private'),
+            start_ts=datetime(dt.year, dt.month, dt.day) if duration is None else dt.replace(tzinfo=None),
+            duration=duration and timedelta(seconds=duration),
+            location=loc['name'],
+            location_lat=loc['lat'],
+            location_lng=loc['lng'],
+            short_description=shorten(data['long_description'], width=140, placeholder='…'),
+            slug=slugify(data['name']),
+            host=self.request['session'].get('user_id'),
+        )
+        return data
+
+    def prepare_edit_data_initial(self, data):
+        debug(data)
+        return data
+
+    def prepare_edit_data_final(self, data):
+        debug(data)
+        return data

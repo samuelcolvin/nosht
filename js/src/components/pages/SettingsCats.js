@@ -2,7 +2,7 @@ import React from 'react'
 import {Row, Col, ButtonGroup, Button} from 'reactstrap'
 import {RenderList, RenderDetails, ImageThumbnail} from '../utils/Settings'
 import {ModelForm} from '../forms/Form'
-import {ModelDropForm} from '../forms/Drop'
+import {ModelDropzoneForm} from '../forms/Drop'
 
 const CAT_FIELDS = [
   {name: 'name', required: true},
@@ -64,7 +64,6 @@ export class CategoriesDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = `/settings/categories/${this.id}/`
-    this.skip_keys = ['id', 'suggested_images']
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
       {name: 'Add Images', link: this.uri + 'add-image/'},
@@ -72,7 +71,8 @@ export class CategoriesDetails extends RenderDetails {
     this.formats = {
       image: {
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
-      }
+      },
+      suggested_images: null
     }
   }
 
@@ -118,13 +118,13 @@ export class CategoriesDetails extends RenderDetails {
                  update={this.update}
                  action={`/categories/${this.id}/`}
                  fields={CAT_FIELDS}/>,
-      <ModelDropForm {...this.props}
-                     key="3"
-                     parent_uri={this.uri}
-                     regex={/add-image\/$/}
-                     update={this.update}
-                     title="Upload Images"
-                     action={`/categories/${this.id}/add-image/`}/>,
+      <ModelDropzoneForm {...this.props}
+                         key="3"
+                         parent_uri={this.uri}
+                         regex={/add-image\/$/}
+                         update={this.update}
+                         title="Upload Images"
+                         action={`/categories/${this.id}/add-image/`}/>,
     ]
   }
 }

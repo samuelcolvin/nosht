@@ -9,7 +9,7 @@ const file_key = f => `${f.name}-${f.size}`
 const failed_icon = 'minus-circle'
 
 
-class DropForm extends React.Component {
+class DropzoneForm extends React.Component {
   constructor () {
     super()
     this.state = {}
@@ -105,7 +105,7 @@ class DropForm extends React.Component {
         )}
       </ModalBody>,
       <ModalFooter key="2">
-        <Button type="button" color="secondary" onClick={() => this.props.toggle_model()}>
+        <Button type="button" color="secondary" onClick={() => this.props.finished()}>
           {this.props.close || 'Close'}
         </Button>
       </ModalFooter>
@@ -113,4 +113,4 @@ class DropForm extends React.Component {
   }
 }
 
-export const ModelDropForm = AsModal(DropForm)
+export const ModelDropzoneForm = AsModal(DropzoneForm)

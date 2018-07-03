@@ -138,7 +138,6 @@ export class RenderDetails extends RenderItem {
       buttons: []
     }
     this.id = this.props.match.params.id
-    this.skip_keys = ['id']
   }
 
   get_uri () {
@@ -156,11 +155,8 @@ export class RenderDetails extends RenderItem {
     if (!this.state.item) {
       return <Loading/>
     }
-    const keys = Object.keys(this.state.item)
-    for (let key of this.skip_keys) {
-      keys.splice(keys.indexOf(key), 1)
-    }
-    keys.splice(keys.indexOf('_response_status'), 1)
+    const ignored = ['id', '_response_status']
+    const keys = Object.keys(this.state.item).filter(k => !ignored.includes(k)).filter(k => this.formats[k] !== null)
     return [
       <Buttons key={1} buttons={this.state.buttons}/>,
       <div key={2} className="mb-4">

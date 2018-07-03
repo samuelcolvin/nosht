@@ -25,7 +25,7 @@ export const load_script = url => {
 export const load_script_callback = url => {
   return new Promise((resolve, reject) => {
     url = url.replace('<callback-function>', '_load_script_complete')
-    if (document.querySelector(`script[src="${url}"`)) {
+    if (document.querySelector(`script[src="${url}"]`)) {
       // script already loaded, but wait to resolve to make sure the callback has been called
       setTimeout(() => resolve(), 100)
     } else {

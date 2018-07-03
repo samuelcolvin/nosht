@@ -28,7 +28,7 @@ export default class CreateEvent extends React.Component {
     const c = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
     return [
       {name: 'name', required: true},
-      {name: 'private_event', type: 'bool'},
+      {name: 'private', title: 'Private Event', type: 'bool'},
       {name: 'category', type: 'select', choices: c, required: true},
       {name: 'date', title: 'Event Start', type: 'datetime', required: true},
       {name: 'location', type: 'geolocation', help_text: 'Drag the marker to set the exact event location.'},
@@ -38,8 +38,7 @@ export default class CreateEvent extends React.Component {
   }
 
   finished (r) {
-    console.log('finished', r)
-    this.props.history.goBack()
+    this.props.history.push(`/settings/events/${r.pk}/`)
   }
 
   render () {

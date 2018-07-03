@@ -103,23 +103,22 @@ const DURATIONS = [
 class DatetimeInput extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {
-      duration: null,
-      drop_open: false,
-    }
+    this.state = {drop_open: false}
   }
 
   render () {
     const field = this.props.field
-    const all_day = !this.state.duration
+    const duration = this.props.value ? this.props.value.dur : null
+    const dt = this.props.value ? this.props.value.dt : null
+    const all_day = !duration
     return (
       <FormGroup>
         <Label field={field}/>
         <InputGroup>
           <DatePicker
-            selected={this.props.value && moment(this.props.value.dt)}
+            selected={dt && moment(dt)}
             disabled={this.props.disabled}
-            onChange={m => this.props.onChange(m && {dt: m.format(), dur: this.state.duration})}
+            onChange={m => this.props.onChange({dt: m && m.format(), dur: duration})}
             showTimeSelect={!all_day}
             timeFormat="LT"
             required={field.required}
@@ -131,14 +130,14 @@ class DatetimeInput extends React.Component {
               isOpen={this.state.drop_open}
               toggle={() => this.setState({drop_open: !this.state.drop_open})}>
             <DropdownToggle caret>
-              Duration ({DURATIONS.find(d => d.value === this.state.duration).title})
+              Duration ({DURATIONS.find(d => d.value === duration).title})
             </DropdownToggle>
             <DropdownMenu>
              {DURATIONS.map((d, i) => (
                 <DropdownItem
                     key={i}
-                    active={d.value === this.state.duration}
-                    onClick={() => this.setState({duration: d.value})}>
+                    active={d.value === duration}
+                    onClick={() => this.props.onChange({dt: dt, dur: d.value})}>
                   {d.title}
                 </DropdownItem>
              ))}
@@ -153,7 +152,10 @@ class DatetimeInput extends React.Component {
 class GeoLocation extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {address: '', error: null}
+    this.state = {
+      address: typeof(this.props.value) === 'object' ? this.props.value.name : '',
+      error: null
+    }
     this.update = this.update.bind(this)
     this.search = this.search.bind(this)
   }
@@ -171,6 +173,9 @@ class GeoLocation extends React.Component {
   }
 
   async search () {
+    if (!this.state.address) {
+      return
+    }
     let latlng
     try {
       const loc = await this.geocode({'address': this.state.address})
@@ -180,7 +185,7 @@ class GeoLocation extends React.Component {
       this.props.onChange(null)
       return
     }
-    this.update(latlng)
+    this.update(latlng, this.state.address)
   }
 
   async on_ondrag (e) {
@@ -200,7 +205,7 @@ class GeoLocation extends React.Component {
   }
 
   update (loc, address) {
-    this.props.onChange({lat: loc.lat(), lng: loc.lng(), name: address || this.state.address})
+    this.props.onChange({lat: loc.lat(), lng: loc.lng(), name: address})
     this.setState({error: null})
   }
 
