@@ -2,6 +2,7 @@ import asyncio
 import json
 import random
 from datetime import datetime
+from pprint import pformat
 from textwrap import shorten
 
 import lorem
@@ -165,12 +166,12 @@ async def factory(db_conn, settings):
 
 
 @pytest.fixture
-def login(cli):
+def login(cli, url):
     async def f(email='frank@example.com', password='testing'):
-        r = await cli.post('/api/login/', data=json.dumps(dict(email=email, password=password)))
+        r = await cli.post(url('login'), data=json.dumps(dict(email=email, password=password)))
         assert r.status == 200, await r.text()
         data = await r.json()
-        r = await cli.post('/api/auth-token/', data=json.dumps({'token': data['auth_token']}))
+        r = await cli.post(url('auth-token'), data=json.dumps({'token': data['auth_token']}))
         assert r.status == 200, await r.text()
         assert len(cli.session.cookie_jar) == 1
 
@@ -195,11 +196,11 @@ class FakePgPool:
 
 
 async def pre_startup_app(app):
-    app._subapps[0]['pg'] = FakePgPool(app['test_conn'])
+    app['main_app']['pg'] = FakePgPool(app['test_conn'])
 
 
 async def post_startup_app(app):
-    inner_app = app._subapps[0]
+    inner_app = app['main_app']
     inner_app['worker']._concurrency_enabled = False
     await inner_app['worker'].startup()
 
@@ -217,3 +218,15 @@ async def cli(settings, db_conn, aiohttp_client):
     app.on_startup.append(post_startup_app)
     app.on_shutdown.append(shutdown_modify_app)
     return await aiohttp_client(app)
+
+
+@pytest.fixture
+def url(cli):
+    def f(name, **kwargs):
+        inner_app = cli.server.app['main_app']
+        try:
+            r = inner_app.router[name]
+        except KeyError as e:
+            raise KeyError(f'invalid url name, choices: {pformat(inner_app.router._named_resources)}') from e
+        return r.url_for(**{k: str(v) for k, v in kwargs.items()})
+    return f

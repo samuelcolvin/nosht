@@ -9,7 +9,7 @@ from aiohttp.web import Response
 from aiohttp.web_exceptions import HTTPClientError
 from google.auth import jwt as google_jwt
 from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from shared.settings import Settings
 
@@ -94,7 +94,7 @@ def json_response(*, status_=200, list_=None, headers_=None, **data):
     )
 
 
-T = TypeVar('Model')
+T = TypeVar('Model', bound=BaseModel)
 
 
 async def parse_request(request, model: Type[T], *, error_headers=None) -> T:

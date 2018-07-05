@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from enum import Enum
 from textwrap import shorten
 from typing import Optional
 
@@ -9,8 +10,8 @@ from pydantic import BaseModel, constr
 
 from shared.utils import slugify
 from web.auth import check_session, is_admin_or_host
-from web.bread import Bread
-from web.utils import raw_json_response
+from web.bread import Bread, UpdateView
+from web.utils import JsonErrors, raw_json_response
 
 category_sql = """
 SELECT json_build_object('categories', categories)
@@ -131,3 +132,35 @@ class EventBread(Bread):
 
     def prepare_edit_data(self, data):
         return self.prepare(data)
+
+
+class StatusChoices(Enum):
+    pending = 'pending'
+    published = 'published'
+    suspended = 'suspended'
+
+
+class SetEventStatus(UpdateView):
+    class Model(BaseModel):
+        status: StatusChoices
+
+    async def check_permissions(self):
+        await check_session(self.request, 'admin')
+        v = await self.conn.fetchval_b(
+            """
+            SELECT 1 FROM events AS e
+            JOIN categories AS c on e.category = c.id
+            WHERE e.id=:id AND c.company=:company
+            """,
+            id=int(self.request.match_info['id']),
+            company=self.request['company_id']
+        )
+        if not v:
+            raise JsonErrors.HTTPNotFound(message='Event not found')
+
+    async def execute(self, m: Model):
+        await self.conn.execute_b(
+            'UPDATE events SET status=:status WHERE id=:id',
+            status=m.status.value,
+            id=int(self.request.match_info['id']),
+        )

@@ -1,11 +1,11 @@
 from .conftest import Factory
 
 
-async def test_root(cli, factory: Factory):
+async def test_root(cli, url, factory: Factory):
     await factory.create_company()
     await factory.create_cat()
 
-    r = await cli.get('/api/')
+    r = await cli.get(url('index'))
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {

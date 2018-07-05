@@ -20,7 +20,7 @@ export default class Event extends React.Component {
     const params = this.props.match.params
     this.props.setRootState({active_page: params.category})
     try {
-      const data = await this.props.requests.get(`event/${params.category}/${params.event}/`)
+      const data = await this.props.requests.get(`events/${params.category}/${params.event}/`)
       event = data.event
     } catch (error) {
       if (error.status === 404) {

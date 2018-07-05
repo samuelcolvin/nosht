@@ -18,7 +18,7 @@ from .middleware import error_middleware, host_middleware, pg_middleware
 from .views.auth import authenticate_token, login, logout
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images)
-from .views.events import EventBread, event_categories
+from .views.events import EventBread, SetEventStatus, event_categories
 from .views.public import category, event, index
 from .views.static import static_handler
 from .views.users import UserBread
@@ -70,9 +70,10 @@ def create_app(*, settings: Settings=None):
         *CategoryBread.routes('/categories/'),
         web.get('/cat/{category}/', category, name='category'),
 
-        web.get('/event/categories/', event_categories, name='event-categories'),
+        web.get('/events/{category}/{event}/', event, name='event-get'),
+        web.get('/events/categories/', event_categories, name='event-categories'),
         *EventBread.routes('/events/'),
-        web.get('/event/{category}/{event}/', event, name='event'),
+        web.put('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
 
         web.post('/login/', login, name='login'),
         web.post('/auth-token/', authenticate_token, name='auth-token'),
@@ -85,7 +86,10 @@ def create_app(*, settings: Settings=None):
         client_max_size=settings.max_request_size,
         middlewares=(error_middleware,),
     )
-    wrapper_app['settings'] = settings
+    wrapper_app.update(
+        settings=settings,
+        main_app=app,
+    )
     this_dir = Path(__file__).parent
     static_dir = (this_dir / '../../js/build').resolve()
     assert static_dir.exists(), f'js static directory "{static_dir}" does not exists'

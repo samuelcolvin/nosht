@@ -20,10 +20,10 @@ To update:
 import re
 from enum import Enum
 from functools import update_wrapper, wraps
-from typing import Generator, List, Tuple
+from typing import Generator, List, Tuple, Type
 
 from aiohttp import web
-from buildpg import RawDangerous, SetValues, Values, Var, funcs
+from buildpg import SetValues, Values, Var, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Clauses, From, Join, Limit, OrderBy, Select, Where
 from pydantic import BaseModel, validate_model
@@ -41,8 +41,8 @@ class Method(str, Enum):
 
 
 class BaseBread:
-    __slots__ = 'method', 'request', 'app', 'conn', 'settings', 'extra'
-    model: BaseModel = NotImplemented
+    __slots__ = 'method', 'request', 'app', 'conn', 'settings'
+    model: Type[BaseModel] = NotImplemented
     table: str = NotImplemented
     table_as: str = None
     name: str = None
@@ -55,7 +55,6 @@ class BaseBread:
         self.app: web.Application = request.app
         self.conn: BuildPgConnection = request['conn']
         self.settings = self.app['settings']
-        self.extra = {}
 
     @classmethod
     def routes(cls, root, name=None) -> Tuple[web.RouteDef]:
@@ -307,6 +306,15 @@ class Bread(ReadBread):
     def prepare_edit_data(self, data):
         return data
 
+    async def edit_execute(self, pk, data):
+        await self.conn.execute_b(
+            self.edit_sql,
+            table=Var(self.table),
+            values=SetValues(**data),
+            where=Where(Var(self.pk_field) == pk),
+            print_=self.print_queries,
+        )
+
     async def edit(self, pk) -> web.Response:
         await self.check_item_permissions(pk)
         try:
@@ -327,13 +335,7 @@ class Bread(ReadBread):
         if not data:
             raise JsonErrors.HTTPBadRequest(message=f'no data to save')
 
-        await self.conn.execute_b(
-            self.edit_sql,
-            table=Var(self.table),
-            values=SetValues(**data),
-            where=Where(Var(self.pk_field) == pk),
-            print_=self.print_queries,
-        )
+        await self.edit_execute(pk, data)
         return json_response(status='ok')
 
     async def edit_options(self) -> web.Response:

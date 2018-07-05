@@ -16,7 +16,7 @@ export default class CreateEvent extends React.Component {
   async componentDidMount () {
     let data
     try {
-      data = await this.props.requests.get('/event/categories/')
+      data = await this.props.requests.get('/events/categories/')
     } catch (error) {
       this.props.setRootState({error})
       return
