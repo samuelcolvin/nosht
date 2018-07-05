@@ -6,7 +6,7 @@ from aiohttp_session import new_session
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, EmailStr, constr
 
-from web.auth import invalidate_session, is_auth, record_event
+from web.auth import google_get_details, invalidate_session, is_auth, record_event
 from web.utils import JsonErrors, get_ip, json_response, parse_request
 
 
@@ -20,6 +20,12 @@ SELECT id, first_name || ' ' || last_name AS name, role, status, password_hash
 FROM users
 WHERE company=$1 AND email=$2 AND status='active'
 """
+
+
+def successful_login(user, app, headers_=None):
+    auth_session = {'user_id': user['id'], 'user_role': user['role'], 'last_active': int(time())}
+    auth_token = app['auth_fernet'].encrypt(json.dumps(auth_session).encode()).decode()
+    return json_response(status='success', auth_token=auth_token, user=user, headers_=headers_)
 
 
 async def login(request):
@@ -38,11 +44,23 @@ async def login(request):
         password_hash = password_hash or request.app['dummy_password_hash']
 
         if bcrypt.checkpw(m.password.encode(), password_hash.encode()):
-            auth_session = {'user_id': user['id'], 'user_role': user['role'], 'last_active': int(time())}
-            auth_token = request.app['auth_fernet'].encrypt(json.dumps(auth_session).encode()).decode()
-            return json_response(status='success', auth_token=auth_token, user=user, headers_=h)
+            return successful_login(user, request.app, h)
 
     return json_response(status='invalid', message='invalid email or password', headers_=h, status_=470)
+
+
+class GoogleModel(BaseModel):
+    id_token: constr(min_length=200, max_length=2000)
+
+
+async def login_with_google(request):
+    m = await parse_request(request, GoogleModel)
+    details = await google_get_details(request.app, m.id_token)
+    r = await request['conn'].fetchrow(get_user_sql, request['company_id'], details['email'])
+    if r:
+        user = dict(r)
+        return successful_login(user, request.app)
+    return json_response(status='invalid', message='User with this email address not found', status_=470)
 
 
 class AuthTokenModel(BaseModel):

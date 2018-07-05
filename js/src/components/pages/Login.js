@@ -1,13 +1,17 @@
 import React from 'react'
 import {Redirect} from 'react-router'
-import {Row, Col} from 'reactstrap'
+import {Row, Col, Button, FormFeedback} from 'reactstrap'
+import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+
+import {load_script} from '../../utils'
 
 
 export default class Login extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {redirect_to: null}
+    this.state = {redirect_to: null, error: null}
     this.on_message = this.on_message.bind(this)
+    this.authenticate = this.authenticate.bind(this)
   }
 
   async on_message (event) {
@@ -20,7 +24,10 @@ export default class Login extends React.Component {
       this.props.setRootState({error: data})
       return
     }
+    await this.authenticate(data)
+  }
 
+  async authenticate (data) {
     try {
       await this.props.requests.post('auth-token/', {token: data.auth_token})
     } catch (error) {
@@ -32,19 +39,78 @@ export default class Login extends React.Component {
     this.props.set_message({icon: 'user', message: `Logged in successfully as ${data.user.name}`})
   }
 
-  componentDidMount () {
+  async componentDidMount () {
     window.addEventListener('message', this.on_message)
     this.props.setRootState({user: null})
+    await load_script('https://apis.google.com/js/platform.js')
+    window.gapi.load('auth2', () => {
+      this.gauth = window.gapi.auth2.init({
+        client_id: process.env.REACT_APP_GOOGLE_SIW_CLIENT_KEY,
+        hosted_domain: 'tutorcruncher.com',
+        scope: 'profile email',
+      })
+    })
+  }
+
+  async google_auth () {
+    let data
+    this.setState({error: null})
+    try {
+      await this.gauth.signIn()
+    }  catch (error) {
+      if (error.error !== 'popup_closed_by_user') {
+        this.props.setRootState({error})
+      }
+      return
+    }
+
+    try {
+      data = await this.props.requests.post('/login/google/',
+        {id_token: this.gauth.currentUser.get().getAuthResponse().id_token},
+        {expected_statuses: [200, 470]}
+      )
+    }  catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+    if (data._response_status === 470) {
+      this.setState({error: data.message})
+    } else {
+      await this.authenticate(data)
+    }
+  }
+
+  facebook_auth () {
+    console.log('facebook TODO')
   }
 
   render () {
     if (this.state.redirect_to) {
       return <Redirect to={this.state.redirect_to}/>
     }
-    return (
-      <Row className="justify-content-center">
-        <Col md="4" className="login">
+    return [
+      <Row key="1" className="justify-content-center mb-2">
+        <Col md="6">
           <h1 className="text-center">Login</h1>
+          <div className="d-flex justify-content-around">
+            <Button onClick={this.google_auth.bind(this)} color="primary">
+              <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
+              Login with Google
+            </Button>
+            <Button onClick={this.facebook_auth.bind(this)} color="primary">
+              <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
+              Login with Facebook
+            </Button>
+          </div>
+        </Col>
+        {this.state.error &&
+          <Col md="12" className="text-center mt-2">
+            <FormFeedback style={{display: 'block'}}>{this.state.error}</FormFeedback>
+          </Col>
+        }
+      </Row>,
+      <Row key="2" className="justify-content-center">
+        <Col md="4" className="login">
           <iframe
             id="login-iframe"
             title="Login"
@@ -54,6 +120,6 @@ export default class Login extends React.Component {
             src="/login/iframe.html"/>
         </Col>
       </Row>
-    )
+    ]
   }
 }

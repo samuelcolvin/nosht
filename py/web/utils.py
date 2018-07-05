@@ -4,42 +4,9 @@ from decimal import Decimal
 from typing import Type, TypeVar
 from uuid import UUID
 
-from aiohttp import ClientSession
 from aiohttp.web import Response
 from aiohttp.web_exceptions import HTTPClientError
-from google.auth import jwt as google_jwt
-from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
 from pydantic import BaseModel, ValidationError
-
-from shared.settings import Settings
-
-CERTS = None
-
-
-async def google_certs():
-    global CERTS
-    if not CERTS:
-        async with ClientSession(conn_timeout=10, read_timeout=10) as session:
-            async with session.get(_GOOGLE_OAUTH2_CERTS_URL) as r:
-                assert r.status == 200, r.status
-                CERTS = await r.json()
-    return CERTS
-
-
-async def google_get_details(settings: Settings, id_token):
-    certs = await google_certs()
-    id_info = google_jwt.decode(id_token, certs=certs, audience=settings.google_siw_client_key)
-
-    # this should happen very rarely, if it does someone is doing something nefarious or things have gone very wrong
-    assert id_info['iss'] in {'accounts.google.com', 'https://accounts.google.com'}, 'wrong google iss'
-    assert id_info['email_verified'], 'google email not verified'
-    email = id_info['email'].lower()
-
-    return {
-        'email': email,
-        'first_name': id_info.get('given_name'),
-        'last_name': id_info.get('family_name'),
-    }
 
 
 JSON_CONTENT_TYPE = 'application/json'

@@ -1,9 +1,18 @@
+import asyncio
 import json
+import logging
 from functools import wraps
 from time import time
 
+import aiodns
+from async_timeout import timeout
+from google.auth import jwt as google_jwt
+from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
+
+from shared.settings import Settings
 from web.utils import JsonErrors, get_ip
 
+logger = logging.getLogger('nosht.auth')
 record_event = """
 INSERT INTO actions (company, user_id, type, extra) VALUES ($1, $2, $3, $4)
 """
@@ -64,3 +73,41 @@ def is_admin_or_host(coro):
 
 def is_auth(coro):
     return permission_wrapper(coro, 'admin', 'host', 'guest')
+
+
+async def validate_email(email, loop):
+    """
+    check an email is likely to exist
+
+    could do SMTP looks ups: https://gist.github.com/samuelcolvin/3652427c07fac775d0cdc8af127c0ed1
+    but not really worth it
+    """
+    domain = email.split('@', 1)[1]
+    resolver = aiodns.DNSResolver(loop=loop)
+    try:
+        with timeout(2, loop=loop):
+            await resolver.query(domain, 'MX')
+    except (aiodns.error.DNSError, ValueError, asyncio.TimeoutError) as e:
+        logger.info('looking up "%s": error %s %s', email, e.__class__.__name__, e)
+        return False
+    else:
+        return True
+
+
+async def google_get_details(app, id_token):
+    settings: Settings = app['settings']
+    async with app['session'].get(_GOOGLE_OAUTH2_CERTS_URL) as r:
+        assert r.status == 200, r.status
+        certs = await r.json()
+    id_info = google_jwt.decode(id_token, certs=certs, audience=settings.google_siw_client_key)
+
+    # this should happen very rarely, if it does someone is doing something nefarious or things have gone very wrong
+    assert id_info['iss'] in {'accounts.google.com', 'https://accounts.google.com'}, 'wrong google iss'
+    assert id_info['email_verified'], 'google email not verified'
+
+    # TODO image
+    return {
+        'email': id_info['email'].lower(),
+        'first_name': id_info.get('given_name'),
+        'last_name': id_info.get('family_name'),
+    }

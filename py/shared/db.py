@@ -68,14 +68,13 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
             await conn.close()
     else:
         conn = await lenient_conn(settings, with_db=False)
-        if not overwrite_existing:
-            # don't drop connections and try creating a db if it already exists and we're not overwriting
-            exists = await conn.fetchval('SELECT 1 AS result FROM pg_database WHERE datname=$1', settings.pg_name)
-            if exists:
-                logger.info('database already exists ✓')
-                return False
-
         try:
+            if not overwrite_existing:
+                # don't drop connections and try creating a db if it already exists and we're not overwriting
+                exists = await conn.fetchval('SELECT 1 AS result FROM pg_database WHERE datname=$1', settings.pg_name)
+                if exists:
+                    return False
+
             await conn.execute(DROP_CONNECTIONS, settings.pg_name)
             logger.debug('attempting to create database "%s"...', settings.pg_name)
             try:

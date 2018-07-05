@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from aiohttp import web
+from aiohttp import web, ClientSession
 from aiohttp_session import session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from arq import create_pool_lenient
@@ -15,7 +15,7 @@ from shared.utils import mk_password
 from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
-from .views.auth import authenticate_token, login, logout
+from .views.auth import authenticate_token, login, login_with_google, logout
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images)
 from .views.events import EventBread, SetEventStatus, event_categories
@@ -34,12 +34,14 @@ async def startup(app: web.Application):
         pg=app.get('pg') or await asyncpg.create_pool_b(dsn=settings.pg_dsn, min_size=2),
         redis=redis,
         worker=MainActor(settings=settings, existing_redis=redis),
+        session=ClientSession(conn_timeout=10, read_timeout=10)
     )
 
 
 async def cleanup(app: web.Application):
     await app['worker'].close(True)
     await app['pg'].close()
+    await app['session'].close()
 
 
 def create_app(*, settings: Settings=None):
@@ -76,6 +78,7 @@ def create_app(*, settings: Settings=None):
         web.put('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
 
         web.post('/login/', login, name='login'),
+        web.post('/login/google/', login_with_google, name='login-ggle'),
         web.post('/auth-token/', authenticate_token, name='auth-token'),
         web.post('/logout/', logout, name='logout'),
 

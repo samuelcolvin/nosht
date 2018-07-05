@@ -3,6 +3,11 @@
   --input-padding-y: .75rem;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
 .error {
   color: #cc1010;
   height: 16px;

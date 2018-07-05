@@ -17,12 +17,14 @@
       script-src %REACT_APP_CSP_SOURCE%;
       font-src data: https://fonts.gstatic.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      frame-src 'self' https://accounts.google.com;
       img-src blob: data: 'self' https://maps.googleapis.com https://maps.gstatic.com %REACT_APP_CSP_IMAGE%;
       connect-src 'self' %REACT_APP_CSP_CONNECT%;
     ">
 
-    <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/regular.js" crossorigin="anonymous"></script>
-    <script defer src="https://use.fontawesome.com/releases/v5.0.13/js/solid.js" crossorigin="anonymous"></script>
+    <script defer src="https://use.fontawesome.com/releases/v5.1.0/js/regular.js" crossorigin="anonymous"></script>
+    <script defer src="https://use.fontawesome.com/releases/v5.1.0/js/solid.js" crossorigin="anonymous"></script>
+    <script defer src="https://use.fontawesome.com/releases/v5.1.0/js/brands.js" crossorigin="anonymous"></script>
   </head>
 
   <body>
