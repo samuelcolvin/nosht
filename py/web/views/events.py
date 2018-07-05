@@ -38,7 +38,7 @@ class EventBread(Bread):
     class Model(BaseModel):
         name: constr(max_length=63)
         category: int
-        public: bool = False
+        public: bool = True
 
         class DateModel(BaseModel):
             dt: datetime
@@ -76,6 +76,7 @@ class EventBread(Bread):
         'e.slug',
         V('c.slug').as_('cat_slug'),
         'e.public',
+        'e.status',
         'e.ticket_limit',
         'e.location',
         'e.location_lat',

@@ -64,6 +64,7 @@ class Factory:
         self.company_id = None
         self.category_id = None
         self.user_id = None
+        self.event_id = None
 
     async def create_company(self,
                              name='Testing',
@@ -138,7 +139,7 @@ class Factory:
                            long_description=None,
                            **kwargs):
         long_description = long_description or lorem.paragraph()
-        return await self.conn.fetchval_b(
+        event_id = await self.conn.fetchval_b(
             'INSERT INTO events (:values__names) VALUES :values RETURNING id',
             values=Values(
                 category=category_id or self.category_id,
@@ -154,6 +155,8 @@ class Factory:
                 **kwargs
             )
         )
+        self.event_id = self.event_id or event_id
+        return event_id
 
 
 @pytest.fixture

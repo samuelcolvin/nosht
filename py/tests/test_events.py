@@ -86,7 +86,7 @@ async def test_create_private_all_day(cli, db_conn, factory: Factory, login):
     data = dict(
         name='foobar',
         category=factory.category_id,
-        private=True,
+        public=False,
         location={'lat': 50, 'lng': 0, 'name': 'London'},
         date={
             'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'),
@@ -118,3 +118,29 @@ async def test_not_auth(cli, db_conn, factory: Factory):
     r = await cli.post('/api/events/add/', data=json.dumps(data))
     assert r.status == 401, await r.text()
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+
+
+async def test_edit_event(cli, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    event_id, ticket_limit, location_lat = await db_conn.fetchrow('SELECT id, ticket_limit, location_lat FROM events')
+    assert ticket_limit is None
+    assert location_lat is None
+    data = dict(
+        ticket_limit=12,
+        location={
+            'name': 'foobar',
+            'lat': 50,
+            'lng': 1,
+        }
+    )
+    r = await cli.put(f'/api/events/{event_id}/', data=json.dumps(data))
+    assert r.status == 200, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+    ticket_limit, location_lat = await db_conn.fetchrow('SELECT ticket_limit, location_lat FROM events')
+    assert ticket_limit == 12
+    assert location_lat == 50
