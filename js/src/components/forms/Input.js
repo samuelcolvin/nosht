@@ -69,16 +69,16 @@ const Select = ({field, disabled, value, onChange}) => (
   <FormGroup>
     <Label field={field}/>
     <CustomInput type="select"
+                 value={value}
                  disabled={disabled}
                  name={field.name}
                  id={field.name}
                  required={field.required}
                  onChange={e => onChange(e.target.value)}>
-      <option value="">---------</option>
+      <option value="">&mdash;</option>
       {field.choices && field.choices.map((choice, i) => (
         <option key={i} value={choice.value}>
-          {/*TODO set selected*/}
-          {choice.display_name || choice.value}
+          {choice.display_name || as_title(choice.value)}
         </option>
       ))}
     </CustomInput>

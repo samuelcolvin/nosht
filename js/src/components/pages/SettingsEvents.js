@@ -29,6 +29,13 @@ const EVENT_FIELDS = [
   {name: 'ticket_limit', type: 'integer'},
   {name: 'long_description', title: 'Description', type: 'textarea', required: true},
 ]
+const EVENT_STATUS_FIELDS = [
+  {name: 'status', required: true, type: 'select', choices: [
+    {value: 'pending'},
+    {value: 'published'},
+    {value: 'suspended'},
+  ]},
+]
 
 export class EventsDetails extends RenderDetails {
   constructor (props) {
@@ -51,12 +58,14 @@ export class EventsDetails extends RenderDetails {
 
   async got_data (data) {
     super.got_data(data)
-    this.setState({
-      buttons: [
-        {name: 'View Public Page', link: `/${data.cat_slug}/${data.slug}/`},
+    const buttons = [
         {name: 'Edit', link: this.uri + 'edit/'},
+        {name: 'Set Status', link: this.uri + 'set-status/'},
       ]
-    })
+    if (data.status === 'published') {
+      buttons.push({name: 'View Public Page', link: `/${data.cat_slug}/${data.slug}/`})
+    }
+    this.setState({buttons})
   }
 
   extra () {
@@ -66,13 +75,28 @@ export class EventsDetails extends RenderDetails {
     const item = Object.assign({}, this.state.item)
     item.location = {name: item.location, lat: item.location_lat, lng: item.location_lng}
     item.date = {dt: item.start_ts, dur: item.duration}
-    return <ModelForm {...this.props}
-                      parent_uri={this.uri}
-                      mode="edit"
-                      success_msg='Event updated'
-                      initial={item}
-                      update={this.update}
-                      action={`/events/${this.id}/`}
-                      fields={EVENT_FIELDS}/>
+    return [
+      <ModelForm {...this.props}
+                 key="1"
+                 parent_uri={this.uri}
+                 mode="edit"
+                 success_msg='Event updated'
+                 initial={item}
+                 update={this.update}
+                 action={`/events/${this.id}/`}
+                 fields={EVENT_FIELDS}/>,
+      <ModelForm {...this.props}
+                 key="2"
+                 title="Set Event Status"
+                 parent_uri={this.uri}
+                 regex={/set-status\/$/}
+                 mode="edit"
+                 success_msg='Event updated'
+                 initial={{status: item.status}}
+                 update={this.update}
+                 action={`/events/${this.id}/set-status/`}
+                 fields={EVENT_STATUS_FIELDS}/>,
+
+    ]
   }
 }

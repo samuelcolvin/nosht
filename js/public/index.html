@@ -17,7 +17,7 @@
       script-src %REACT_APP_CSP_SOURCE%;
       font-src data: https://fonts.gstatic.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-      img-src blob: 'self' https://maps.googleapis.com https://maps.gstatic.com %REACT_APP_CSP_IMAGE%;
+      img-src blob: data: 'self' https://maps.googleapis.com https://maps.gstatic.com %REACT_APP_CSP_IMAGE%;
       connect-src 'self' %REACT_APP_CSP_CONNECT%;
     ">
 
@@ -27,7 +27,7 @@
 
   <body>
     <noscript>
-      You need to enable JavaScript to run this app.
+      You need to enable JavaScript to run this %REACT_APP_SITE_NAME%.
     </noscript>
     <div id="root"></div>
   </body>
