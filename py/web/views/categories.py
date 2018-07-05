@@ -101,21 +101,12 @@ class CategoryBread(Bread):
         event_content: str = None
         host_advice: str = None
 
-    class EditModel(BaseModel):
-        name: str = None
-        live: bool = None
-        description: str = None
-        sort_index: int = 1
-        event_content: str = None
-        host_advice: str = None
-
     browse_enabled = True
     retrieve_enabled = True
     add_enabled = True
     edit_enabled = True
 
     model = Model
-    edit_model = EditModel
     table = 'categories'
     browse_order_by_fields = 'sort_index',
 

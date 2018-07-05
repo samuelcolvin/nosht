@@ -101,8 +101,8 @@ async def parse_request(request, model: Type[T], *, error_headers=None) -> T:
     error_details = None
     try:
         data = await request.json()
-    except ValueError as e:
-        error_msg = f'Error decoding data: {e}'
+    except ValueError:
+        error_msg = 'Error decoding JSON'
     else:
         try:
             return model.parse_obj(data)

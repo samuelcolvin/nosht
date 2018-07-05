@@ -17,7 +17,6 @@ To update:
 * validate that data
 * SQL update with put data only via dict(include_fields=request_data.keys())
 """
-import json
 import re
 from enum import Enum
 from functools import update_wrapper, wraps
@@ -27,7 +26,7 @@ from aiohttp import web
 from buildpg import RawDangerous, SetValues, Values, Var, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Clauses, From, Join, Limit, OrderBy, Select, Where
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, validate_model
 
 from web.utils import JsonErrors, json_response, parse_request, raw_json_response
 
@@ -251,7 +250,6 @@ class Bread(ReadBread):
     PUT /{pk}/ 200,400,403,404
     DELETE /{pk}/ 200,400,403,404
     """
-    edit_model = None
     add_enabled = False
     edit_enabled = False
     delete_enabled = False
@@ -288,12 +286,20 @@ class Bread(ReadBread):
         return data
 
     async def edit(self, pk) -> web.Response:
-        m = await parse_request(self.request, self.edit_model or self.model)
-        raw_data = await self.request.json()
-        data = m.dict(include=raw_data.keys())
+        try:
+            data = await self.request.json()
+        except ValueError:
+            raise JsonErrors.HTTPBadRequest(message='Error decoding JSON')
+        else:
+            if not isinstance(data, dict):
+                raise JsonErrors.HTTPBadRequest(message='data not a dictionary')
+
+            data, e = validate_model(self.model, data, raise_exc=False)
+            errors = [e for e in e.errors() if e['type'] != 'value_error.missing']
+            if errors:
+                raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=errors)
 
         data = self.prepare_edit_data(data)
-
         if not data:
             raise JsonErrors.HTTPBadRequest(message=f'no data to save')
 
