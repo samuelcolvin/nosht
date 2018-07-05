@@ -56,6 +56,7 @@ const Checkbox = ({field, disabled, value, onChange}) => (
                label={field.title}
                disabled={disabled}
                name={field.name}
+               id={field.name}
                required={field.required}
                checked={value || false}
                onChange={e => onChange(e.target.checked)}/>
@@ -154,7 +155,8 @@ class GeoLocation extends React.Component {
     super(props)
     this.state = {
       address: typeof(this.props.value) === 'object' ? this.props.value.name : '',
-      error: null
+      error: null,
+      marker_moved: false,
     }
     this.update = this.update.bind(this)
     this.search = this.search.bind(this)
@@ -185,6 +187,7 @@ class GeoLocation extends React.Component {
       this.props.onChange(null)
       return
     }
+    this.setState({marker_moved: false})
     this.update(latlng, this.state.address)
   }
 
@@ -199,9 +202,17 @@ class GeoLocation extends React.Component {
         this.props.onChange(null)
         return
       }
-      this.setState({address: address})
+      this.setState({address, marker_moved: false})
+    } else {
+      this.setState({marker_moved: true})
+      address = this.state.address
     }
     this.update(e.latLng, address)
+  }
+
+  async update_address () {
+    const loc = await this.geocode({'location': this.props.value})
+    this.setState({address: loc.formatted_address, marker_moved: false})
   }
 
   update (loc, address) {
@@ -220,12 +231,13 @@ class GeoLocation extends React.Component {
     const field = this.props.field
     // NOTE: this is hardcoded as central london for now
     const loc = this.props.value || {lat: 51.507382, lng: -0.127654, name: '', zoom: 12}
+    const error = this.state.error || this.props.error
     return (
       <FormGroup>
         <Label field={field}/>
         <InputGroup>
           <BsInput type="text"
-                   invalid={!!this.state.error}
+                   invalid={!!error}
                    disabled={this.props.disabled}
                    required={field.required}
                    placeholder={field.placeholder}
@@ -236,8 +248,15 @@ class GeoLocation extends React.Component {
             <Button onClick={this.search}>Search</Button>
           </InputGroupAddon>
         </InputGroup>
+        <div style={{height: 20}}>
+          {this.state.marker_moved &&
+            <Button onClick={this.update_address.bind(this)} color="link" className="small-link">
+              Update address from marker
+            </Button>
+          }
+        </div>
         <Map geolocation={loc} on_drag={this.on_ondrag.bind(this)}/>
-        {this.state.error && <FormFeedback style={{display: 'block'}}>{this.state.error}</FormFeedback>}
+        {error && <FormFeedback style={{display: 'block'}}>{error}</FormFeedback>}
         <HelpText field={field}/>
       </FormGroup>
     )
@@ -255,7 +274,8 @@ const INPUT_LOOKUP = {
 const Input = props => {
   const InputComp = INPUT_LOOKUP[props.field.type] || GeneralInput
   props.field.title = props.field.title || as_title(props.field.name)
-  return <InputComp {...props} onChange={props.set_value}/>
+  const value = props.value || props.field.default
+  return <InputComp {...props} value={value} onChange={props.set_value}/>
 }
 
 export default Input

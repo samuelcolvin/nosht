@@ -19,7 +19,12 @@ export default class Map extends React.Component {
     this.update_map()
   }
 
-  async update_map () {
+  update_map () {
+    clearInterval(window._map_update)
+    window._map_update = setTimeout(this.update_map_direct.bind(this), 100)
+  }
+
+  async update_map_direct () {
     const el = document.getElementById(MAP_ID)
     if (!el) {
       return

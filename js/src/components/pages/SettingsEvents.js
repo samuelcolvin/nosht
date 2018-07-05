@@ -23,7 +23,7 @@ export class EventsList extends RenderList {
 
 const EVENT_FIELDS = [
   {name: 'name', required: true},
-  {name: 'private', title: 'Private Event', type: 'bool'},
+  {name: 'public', title: 'Public Event', type: 'bool'},
   {name: 'date', title: 'Event Start', type: 'datetime', required: true},
   {name: 'location', type: 'geolocation', help_text: 'Drag the marker to set the exact event location.'},
   {name: 'ticket_limit', type: 'integer'},

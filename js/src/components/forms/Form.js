@@ -37,7 +37,7 @@ export class Form extends React.Component {
       for (let e of (r.details || [])) {
         errors[e.loc[0]] = e.msg
       }
-      this.setState({disabled: false, errors, form_error: Object.keys(errors).length ? null : 'Error occurred'})
+      this.setState({disabled: false, errors, form_error: Object.keys(errors).length ? 'Error occurred' : null})
     } else {
       this.props.update && this.props.update()
       this.props.success_msg && this.props.set_message(this.props.success_msg)

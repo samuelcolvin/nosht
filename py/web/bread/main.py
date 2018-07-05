@@ -47,7 +47,7 @@ class BaseBread:
     table_as: str = None
     name: str = None
     pk_field: str = 'id'
-    log_print = False
+    print_queries = False
 
     def __init__(self, method, request):
         self.method: Method = method
@@ -190,7 +190,7 @@ class ReadBread(BaseBread):
 
     def browse_limit(self) -> Limit:
         if self.browse_limit_value:
-            return Limit(RawDangerous(self.browse_limit_value))
+            return Limit(Var(str(self.browse_limit_value)))
 
     @as_clauses
     async def browse_items_query(self):
@@ -213,7 +213,7 @@ class ReadBread(BaseBread):
             self.browse_sql,
             items_query=await self.browse_items_query(),
             count_query=await self.browse_count_query(),
-            print_=self.log_print,
+            print_=self.print_queries,
         )
         return raw_json_response(json_str or '[]')
 
@@ -223,13 +223,13 @@ class ReadBread(BaseBread):
         yield self.from_()
         yield self.join()
         yield self.where_pk(pk)
-        yield Limit(1)
+        yield Limit(Var('1'))
 
     async def retrieve(self, pk) -> web.Response:
         return await self._fetchval_response(
             self.retrieve_sql,
             query=await self.retrieve_query(pk),
-            print_=self.log_print,
+            print_=self.print_queries,
         )
 
     async def options(self) -> web.Response:
@@ -263,6 +263,11 @@ class Bread(ReadBread):
     SET :values
     :where
     """
+    check_ok_sql = """
+    SELECT row_to_json(t) FROM (
+      :query
+    ) AS t
+    """
 
     def prepare_add_data(self, data):
         return data
@@ -275,31 +280,50 @@ class Bread(ReadBread):
             table=Var(self.table),
             values=Values(**data),
             pk_field=Var(self.pk_field),
-            print_=self.log_print,
+            print_=self.print_queries,
         )
         return json_response(status='ok', pk=pk, status_=201)
 
     async def add_options(self) -> web.Response:
         pass
 
+    @as_clauses
+    async def check_item_permissions_query(self, pk):
+        yield Select([self.pk_ref()])
+        yield self.from_()
+        yield self.join()
+        yield self.where_pk(pk)
+        yield Limit(Var('1'))
+
+    async def check_item_permissions(self, pk):
+        v = await self.conn.fetchval_b(
+            ':query',
+            query=await self.check_item_permissions_query(pk),
+            print_=self.print_queries,
+        )
+        if not v:
+            raise JsonErrors.HTTPNotFound(message=f'{self.meta["single_title"]} not found')
+
     def prepare_edit_data(self, data):
         return data
 
     async def edit(self, pk) -> web.Response:
+        await self.check_item_permissions(pk)
         try:
-            data = await self.request.json()
+            raw_data = await self.request.json()
         except ValueError:
             raise JsonErrors.HTTPBadRequest(message='Error decoding JSON')
         else:
-            if not isinstance(data, dict):
+            if not isinstance(raw_data, dict):
                 raise JsonErrors.HTTPBadRequest(message='data not a dictionary')
 
-            data, e = validate_model(self.model, data, raise_exc=False)
-            errors = [e for e in e.errors() if e['type'] != 'value_error.missing']
-            if errors:
-                raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=errors)
+            data, e = validate_model(self.model, raw_data, raise_exc=False)
+            if e:
+                errors = [e for e in e.errors() if not (e['type'] == 'value_error.missing' and len(e['loc']) == 1)]
+                if errors:
+                    raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=errors)
 
-        data = self.prepare_edit_data(data)
+        data = self.prepare_edit_data(self.model.construct(**data).dict(include=raw_data.keys()))
         if not data:
             raise JsonErrors.HTTPBadRequest(message=f'no data to save')
 
@@ -307,8 +331,8 @@ class Bread(ReadBread):
             self.edit_sql,
             table=Var(self.table),
             values=SetValues(**data),
-            where=self.where_pk(pk),
-            print_=self.log_print,
+            where=Where(Var(self.pk_field) == pk),
+            print_=self.print_queries,
         )
         return json_response(status='ok')
 

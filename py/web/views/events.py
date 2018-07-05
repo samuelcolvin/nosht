@@ -33,10 +33,12 @@ async def event_categories(request):
 
 
 class EventBread(Bread):
+    # print_queries = True
+
     class Model(BaseModel):
         name: constr(max_length=63)
         category: int
-        private: bool = False
+        public: bool = False
 
         class DateModel(BaseModel):
             dt: datetime
@@ -73,6 +75,8 @@ class EventBread(Bread):
     retrieve_fields = browse_fields + (
         'e.slug',
         V('c.slug').as_('cat_slug'),
+        'e.public',
+        'e.ticket_limit',
         'e.location',
         'e.location_lat',
         'e.location_lng',
@@ -93,28 +97,36 @@ class EventBread(Bread):
             logic &= V('e.host') == session['user_id']
         return Where(logic)
 
+    def prepare(self, data):
+        date = data.pop('date', None)
+        if date:
+            dt: datetime = date['dt']
+            duration: Optional[int] = date['dur']
+            data.update(
+                start_ts=datetime(dt.year, dt.month, dt.day) if duration is None else dt.replace(tzinfo=None),
+                duration=duration and timedelta(seconds=duration),
+            )
+
+        loc = data.pop('location', None)
+        if loc:
+            data.update(
+                location=loc['name'],
+                location_lat=loc['lat'],
+                location_lng=loc['lng'],
+            )
+
+        long_desc = data.get('long_description')
+        if long_desc is not None:
+            data['short_description'] = shorten(long_desc, width=140, placeholder='…')
+        return data
+
     def prepare_add_data(self, data):
-        date = data.pop('date')
-        dt: datetime = date['dt']
-        duration: Optional[int] = date['dur']
-        loc = data.pop('location')
+        data = self.prepare(data)
         data.update(
-            public=not data.pop('private'),
-            start_ts=datetime(dt.year, dt.month, dt.day) if duration is None else dt.replace(tzinfo=None),
-            duration=duration and timedelta(seconds=duration),
-            location=loc['name'],
-            location_lat=loc['lat'],
-            location_lng=loc['lng'],
-            short_description=shorten(data['long_description'], width=140, placeholder='…'),
             slug=slugify(data['name']),
             host=self.request['session'].get('user_id'),
         )
         return data
 
-    def prepare_edit_data_initial(self, data):
-        debug(data)
-        return data
-
-    def prepare_edit_data_final(self, data):
-        debug(data)
-        return data
+    def prepare_edit_data(self, data):
+        return self.prepare(data)
