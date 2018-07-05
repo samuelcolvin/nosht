@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     pg_name: str = None
     redis_settings: Any = 'redis://localhost:6379'
     redis_db: int = 1
-    google_siw_client_key = '421181039733-sdkjn7bclc9qgvk9a6iqrah0v3fk4aa5.apps.googleusercontent.com'
     auth_key = 'v7RI7qwZB7rxCyrpX4QwpZCUCF7X_HtnMSFuJfZTmfs='
     cookie_max_age = 25 * 3600
     cookie_update_age = 600
@@ -31,6 +30,9 @@ class Settings(BaseSettings):
     s3_bucket: str = None
     s3_domain: str = None
     max_request_size = 10*1024**2  # 10MB
+
+    google_siw_client_key = '421181039733-sdkjn7bclc9qgvk9a6iqrah0v3fk4aa5.apps.googleusercontent.com'
+    facebook_siw_app_secret: bytes = b'xxx'
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):

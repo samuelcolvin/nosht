@@ -6,7 +6,8 @@ from aiohttp_session import new_session
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, EmailStr, constr
 
-from web.auth import google_get_details, invalidate_session, is_auth, record_event
+from web.auth import (FacebookSiwModel, GoogleSiwModel, facebook_get_details, google_get_details, invalidate_session,
+                      is_auth, record_event)
 from web.utils import JsonErrors, get_ip, json_response, parse_request
 
 
@@ -49,18 +50,22 @@ async def login(request):
     return json_response(status='invalid', message='invalid email or password', headers_=h, status_=470)
 
 
-class GoogleModel(BaseModel):
-    id_token: constr(min_length=200, max_length=2000)
-
-
-async def login_with_google(request):
-    m = await parse_request(request, GoogleModel)
-    details = await google_get_details(request.app, m.id_token)
+async def _login_with(request, model, siw_method):
+    m = await parse_request(request, model)
+    details = await siw_method(m, app=request.app)
     r = await request['conn'].fetchrow(get_user_sql, request['company_id'], details['email'])
     if r:
         user = dict(r)
         return successful_login(user, request.app)
     return json_response(status='invalid', message='User with this email address not found', status_=470)
+
+
+async def login_with_google(request):
+    return await _login_with(request, GoogleSiwModel, google_get_details)
+
+
+async def login_with_facebook(request):
+    return await _login_with(request, FacebookSiwModel, facebook_get_details)
 
 
 class AuthTokenModel(BaseModel):

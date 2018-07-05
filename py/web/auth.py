@@ -1,13 +1,19 @@
 import asyncio
 import json
+import hashlib
+import hmac
 import logging
+import secrets
 from functools import wraps
 from time import time
+from urllib.parse import urlencode
 
 import aiodns
 from async_timeout import timeout
 from google.auth import jwt as google_jwt
+from google.auth._helpers import padded_urlsafe_b64decode
 from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
+from pydantic import BaseModel, constr
 
 from shared.settings import Settings
 from web.utils import JsonErrors, get_ip
@@ -94,12 +100,16 @@ async def validate_email(email, loop):
         return True
 
 
-async def google_get_details(app, id_token):
+class GoogleSiwModel(BaseModel):
+    id_token: constr(min_length=200, max_length=2000)
+
+
+async def google_get_details(m: GoogleSiwModel, app):
     settings: Settings = app['settings']
     async with app['session'].get(_GOOGLE_OAUTH2_CERTS_URL) as r:
         assert r.status == 200, r.status
         certs = await r.json()
-    id_info = google_jwt.decode(id_token, certs=certs, audience=settings.google_siw_client_key)
+    id_info = google_jwt.decode(m.id_token, certs=certs, audience=settings.google_siw_client_key)
 
     # this should happen very rarely, if it does someone is doing something nefarious or things have gone very wrong
     assert id_info['iss'] in {'accounts.google.com', 'https://accounts.google.com'}, 'wrong google iss'
@@ -110,4 +120,50 @@ async def google_get_details(app, id_token):
         'email': id_info['email'].lower(),
         'first_name': id_info.get('given_name'),
         'last_name': id_info.get('family_name'),
+    }
+
+
+class FacebookSiwModel(BaseModel):
+    signed_request: bytes
+    access_token: str
+
+    class Config:
+        fields = {
+            'signed_request': 'signedRequest',
+            'access_token': 'accessToken',
+        }
+
+
+async def facebook_get_details(m: FacebookSiwModel, app):
+    try:
+        sig, data = m.signed_request.split(b'.', 1)
+    except ValueError:
+        raise JsonErrors.HTTPBadRequest(message='"signedRequest" not correctly formed')
+
+    settings: Settings = app['settings']
+    expected_sig = hmac.new(settings.facebook_siw_app_secret, data, hashlib.sha256).digest()
+    if not secrets.compare_digest(padded_urlsafe_b64decode(sig), expected_sig):
+        raise JsonErrors.HTTPBadRequest(message='"signedRequest" not correctly signed')
+
+    data = json.loads(padded_urlsafe_b64decode(data).decode())
+
+    details_url = f'https://graph.facebook.com/v2.11/me?' + urlencode({
+        'access_token': m.access_token,
+        'fields': ['email', 'verified', 'first_name', 'last_name']
+    })
+    async with app['session'].get(details_url) as r:
+        assert r.status == 200, r.status
+        response_data = await r.json()
+
+    if not response_data['verified']:
+        raise JsonErrors.HTTPBadRequest(message='Your user has not been verified with Facebook.')
+    if not response_data.get('email') or not response_data.get('last_name'):
+        raise JsonErrors.HTTPBadRequest(message='Your Facebook profile needs to have both a last name and '
+                                                'email address associated with it.')
+
+    return {
+        'id': data['user_id'],
+        'email': response_data['email'].lower(),
+        'first_name': response_data['first_name'],
+        'last_name': response_data['last_name'],
     }
