@@ -5,6 +5,18 @@ import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 
 import {load_script} from '../../utils'
 
+const facebook_login = scope => {
+  return new Promise((resolve, reject) => {
+    window.FB.login(r => {
+      if (r.status === 'connected') {
+        resolve(r.authResponse)
+      } else {
+        reject(r)
+      }
+    }, {scope})
+  })
+}
+
 
 export default class Login extends React.Component {
   constructor (props) {
@@ -50,6 +62,15 @@ export default class Login extends React.Component {
         scope: 'profile email',
       })
     })
+    await load_script('https://connect.facebook.net/en_US/sdk.js')
+    window.fbAsyncInit = () => {
+      window.FB.init({
+        appId: process.env.REACT_APP_FACEBOOK_SIW_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: 'v3.0'
+      })
+    }
   }
 
   async google_auth () {
@@ -69,7 +90,7 @@ export default class Login extends React.Component {
         {id_token: this.gauth.currentUser.get().getAuthResponse().id_token},
         {expected_statuses: [200, 470]}
       )
-    }  catch (error) {
+    } catch (error) {
       this.props.setRootState({error})
       return
     }
@@ -80,8 +101,28 @@ export default class Login extends React.Component {
     }
   }
 
-  facebook_auth () {
-    console.log('facebook TODO')
+  async facebook_auth () {
+    this.setState({error: null})
+
+    let data, auth_response
+    try {
+      auth_response = await facebook_login('email')
+    } catch (error) {
+      return
+    }
+
+    try {
+      data = await this.props.requests.post('/login/facebook/', auth_response, {expected_statuses: [200, 470]})
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+
+    if (data._response_status === 470) {
+      this.setState({error: data.message})
+    } else {
+      await this.authenticate(data)
+    }
   }
 
   render () {

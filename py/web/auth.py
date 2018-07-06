@@ -126,11 +126,13 @@ async def google_get_details(m: GoogleSiwModel, app):
 class FacebookSiwModel(BaseModel):
     signed_request: bytes
     access_token: str
+    user_id: str
 
     class Config:
         fields = {
             'signed_request': 'signedRequest',
             'access_token': 'accessToken',
+            'user_id': 'userID'
         }
 
 
@@ -145,24 +147,25 @@ async def facebook_get_details(m: FacebookSiwModel, app):
     if not secrets.compare_digest(padded_urlsafe_b64decode(sig), expected_sig):
         raise JsonErrors.HTTPBadRequest(message='"signedRequest" not correctly signed')
 
-    data = json.loads(padded_urlsafe_b64decode(data).decode())
+    signed_data = json.loads(padded_urlsafe_b64decode(data).decode())
 
-    details_url = f'https://graph.facebook.com/v2.11/me?' + urlencode({
+    # can add 'picture' here, but it seems to be low res.
+    details_url = f'https://graph.facebook.com/v3.0/me?' + urlencode({
         'access_token': m.access_token,
-        'fields': ['email', 'verified', 'first_name', 'last_name']
+        'fields': ['email', 'first_name', 'last_name']
     })
     async with app['session'].get(details_url) as r:
         assert r.status == 200, r.status
         response_data = await r.json()
 
-    if not response_data['verified']:
-        raise JsonErrors.HTTPBadRequest(message='Your user has not been verified with Facebook.')
+    if not (response_data['id'] == signed_data['user_id'] == m.user_id):
+        raise JsonErrors.HTTPBadRequest(message='facebook userID not consistent')
     if not response_data.get('email') or not response_data.get('last_name'):
         raise JsonErrors.HTTPBadRequest(message='Your Facebook profile needs to have both a last name and '
                                                 'email address associated with it.')
 
     return {
-        'id': data['user_id'],
+        'id': m.user_id,
         'email': response_data['email'].lower(),
         'first_name': response_data['first_name'],
         'last_name': response_data['last_name'],

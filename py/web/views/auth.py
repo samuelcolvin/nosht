@@ -53,11 +53,12 @@ async def login(request):
 async def _login_with(request, model, siw_method):
     m = await parse_request(request, model)
     details = await siw_method(m, app=request.app)
-    r = await request['conn'].fetchrow(get_user_sql, request['company_id'], details['email'])
+    email = details['email']
+    r = await request['conn'].fetchrow(get_user_sql, request['company_id'], email)
     if r:
         user = dict(r)
         return successful_login(user, request.app)
-    return json_response(status='invalid', message='User with this email address not found', status_=470)
+    return json_response(status='invalid', message=f'User with with email address "{email}" not found', status_=470)
 
 
 async def login_with_google(request):

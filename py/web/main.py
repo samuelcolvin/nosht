@@ -15,7 +15,7 @@ from shared.utils import mk_password
 from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
-from .views.auth import authenticate_token, login, login_with_google, logout
+from .views.auth import authenticate_token, login, login_with_facebook, login_with_google, logout
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images)
 from .views.events import EventBread, SetEventStatus, event_categories
@@ -78,7 +78,8 @@ def create_app(*, settings: Settings=None):
         web.put('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
 
         web.post('/login/', login, name='login'),
-        web.post('/login/google/', login_with_google, name='login-ggle'),
+        web.post('/login/google/', login_with_google, name='login-google'),
+        web.post('/login/facebook/', login_with_facebook, name='login-facebook'),
         web.post('/auth-token/', authenticate_token, name='auth-token'),
         web.post('/logout/', logout, name='logout'),
 
