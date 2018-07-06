@@ -23,7 +23,7 @@ export class Form extends React.Component {
       return
     }
     this.setState({disabled: true, errors: {}, form_error: null})
-    const method = this.props.mode === 'edit' ? this.props.requests.put : this.props.requests.post
+    const method = this.props.requests[this.props.request_method || 'post']
     let r
     try {
       r = await method(this.props.action, this.state.form_data, {expected_statuses: [200, 201, 400]})
@@ -86,4 +86,4 @@ export class Form extends React.Component {
   }
 }
 
-export const ModelForm = AsModal(Form)
+export const ModalForm = AsModal(Form)

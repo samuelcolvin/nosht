@@ -1,8 +1,8 @@
 import React from 'react'
 import {Row, Col, ButtonGroup, Button} from 'reactstrap'
 import {RenderList, RenderDetails, ImageThumbnail} from '../utils/Settings'
-import {ModelForm} from '../forms/Form'
-import {ModelDropzoneForm} from '../forms/Drop'
+import {ModalForm} from '../forms/Form'
+import {ModalDropzoneForm} from '../forms/Drop'
 
 const CAT_FIELDS = [
   {name: 'name', required: true},
@@ -23,7 +23,8 @@ export class CategoriesList extends RenderList {
   }
 
   extra () {
-    return <ModelForm {...this.props}
+    return <ModalForm {...this.props}
+                      title="Add Category"
                       parent_uri={this.uri}
                       success_msg={`${this.props.page.singular} added`}
                       mode="add"
@@ -109,7 +110,9 @@ export class CategoriesDetails extends RenderDetails {
         image_action={this.image_action.bind(this)}
         default_image={this.state.item.image}
         suggested_images={this.state.item.suggested_images}/>,
-      <ModelForm {...this.props}
+      <ModalForm {...this.props}
+                 title="Edit Category"
+                 request_method="put"
                  key="2"
                  parent_uri={this.uri}
                  mode="edit"
@@ -118,7 +121,7 @@ export class CategoriesDetails extends RenderDetails {
                  update={this.update}
                  action={`/categories/${this.id}/`}
                  fields={CAT_FIELDS}/>,
-      <ModelDropzoneForm {...this.props}
+      <ModalDropzoneForm {...this.props}
                          key="3"
                          parent_uri={this.uri}
                          regex={/add-image\/$/}

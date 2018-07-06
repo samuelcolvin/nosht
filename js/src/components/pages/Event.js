@@ -1,4 +1,5 @@
 import React from 'react'
+import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
 import {Loading, NotFound} from '../utils/Errors'
@@ -6,6 +7,7 @@ import PromptUpdate from '../utils/PromptUpdate'
 import Markdown from '../utils/Markdown'
 import Map from '../utils/Map'
 import {When} from '../Events'
+import BookEvent from './BookEvent'
 
 export default class Event extends React.Component {
   constructor (props) {
@@ -13,6 +15,8 @@ export default class Event extends React.Component {
     this.state = {
       event: null,
     }
+    const params = this.props.match.params
+    this.uri = `/${params.category}/${params.event}/`
   }
 
   async get_data () {
@@ -34,7 +38,7 @@ export default class Event extends React.Component {
     this.props.setRootState({
       page_title: event.name,
       background: event.image,
-      extra_menu: [{name: 'Book Now', to: '/'}],
+      extra_menu: [{name: 'Book Now', to: this.uri + 'book/'}],
     })
   }
 
@@ -56,7 +60,9 @@ export default class Event extends React.Component {
             </p>
           </Col>
           <Col md="3" className="text-right">
-            <Button color="primary" size="lg" className="hover-raise">Book Now</Button>
+            <Button color="primary" size="lg" className="hover-raise" tag={Link} to={this.uri + 'book/'}>
+              Book Now
+            </Button>
           </Col>
         </Row>
 
@@ -87,6 +93,7 @@ export default class Event extends React.Component {
           <h2>About {event.name}</h2>
           <Markdown content={event.long_description}/>
         </div>
+        <BookEvent {...this.props} parent_uri={this.uri} event={event}/>
         {prompt_update}
       </div>
     )

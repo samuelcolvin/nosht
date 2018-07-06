@@ -13,7 +13,7 @@ const Buttons = ({buttons, className}) => (
   buttons && <div className="text-right mb-2">
     <ButtonGroup>
       {buttons.map(b => (
-        <Button key={b.name} tag={Link} to={b.link}>{b.name}</Button>
+        <Button key={b.name} tag={Link} to={b.link} disabled={b.disabled || false}>{b.name}</Button>
       ))}
     </ButtonGroup>
   </div>

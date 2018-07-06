@@ -113,4 +113,4 @@ class DropzoneForm extends React.Component {
   }
 }
 
-export const ModelDropzoneForm = AsModal(DropzoneForm)
+export const ModalDropzoneForm = AsModal(DropzoneForm)

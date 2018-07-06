@@ -19,7 +19,7 @@ class LoginModel(BaseModel):
 get_user_sql = """
 SELECT id, first_name || ' ' || last_name AS name, role, status, password_hash
 FROM users
-WHERE company=$1 AND email=$2 AND status='active'
+WHERE company=$1 AND email=$2 AND status='active' AND role!='guest'
 """
 
 
@@ -58,7 +58,7 @@ async def _login_with(request, model, siw_method):
     if r:
         user = dict(r)
         return successful_login(user, request.app)
-    return json_response(status='invalid', message=f'User with with email address "{email}" not found', status_=470)
+    return json_response(status='invalid', message=f'User with email address "{email}" not found', status_=470)
 
 
 async def login_with_google(request):

@@ -33,11 +33,9 @@ export default function AsModal (WrappedComponent) {
     }
 
     render () {
-      const s = this.props.page.singular
-      const title = this.props.title || (this.props.mode === 'edit' ? `Edit ${s}` : `Add ${s}`)
       return (
         <Modal isOpen={this.state.shown} toggle={() => this.toggle()} size='lg'>
-          <ModalHeader toggle={() => this.toggle()}>{title}</ModalHeader>
+          <ModalHeader toggle={() => this.toggle()}>{this.props.title}</ModalHeader>
           <WrappedComponent
             {...this.props}
             finished={this.toggle}

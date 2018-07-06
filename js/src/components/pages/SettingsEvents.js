@@ -1,7 +1,7 @@
 import React from 'react'
 import {format_event_start, format_event_duration} from '../../utils'
 import {RenderList, RenderDetails} from '../utils/Settings'
-import {ModelForm} from '../forms/Form'
+import {ModalForm} from '../forms/Form'
 
 export class EventsList extends RenderList {
   constructor (props) {
@@ -58,14 +58,11 @@ export class EventsDetails extends RenderDetails {
 
   async got_data (data) {
     super.got_data(data)
-    const buttons = [
-        {name: 'Edit', link: this.uri + 'edit/'},
-        {name: 'Set Status', link: this.uri + 'set-status/'},
-      ]
-    if (data.status === 'published') {
-      buttons.push({name: 'View Public Page', link: `/${data.cat_slug}/${data.slug}/`})
-    }
-    this.setState({buttons})
+    this.setState({buttons: [
+      {name: 'Edit', link: this.uri + 'edit/'},
+      {name: 'Set Status', link: this.uri + 'set-status/'},
+      {name: 'View Public Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'}
+    ]})
   }
 
   extra () {
@@ -76,7 +73,9 @@ export class EventsDetails extends RenderDetails {
     item.location = {name: item.location, lat: item.location_lat, lng: item.location_lng}
     item.date = {dt: item.start_ts, dur: item.duration}
     return [
-      <ModelForm {...this.props}
+      <ModalForm {...this.props}
+                 title="Edit Event"
+                 request_method="put"
                  key="1"
                  parent_uri={this.uri}
                  mode="edit"
@@ -85,7 +84,7 @@ export class EventsDetails extends RenderDetails {
                  update={this.update}
                  action={`/events/${this.id}/`}
                  fields={EVENT_FIELDS}/>,
-      <ModelForm {...this.props}
+      <ModalForm {...this.props}
                  key="2"
                  title="Set Event Status"
                  parent_uri={this.uri}

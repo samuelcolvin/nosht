@@ -75,7 +75,7 @@ def create_app(*, settings: Settings=None):
         web.get('/events/{category}/{event}/', event, name='event-get'),
         web.get('/events/categories/', event_categories, name='event-categories'),
         *EventBread.routes('/events/'),
-        web.put('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
+        web.post('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
 
         web.post('/login/', login, name='login'),
         web.post('/login/google/', login_with_google, name='login-google'),
