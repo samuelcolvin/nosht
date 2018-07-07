@@ -19,9 +19,18 @@ from shared.settings import Settings
 from web.utils import JsonErrors, get_ip
 
 logger = logging.getLogger('nosht.auth')
-record_event = """
+record_event_sql = """
 INSERT INTO actions (company, user_id, type, extra) VALUES ($1, $2, $3, $4)
 """
+
+
+async def record_event(request, user_id, event, **extra):
+    extra.update(
+        ip=get_ip(request),
+        ua=request.headers.get('User-Agent')
+    )
+    extra = json.dumps(extra)
+    await request['conn'].execute(record_event_sql, request['company_id'], user_id, event, extra)
 
 
 async def invalidate_session(request, reason):
@@ -34,7 +43,7 @@ async def invalidate_session(request, reason):
     })
     user_id = session['user_id']
     session.invalidate()
-    await request['conn'].execute(record_event, request['company_id'], user_id, 'logout', extra)
+    await request['conn'].execute(record_event_sql, request['company_id'], user_id, 'logout', extra)
 
 
 async def check_session(request, *roles):
@@ -165,7 +174,6 @@ async def facebook_get_details(m: FacebookSiwModel, app):
                                                 'email address associated with it.')
 
     return {
-        'id': m.user_id,
         'email': response_data['email'].lower(),
         'first_name': response_data['first_name'],
         'last_name': response_data['last_name'],

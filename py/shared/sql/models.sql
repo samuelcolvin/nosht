@@ -31,11 +31,12 @@ CREATE TABLE users (
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   active_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE UNIQUE INDEX user_email ON users USING btree (company, email, status);
+CREATE UNIQUE INDEX user_email ON users USING btree (company, email);
 
 
 CREATE TYPE ACTION_TYPES AS ENUM (
   'login',
+  'guest-signin',
   'logout',
   'reserve_tickets',
   'buy_tickets',

@@ -39,7 +39,7 @@ FROM (
     )
     ELSE (
       SELECT row_to_json(t) AS user_data FROM (
-        SELECT id, first_name || ' ' || last_name AS name, role, status
+        SELECT id, COALESCE(first_name || ' ' || last_name, email) AS name, role, status
         FROM users
         WHERE id=$2
       ) AS t

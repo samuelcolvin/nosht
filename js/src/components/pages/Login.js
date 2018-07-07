@@ -3,20 +3,7 @@ import {Redirect} from 'react-router'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 
-import {load_script} from '../../utils'
-
-const facebook_login = scope => {
-  return new Promise((resolve, reject) => {
-    window.FB.login(r => {
-      if (r.status === 'connected') {
-        resolve(r.authResponse)
-      } else {
-        reject(r)
-      }
-    }, {scope})
-  })
-}
-
+import {setup_siw, facebook_login, google_login} from '../../login_with'
 
 export default class Login extends React.Component {
   constructor (props) {
@@ -54,42 +41,19 @@ export default class Login extends React.Component {
   async componentDidMount () {
     window.addEventListener('message', this.on_message)
     this.props.setRootState({user: null})
-    await load_script('https://apis.google.com/js/platform.js')
-    window.gapi.load('auth2', () => {
-      this.gauth = window.gapi.auth2.init({
-        client_id: process.env.REACT_APP_GOOGLE_SIW_CLIENT_KEY,
-        hosted_domain: 'tutorcruncher.com',
-        scope: 'profile email',
-      })
-    })
-    await load_script('https://connect.facebook.net/en_US/sdk.js')
-    window.fbAsyncInit = () => {
-      window.FB.init({
-        appId: process.env.REACT_APP_FACEBOOK_SIW_APP_ID,
-        cookie: true,
-        xfbml: true,
-        version: 'v3.0'
-      })
-    }
+    await setup_siw()
   }
 
   async google_auth () {
-    let data
     this.setState({error: null})
-    try {
-      await this.gauth.signIn()
-    }  catch (error) {
-      if (error.error !== 'popup_closed_by_user') {
-        this.props.setRootState({error})
-      }
+    const auth_data = await google_login(this.props.setRootState)
+    if (!auth_data) {
       return
     }
 
+    let data
     try {
-      data = await this.props.requests.post('/login/google/',
-        {id_token: this.gauth.currentUser.get().getAuthResponse().id_token},
-        {expected_statuses: [200, 470]}
-      )
+      data = await this.props.requests.post('/login/google/', auth_data, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})
       return
@@ -104,15 +68,14 @@ export default class Login extends React.Component {
   async facebook_auth () {
     this.setState({error: null})
 
-    let data, auth_response
-    try {
-      auth_response = await facebook_login('email')
-    } catch (error) {
+    const auth_data = await facebook_login(this.props.setRootState)
+    if (!auth_data) {
       return
     }
 
+    let data
     try {
-      data = await this.props.requests.post('/login/facebook/', auth_response, {expected_statuses: [200, 470]})
+      data = await this.props.requests.post('/login/facebook/', auth_data, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})
       return

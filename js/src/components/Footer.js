@@ -14,11 +14,16 @@ const Footer = ({user}) => {
         {name: 'Settings', to: '/settings/events/'},
         {name: 'Create Event', to: '/create/'},
       ]
-    } else {
+    } else if (user.role === 'host') {
       menu = [
         {name: 'Account Settings', to: '/account/'},
         {name: 'My Events', to: '/my-events/'},
         {name: 'Create Event', to: '/create/'},
+      ]
+    } else {
+      // guest
+      menu = [
+        {name: 'Create Event', to: '/signup/'},
       ]
     }
     menu.push({name: 'Logout', to: '/logout/'})

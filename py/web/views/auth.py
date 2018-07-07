@@ -3,12 +3,13 @@ from time import time
 
 import bcrypt
 from aiohttp_session import new_session
+from buildpg import Values
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, EmailStr, constr
 
 from web.auth import (FacebookSiwModel, GoogleSiwModel, facebook_get_details, google_get_details, invalidate_session,
-                      is_auth, record_event)
-from web.utils import JsonErrors, get_ip, json_response, parse_request
+                      is_auth, record_event, validate_email)
+from web.utils import JsonErrors, json_response, parse_request, raw_json_response
 
 
 class LoginModel(BaseModel):
@@ -17,7 +18,7 @@ class LoginModel(BaseModel):
 
 
 get_user_sql = """
-SELECT id, first_name || ' ' || last_name AS name, role, status, password_hash
+SELECT id, COALESCE(first_name || ' ' || last_name, email) AS name, role, status, password_hash
 FROM users
 WHERE company=$1 AND email=$2 AND status='active' AND role!='guest'
 """
@@ -50,7 +51,14 @@ async def login(request):
     return json_response(status='invalid', message='invalid email or password', headers_=h, status_=470)
 
 
-async def _login_with(request, model, siw_method):
+LOGIN_MODELS = {
+    'facebook': (FacebookSiwModel, facebook_get_details),
+    'google': (GoogleSiwModel, google_get_details),
+}
+
+
+async def login_with(request):
+    model, siw_method = LOGIN_MODELS[request.match_info['site']]
     m = await parse_request(request, model)
     details = await siw_method(m, app=request.app)
     email = details['email']
@@ -59,14 +67,6 @@ async def _login_with(request, model, siw_method):
         user = dict(r)
         return successful_login(user, request.app)
     return json_response(status='invalid', message=f'User with email address "{email}" not found', status_=470)
-
-
-async def login_with_google(request):
-    return await _login_with(request, GoogleSiwModel, google_get_details)
-
-
-async def login_with_facebook(request):
-    return await _login_with(request, FacebookSiwModel, facebook_get_details)
 
 
 class AuthTokenModel(BaseModel):
@@ -81,11 +81,8 @@ async def authenticate_token(request):
         raise JsonErrors.HTTPBadRequest(message='invalid auth token')
     session = await new_session(request)
     session.update(auth_session)
-    extra = json.dumps({
-        'ip': get_ip(request),
-        'ua': request.headers.get('User-Agent')
-    })
-    await request['conn'].execute(record_event, request['company_id'], session['user_id'], 'login', extra)
+
+    await record_event(request, session['user_id'], 'login')
     return json_response(status='success')
 
 
@@ -93,3 +90,63 @@ async def authenticate_token(request):
 async def logout(request):
     await invalidate_session(request, 'logout')
     return json_response(status='success')
+
+
+class EmailModel(BaseModel):
+    email: EmailStr
+
+
+async def check_email(m: EmailModel, app):
+    if await validate_email(m.email, app.loop):
+        return m.dict()
+    else:
+        raise JsonErrors.HTTP470(status='invalid', message=f'"{m.email}" doesn\'t look like an active email address.')
+
+
+SIGNIN_MODELS = {
+    'email': (EmailModel, check_email),
+    'facebook': (FacebookSiwModel, facebook_get_details),
+    'google': (GoogleSiwModel, google_get_details),
+}
+CREATE_USER = """
+INSERT INTO users (:values__names) VALUES :values 
+ON CONFLICT (company, email) DO UPDATE SET email=EXCLUDED.email
+RETURNING id, status
+"""
+
+get_guest_user_sql = """
+SELECT json_build_object('user', row_to_json(user_data))
+FROM (
+  SELECT id, COALESCE(first_name || ' ' || last_name, email) AS name, role, status
+  FROM users
+  WHERE company=$1 AND id=$2
+) AS user_data;
+"""
+
+
+async def guest_login(request):
+    model, siw_method = SIGNIN_MODELS[request.match_info['site']]
+    m = await parse_request(request, model)
+    details = await siw_method(m, app=request.app)
+
+    company_id = request['company_id']
+    user_id, status = await request['conn'].fetchrow_b(
+        CREATE_USER,
+        values=Values(
+            company=company_id,
+            role='guest',
+            email=details['email'],
+            first_name=details.get('first_name'),
+            last_name=details.get('last_name'),
+        )
+    )
+    if status == 'suspended':
+        raise JsonErrors.HTTPBadRequest(message='user already suspended')
+
+    session = await new_session(request)
+    session.update({'user_id': user_id, 'user_role': 'guest', 'last_active': int(time())})
+
+    await record_event(request, user_id, 'guest-signin')
+
+    json_str = await request['conn'].fetchval(get_guest_user_sql, company_id, user_id)
+    return raw_json_response(json_str)
