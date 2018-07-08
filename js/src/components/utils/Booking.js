@@ -66,7 +66,6 @@ export class BookingLogin extends React.Component {
     if (data._response_status === 470) {
       return data.message
     } else {
-      console.log('success', data)
       this.props.setRootState({user: data.user})
     }
   }

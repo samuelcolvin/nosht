@@ -100,7 +100,6 @@ FROM (
          e.start_ts,
          EXTRACT(epoch FROM e.duration)::int AS duration,
          e.ticket_limit,
-         e.tickets_sold,
          h.id AS host_id,
          h.first_name || ' ' || h.last_name AS host_name
   FROM events AS e

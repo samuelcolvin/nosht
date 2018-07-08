@@ -9,13 +9,14 @@ from web.utils import json_response, parse_request
 
 
 class View:
-    __slots__ = 'request', 'app', 'conn', 'settings'
+    __slots__ = 'request', 'app', 'conn', 'settings', 'session'
 
     def __init__(self, request):
         self.request: web.Request = request
         self.app: web.Application = request.app
         self.conn: BuildPgConnection = request['conn']
         self.settings = self.app['settings']
+        self.session = request.get('session')
 
     @classmethod
     def view(cls):
@@ -48,6 +49,5 @@ class UpdateView(View):
     async def call(self):
         m = await parse_request(self.request, self.Model)
         response_data = await self.execute(m)
-        response_data = response_data or {}
-        response_data.setdefault('status', 'ok')
+        response_data = response_data or {'status': 'ok'}
         return json_response(**response_data)

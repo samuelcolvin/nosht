@@ -1,17 +1,21 @@
+import logging
 from datetime import datetime, timedelta
 from enum import Enum
 from textwrap import shorten
-from typing import Optional
+from typing import List, Optional
 
-from buildpg import V, funcs
+from asyncpg import CheckViolationError
+from buildpg import MultipleValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, EmailStr, constr
 
 from shared.utils import slugify
 from web.auth import check_session, is_admin_or_host
 from web.bread import Bread, UpdateView
-from web.utils import JsonErrors, raw_json_response
+from web.utils import JsonErrors, encrypt_json, raw_json_response
+
+logger = logging.getLogger('nosht.events')
 
 category_sql = """
 SELECT json_build_object('categories', categories)
@@ -164,3 +168,135 @@ class SetEventStatus(UpdateView):
             status=m.status.value,
             id=int(self.request.match_info['id']),
         )
+
+
+class DietaryReqEnum(Enum):
+    thing_1 = 'thing_1'
+    thing_2 = 'thing_2'
+    thing_3 = 'thing_3'
+
+
+class TicketModel(BaseModel):
+    t: bool
+    name: constr(max_length=255) = None
+    email: EmailStr = None
+    dietary_req: DietaryReqEnum = None
+    extra_info: str = None
+
+
+def split_name(raw_name):
+    if not raw_name:
+        return None, None
+    if ' ' not in raw_name:
+        # assume just last_name
+        return None, raw_name.strip(' ')
+    else:
+        return [n.strip(' ') for n in raw_name.split(' ', 1)]
+
+
+class ReserveTickets(UpdateView):
+    class Model(BaseModel):
+        tickets: List[TicketModel]
+
+    def _get_event_id(self):
+        return int(self.request.match_info['id'])
+
+    async def check_permissions(self):
+        await check_session(self.request, 'admin', 'host', 'guest')
+
+    async def execute(self, m: Model):
+        event_id = self._get_event_id()
+
+        status, tickets_remaining, event_price = await self.conn.fetchrow(
+            """
+            SELECT e.status, e.ticket_limit - e.tickets_taken, price
+            FROM events AS e
+            JOIN categories c on e.category = c.id
+            WHERE c.company=$1 AND e.id=$2
+            """,
+            self.request['company_id'], event_id
+        )
+        if status != 'published':
+            raise JsonErrors.HTTPBadRequest(message='Event not published')
+        if tickets_remaining and len(m.tickets) > tickets_remaining:
+            raise JsonErrors.HTTPBadRequest(message=f'only {tickets_remaining} tickets remaining')
+
+        try:
+            async with self.conn.transaction():
+                user_lookup = await self.create_users(m.tickets)
+
+                action_id = await self.conn.fetchval_b(
+                    'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+                    values=Values(
+                        company=self.request['company_id'],
+                        user_id=self.session['user_id'],
+                        type='reserve_tickets'
+                    )
+                )
+                values = [
+                    Values(
+                        event=event_id,
+                        user_id=user_lookup[t.email.lower()] if t.email else None,
+                        reserve_action=action_id,
+                        extra=m.json(include={'dietary_req', 'extra_info'})
+                    )
+                    for t in m.tickets
+                ]
+                await self.conn.execute_b(
+                    'INSERT INTO tickets (:values__names) VALUES :values',
+                    values=MultipleValues(*values)
+                )
+        except CheckViolationError as e:
+            logger.warning('CheckViolationError: %s', e)
+            raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
+
+        data = {
+            'action_id': action_id,
+            'price_cent': int(event_price * len(m.tickets) * 100),
+            'event_id': event_id,
+        }
+        return {
+            'booking_token': encrypt_json(self.app, data)
+        }
+
+    # async def update_request_user(self, user_ticket):
+    #     if not user_ticket.name:
+    #         return
+    #     first_name, last_name = await self.conn.fetchrow(
+    #         'SELECT first_name, last_name FROM users WHERE company=$1 AND id=$2',
+    #         self.request['company_id'], self.session['user_id']
+    #     )
+    #     if first_name or last_name:
+    #         return
+    #     first_name, last_name = split_name(user_ticket.name)
+    #     await self.conn.execute(
+    #         'UPDATE users SET first_name=$1, last_name=$2 WHERE id=$4',
+    #         first_name, last_name, self.session['user_id']
+    #     )
+
+    async def create_users(self, tickets: List[TicketModel]):
+        user_values = []
+
+        for t in tickets:
+            if t.name or t.email:
+                first_name, last_name = split_name(t.name)
+                user_values.append(
+                    Values(
+                        company=self.request['company_id'],
+                        role='guest',
+                        first_name=first_name,
+                        last_name=last_name,
+                        email=t.email and t.email.lower(),
+                    )
+                )
+        rows = await self.conn.fetch_b(
+            """
+            INSERT INTO users AS u (:values__names) VALUES :values
+            ON CONFLICT (company, email) DO UPDATE SET
+              first_name=coalesce(u.first_name, EXCLUDED.first_name),
+              last_name=coalesce(u.last_name, EXCLUDED.last_name)
+            RETURNING id, email
+            """,
+            values=MultipleValues(*user_values)
+        )
+        return {r['email']: r['id'] for r in rows}

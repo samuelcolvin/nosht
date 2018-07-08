@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr, constr
 
 from web.auth import (FacebookSiwModel, GoogleSiwModel, facebook_get_details, google_get_details, invalidate_session,
                       is_auth, record_event, validate_email)
-from web.utils import JsonErrors, json_response, parse_request, raw_json_response
+from web.utils import JsonErrors, encrypt_json, json_response, parse_request, raw_json_response
 
 
 class LoginModel(BaseModel):
@@ -26,7 +26,7 @@ WHERE company=$1 AND email=$2 AND status='active' AND role!='guest'
 
 def successful_login(user, app, headers_=None):
     auth_session = {'user_id': user['id'], 'user_role': user['role'], 'last_active': int(time())}
-    auth_token = app['auth_fernet'].encrypt(json.dumps(auth_session).encode()).decode()
+    auth_token = encrypt_json(app, auth_session)
     return json_response(status='success', auth_token=auth_token, user=user, headers_=headers_)
 
 
@@ -134,7 +134,7 @@ async def guest_login(request):
         values=Values(
             company=company_id,
             role='guest',
-            email=details['email'],
+            email=details['email'].lower(),
             first_name=details.get('first_name'),
             last_name=details.get('last_name'),
         )

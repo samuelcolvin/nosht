@@ -118,3 +118,7 @@ class JsonErrors:
 
     class HTTP470(_HTTPClientErrorJson):
         status_code = 470
+
+
+def encrypt_json(app, data):
+    return app['auth_fernet'].encrypt(json.dumps(data).encode()).decode()

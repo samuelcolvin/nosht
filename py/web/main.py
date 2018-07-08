@@ -18,7 +18,7 @@ from .middleware import error_middleware, host_middleware, pg_middleware
 from .views.auth import authenticate_token, guest_login, login, login_with, logout
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images)
-from .views.events import EventBread, SetEventStatus, event_categories
+from .views.events import EventBread, ReserveTickets, SetEventStatus, event_categories
 from .views.public import category, event, index
 from .views.static import static_handler
 from .views.users import UserBread
@@ -76,6 +76,7 @@ def create_app(*, settings: Settings=None):
         web.get('/events/categories/', event_categories, name='event-categories'),
         *EventBread.routes('/events/'),
         web.post('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
+        web.post('/events/{id:\d+}/reserve/', ReserveTickets.view(), name='event-reserve-tickets'),
 
         web.post('/login/', login, name='login'),
         web.post('/login/{site:(google|facebook)}/', login_with, name='login-google-facebook'),
