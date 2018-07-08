@@ -72,7 +72,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
         'location_lng': 0.0,
         'price': None,
         'ticket_limit': None,
-        'tickets_sold': 0,
+        'tickets_taken': 0,
         'image': None,
     }
 
@@ -155,7 +155,7 @@ async def test_set_event_status(cli, url, db_conn, factory: Factory, login):
 
     assert 'pending' == await db_conn.fetchval('SELECT status FROM events')
 
-    r = await cli.put(url('event-set-status', id=factory.event_id), data=json.dumps(dict(status='published')))
+    r = await cli.post(url('event-set-status', id=factory.event_id), data=json.dumps(dict(status='published')))
     assert r.status == 200, await r.text()
 
     assert 'published' == await db_conn.fetchval('SELECT status FROM events')
@@ -170,7 +170,7 @@ async def test_set_event_status_bad(cli, url, db_conn, factory: Factory, login):
 
     assert 'pending' == await db_conn.fetchval('SELECT status FROM events')
 
-    r = await cli.put(url('event-set-status', id=factory.event_id), data=json.dumps(dict(status='foobar')))
+    r = await cli.post(url('event-set-status', id=factory.event_id), data=json.dumps(dict(status='foobar')))
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {

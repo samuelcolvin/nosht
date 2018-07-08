@@ -108,16 +108,15 @@ SIGNIN_MODELS = {
     'facebook': (FacebookSiwModel, facebook_get_details),
     'google': (GoogleSiwModel, google_get_details),
 }
-CREATE_USER = """
-INSERT INTO users (:values__names) VALUES :values 
+CREATE_USER_SQL = """
+INSERT INTO users (:values__names) VALUES :values
 ON CONFLICT (company, email) DO UPDATE SET email=EXCLUDED.email
 RETURNING id, status
 """
-
-get_guest_user_sql = """
+GET_GUEST_USER_SQL = """
 SELECT json_build_object('user', row_to_json(user_data))
 FROM (
-  SELECT id, COALESCE(first_name || ' ' || last_name, email) AS name, email, role, status
+  SELECT id, COALESCE(first_name || ' ' || last_name, email) AS name, email, role
   FROM users
   WHERE company=$1 AND id=$2
 ) AS user_data;
@@ -131,7 +130,7 @@ async def guest_login(request):
 
     company_id = request['company_id']
     user_id, status = await request['conn'].fetchrow_b(
-        CREATE_USER,
+        CREATE_USER_SQL,
         values=Values(
             company=company_id,
             role='guest',
@@ -141,12 +140,12 @@ async def guest_login(request):
         )
     )
     if status == 'suspended':
-        raise JsonErrors.HTTPBadRequest(message='user already suspended')
+        raise JsonErrors.HTTPBadRequest(message='user suspended')
 
     session = await new_session(request)
     session.update({'user_id': user_id, 'user_role': 'guest', 'last_active': int(time())})
 
     await record_event(request, user_id, 'guest-signin')
 
-    json_str = await request['conn'].fetchval(get_guest_user_sql, company_id, user_id)
+    json_str = await request['conn'].fetchval(GET_GUEST_USER_SQL, company_id, user_id)
     return raw_json_response(json_str)

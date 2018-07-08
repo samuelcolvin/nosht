@@ -6,6 +6,7 @@ env/
 htmlcov/
 media/
 sandbox/
+py/sandbox.py
 nginx/prod/keys/
 .pytest_cache/
 

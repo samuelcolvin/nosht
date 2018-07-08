@@ -92,19 +92,20 @@ CREATE TABLE events (
   location_lng FLOAT,
   price NUMERIC(7, 2) CONSTRAINT price_gt_1 CHECK (price > 1),
   ticket_limit INT CONSTRAINT ticket_limit_gt_0 CHECK (ticket_limit > 0),
-  tickets_sold INT NOT NULL DEFAULT 0,
+  tickets_taken INT NOT NULL DEFAULT 0,  -- sold and reserved
   image VARCHAR(255),
-  CONSTRAINT ticket_limit_check CHECK (tickets_sold <= ticket_limit)
+  CONSTRAINT ticket_limit_check CHECK (tickets_taken <= ticket_limit)
 );
 CREATE UNIQUE INDEX event_slug ON events USING btree (category, slug);
 
 
+CREATE TYPE TICKET_STATUS AS ENUM ('reserved', 'paid', 'cancelled');
 CREATE TABLE tickets (
   id SERIAL PRIMARY KEY,
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
   user_id INT NOT NULL REFERENCES users ON DELETE CASCADE,
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
-  paid BOOLEAN NOT NULL DEFAULT FALSE,
+  status TICKET_STATUS NOT NULL DEFAULT 'reserved',
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX ticket_event ON tickets USING btree (event);

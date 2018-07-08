@@ -6,12 +6,12 @@ from typing import Optional
 from buildpg import V, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, constr
 
 from shared.utils import slugify
 from web.auth import check_session, is_admin_or_host
 from web.bread import Bread, UpdateView
-from web.utils import JsonErrors, parse_request, raw_json_response
+from web.utils import JsonErrors, raw_json_response
 
 category_sql = """
 SELECT json_build_object('categories', categories)
@@ -164,19 +164,3 @@ class SetEventStatus(UpdateView):
             status=m.status.value,
             id=int(self.request.match_info['id']),
         )
-
-
-class EmailModel(BaseModel):
-    email: EmailStr
-
-
-async def _validate_email(email):
-    SMTP(hostname='aspmx.l.google.com.', port=25, loop=request.app.loop)
-
-
-async def check_email(request):
-    m = await parse_request(request, EmailModel)
-    SMTP(hostname='aspmx.l.google.com.', port=25, loop=request.app.loop)
-    response_data = response_data or {}
-    response_data.setdefault('status', 'ok')
-    return json_response(**response_data)
