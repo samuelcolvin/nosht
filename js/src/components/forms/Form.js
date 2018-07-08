@@ -12,7 +12,6 @@ export class Form extends React.Component {
       errors: {},
       form_error: null,
     }
-    this.submit = this.submit.bind(this)
     this.set_form_data = this.set_form_data.bind(this)
   }
 
@@ -59,7 +58,7 @@ export class Form extends React.Component {
       return v === undefined ? initial[field.name] : v
     }
     return (
-      <BootstrapForm onSubmit={this.submit}>
+      <BootstrapForm onSubmit={this.submit.bind(this)}>
         <div className={this.props.form_body_class}>
           <div className="form-error text-right">{this.state.form_error}</div>
           {(this.props.fields || []).map((field, i) => (

@@ -205,7 +205,28 @@ li.react-datepicker__time-list-item {
   width: 110px !important;
 }
 
+// TODO replace with .small?
 .small-link {
   padding: 0;
   font-size: 0.8em;
+}
+
+.guests-info {
+  > div {
+    border-bottom: 2px solid $border-color;
+  }
+  > :last-child {
+    border-bottom: none;
+  }
+  h5, label {
+    margin-bottom: 0.1rem;
+  }
+  .form-text {
+    margin-top: 0.1rem;
+  }
+}
+
+.rotate {
+  display: inline-block;
+  transition: transform 0.5s;
 }

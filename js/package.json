@@ -30,7 +30,7 @@
     "react-dropzone": "^4.2.11",
     "react-router-dom": "^4.2.2",
     "react-scripts": "2.0.0-next.66cc7a90",
-    "reactstrap": "^6.0.1"
+    "reactstrap": "6.2.0"
   },
   "scripts": {
     "start": "react-scripts start",

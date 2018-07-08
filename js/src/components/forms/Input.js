@@ -20,18 +20,20 @@ import {as_title} from '../../utils'
 import Map from '../utils/Map'
 
 const Label = ({field, children}) => (
-  <BsLabel for={field.name} className={field.required && 'required'}>
-    {children}
-    {field.title}
-  </BsLabel>
+  field.show_label !== false ? (
+    <BsLabel for={field.name} className={field.required && 'required'}>
+      {children}
+      {field.title}
+    </BsLabel>
+  ) : null
 )
 
 const HelpText = ({field}) => (
-  <FormText>{field.help_text} {field.required && <span>(required)</span>}</FormText>
+  field.help_text ? <FormText>{field.help_text} {field.required && <span>(required)</span>}</FormText> : null
 )
 
-const GeneralInput = ({field, error, disabled, value, onChange, custom_type, step}) => (
-  <FormGroup>
+const GeneralInput = ({className, field, error, disabled, value, onChange, custom_type, step}) => (
+  <FormGroup className={className}>
     <Label field={field}/>
     <BsInput type={custom_type || field.type || 'text'}
              invalid={!!error}
@@ -49,8 +51,8 @@ const GeneralInput = ({field, error, disabled, value, onChange, custom_type, ste
   </FormGroup>
 )
 
-const Checkbox = ({field, disabled, value, onChange}) => (
-  <FormGroup className="py-2" check>
+const Checkbox = ({className, field, disabled, value, onChange}) => (
+  <FormGroup className={className || 'py-2'} check>
     <Label field={field}>
       <BsInput type="checkbox"
                label={field.title}
@@ -65,8 +67,8 @@ const Checkbox = ({field, disabled, value, onChange}) => (
   </FormGroup>
 )
 
-const Select = ({field, disabled, value, onChange}) => (
-  <FormGroup>
+const Select = ({className, field, disabled, value, onChange}) => (
+  <FormGroup className={className}>
     <Label field={field}/>
     <CustomInput type="select"
                  value={value}
@@ -113,7 +115,7 @@ class DatetimeInput extends React.Component {
     const dt = this.props.value ? this.props.value.dt : null
     const all_day = !duration
     return (
-      <FormGroup>
+      <FormGroup className={this.props.className}>
         <Label field={field}/>
         <InputGroup>
           <DatePicker
@@ -233,7 +235,7 @@ class GeoLocation extends React.Component {
     const loc = this.props.value || {lat: 51.507382, lng: -0.127654, name: '', zoom: 12}
     const error = this.state.error || this.props.error
     return (
-      <FormGroup>
+      <FormGroup className={this.props.className}>
         <Label field={field}/>
         <InputGroup>
           <BsInput type="text"
