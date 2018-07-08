@@ -174,7 +174,8 @@ export const TicketInfo = ({index, state, set_ticket_state, user}) => {
       <Row>
         <Col md="6">
           <Input className="my-0"
-                value={!ticket_info.name && index === 0 && user.name ? user.name : ticket_info.name}
+                value={!ticket_info.name && index === 0 && user.name && user.name !== user.email ?
+                       user.name : ticket_info.name}
                 field={name_field}
                 set_value={v => set_ticket_state(key, 'name', v)}/>
         </Col>
@@ -206,30 +207,42 @@ export const TicketInfo = ({index, state, set_ticket_state, user}) => {
   )
 }
 
-export const TicketForm = ({user, state, logout, set_ticket_state, change_ticket_count}) => (
-  <div>
-    <User user={user} logout={logout}/>
+export const TicketForm = ({user, state, logout, set_ticket_state, change_ticket_count, booking_info}) => {
+  const remaining = (booking_info || {}).tickets_remaining
+  if (!(remaining >= 1)) {
+    return (
+      <div>
+        <h3>Sold out!</h3>
+        <p>No more tickets available</p>
+      </div>
+    )
+  }
+  const max_tickets = Math.min(10, (booking_info || {}).tickets_remaining || 10)
+  return (
+    <div>
+      <User user={user} logout={logout}/>
 
-    <div className="text-center font-weight-bold">
-      Ticket Quantity
-    </div>
-    <Row className="justify-content-center my-1">
-      <Button color="danger" disabled={state.ticket_count === 1} onClick={() => change_ticket_count(-1)}>
-        <FontAwesomeIcon icon="minus"/>
-      </Button>
-      <span className="my-1 mx-3 larger font-weight-bold">{state.ticket_count}</span>
-      <Button color="success" disabled={state.ticket_count === 10} onClick={() => change_ticket_count(1)}>
-        <FontAwesomeIcon icon="plus"/>
-      </Button>
-    </Row>
-    <div className="text-muted text-center small">
-      Select the number of tickets you would like to purchase.
-    </div>
+      <div className="text-center font-weight-bold">
+        Ticket Quantity
+      </div>
+      <Row className="justify-content-center my-1">
+        <Button color="danger" disabled={state.ticket_count === 1} onClick={() => change_ticket_count(-1)}>
+          <FontAwesomeIcon icon="minus"/>
+        </Button>
+        <span className="my-1 mx-3 larger font-weight-bold">{state.ticket_count}</span>
+        <Button color="success" disabled={state.ticket_count === max_tickets} onClick={() => change_ticket_count(1)}>
+          <FontAwesomeIcon icon="plus"/>
+        </Button>
+      </Row>
+      <div className="text-muted text-center small">
+        Select the number of tickets you would like to purchase.
+      </div>
 
-    <div className="guests-info">
-      {[...Array(state.ticket_count).keys()].map(i => (
-        <TicketInfo key={i} index={i} state={state} set_ticket_state={set_ticket_state} user={user}/>
-      ))}
+      <div className="guests-info">
+        {[...Array(state.ticket_count).keys()].map(i => (
+          <TicketInfo key={i} index={i} state={state} set_ticket_state={set_ticket_state} user={user}/>
+        ))}
+      </div>
     </div>
-  </div>
-)
+  )
+}

@@ -14,7 +14,26 @@ class BookWrapper extends React.Component {
     super(props)
     this.state = {
       ticket_count: 1,
+      got_booking_info: false,
+      booking_info: null,
+      reservation: null,
     }
+    this.body = this.body.bind(this)
+  }
+
+  async componentDidUpdate () {
+    if (this.state.got_booking_info || !this.props.user) {
+      return
+    }
+    this.setState({got_booking_info: true})
+    let r
+    try {
+      r = await this.props.requests.get(`events/${this.props.event.id}/booking-info/`)
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+    this.setState({booking_info: r.event})
   }
 
   async logout () {
@@ -58,7 +77,26 @@ class BookWrapper extends React.Component {
       this.props.setRootState({error})
       return
     }
-    console.log('response:', r)
+    delete r._response_status
+    this.setState({reservation: r})
+  }
+
+  body () {
+    if (!this.props.user) {
+      return <BookingLogin setRootState={this.props.setRootState} requests={this.props.requests}/>
+    } else if (this.state.reservation) {
+      return <div>{this.state.reservation.price} {this.state.reservation.tickets}</div>
+    } else {
+      return (
+        <TicketForm
+            user={this.props.user}
+            state={this.state}
+            logout={this.logout.bind(this)}
+            set_ticket_state={this.set_ticket_state.bind(this)}
+            booking_info={this.state.booking_info}
+            change_ticket_count={this.change_ticket_count.bind(this)}/>
+      )
+    }
   }
 
   render () {
@@ -66,23 +104,14 @@ class BookWrapper extends React.Component {
     const content = (
       <div>
         <ModalBody key="1">
-            {user ?
-              <TicketForm
-                  user={user}
-                  state={this.state}
-                  logout={this.logout.bind(this)}
-                  set_ticket_state={this.set_ticket_state.bind(this)}
-                  change_ticket_count={this.change_ticket_count.bind(this)}/>
-              :
-              <BookingLogin setRootState={this.props.setRootState} requests={this.props.requests}/>
-            }
+          {this.body()}
         </ModalBody>
         <ModalFooter key="2">
           <ButtonGroup>
             <Button type="button" color="secondary" onClick={() => this.props.finished && this.props.finished()}>
               Cancel
             </Button>
-            <Button type="submit" color="primary" disabled={!user}>
+            <Button type="submit" color="primary" disabled={!this.props.user}>
               Book
             </Button>
           </ButtonGroup>

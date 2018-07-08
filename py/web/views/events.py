@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from enum import Enum
 from textwrap import shorten
+from time import time
 from typing import List, Optional
 
 from asyncpg import CheckViolationError
@@ -11,7 +12,7 @@ from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, constr
 
 from shared.utils import slugify
-from web.auth import check_session, is_admin_or_host
+from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.utils import JsonErrors, encrypt_json, raw_json_response
 
@@ -170,6 +171,25 @@ class SetEventStatus(UpdateView):
         )
 
 
+EVENT_BOOKING_INFO_SQL = """
+SELECT json_build_object('event', row_to_json(event_data))
+FROM (
+  SELECT check_tickets_remaining(e.id) AS tickets_remaining
+  FROM events AS e
+  JOIN categories c on e.category = c.id
+  WHERE c.company=$1 AND e.id=$2 AND e.status='published'
+) AS event_data;
+"""
+
+
+@is_auth
+async def booking_info(request):
+    # TODO more info, eg information require from cat
+    event_id = int(request.match_info['id'])
+    json_str = await request['conn'].fetchval(EVENT_BOOKING_INFO_SQL, request['company_id'], event_id)
+    return raw_json_response(json_str)
+
+
 class DietaryReqEnum(Enum):
     thing_1 = 'thing_1'
     thing_2 = 'thing_2'
@@ -206,10 +226,13 @@ class ReserveTickets(UpdateView):
 
     async def execute(self, m: Model):
         event_id = self._get_event_id()
+        ticket_count = len(m.tickets)
+        if ticket_count < 1:
+            raise JsonErrors.HTTPBadRequest(message='at least one ticket must be purchased')
 
-        status, tickets_remaining, event_price = await self.conn.fetchrow(
+        status, event_price = await self.conn.fetchrow(
             """
-            SELECT e.status, e.ticket_limit - e.tickets_taken, price
+            SELECT e.status, price
             FROM events AS e
             JOIN categories c on e.category = c.id
             WHERE c.company=$1 AND e.id=$2
@@ -218,7 +241,9 @@ class ReserveTickets(UpdateView):
         )
         if status != 'published':
             raise JsonErrors.HTTPBadRequest(message='Event not published')
-        if tickets_remaining and len(m.tickets) > tickets_remaining:
+
+        tickets_remaining = await self.conn.fetchval('SELECT check_tickets_remaining($1)', event_id)
+        if tickets_remaining is not None and ticket_count > tickets_remaining:
             raise JsonErrors.HTTPBadRequest(message=f'only {tickets_remaining} tickets remaining')
 
         try:
@@ -250,29 +275,18 @@ class ReserveTickets(UpdateView):
             logger.warning('CheckViolationError: %s', e)
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
 
+        price_cent = int(event_price * ticket_count * 100)
         data = {
             'action_id': action_id,
-            'price_cent': int(event_price * len(m.tickets) * 100),
+            'price_cent': price_cent,
             'event_id': event_id,
         }
         return {
-            'booking_token': encrypt_json(self.app, data)
+            'booking_token': encrypt_json(self.app, data),
+            'price_cent': price_cent,
+            'reserve_time': int(time()),
+            'tickets': ticket_count,
         }
-
-    # async def update_request_user(self, user_ticket):
-    #     if not user_ticket.name:
-    #         return
-    #     first_name, last_name = await self.conn.fetchrow(
-    #         'SELECT first_name, last_name FROM users WHERE company=$1 AND id=$2',
-    #         self.request['company_id'], self.session['user_id']
-    #     )
-    #     if first_name or last_name:
-    #         return
-    #     first_name, last_name = split_name(user_ticket.name)
-    #     await self.conn.execute(
-    #         'UPDATE users SET first_name=$1, last_name=$2 WHERE id=$4',
-    #         first_name, last_name, self.session['user_id']
-    #     )
 
     async def create_users(self, tickets: List[TicketModel]):
         user_values = []

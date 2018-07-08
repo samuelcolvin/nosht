@@ -1,6 +1,6 @@
 -- TODO: update user active_ts on actions
 
-CREATE OR REPLACE FUNCTION set_taken_insert() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION ticket_insert() RETURNS trigger AS $$
   DECLARE
   BEGIN
     UPDATE events SET tickets_taken = tickets_taken + 1 WHERE id=NEW.event;
@@ -8,19 +8,25 @@ CREATE OR REPLACE FUNCTION set_taken_insert() RETURNS trigger AS $$
   END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS set_taken_insert ON tickets;
-CREATE TRIGGER set_taken_insert AFTER INSERT ON tickets FOR EACH ROW EXECUTE PROCEDURE set_taken_insert();
+DROP TRIGGER IF EXISTS ticket_insert ON tickets;
+CREATE TRIGGER ticket_insert AFTER INSERT ON tickets FOR EACH ROW EXECUTE PROCEDURE ticket_insert();
 
 
-CREATE OR REPLACE FUNCTION set_taken_update() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT) RETURNS INT AS $$
   DECLARE
-    tickets_taken INT;
+    tickets_taken_ INT;
+    ticket_limit_ INT;
   BEGIN
-    SELECT COUNT(*) INTO tickets_taken FROM tickets WHERE event=NEW.event AND status != 'cancelled';
-    UPDATE events SET tickets_taken = tickets_taken WHERE id=NEW.event;
-    return NULL;
+    DELETE FROM tickets WHERE status='reserved' AND (now() - created_ts) > interval '10 minutes';
+
+    SELECT COALESCE(COUNT(*), 0) INTO tickets_taken_
+    FROM tickets
+    WHERE event=event_id AND status != 'cancelled';
+
+    UPDATE events SET tickets_taken=tickets_taken_ WHERE id=event_id;
+
+    SELECT ticket_limit INTO ticket_limit_ FROM events WHERE id=event_id;
+
+    return ticket_limit_ - tickets_taken_;
   END;
 $$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS set_taken_update ON tickets;
-CREATE TRIGGER set_taken_update AFTER UPDATE ON tickets FOR EACH ROW EXECUTE PROCEDURE set_taken_update();
