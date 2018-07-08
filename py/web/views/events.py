@@ -174,10 +174,11 @@ class SetEventStatus(UpdateView):
 EVENT_BOOKING_INFO_SQL = """
 SELECT json_build_object('event', row_to_json(event_data))
 FROM (
-  SELECT check_tickets_remaining(e.id) AS tickets_remaining
+  SELECT check_tickets_remaining(e.id) AS tickets_remaining, co.stripe_public_key AS stripe_key
   FROM events AS e
-  JOIN categories c on e.category = c.id
-  WHERE c.company=$1 AND e.id=$2 AND e.status='published'
+  JOIN categories cat on e.category = cat.id
+  JOIN companies co on cat.company = co.id
+  WHERE cat.company=$1 AND e.id=$2 AND e.status='published'
 ) AS event_data;
 """
 
@@ -285,7 +286,7 @@ class ReserveTickets(UpdateView):
             'booking_token': encrypt_json(self.app, data),
             'price_cent': price_cent,
             'reserve_time': int(time()),
-            'tickets': ticket_count,
+            'ticket_count': ticket_count,
         }
 
     async def create_users(self, tickets: List[TicketModel]):

@@ -1,17 +1,35 @@
 import React from 'react'
 import {
   Button,
+  ButtonGroup,
   Col,
   Collapse,
   FormFeedback,
+  Form as BootstrapForm,
   Input as BsInput,
   InputGroup,
   InputGroupAddon,
+  ModalFooter as BsModalFooter,
+  ModalBody,
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import {setup_siw, facebook_login, google_login} from '../../login_with'
 import Input from '../forms/Input'
+
+const ModalFooter = ({finished, disabled, label}) => (
+  <BsModalFooter>
+    <ButtonGroup>
+      <Button type="button" color="secondary" onClick={() => finished()}>
+        Cancel
+      </Button>
+      <Button type="submit" color="primary" disabled={disabled}>
+        {label || 'Book'}
+      </Button>
+    </ButtonGroup>
+  </BsModalFooter>
+)
 
 export class BookingLogin extends React.Component {
   constructor (props) {
@@ -71,8 +89,8 @@ export class BookingLogin extends React.Component {
   }
 
   render () {
-    return (
-      <div>
+    return [
+      <ModalBody key="1">
         <Row className="justify-content-center my-1">
           <Col md="8">
             <div className="d-flex justify-content-between">
@@ -107,8 +125,9 @@ export class BookingLogin extends React.Component {
             </Col>
           </Row>
         </form>
-      </div>
-    )
+      </ModalBody>,
+      <ModalFooter key="2" finished={this.props.finished} disabled={true}/>
+    ]
   }
 }
 
@@ -207,9 +226,10 @@ export const TicketInfo = ({index, state, set_ticket_state, user}) => {
   )
 }
 
-export const TicketForm = ({user, state, logout, set_ticket_state, change_ticket_count, booking_info}) => {
-  const remaining = (booking_info || {}).tickets_remaining
-  if (!(remaining >= 1)) {
+export const TicketForm = props => {
+  const state = props.state
+  const remaining = state.booking_info ? state.booking_info.tickets_remaining : null
+  if (remaining !== null && remaining < 1) {
     return (
       <div>
         <h3>Sold out!</h3>
@@ -217,32 +237,76 @@ export const TicketForm = ({user, state, logout, set_ticket_state, change_ticket
       </div>
     )
   }
-  const max_tickets = Math.min(10, (booking_info || {}).tickets_remaining || 10)
+  const max_tickets = Math.min(10, remaining || 10)
+  const change_count = props.change_ticket_count
   return (
-    <div>
-      <User user={user} logout={logout}/>
+    <BootstrapForm onSubmit={props.reserve}>
+      <ModalBody>
+        <User user={props.user} logout={props.logout}/>
 
-      <div className="text-center font-weight-bold">
-        Ticket Quantity
-      </div>
-      <Row className="justify-content-center my-1">
-        <Button color="danger" disabled={state.ticket_count === 1} onClick={() => change_ticket_count(-1)}>
-          <FontAwesomeIcon icon="minus"/>
-        </Button>
-        <span className="my-1 mx-3 larger font-weight-bold">{state.ticket_count}</span>
-        <Button color="success" disabled={state.ticket_count === max_tickets} onClick={() => change_ticket_count(1)}>
-          <FontAwesomeIcon icon="plus"/>
-        </Button>
-      </Row>
-      <div className="text-muted text-center small">
-        Select the number of tickets you would like to purchase.
-      </div>
+        <div className="text-center font-weight-bold">
+          Ticket Quantity
+        </div>
+        <Row className="justify-content-center my-1">
+          <Button color="danger" disabled={state.ticket_count === 1} onClick={() => change_count(-1)}>
+            <FontAwesomeIcon icon="minus"/>
+          </Button>
+          <span className="my-1 mx-3 larger font-weight-bold">{state.ticket_count}</span>
+          <Button color="success" disabled={state.ticket_count === max_tickets} onClick={() => change_count(1)}>
+            <FontAwesomeIcon icon="plus"/>
+          </Button>
+        </Row>
+        <div className="text-muted text-center small">
+          Select the number of tickets you would like to purchase.
+        </div>
 
-      <div className="guests-info">
-        {[...Array(state.ticket_count).keys()].map(i => (
-          <TicketInfo key={i} index={i} state={state} set_ticket_state={set_ticket_state} user={user}/>
-        ))}
-      </div>
-    </div>
+        <div className="guests-info">
+          {[...Array(state.ticket_count).keys()].map(i => (
+            <TicketInfo key={i} index={i} state={state} set_ticket_state={props.set_ticket_state} user={props.user}/>
+          ))}
+        </div>
+      </ModalBody>
+      <ModalFooter finished={props.finished}/>
+    </BootstrapForm>
   )
 }
+
+const STRIPE_STYLES = {
+  invalid: {
+    // fomr boostrap _variables.scss > $form-feedback-invalid-color
+    color: '#dc3545'
+  }
+}
+
+const StripeForm_ = props => {
+  // console.log(props)
+  return (
+    <BootstrapForm onSubmit={e => props.take_payment(e, props.stripe)}>
+      <ModalBody>
+        <Row className="justify-content-center">
+          <Col md="8">
+            <div>
+              <div>timer: {props.reservation.reserve_time} (prevent purchase near timeout)</div>
+              <div>ticket count: {props.reservation.ticket_count}</div>
+              <div>ticket price: {props.reservation.price_cent/100}</div>
+            </div>
+            <CardElement className="py-2 px-1"
+                         hidePostalCode={true}
+                         onChange={c => console.log('changed:', c)}
+                         style={STRIPE_STYLES}/>
+          </Col>
+        </Row>
+      </ModalBody>
+      <ModalFooter finished={props.finished} label="Pay"/>
+    </BootstrapForm>
+  )
+}
+const StripeForm = injectStripe(StripeForm_)
+
+export const Stripe = props => (
+  <StripeProvider stripe={props.stripe}>
+    <Elements>
+      <StripeForm {...props}/>
+    </Elements>
+  </StripeProvider>
+)

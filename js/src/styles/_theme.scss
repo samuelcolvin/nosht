@@ -230,3 +230,15 @@ li.react-datepicker__time-list-item {
   display: inline-block;
   transition: transform 0.5s;
 }
+
+.StripeElement {
+  display: block;
+  border-radius: $border-radius;
+  border: $border-width solid $border-color;
+  &.StripeElement--invalid {
+    border: $border-width solid $form-feedback-invalid-color;
+  }
+  &.StripeElement--complete {
+    border: $border-width solid $form-feedback-valid-color;
+  }
+}

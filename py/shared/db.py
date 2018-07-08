@@ -293,11 +293,18 @@ async def create_demo_data(conn, settings, **kwargs):
     """
     Create some demo data for manual testing.
     """
-    image = 'https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G'
-    host = kwargs.get('company_host', 'localhost')
-    company_id = await conn.fetchval("""
-    INSERT INTO companies (name, slug, image, domain) VALUES ('Testing', 'testing', $1, $2) RETURNING id
-    """, image, host)
+    company_id = await conn.fetchval_b(
+        'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
+        values=Values(
+            name='Testing',
+            slug='testing',
+            image='https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G',
+            domain=kwargs.get('company_domain', 'localhost'),
+            # from Scolvin Testing testing account
+            stripe_public_key='pk_test_efpfygU2qxGIwgcjn5T5DTTI',
+            stripe_secret_key='sk_test_GLQSaid6wFrYZp44d3dcTl8f'
+        )
+    )
 
     user_lookup = {}
     for user in USERS:
