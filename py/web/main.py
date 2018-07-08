@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from aiohttp import web, ClientSession
+from aiohttp import ClientSession, web
 from aiohttp_session import session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from arq import create_pool_lenient

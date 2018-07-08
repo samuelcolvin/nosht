@@ -4,7 +4,7 @@ from shared.db import create_demo_data
 
 
 async def test_create_demo_data(cli, url, db_conn, settings):
-    await create_demo_data(db_conn, settings, company_host='127.0.0.1')
+    await create_demo_data(db_conn, settings, company_domain='127.0.0.1')
     r = await cli.get(url('index'))
     assert r.status == 200, await r.text()
     data = await r.json()

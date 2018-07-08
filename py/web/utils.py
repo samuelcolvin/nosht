@@ -8,7 +8,6 @@ from aiohttp.web import Response
 from aiohttp.web_exceptions import HTTPClientError
 from pydantic import BaseModel, ValidationError
 
-
 JSON_CONTENT_TYPE = 'application/json'
 
 
