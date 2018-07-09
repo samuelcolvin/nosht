@@ -19,7 +19,20 @@ a:hover {
   font-size: 1.3em;
 }
 
-
 .no-dec {
   text-decoration: none !important;
+}
+
+.has-error {
+  color: theme-color("danger");
+}
+
+.pad-less {
+  label {
+    margin-bottom: 0.1rem;
+  }
+}
+
+label {
+  margin-bottom: 0.1rem;
 }

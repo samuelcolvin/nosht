@@ -1,6 +1,5 @@
 import React from 'react'
 import AsModal from '../general/Modal'
-import {load_script} from '../utils'
 import BookingLogin from './BookingLogin'
 import BookingTickets from './BookingTickets'
 import BookingStripe from './BookingStripe'
@@ -13,15 +12,10 @@ class BookWrapper extends React.Component {
       got_booking_info: false,
       booking_info: null,
       reservation: null,
-      stripe: null
     }
     this.get_user_name = () => (
       this.props.user.name && this.props.user.name !== this.props.user.email ? this.props.user.name : null
     )
-  }
-
-  async componentDidMount () {
-    await load_script('https://js.stripe.com/v3/')
   }
 
   async componentDidUpdate () {
@@ -37,16 +31,6 @@ class BookWrapper extends React.Component {
       return
     }
     this.setState({booking_info: r.event})
-  }
-
-  async logout () {
-    try {
-      await this.props.requests.post('logout/')
-    } catch (error) {
-      this.props.setRootState({error})
-      return
-    }
-    this.props.setRootState({user: null})
   }
 
   set_ticket_state (key, t_key, value) {
@@ -81,6 +65,7 @@ class BookWrapper extends React.Component {
       return
     }
     delete r._response_status
+    console.log(JSON.stringify(r))
     this.setState({reservation: r})
   }
 
@@ -94,16 +79,21 @@ class BookWrapper extends React.Component {
     } else if (!this.state.reservation) {
       return <BookingTickets
           user={this.props.user}
+          requests={this.props.requests}
+          setRootState={this.props.setRootState}
           finished={this.props.finished}
           state={this.state}
-          logout={this.logout.bind(this)}
           set_ticket_state={this.set_ticket_state.bind(this)}
           reserve={this.reserve.bind(this)}
           change_ticket_count={this.change_ticket_count.bind(this)}/>
 
     } else {
       return <BookingStripe
+          user={this.props.user}
+          requests={this.props.requests}
+          setRootState={this.props.setRootState}
           reservation={this.state.reservation}
+          finished={this.props.finished}
           event={this.props.event}
           user_name={this.get_user_name()}/>
 

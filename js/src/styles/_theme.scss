@@ -128,8 +128,8 @@ textarea {
   height: 120px;
 }
 
-.form-group {
-  label.required {
+.highlight-required {
+  .form-group label.required {
     font-weight: 700;
     &::after {
       content: "\22C6";
@@ -140,7 +140,6 @@ textarea {
     }
   }
 }
-
 
 .form-error {
   color: $form-feedback-invalid-color;

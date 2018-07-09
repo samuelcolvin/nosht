@@ -38,7 +38,8 @@ FROM (
          e.ticket_limit,
          h.id AS host_id,
          h.first_name || ' ' || h.last_name AS host_name,
-         co.stripe_public_key AS stripe_key
+         co.stripe_public_key AS stripe_key,
+         co.currency as currency
   FROM events AS e
   JOIN categories AS c ON e.category = c.id
   JOIN companies AS co ON c.company = co.id
@@ -322,9 +323,10 @@ class ReserveTickets(UpdateView):
         }
         return {
             'booking_token': encrypt_json(self.app, data),
-            'price_cent': price_cent,
             'reserve_time': int(time()),
             'ticket_count': ticket_count,
+            'item_price_cent': int(event_price * 100),
+            'total_price_cent': price_cent,
         }
 
     async def create_users(self, tickets: List[TicketModel]):

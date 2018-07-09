@@ -58,7 +58,7 @@ export class Form extends React.Component {
       return v === undefined ? initial[field.name] : v
     }
     return (
-      <BootstrapForm onSubmit={this.submit.bind(this)}>
+      <BootstrapForm onSubmit={this.submit.bind(this)} className="highlight-required">
         <div className={this.props.form_body_class}>
           <div className="form-error text-right">{this.state.form_error}</div>
           {(this.props.fields || []).map((field, i) => (

@@ -22,7 +22,7 @@ import Map from '../general/Map'
 const Label = ({field, children}) => (
   field.show_label !== false ? (
     <BsLabel for={field.name} className={field.required && 'required'}>
-      {children}
+     { children}
       {field.title}
     </BsLabel>
   ) : null
@@ -31,6 +31,15 @@ const Label = ({field, children}) => (
 const HelpText = ({field}) => (
   field.help_text ? <FormText>{field.help_text} {field.required && <span>(required)</span>}</FormText> : null
 )
+
+const placeholder = field => {
+  if (field.placeholder === true) {
+    return field.title
+  } else if (field.placeholder) {
+    return field.placeholder
+  }
+  return null
+}
 
 const GeneralInput = ({className, field, error, disabled, value, onChange, custom_type, step}) => (
   <FormGroup className={className}>
@@ -43,7 +52,7 @@ const GeneralInput = ({className, field, error, disabled, value, onChange, custo
              id={field.name}
              required={field.required}
              maxLength={field.max_length || 255}
-             placeholder={field.placeholder}
+             placeholder={placeholder(field)}
              value={value || ''}
              onChange={e => onChange(e.target.value)}/>
     {error && <FormFeedback>{error}</FormFeedback>}
@@ -242,7 +251,7 @@ class GeoLocation extends React.Component {
                    invalid={!!error}
                    disabled={this.props.disabled}
                    required={field.required}
-                   placeholder={field.placeholder}
+                   placeholder={placeholder(field)}
                    value={this.state.address}
                    onKeyPress={this.on_key_press.bind(this)}
                    onChange={e => this.setState({address: e.target.value})}/>

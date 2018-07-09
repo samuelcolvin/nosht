@@ -12,20 +12,34 @@ import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
 
 
-const User = ({user, logout}) => (
-  <div className="text-right">
-    <small className="text-muted">
-      Booking as:
-    </small>
-    &nbsp;
-    <small className="text-dark">
-      {user.name}
-    </small>
-    <Button onClick={logout} color="link" size="sm" className="pl-1 pr-0">
-      (Logout)
-    </Button>
-  </div>
-)
+export class User extends React.Component {
+  async logout () {
+    try {
+      await this.props.requests.post('logout/')
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+    this.props.setRootState({user: null})
+  }
+
+  render () {
+    return (
+      <div className="text-right">
+        <small className="text-muted">
+          Booking as:
+        </small>
+        &nbsp;
+        <small className="text-dark">
+          {this.props.user.name}
+        </small>
+        <Button onClick={this.logout.bind(this)} color="link" size="sm" className="pl-1 pr-0">
+          (Logout)
+        </Button>
+      </div>
+    )
+  }
+}
 
 const TicketInfo = ({index, state, set_ticket_state, user}) => {
   const key = `ticket_${index}`
@@ -123,7 +137,7 @@ const TicketForm = props => {
   return (
     <BootstrapForm onSubmit={props.reserve}>
       <ModalBody>
-        <User user={props.user} logout={props.logout}/>
+        <User {...props}/>
 
         <div className="text-center font-weight-bold">
           Ticket Quantity
