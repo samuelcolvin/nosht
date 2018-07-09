@@ -1,5 +1,7 @@
 -- TODO: update user active_ts on actions
 
+
+-- TODo remove ticket_insert and call check_tickets_remaining instead
 CREATE OR REPLACE FUNCTION ticket_insert() RETURNS trigger AS $$
   DECLARE
   BEGIN

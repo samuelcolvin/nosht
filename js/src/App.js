@@ -51,6 +51,7 @@ const Routes = ({app}) => (
 
       <Route path="/:category/:event/" render={props => (
         <Event setRootState={s => app.setState(s)}
+               set_message={app.set_message}
                requests={app.requests}
                company={app.state.company}
                user={app.state.user}

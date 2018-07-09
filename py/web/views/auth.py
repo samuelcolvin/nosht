@@ -1,15 +1,13 @@
-import json
 from time import time
 
 import bcrypt
 from aiohttp_session import new_session
 from buildpg import Values
-from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, EmailStr, constr
 
 from web.auth import (FacebookSiwModel, GoogleSiwModel, facebook_get_details, google_get_details, invalidate_session,
                       is_auth, record_event, validate_email)
-from web.utils import JsonErrors, encrypt_json, json_response, parse_request, raw_json_response
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, parse_request, raw_json_response
 
 
 class LoginModel(BaseModel):
@@ -75,10 +73,7 @@ class AuthTokenModel(BaseModel):
 
 async def authenticate_token(request):
     m = await parse_request(request, AuthTokenModel)
-    try:
-        auth_session = json.loads(request.app['auth_fernet'].decrypt(m.token, ttl=10).decode())
-    except InvalidToken:
-        raise JsonErrors.HTTPBadRequest(message='invalid auth token')
+    auth_session = decrypt_json(request.app, m.token, ttl=10)
     session = await new_session(request)
     session.update(auth_session)
 

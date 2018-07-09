@@ -33,6 +33,7 @@ class Settings(BaseSettings):
 
     google_siw_client_key = '315422204069-no6540693ciica79g07rs43v705d348g.apps.googleusercontent.com'
     facebook_siw_app_secret: bytes = b'b9c0c236dfbdab904e7101560328f0e3'
+    stripe_root = 'https://api.stripe.com/v1/'
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):

@@ -28,6 +28,7 @@ CREATE TABLE users (
   phone_number VARCHAR(63),
   image VARCHAR(255),
   password_hash VARCHAR(63),
+  stripe_customer_id VARCHAR(31),
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   active_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -36,7 +37,7 @@ CREATE UNIQUE INDEX user_email ON users USING btree (company, email);
 
 CREATE TYPE ACTION_TYPES AS ENUM (
   'login',
-  'guest-signin',
+  'guest-signin',  -- TODO make consistent
   'logout',
   'reserve_tickets',
   'buy_tickets',
@@ -105,6 +106,7 @@ CREATE TABLE tickets (
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
   user_id INT REFERENCES users ON DELETE CASCADE,
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
+  paid_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   extra JSONB

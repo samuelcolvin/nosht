@@ -65,38 +65,22 @@ class BookWrapper extends React.Component {
       return
     }
     delete r._response_status
-    console.log(JSON.stringify(r))
     this.setState({reservation: r})
+    // TODO update the user here
   }
 
   render () {
     if (!this.props.user) {
-      return <BookingLogin
-          setRootState={this.props.setRootState}
-          requests={this.props.requests}
-          finished={this.props.finished}/>
-
+      return <BookingLogin {...this.props} finished={this.props.finished}/>
     } else if (!this.state.reservation) {
       return <BookingTickets
-          user={this.props.user}
-          requests={this.props.requests}
-          setRootState={this.props.setRootState}
-          finished={this.props.finished}
+          {...this.props}
           state={this.state}
           set_ticket_state={this.set_ticket_state.bind(this)}
           reserve={this.reserve.bind(this)}
           change_ticket_count={this.change_ticket_count.bind(this)}/>
-
     } else {
-      return <BookingStripe
-          user={this.props.user}
-          requests={this.props.requests}
-          setRootState={this.props.setRootState}
-          reservation={this.state.reservation}
-          finished={this.props.finished}
-          event={this.props.event}
-          user_name={this.get_user_name()}/>
-
+      return <BookingStripe {...this.props} reservation={this.state.reservation} user_name={this.get_user_name()}/>
     }
   }
 }

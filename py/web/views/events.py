@@ -1,10 +1,13 @@
+import json
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
+from functools import partial
 from textwrap import shorten
 from time import time
 from typing import List, Optional
 
+from aiohttp import BasicAuth
 from asyncpg import CheckViolationError
 from buildpg import MultipleValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
@@ -14,7 +17,7 @@ from pydantic import BaseModel, EmailStr, constr
 from shared.utils import slugify
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
-from web.utils import JsonErrors, encrypt_json, raw_json_response
+from web.utils import JsonErrors, decrypt_json, encrypt_json, get_ip, raw_json_response
 
 logger = logging.getLogger('nosht.events')
 
@@ -224,7 +227,7 @@ FROM (
 
 @is_auth
 async def booking_info(request):
-    # TODO more info, eg information require from cat
+    # TODO more info, eg information require from cat, whether already booked
     event_id = int(request.match_info['id'])
     json_str = await request['conn'].fetchval(EVENT_BOOKING_INFO_SQL, request['company_id'], event_id)
     return raw_json_response(json_str)
@@ -254,25 +257,30 @@ def split_name(raw_name):
         return [n.strip(' ') for n in raw_name.split(' ', 1)]
 
 
+class Reservation(BaseModel):
+    action_id: int
+    event_id: int
+    price_cent: int
+    ticket_count: int
+    event_name: str
+
+
 class ReserveTickets(UpdateView):
     class Model(BaseModel):
         tickets: List[TicketModel]
-
-    def _get_event_id(self):
-        return int(self.request.match_info['id'])
 
     async def check_permissions(self):
         await check_session(self.request, 'admin', 'host', 'guest')
 
     async def execute(self, m: Model):
-        event_id = self._get_event_id()
+        event_id = int(self.request.match_info['id'])
         ticket_count = len(m.tickets)
         if ticket_count < 1:
             raise JsonErrors.HTTPBadRequest(message='at least one ticket must be purchased')
 
-        status, event_price = await self.conn.fetchrow(
+        status, event_price, event_name = await self.conn.fetchrow(
             """
-            SELECT e.status, price
+            SELECT e.status, e.price, e.name
             FROM events AS e
             JOIN categories c on e.category = c.id
             WHERE c.company=$1 AND e.id=$2
@@ -316,13 +324,15 @@ class ReserveTickets(UpdateView):
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
 
         price_cent = int(event_price * ticket_count * 100)
-        data = {
-            'action_id': action_id,
-            'price_cent': price_cent,
-            'event_id': event_id,
-        }
+        data = Reservation(
+            action_id=action_id,
+            price_cent=price_cent,
+            event_id=event_id,
+            ticket_count=ticket_count,
+            event_name=event_name,
+        )
         return {
-            'booking_token': encrypt_json(self.app, data),
+            'booking_token': encrypt_json(self.app, data.dict()),
             'reserve_time': int(time()),
             'ticket_count': ticket_count,
             'item_price_cent': int(event_price * 100),
@@ -355,3 +365,123 @@ class ReserveTickets(UpdateView):
             values=MultipleValues(*user_values)
         )
         return {r['email']: r['id'] for r in rows}
+
+
+def card_ref(c):
+    return '{last4}-{exp_year}-{exp_month}'.format(**c)
+
+
+class BuyTickets(UpdateView):
+    class Model(BaseModel):
+        stripe_token: str
+        stripe_client_ip: str
+        stripe_card_ref: str
+        booking_token: bytes
+
+    def _get_event_id(self):
+        return int(self.request.match_info['id'])
+
+    async def check_permissions(self):
+        await check_session(self.request, 'admin', 'host', 'guest')
+
+    async def execute(self, m: Model):
+        event_id = int(self.request.match_info['id'])
+        res = Reservation(**decrypt_json(self.app, m.booking_token, ttl=590))
+        logger.info('booking for %d (%0.2f) event %d stripe ip: %s, local ip: %s',
+                    res.ticket_count, res.price_cent / 100, event_id, m.stripe_client_ip, get_ip(self.request))
+
+        user_id = self.session['user_id']
+        user_name, user_email, user_role, stripe_customer_id, stripe_secret_key, currency = await self.conn.fetchrow(
+            """
+            SELECT
+              first_name || ' ' || last_name AS name, email, role,
+              stripe_customer_id, stripe_secret_key, currency
+            FROM users AS u
+            JOIN companies c on u.company = c.id
+            WHERE u.id=$1
+            """,
+            user_id
+        )
+        new_customer, new_card = False, True
+        stripe_get = partial(self.stripe_request, BasicAuth(stripe_secret_key), 'get')
+        stripe_post = partial(self.stripe_request, BasicAuth(stripe_secret_key), 'post')
+        if stripe_customer_id:
+            # TODO cope with deleted customers here
+            cards = await stripe_get(f'customers/{stripe_customer_id}/sources?object=card')
+            try:
+                source_id = next(c['id'] for c in cards['data'] if card_ref(c) == m.stripe_card_ref)
+            except StopIteration:
+                source = await stripe_post(
+                    f'customers/{stripe_customer_id}/sources',
+                    source=m.stripe_token,
+                )
+                source_id = source['id']
+            else:
+                new_card = False
+        else:
+            new_customer = True
+            customer = await stripe_post(
+                'customers',
+                source=m.stripe_token,
+                email=f'{user_name} <{user_email}>' if user_name else user_email,
+                description=f'{user_name or user_email} ({user_role})',
+                metadata={
+                    'role': user_role,
+                    'user_id': user_id,
+                }
+            )
+            stripe_customer_id = customer['id']
+            source_id = customer['sources']['data'][0]['id']
+
+        charge = await stripe_post(
+            'charges',
+            amount=res.price_cent,
+            currency=currency,
+            customer=stripe_customer_id,
+            source=source_id,
+            description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
+            metadata={
+                'event': res.event_id,
+                'tickets_bought': res.ticket_count,
+                'reserve_action': res.action_id,
+            }
+        )
+
+        async with self.conn.transaction():
+            paid_action_id = await self.conn.fetchval_b(
+                'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+                values=Values(
+                    company=self.request['company_id'],
+                    user_id=user_id,
+                    type='buy_tickets',
+                    extra=json.dumps({
+                        'charge_id': charge['id'],
+                        'new_customer': new_customer,
+                        'new_card': new_card,
+                    })
+                )
+            )
+            await self.conn.execute(
+                "UPDATE tickets SET status='paid', paid_action=$1 WHERE reserve_action=$2",
+                paid_action_id,
+                res.action_id,
+            )
+            await self.conn.execute('SELECT check_tickets_remaining($1)', res.event_id)
+            if new_customer:
+                await self.conn.execute(
+                    'UPDATE users SET stripe_customer_id=$1 WHERE id=$2',
+                    stripe_customer_id,
+                    user_id
+                )
+
+    async def stripe_request(self, auth, method, path, **data):
+        session = self.app['session']
+        metadata = data.pop('metadata', None)
+        if metadata:
+            data.update({f'metadata[{k}]': v for k, v in metadata.items()})
+        async with session.request(method, self.settings.stripe_root + path, data=data or None, auth=auth) as r:
+            if r.status == 200:
+                return await r.json()
+            else:
+                # check stripe > developer > logs for more info
+                raise RuntimeError(f'response {r.status} from "{path}"')

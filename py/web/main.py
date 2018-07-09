@@ -19,7 +19,8 @@ from .views import index
 from .views.auth import authenticate_token, guest_login, login, login_with, logout
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public)
-from .views.events import EventBread, ReserveTickets, SetEventStatus, booking_info, event_categories, event_public
+from .views.events import (BuyTickets, EventBread, ReserveTickets, SetEventStatus, booking_info, event_categories,
+                           event_public)
 from .views.static import static_handler
 from .views.users import UserBread
 
@@ -77,6 +78,7 @@ def create_app(*, settings: Settings=None):
         web.post('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
         web.get('/events/{id:\d+}/booking-info/', booking_info, name='event-booking-info'),
         web.post('/events/{id:\d+}/reserve/', ReserveTickets.view(), name='event-reserve-tickets'),
+        web.post('/events/{id:\d+}/buy/', BuyTickets.view(), name='event-buy-tickets'),
         web.get('/events/{category}/{event}/', event_public, name='event-get'),
 
         web.post('/login/', login, name='login'),
