@@ -2,12 +2,9 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import {Card, CardImg, CardTitle, CardText, CardSubtitle, CardBody, Row, Col} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {chunk_array, format_event_start, format_event_duration} from '../utils'
+import {chunk_array} from '../utils'
+import When from '../general/When'
 
-
-export const When = ({event}) => (
-  <span>{format_event_start(event.start_ts, event.duration)} &bull; {format_event_duration(event.duration)}</span>
-)
 
 const Event = ({event}) => {
   return (
@@ -36,12 +33,10 @@ const Event = ({event}) => {
   )
 }
 
-const Events = ({events}) => (
+export default ({events}) => (
   chunk_array(events, 3).map((chunk, i) => (
     <Row key={i}>
       {chunk.map((event, j) => <Event event={event} key={j}/>)}
     </Row>
   ))
 )
-
-export default Events

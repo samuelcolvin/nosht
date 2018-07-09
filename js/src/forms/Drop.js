@@ -2,8 +2,8 @@ import React from 'react'
 import {Button, ModalBody, ModalFooter, Progress} from 'reactstrap'
 import Dropzone from 'react-dropzone'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {error_response} from '../../utils'
-import AsModal from './Modal'
+import {error_response} from '../utils'
+import AsModal from '../general/Modal'
 
 const file_key = f => `${f.name}-${f.size}`
 const failed_icon = 'minus-circle'

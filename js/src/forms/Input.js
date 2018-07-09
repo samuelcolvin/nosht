@@ -16,8 +16,8 @@ import {
 } from 'reactstrap'
 import DatePicker from 'react-datepicker'
 import moment from 'moment'
-import {as_title} from '../../utils'
-import Map from '../utils/Map'
+import {as_title} from '../utils'
+import Map from '../general/Map'
 
 const Label = ({field, children}) => (
   field.show_label !== false ? (

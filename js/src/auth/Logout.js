@@ -1,6 +1,6 @@
 import React from 'react'
 import {Redirect} from 'react-router'
-import {Loading} from '../utils/Errors'
+import {Loading} from '../general/Errors'
 
 
 export default class Logout extends React.Component {

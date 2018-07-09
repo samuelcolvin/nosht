@@ -1,6 +1,6 @@
 import React from 'react'
 import {Row, Col, ButtonGroup, Button} from 'reactstrap'
-import {RenderList, RenderDetails, ImageThumbnail} from '../utils/Settings'
+import {RenderList, RenderDetails, ImageThumbnail} from './Utils'
 import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'
 

@@ -1,6 +1,25 @@
 import React from 'react'
-import {Modal, ModalHeader} from 'reactstrap'
-import {get_component_name} from '../utils/Errors'
+import {
+  Button,
+  ButtonGroup,
+  Modal,
+  ModalFooter as BsModalFooter,
+  ModalHeader,
+} from 'reactstrap'
+import {get_component_name} from '../utils'
+
+export const ModalFooter = ({finished, disabled, label}) => (
+  <BsModalFooter>
+    <ButtonGroup>
+      <Button type="button" color="secondary" onClick={() => finished()}>
+        Cancel
+      </Button>
+      <Button type="submit" color="primary" disabled={disabled}>
+        {label || 'Book'}
+      </Button>
+    </ButtonGroup>
+  </BsModalFooter>
+)
 
 export default function AsModal (WrappedComponent) {
   class AsModal extends React.Component {

@@ -1,8 +1,8 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {Card, CardImg, CardTitle, CardText, CardBody, Row, Col} from 'reactstrap'
-import {chunk_array} from '../../utils'
-import Events from '../Events'
+import {chunk_array} from './utils'
+import EventCards from './events/Cards'
 
 
 const Category = ({cat}) => {
@@ -40,7 +40,7 @@ export default class Index extends React.Component {
       <div className="card-grid">
         <div>
           <h1>Highlighted Events</h1>
-          <Events events={events}/>
+          <EventCards events={events}/>
         </div>
         <div className="mt-4">
           <h1>Categories</h1>

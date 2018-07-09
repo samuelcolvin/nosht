@@ -1,6 +1,6 @@
 import React from 'react'
-import {format_event_start, format_event_duration} from '../../utils'
-import {RenderList, RenderDetails} from '../utils/Settings'
+import {format_event_start, format_event_duration} from '../utils'
+import {RenderList, RenderDetails} from './Utils'
 import {ModalForm} from '../forms/Form'
 
 export class EventsList extends RenderList {

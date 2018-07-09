@@ -1,10 +1,6 @@
 import React from 'react'
 import {Redirect} from 'react-router'
 
-export const get_component_name = WrappedComponent => (
-  WrappedComponent.displayName || WrappedComponent.name || 'Component'
-)
-
 export class Error extends React.Component {
   componentWillMount () {
     if (this.props.error.status === 401) {

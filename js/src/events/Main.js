@@ -2,12 +2,12 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
-import {Loading, NotFound} from '../utils/Errors'
-import PromptUpdate from '../utils/PromptUpdate'
-import Markdown from '../utils/Markdown'
-import Map from '../utils/Map'
-import {When} from '../Events'
-import BookEvent from './BookEvent'
+import {Loading, NotFound} from '../general/Errors'
+import PromptUpdate from '../general/PromptUpdate'
+import Markdown from '../general/Markdown'
+import Map from '../general/Map'
+import When from '../general/When'
+import BookEvent from './Book'
 
 class Event extends React.Component {
   constructor (props) {

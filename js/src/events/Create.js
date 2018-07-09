@@ -1,7 +1,7 @@
 import React from 'react'
 import {Row, Col} from 'reactstrap'
 import {Form} from '../forms/Form'
-import Markdown from '../utils/Markdown'
+import Markdown from '../general/Markdown'
 
 export default class CreateEvent extends React.Component {
   constructor (props) {

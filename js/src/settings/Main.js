@@ -1,11 +1,11 @@
 import React from 'react'
 import {Route, Switch, Link} from 'react-router-dom'
 import {Row, Col} from 'reactstrap'
-import {NotFound} from '../utils/Errors'
-import {as_title} from '../../utils'
-import {EventsList, EventsDetails} from './SettingsEvents'
-import {UsersList, UsersDetails} from './SettingsUsers'
-import {CategoriesList, CategoriesDetails} from './SettingsCats'
+import {NotFound} from '../general/Errors'
+import {as_title} from '../utils'
+import {EventsList, EventsDetails} from './Events'
+import {UsersList, UsersDetails} from './Users'
+import {CategoriesList, CategoriesDetails} from './Cats'
 
 const PAGES = [
   {name: 'events', singular: 'Event', list_comp: EventsList, details_comp: EventsDetails},

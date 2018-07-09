@@ -2,8 +2,8 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ButtonGroup, Button} from 'reactstrap'
-import {as_title} from '../../utils'
-import {Loading} from './Errors'
+import {as_title} from '../utils'
+import {Loading} from '../general/Errors'
 
 export const render_bool = v => (
   <FontAwesomeIcon icon={v ? 'check' : 'times'} />

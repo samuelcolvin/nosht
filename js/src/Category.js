@@ -1,7 +1,7 @@
 import React from 'react'
-import Events from '../Events'
-import {NotFound} from '../utils/Errors'
-import PromptUpdate from '../utils/PromptUpdate'
+import {NotFound} from './general/Errors'
+import PromptUpdate from './general/PromptUpdate'
+import EventCards from './events/Cards'
 
 class Category extends React.Component {
   constructor (props) {
@@ -45,7 +45,7 @@ class Category extends React.Component {
       <div className="card-grid">
         <div>
           <h1>{cat.name}</h1>
-          <Events events={this.state.events}/>
+          <EventCards events={this.state.events}/>
         </div>
       </div>
     )

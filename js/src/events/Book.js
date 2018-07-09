@@ -1,7 +1,9 @@
 import React from 'react'
-import AsModal from '../forms/Modal'
-import {BookingLogin, TicketForm, Stripe} from '../utils/Booking'
-import {load_script} from '../../utils'
+import AsModal from '../general/Modal'
+import {load_script} from '../utils'
+import BookingLogin from './BookingLogin'
+import BookingTickets from './BookingTickets'
+import BookingStripe from './BookingStripe'
 
 class BookWrapper extends React.Component {
   constructor (props) {
@@ -88,21 +90,23 @@ class BookWrapper extends React.Component {
           setRootState={this.props.setRootState}
           requests={this.props.requests}
           finished={this.props.finished}/>
+
     } else if (!this.state.reservation) {
-      return (
-        <TicketForm
-            user={this.props.user}
-            finished={this.props.finished}
-            state={this.state}
-            logout={this.logout.bind(this)}
-            set_ticket_state={this.set_ticket_state.bind(this)}
-            reserve={this.reserve.bind(this)}
-            change_ticket_count={this.change_ticket_count.bind(this)}/>
-      )
+      return <BookingTickets
+          user={this.props.user}
+          finished={this.props.finished}
+          state={this.state}
+          logout={this.logout.bind(this)}
+          set_ticket_state={this.set_ticket_state.bind(this)}
+          reserve={this.reserve.bind(this)}
+          change_ticket_count={this.change_ticket_count.bind(this)}/>
+
     } else {
-      return (
-        <Stripe reservation={this.state.reservation} event={this.props.event} user_name={this.get_user_name()}/>
-      )
+      return <BookingStripe
+          reservation={this.state.reservation}
+          event={this.props.event}
+          user_name={this.get_user_name()}/>
+
     }
   }
 }

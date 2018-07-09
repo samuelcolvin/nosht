@@ -1,17 +1,17 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 
-import {get, post, put, sleep} from '../utils'
-import {Error, NotFound, Loading} from './utils/Errors'
-import Navbar from './Navbar'
-import Footer from './Footer'
-import Index from './pages/Index'
-import Category from './pages/Category'
-import Event from './pages/Event'
-import Login from './pages/Login'
-import Logout from './pages/Logout'
-import CreateEvent from './pages/CreateEvent'
-import Settings from './pages/Settings'
+import {get, post, put, sleep} from './utils'
+import {Error, NotFound, Loading} from './general/Errors'
+import Navbar from './general/Navbar'
+import Footer from './general/Footer'
+import Index from './Main'
+import Category from './Category'
+import Event from './events/Main'
+import Login from './auth/Login'
+import Logout from './auth/Logout'
+import CreateEvent from './events/Create'
+import Settings from './settings/Main'
 
 
 const Routes = ({app}) => (

@@ -1,7 +1,7 @@
 import React from 'react'
 import {Button, ButtonGroup, Form as BootstrapForm} from 'reactstrap'
 import Input from './Input'
-import AsModal from './Modal'
+import AsModal from '../general/Modal'
 
 export class Form extends React.Component {
   constructor (props) {

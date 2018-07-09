@@ -1,5 +1,5 @@
 import React from 'react'
-import {load_script_callback} from '../../utils'
+import {load_script_callback} from '../utils'
 
 const GOOGLE_MAPS_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY
 const GOOGLE_MAPS_JS = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=<callback-function>`

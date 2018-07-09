@@ -1,4 +1,4 @@
-import {load_script} from './utils'
+import {load_script} from '../utils'
 
 export async function setup_siw () {
   await load_script('https://apis.google.com/js/platform.js')

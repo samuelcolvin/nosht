@@ -1,5 +1,5 @@
 import React from 'react'
-import {get_component_name} from './Errors'
+import {get_component_name} from '../utils'
 
 export default function PromptUpdate (WrappedComponent) {
   class PromptUpdate extends React.Component {

@@ -3,7 +3,7 @@ import {Redirect} from 'react-router'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 
-import {setup_siw, facebook_login, google_login} from '../../login_with'
+import {setup_siw, facebook_login, google_login} from './login_with'
 
 export default class Login extends React.Component {
   constructor (props) {
