@@ -18,6 +18,47 @@ from web.utils import JsonErrors, encrypt_json, raw_json_response
 
 logger = logging.getLogger('nosht.events')
 
+event_sql = """
+SELECT json_build_object('event', row_to_json(event))
+FROM (
+  SELECT e.id,
+         e.name,
+         e.image,
+         e.short_description,
+         e.long_description,
+         c.event_content AS category_content,
+         json_build_object(
+           'name', e.location,
+           'lat', e.location_lat,
+           'lng', e.location_lng
+         ) AS location,
+         e.price,
+         e.start_ts,
+         EXTRACT(epoch FROM e.duration)::int AS duration,
+         e.ticket_limit,
+         h.id AS host_id,
+         h.first_name || ' ' || h.last_name AS host_name,
+         co.stripe_public_key AS stripe_key
+  FROM events AS e
+  JOIN categories AS c ON e.category = c.id
+  JOIN companies AS co ON c.company = co.id
+  JOIN users AS h ON e.host = h.id
+  WHERE c.company=$1 AND c.slug=$2 AND e.slug=$3 AND e.status='published'
+) AS event;
+"""
+
+
+async def event_public(request):
+    conn: BuildPgConnection = request['conn']
+    company_id = request['company_id']
+    category_slug = request.match_info['category']
+    event_slug = request.match_info['event']
+    json_str = await conn.fetchval(event_sql, company_id, category_slug, event_slug)
+    if not json_str:
+        raise JsonErrors.HTTPNotFound(message='event not found')
+    return raw_json_response(json_str)
+
+
 category_sql = """
 SELECT json_build_object('categories', categories)
 FROM (
@@ -39,8 +80,6 @@ async def event_categories(request):
 
 
 class EventBread(Bread):
-    # print_queries = True
-
     class Model(BaseModel):
         name: constr(max_length=63)
         category: int
@@ -174,10 +213,9 @@ class SetEventStatus(UpdateView):
 EVENT_BOOKING_INFO_SQL = """
 SELECT json_build_object('event', row_to_json(event_data))
 FROM (
-  SELECT check_tickets_remaining(e.id) AS tickets_remaining, co.stripe_public_key AS stripe_key
+  SELECT check_tickets_remaining(e.id) AS tickets_remaining
   FROM events AS e
   JOIN categories cat on e.category = cat.id
-  JOIN companies co on cat.company = co.id
   WHERE cat.company=$1 AND e.id=$2 AND e.status='published'
 ) AS event_data;
 """

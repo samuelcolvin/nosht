@@ -1,6 +1,5 @@
 import React from 'react'
 import AsModal from '../forms/Modal'
-import {Loading} from '../utils/Errors'
 import {BookingLogin, TicketForm, Stripe} from '../utils/Booking'
 import {load_script} from '../../utils'
 
@@ -12,7 +11,6 @@ class BookWrapper extends React.Component {
       got_booking_info: false,
       booking_info: null,
       reservation: null,
-      stripe_loaded: false,
       stripe: null
     }
     this.get_user_name = () => (
@@ -22,11 +20,10 @@ class BookWrapper extends React.Component {
 
   async componentDidMount () {
     await load_script('https://js.stripe.com/v3/')
-    this.setState({stripe_loaded: true})
   }
 
   async componentDidUpdate () {
-    if (this.state.got_booking_info || !this.props.user || !this.state.stripe_loaded) {
+    if (this.state.got_booking_info || !this.props.user) {
       return
     }
     this.setState({got_booking_info: true})
@@ -37,9 +34,7 @@ class BookWrapper extends React.Component {
       this.props.setRootState({error})
       return
     }
-    const stripe = window.Stripe(r.event.stripe_key)
-    delete r.event.stripe_key
-    this.setState({booking_info: r.event, stripe})
+    this.setState({booking_info: r.event})
   }
 
   async logout () {
@@ -84,14 +79,7 @@ class BookWrapper extends React.Component {
       return
     }
     delete r._response_status
-    console.log(r)
     this.setState({reservation: r})
-  }
-
-  async take_payment (e, stripe) {
-    e.preventDefault()
-    const payload = await stripe.createToken({name: this.get_user_name()})
-    console.log('payload:', payload)
   }
 
   render () {
@@ -111,13 +99,9 @@ class BookWrapper extends React.Component {
             reserve={this.reserve.bind(this)}
             change_ticket_count={this.change_ticket_count.bind(this)}/>
       )
-    } else if (!this.state.stripe) {
-      return <Loading/>
     } else {
       return (
-        <Stripe reservation={this.state.reservation}
-                stripe={this.state.stripe}
-                take_payment={this.take_payment.bind(this)}/>
+        <Stripe reservation={this.state.reservation} event={this.props.event} user_name={this.get_user_name()}/>
       )
     }
   }

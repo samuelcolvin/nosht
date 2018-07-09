@@ -9,7 +9,7 @@ import Map from '../utils/Map'
 import {When} from '../Events'
 import BookEvent from './BookEvent'
 
-export default class Event extends React.Component {
+class Event extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -17,6 +17,7 @@ export default class Event extends React.Component {
     }
     const params = this.props.match.params
     this.uri = `/${params.category}/${params.event}/`
+    this.props.register(this.get_data.bind(this))
   }
 
   async get_data () {
@@ -34,21 +35,20 @@ export default class Event extends React.Component {
       }
       return
     }
-    this.setState({event})
     this.props.setRootState({
       page_title: event.name,
       background: event.image,
       extra_menu: [{name: 'Book Now', to: this.uri + 'book/'}],
     })
+    this.setState({event})
   }
 
   render () {
     const event = this.state.event
-    const prompt_update = <PromptUpdate {...this.props} get_data={this.get_data.bind(this)}/>
     if (!event) {
-      return <Loading>{prompt_update}</Loading>
+      return <Loading/>
     } else if (event === 404) {
-      return <NotFound location={this.props.location}>{prompt_update}</NotFound>
+      return <NotFound location={this.props.location}/>
     }
     return (
       <div>
@@ -94,8 +94,9 @@ export default class Event extends React.Component {
           <Markdown content={event.long_description}/>
         </div>
         <BookEvent {...this.props} parent_uri={this.uri} event={event}/>
-        {prompt_update}
       </div>
     )
   }
 }
+
+export default PromptUpdate(Event)

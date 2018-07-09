@@ -3,14 +3,14 @@ import Events from '../Events'
 import {NotFound} from '../utils/Errors'
 import PromptUpdate from '../utils/PromptUpdate'
 
-
-export default class Category extends React.Component {
+class Category extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
       events: [],
     }
     this.cat_info = this.cat_info.bind(this)
+    this.props.register(this.get_data.bind(this))
   }
 
   async get_data () {
@@ -38,9 +38,8 @@ export default class Category extends React.Component {
 
   render () {
     const cat = this.cat_info()
-    const prompt_update = <PromptUpdate {...this.props} get_data={this.get_data.bind(this)}/>
     if (!cat) {
-      return <NotFound location={this.props.location}>{prompt_update}</NotFound>
+      return <NotFound location={this.props.location}/>
     }
     return (
       <div className="card-grid">
@@ -48,8 +47,9 @@ export default class Category extends React.Component {
           <h1>{cat.name}</h1>
           <Events events={this.state.events}/>
         </div>
-        {prompt_update}
       </div>
     )
   }
 }
+
+export default PromptUpdate(Category)

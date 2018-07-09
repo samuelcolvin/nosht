@@ -303,10 +303,26 @@ const StripeForm_ = props => {
 }
 const StripeForm = injectStripe(StripeForm_)
 
-export const Stripe = props => (
-  <StripeProvider stripe={props.stripe}>
-    <Elements>
-      <StripeForm {...props}/>
-    </Elements>
-  </StripeProvider>
-)
+export class Stripe extends React.Component {
+  constructor (props) {
+    super(props)
+    this.state = {stripe: null}
+    this.stripe = window.Stripe(this.props.event.stripe_key)
+  }
+
+  async take_payment (e, stripe) {
+    e.preventDefault()
+    const payload = await stripe.createToken({name: this.props.user_name})
+    console.log('payload:', payload)
+  }
+
+  render () {
+    return (
+      <StripeProvider stripe={this.stripe}>
+        <Elements>
+          <StripeForm {...this.props} take_payment={this.take_payment.bind(this)}/>
+        </Elements>
+      </StripeProvider>
+    )
+  }
+}
