@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     dummy_password = '_dummy_password_'
     aws_access_key: str = None
     aws_secret_key: str = None
+    aws_region: str = 'eu-west-1'
     s3_bucket: str = None
     s3_domain: str = None
     max_request_size = 10*1024**2  # 10MB
@@ -34,6 +35,8 @@ class Settings(BaseSettings):
     google_siw_client_key = '315422204069-no6540693ciica79g07rs43v705d348g.apps.googleusercontent.com'
     facebook_siw_app_secret: bytes = b'b9c0c236dfbdab904e7101560328f0e3'
     stripe_root = 'https://api.stripe.com/v1/'
+
+    default_email_address: str = 'app@scolvin.com'
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):

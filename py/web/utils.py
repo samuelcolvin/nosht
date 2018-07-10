@@ -1,7 +1,7 @@
 import datetime
 import json
 from decimal import Decimal
-from typing import Type, TypeVar, Any, Dict
+from typing import Any, Dict, Type, TypeVar
 from uuid import UUID
 
 from aiohttp.web import Response

@@ -87,7 +87,7 @@ class StripeForm_ extends React.Component {
       this.setState({submitted: true})
 
       const token = payload.token
-      await this.props.requests.post(`events/${this.props.event.id}/buy/`, {
+      await this.props.requests.post(`events/buy/`, {
         stripe_token: token.id,
         stripe_client_ip: token.client_ip,
         stripe_card_ref: `${token.card.last4}-${token.card.exp_year}-${token.card.exp_month}`,

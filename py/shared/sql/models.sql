@@ -10,7 +10,9 @@ CREATE TABLE companies (
   stripe_public_key VARCHAR(63),
   stripe_secret_key VARCHAR(63),
   currency CURRENCY NOT NULL DEFAULT 'gbp',
-  image VARCHAR(255)
+  image VARCHAR(255),
+  email_from VARCHAR(255),
+  email_template TEXT
 );
 CREATE UNIQUE INDEX company_domain ON companies USING btree (domain);
 
@@ -112,3 +114,15 @@ CREATE TABLE tickets (
   extra JSONB
 );
 CREATE INDEX ticket_event ON tickets USING btree (event);
+
+
+CREATE TABLE email_definitions (
+  id SERIAL PRIMARY KEY,
+  company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
+  trigger VARCHAR(31),
+  active BOOLEAN DEFAULT TRUE,
+  subject VARCHAR(255) NOT NULL,
+  title VARCHAR(127) NOT NULL DEFAULT '',
+  body TEXT NOT NULL
+);
+CREATE UNIQUE INDEX email_def_unique ON email_definitions USING btree (company, trigger);

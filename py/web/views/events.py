@@ -14,7 +14,7 @@ from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, constr
 
-from shared.utils import slugify
+from shared.utils import RequestError, slugify
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.utils import JsonErrors, decrypt_json, encrypt_json, get_ip, raw_json_response
@@ -258,7 +258,8 @@ def split_name(raw_name):
 
 
 class Reservation(BaseModel):
-    reservation_action_id: int
+    user_id: int
+    action_id: int
     event_id: int
     price_cent: int
     ticket_count: int
@@ -325,7 +326,8 @@ class ReserveTickets(UpdateView):
 
         price_cent = int(event_price * ticket_count * 100)
         data = Reservation(
-            reservation_action_id=action_id,
+            user_id=self.session['user_id'],
+            action_id=action_id,
             price_cent=price_cent,
             event_id=event_id,
             ticket_count=ticket_count,
@@ -367,15 +369,6 @@ class ReserveTickets(UpdateView):
         return {r['email']: r['id'] for r in rows}
 
 
-class StripeError(RuntimeError):
-    def __init__(self, status, path):
-        self.status = status
-        self.path = path
-
-    def __str__(self):
-        return f'response {self.status} from "{self.path}"'
-
-
 def card_ref(c):
     return '{last4}-{exp_year}-{exp_month}'.format(**c)
 
@@ -387,19 +380,10 @@ class BuyTickets(UpdateView):
         stripe_card_ref: str
         booking_token: bytes
 
-    def _get_event_id(self):
-        return int(self.request.match_info['id'])
-
-    async def check_permissions(self):
-        await check_session(self.request, 'admin', 'host', 'guest')
-
     async def execute(self, m: Model):
-        event_id = int(self.request.match_info['id'])
         res = Reservation(**decrypt_json(self.app, m.booking_token, ttl=590))
-        logger.info('booking for %d (%0.2f) event %d stripe ip: %s, local ip: %s',
-                    res.ticket_count, res.price_cent / 100, event_id, m.stripe_client_ip, get_ip(self.request))
 
-        user_id = self.session['user_id']
+        assert self.session['user_id'] == res.user_id, "user ids don't match"
         user_name, user_email, user_role, stripe_customer_id, stripe_secret_key, currency = await self.conn.fetchrow(
             """
             SELECT
@@ -409,8 +393,21 @@ class BuyTickets(UpdateView):
             JOIN companies c on u.company = c.id
             WHERE u.id=$1
             """,
-            user_id
+            res.user_id
         )
+        reserved_tickets = await self.conn.fetchval(
+            """
+            SELECT COUNT(*) 
+            FROM tickets 
+            WHERE event=$1 AND reserve_action=$2 AND status='reserved' AND paid_action IS NULL
+            """,
+            res.event_id, res.action_id,
+        )
+        if res.ticket_count != reserved_tickets:
+            # reservation could have already been used or event id could be wrong
+            logger.warning('res ticket count %d, db reserved tickets %d', res.ticket_count, reserved_tickets)
+            raise JsonErrors.HTTPBadRequest(message='invalid reservation')
+
         source_id = None
         new_customer, new_card = True, True
         stripe_get = partial(self.stripe_request, BasicAuth(stripe_secret_key), 'get')
@@ -418,7 +415,7 @@ class BuyTickets(UpdateView):
         if stripe_customer_id:
             try:
                 cards = await stripe_get(f'customers/{stripe_customer_id}/sources?object=card')
-            except StripeError as e:
+            except RequestError as e:
                 if e.status != 404:
                     raise
             else:
@@ -442,7 +439,7 @@ class BuyTickets(UpdateView):
                 description=f'{user_name or user_email} ({user_role})',
                 metadata={
                     'role': user_role,
-                    'user_id': user_id,
+                    'user_id': res.user_id,
                 }
             )
             stripe_customer_id = customer['id']
@@ -454,20 +451,20 @@ class BuyTickets(UpdateView):
                 'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
                 values=Values(
                     company=self.request['company_id'],
-                    user_id=user_id,
+                    user_id=res.user_id,
                     type='buy_tickets',
                     extra=json.dumps({'new_customer': new_customer, 'new_card': new_card})
                 )
             )
             await self.conn.execute(
                 "UPDATE tickets SET status='paid', paid_action=$1 WHERE reserve_action=$2",
-                paid_action_id, res.reservation_action_id,
+                paid_action_id, res.action_id,
             )
             await self.conn.execute('SELECT check_tickets_remaining($1)', res.event_id)
 
             charge = await stripe_post(
                 'charges',
-                idempotency_key=f'charge-{res.reservation_action_id}',
+                idempotency_key=f'charge-{res.action_id}',
                 amount=res.price_cent,
                 currency=currency,
                 customer=stripe_customer_id,
@@ -477,7 +474,7 @@ class BuyTickets(UpdateView):
                     'event': res.event_id,
                     'tickets_bought': res.ticket_count,
                     'paid_action': paid_action_id,
-                    'reserve_action': res.reservation_action_id,
+                    'reserve_action': res.action_id,
                 }
             )
         await self.conn.execute(
@@ -485,7 +482,8 @@ class BuyTickets(UpdateView):
             '{"charge_id": "%s"}' % charge['id'], paid_action_id,
         )
         if new_customer:
-            await self.conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, user_id)
+            await self.conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2',
+                                    stripe_customer_id, res.user_id)
 
     async def stripe_request(self, auth, method, path, *, idempotency_key=None, **data):
         client = self.app['stripe_client']
@@ -501,4 +499,4 @@ class BuyTickets(UpdateView):
                 return await r.json()
             else:
                 # check stripe > developer > logs for more info
-                raise StripeError(r.status, full_path)
+                raise RequestError(r.status, full_path)

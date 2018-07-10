@@ -16,3 +16,13 @@ def slugify(title):
 
 def mk_password(password: str, settings: Settings) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=settings.bcrypt_work_factor)).decode()
+
+
+class RequestError(RuntimeError):
+    def __init__(self, status, url, info):
+        self.status = status
+        self.url = url
+        self.info = info
+
+    def __str__(self):
+        return f'response {self.status} from "{self.url}"'

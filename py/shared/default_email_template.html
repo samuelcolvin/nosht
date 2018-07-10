@@ -1,0 +1,35 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <style>
+    {{{ styles }}}
+  </style>
+</head>
+<body marginheight="0" marginwidth="0" id="body">
+  <div id="preview">
+    {{ message_preview }}
+  </div>
+  <div id="main">
+    <div id="heading">
+      <img id="logo" src="{{ company_logo }}">
+      <h1>
+        {{> title }} &nbsp;
+      </h1>
+      <div class="clear"></div>
+    </div>
+
+    <div id="content">
+
+      {{{ main_message }}}
+
+      {{#unsubscribe_link}}
+      <div id="footer-line"></div>
+      <p id="unsubscribe" align="right">
+        <a href="{{ unsubscribe_link }}">Unsubscribe</a>
+      </p>
+      {{/unsubscribe_link}}
+    </div>
+  </div>
+</body>
+</html>

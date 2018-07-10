@@ -35,9 +35,9 @@ async def startup(app: web.Application):
         pg=app.get('pg') or await asyncpg.create_pool_b(dsn=settings.pg_dsn, min_size=2),
         redis=redis,
         worker=MainActor(settings=settings, existing_redis=redis),
-        http_client=ClientSession(timeout=ClientTimeout(total=20)),
+        http_client=ClientSession(timeout=ClientTimeout(total=20), loop=app.loop),
         # custom stripe client to make stripe requests as speedy as possible
-        stripe_client=ClientSession(timeout=ClientTimeout(total=5)),
+        stripe_client=ClientSession(timeout=ClientTimeout(total=5), loop=app.loop),
     )
 
 
@@ -81,7 +81,7 @@ def create_app(*, settings: Settings=None):
         web.post('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
         web.get('/events/{id:\d+}/booking-info/', booking_info, name='event-booking-info'),
         web.post('/events/{id:\d+}/reserve/', ReserveTickets.view(), name='event-reserve-tickets'),
-        web.post('/events/{id:\d+}/buy/', BuyTickets.view(), name='event-buy-tickets'),
+        web.post('/events/buy/', BuyTickets.view(), name='event-buy-tickets'),
         web.get('/events/{category}/{event}/', event_public, name='event-get'),
 
         web.post('/login/', login, name='login'),
