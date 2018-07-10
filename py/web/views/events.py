@@ -258,7 +258,7 @@ def split_name(raw_name):
 
 
 class Reservation(BaseModel):
-    action_id: int
+    reservation_action_id: int
     event_id: int
     price_cent: int
     ticket_count: int
@@ -325,7 +325,7 @@ class ReserveTickets(UpdateView):
 
         price_cent = int(event_price * ticket_count * 100)
         data = Reservation(
-            action_id=action_id,
+            reservation_action_id=action_id,
             price_cent=price_cent,
             event_id=event_id,
             ticket_count=ticket_count,
@@ -367,6 +367,15 @@ class ReserveTickets(UpdateView):
         return {r['email']: r['id'] for r in rows}
 
 
+class StripeError(RuntimeError):
+    def __init__(self, status, path):
+        self.status = status
+        self.path = path
+
+    def __str__(self):
+        return f'response {self.status} from "{self.path}"'
+
+
 def card_ref(c):
     return '{last4}-{exp_year}-{exp_month}'.format(**c)
 
@@ -402,24 +411,30 @@ class BuyTickets(UpdateView):
             """,
             user_id
         )
-        new_customer, new_card = False, True
+        source_id = None
+        new_customer, new_card = True, True
         stripe_get = partial(self.stripe_request, BasicAuth(stripe_secret_key), 'get')
         stripe_post = partial(self.stripe_request, BasicAuth(stripe_secret_key), 'post')
         if stripe_customer_id:
-            # TODO cope with deleted customers here
-            cards = await stripe_get(f'customers/{stripe_customer_id}/sources?object=card')
             try:
-                source_id = next(c['id'] for c in cards['data'] if card_ref(c) == m.stripe_card_ref)
-            except StopIteration:
-                source = await stripe_post(
-                    f'customers/{stripe_customer_id}/sources',
-                    source=m.stripe_token,
-                )
-                source_id = source['id']
+                cards = await stripe_get(f'customers/{stripe_customer_id}/sources?object=card')
+            except StripeError as e:
+                if e.status != 404:
+                    raise
             else:
-                new_card = False
-        else:
-            new_customer = True
+                new_customer = False
+                try:
+                    source_id = next(c['id'] for c in cards['data'] if card_ref(c) == m.stripe_card_ref)
+                except StopIteration:
+                    source = await stripe_post(
+                        f'customers/{stripe_customer_id}/sources',
+                        source=m.stripe_token,
+                    )
+                    source_id = source['id']
+                else:
+                    new_card = False
+
+        if new_customer:
             customer = await stripe_post(
                 'customers',
                 source=m.stripe_token,
@@ -433,55 +448,57 @@ class BuyTickets(UpdateView):
             stripe_customer_id = customer['id']
             source_id = customer['sources']['data'][0]['id']
 
-        charge = await stripe_post(
-            'charges',
-            amount=res.price_cent,
-            currency=currency,
-            customer=stripe_customer_id,
-            source=source_id,
-            description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
-            metadata={
-                'event': res.event_id,
-                'tickets_bought': res.ticket_count,
-                'reserve_action': res.action_id,
-            }
-        )
-
         async with self.conn.transaction():
+            # make the tickets paid in DB then, then create charge in stripe, then finish transaction
             paid_action_id = await self.conn.fetchval_b(
                 'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
                 values=Values(
                     company=self.request['company_id'],
                     user_id=user_id,
                     type='buy_tickets',
-                    extra=json.dumps({
-                        'charge_id': charge['id'],
-                        'new_customer': new_customer,
-                        'new_card': new_card,
-                    })
+                    extra=json.dumps({'new_customer': new_customer, 'new_card': new_card})
                 )
             )
             await self.conn.execute(
                 "UPDATE tickets SET status='paid', paid_action=$1 WHERE reserve_action=$2",
-                paid_action_id,
-                res.action_id,
+                paid_action_id, res.reservation_action_id,
             )
             await self.conn.execute('SELECT check_tickets_remaining($1)', res.event_id)
-            if new_customer:
-                await self.conn.execute(
-                    'UPDATE users SET stripe_customer_id=$1 WHERE id=$2',
-                    stripe_customer_id,
-                    user_id
-                )
 
-    async def stripe_request(self, auth, method, path, **data):
-        session = self.app['session']
+            charge = await stripe_post(
+                'charges',
+                idempotency_key=f'charge-{res.reservation_action_id}',
+                amount=res.price_cent,
+                currency=currency,
+                customer=stripe_customer_id,
+                source=source_id,
+                description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
+                metadata={
+                    'event': res.event_id,
+                    'tickets_bought': res.ticket_count,
+                    'paid_action': paid_action_id,
+                    'reserve_action': res.reservation_action_id,
+                }
+            )
+        await self.conn.execute(
+            'UPDATE actions SET extra = extra || $1 WHERE id=$2',
+            '{"charge_id": "%s"}' % charge['id'], paid_action_id,
+        )
+        if new_customer:
+            await self.conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, user_id)
+
+    async def stripe_request(self, auth, method, path, *, idempotency_key=None, **data):
+        client = self.app['stripe_client']
         metadata = data.pop('metadata', None)
         if metadata:
             data.update({f'metadata[{k}]': v for k, v in metadata.items()})
-        async with session.request(method, self.settings.stripe_root + path, data=data or None, auth=auth) as r:
+        headers = {}
+        if idempotency_key:
+            headers['Idempotency-Key'] = idempotency_key
+        full_path = self.settings.stripe_root + path
+        async with client.request(method, full_path, data=data or None, auth=auth, headers=headers) as r:
             if r.status == 200:
                 return await r.json()
             else:
                 # check stripe > developer > logs for more info
-                raise RuntimeError(f'response {r.status} from "{path}"')
+                raise StripeError(r.status, full_path)

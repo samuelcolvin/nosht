@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from aiohttp import ClientSession, web
+from aiohttp import ClientSession, ClientTimeout, web
 from aiohttp_session import session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from arq import create_pool_lenient
@@ -35,14 +35,17 @@ async def startup(app: web.Application):
         pg=app.get('pg') or await asyncpg.create_pool_b(dsn=settings.pg_dsn, min_size=2),
         redis=redis,
         worker=MainActor(settings=settings, existing_redis=redis),
-        session=ClientSession(conn_timeout=10, read_timeout=10)
+        http_client=ClientSession(timeout=ClientTimeout(total=20)),
+        # custom stripe client to make stripe requests as speedy as possible
+        stripe_client=ClientSession(timeout=ClientTimeout(total=5)),
     )
 
 
 async def cleanup(app: web.Application):
     await app['worker'].close(True)
     await app['pg'].close()
-    await app['session'].close()
+    await app['http_client'].close()
+    await app['stripe_client'].close()
 
 
 def create_app(*, settings: Settings=None):

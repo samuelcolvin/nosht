@@ -115,7 +115,7 @@ class GoogleSiwModel(BaseModel):
 
 async def google_get_details(m: GoogleSiwModel, app):
     settings: Settings = app['settings']
-    async with app['session'].get(_GOOGLE_OAUTH2_CERTS_URL) as r:
+    async with app['http_client'].get(_GOOGLE_OAUTH2_CERTS_URL) as r:
         assert r.status == 200, r.status
         certs = await r.json()
     id_info = google_jwt.decode(m.id_token, certs=certs, audience=settings.google_siw_client_key)
@@ -163,7 +163,7 @@ async def facebook_get_details(m: FacebookSiwModel, app):
         'access_token': m.access_token,
         'fields': ['email', 'first_name', 'last_name']
     })
-    async with app['session'].get(details_url) as r:
+    async with app['http_client'].get(details_url) as r:
         assert r.status == 200, r.status
         response_data = await r.json()
 
