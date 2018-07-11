@@ -24,9 +24,17 @@ Dear {{ first_name }}
 
 This is a **test** of emails.
 
-# With a title
+# With a title (h1)
 
 and a like [to something](https://www.example.com).
+
+## this is h2
+
+with some body
+
+### this is an h3
+
+hello people
 """
     },
     Triggers.confirmation_other: {
