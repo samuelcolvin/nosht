@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Any
 from urllib.parse import urlparse
 
 from arq import RedisSettings
@@ -13,7 +12,7 @@ BASE_DIR = THIS_DIR.parent
 class Settings(BaseSettings):
     pg_dsn: str = 'postgres://postgres:waffle@localhost:5432/nosht'
     pg_name: str = None
-    redis_settings: Any = 'redis://localhost:6379'
+    redis_settings: RedisSettings = 'redis://localhost:6379'
     redis_db: int = 1
     auth_key = 'v7RI7qwZB7rxCyrpX4QwpZCUCF7X_HtnMSFuJfZTmfs='
     cookie_max_age = 25 * 3600
@@ -25,12 +24,17 @@ class Settings(BaseSettings):
     bcrypt_work_factor = 12
     # used for hashing when the user in the db has no password
     dummy_password = '_dummy_password_'
+
+    max_request_size = 10*1024**2  # 10MB
+
     aws_access_key: str = None
     aws_secret_key: str = None
-    aws_region: str = 'eu-west-1'
     s3_bucket: str = None
     s3_domain: str = None
-    max_request_size = 10*1024**2  # 10MB
+    aws_region: str = 'eu-west-1'
+    # set here so they can be overridden during tests
+    aws_ses_host = 'email.{region}.amazonaws.com'
+    aws_ses_endpoint = 'https://{host}/'
 
     google_siw_client_key = '315422204069-no6540693ciica79g07rs43v705d348g.apps.googleusercontent.com'
     facebook_siw_app_secret: bytes = b'b9c0c236dfbdab904e7101560328f0e3'
@@ -38,7 +42,7 @@ class Settings(BaseSettings):
     stripe_root = 'https://api.stripe.com/v1/'
     stripe_idempotency_extra = ''
 
-    default_email_address: str = 'nosht@scolvin.com'
+    default_email_address: str = 'Nosht <nosht@scolvin.com>'
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):
@@ -72,3 +76,4 @@ class Settings(BaseSettings):
             'pg_dsn': 'DATABASE_URL',
             'redis_settings': 'REDISCLOUD_URL',
         }
+        arbitrary_types_allowed = True

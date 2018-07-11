@@ -16,34 +16,22 @@ from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
 from pydantic import BaseModel, constr
 
 from shared.settings import Settings
-from web.utils import JsonErrors, get_ip
+
+from .actions import ActionTypes, record_action
+from .utils import JsonErrors
 
 logger = logging.getLogger('nosht.auth')
-record_event_sql = """
-INSERT INTO actions (company, user_id, type, extra) VALUES ($1, $2, $3, $4)
-"""
-
-
-async def record_event(request, user_id, event, **extra):
-    extra.update(
-        ip=get_ip(request),
-        ua=request.headers.get('User-Agent')
-    )
-    extra = json.dumps(extra)
-    await request['conn'].execute(record_event_sql, request['company_id'], user_id, event, extra)
 
 
 async def invalidate_session(request, reason):
     session = request['session']
-    extra = json.dumps({
-        'ip': get_ip(request),
-        'ua': request.headers.get('User-Agent'),
+    extra = {
         'age': int(time()) - session.created,
         'reason': reason,
-    })
+    }
     user_id = session['user_id']
     session.invalidate()
-    await request['conn'].execute(record_event_sql, request['company_id'], user_id, 'logout', extra)
+    await record_action(request, user_id, ActionTypes.logout, **extra)
 
 
 async def check_session(request, *roles):

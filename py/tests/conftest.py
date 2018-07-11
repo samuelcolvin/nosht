@@ -9,6 +9,7 @@ from textwrap import shorten
 import lorem
 import pytest
 from aiohttp.test_utils import teardown_test_loop
+from aioredis import create_redis
 from buildpg import Values, asyncpg
 
 from shared.db import create_demo_data as _create_demo_data
@@ -16,6 +17,8 @@ from shared.db import prepare_database
 from shared.settings import Settings
 from shared.utils import mk_password, slugify
 from web.main import create_app
+
+from .dummy_server import create_dummy_server
 
 
 def pytest_addoption(parser):
@@ -28,9 +31,11 @@ def pytest_addoption(parser):
 def settings():
     return Settings(
         DATABASE_URL='postgres://postgres:waffle@localhost:5432/nosht_testing',
-        REDISCLOUD_URL='redis://localhost:6379/1',
+        REDISCLOUD_URL='redis://localhost:6379/6',
         bcrypt_work_factor=6,
-        stripe_idempotency_extra=str(uuid.uuid4())
+        stripe_idempotency_extra=str(uuid.uuid4()),
+        aws_access_key='testing_access_key',
+        aws_secret_key='testing_secret_key',
     )
 
 
@@ -42,7 +47,7 @@ def clean_db(request, settings):
     teardown_test_loop(loop)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 async def db_conn(loop, settings, clean_db):
     conn = await asyncpg.connect_b(dsn=settings.pg_dsn, loop=loop)
 
@@ -53,6 +58,28 @@ async def db_conn(loop, settings, clean_db):
 
     await tr.rollback()
     await conn.close()
+
+
+class FakePgPool:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def acquire(self):
+        return self
+
+    async def __aenter__(self):
+        return self.conn
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    async def close(self):
+        pass
+
+
+@pytest.fixture
+def db_pool(db_conn):
+    return FakePgPool(db_conn)
 
 
 @pytest.fixture
@@ -180,21 +207,16 @@ def login(cli, url):
     return f
 
 
-class FakePgPool:
-    def __init__(self, conn):
-        self.conn = conn
+@pytest.yield_fixture
+async def redis(loop, settings: Settings):
+    addr = settings.redis_settings.host, settings.redis_settings.port
+    redis = await create_redis(addr, db=settings.redis_settings.database, loop=loop)
+    await redis.flushdb()
 
-    def acquire(self):
-        return self
+    yield redis
 
-    async def __aenter__(self):
-        return self.conn
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-    async def close(self):
-        pass
+    redis.close()
+    await redis.wait_closed()
 
 
 async def pre_startup_app(app):
@@ -213,7 +235,7 @@ async def shutdown_modify_app(app):
 
 
 @pytest.fixture
-async def cli(settings, db_conn, aiohttp_client):
+async def cli(settings, db_conn, aiohttp_client, redis):
     app = create_app(settings=settings)
     app['test_conn'] = db_conn
     app.on_startup.insert(0, pre_startup_app)
@@ -232,3 +254,8 @@ def url(cli):
             raise KeyError(f'invalid url name, choices: {pformat(inner_app.router._named_resources)}') from e
         return r.url_for(**{k: str(v) for k, v in kwargs.items()})
     return f
+
+
+@pytest.fixture
+async def dummy_server(loop, aiohttp_server):
+    return await create_dummy_server(loop, aiohttp_server)

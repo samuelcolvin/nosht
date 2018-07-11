@@ -32,6 +32,7 @@ CREATE TABLE users (
   image VARCHAR(255),
   password_hash VARCHAR(63),
   stripe_customer_id VARCHAR(31),
+  receive_emails BOOLEAN DEFAULT TRUE,
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   active_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -40,12 +41,13 @@ CREATE UNIQUE INDEX user_email ON users USING btree (company, email);
 
 CREATE TYPE ACTION_TYPES AS ENUM (
   'login',
-  'guest-signin',  -- TODO make consistent
+  'guest-signin',
   'logout',
-  'reserve_tickets',
-  'buy_tickets',
-  'edit_event',
-  'edit_other'
+  'reserve-tickets',
+  'buy-tickets',
+  'edit-event',
+  'edit-other',
+  'unsubscribed'
 );
 CREATE TABLE actions (
   id SERIAL PRIMARY KEY,

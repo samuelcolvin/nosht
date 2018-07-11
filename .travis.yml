@@ -21,7 +21,7 @@ install:
 
 script:
 - make lint
-- make test
+- REAL_STRIPE_TESTS=1 make test
 - make build
 
 after_success:

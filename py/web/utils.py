@@ -95,6 +95,12 @@ def get_ip(request):
         return request.remote
 
 
+def request_root(request):
+    # request.url.scheme doesn't work as https is terminated, could use https forward header or referer
+    scheme = 'https' if request.app['settings'].on_heroku else 'http'
+    return f'{scheme}://{request.host}'
+
+
 class JsonErrors:
     class _HTTPClientErrorJson(HTTPClientError):
         def __init__(self, headers_=None, **data):

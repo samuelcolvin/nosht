@@ -25,4 +25,4 @@ class RequestError(RuntimeError):
         self.info = info
 
     def __str__(self):
-        return f'response {self.status} from "{self.url}"'
+        return f'response {self.status} from "{self.url}"' + (f':\n{self.info}' if self.info else '')

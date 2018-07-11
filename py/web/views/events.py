@@ -12,6 +12,7 @@ from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, constr
 
 from shared.utils import slugify
+from web.actions import ActionTypes, record_action_id
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import Reservation, StripePayModel, stripe_pay
@@ -288,14 +289,7 @@ class ReserveTickets(UpdateView):
             async with self.conn.transaction():
                 user_lookup = await self.create_users(m.tickets)
 
-                action_id = await self.conn.fetchval_b(
-                    'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-                    values=Values(
-                        company=self.request['company_id'],
-                        user_id=self.session['user_id'],
-                        type='reserve_tickets'
-                    )
-                )
+                action_id = await record_action_id(self.request, self.session['user_id'], ActionTypes.reserve_tickets)
                 await self.conn.execute_b(
                     'INSERT INTO tickets (:values__names) VALUES :values',
                     values=MultipleValues(*[

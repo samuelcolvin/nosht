@@ -17,10 +17,16 @@ class Triggers(str, Enum):
 
 EMAIL_DEFAULTS = {
     Triggers.confirmation_buyer: {
-        'subject': 'confirmation_buyer',
-        'title': '',
+        'subject': '{{{ company_name }}} Ticket Confirmation',
+        'title': 'Ticket Purchase Confirmation',
         'body': """
-Email confirmation_buyer
+Dear {{ first_name }}
+
+This is a **test** of emails.
+
+# With a title
+
+and a like [to something](https://www.example.com).
 """
     },
     Triggers.confirmation_other: {

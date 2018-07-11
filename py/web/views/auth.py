@@ -1,13 +1,17 @@
+from secrets import compare_digest
 from time import time
 
 import bcrypt
+from aiohttp.web_exceptions import HTTPTemporaryRedirect
 from aiohttp_session import new_session
 from buildpg import Values
 from pydantic import BaseModel, EmailStr, constr
 
-from web.auth import (FacebookSiwModel, GoogleSiwModel, facebook_get_details, google_get_details, invalidate_session,
-                      is_auth, record_event, validate_email)
-from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, parse_request, raw_json_response
+from shared.misc import unsubscribe_sig
+from web.auth import (ActionTypes, FacebookSiwModel, GoogleSiwModel, facebook_get_details, google_get_details,
+                      invalidate_session, is_auth, record_action, validate_email)
+from web.utils import (JsonErrors, decrypt_json, encrypt_json, json_response, parse_request, raw_json_response,
+                       request_root)
 
 
 class LoginModel(BaseModel):
@@ -77,7 +81,7 @@ async def authenticate_token(request):
     session = await new_session(request)
     session.update(auth_session)
 
-    await record_event(request, session['user_id'], 'login')
+    await record_action(request, session['user_id'], ActionTypes.login)
     return json_response(status='success')
 
 
@@ -118,7 +122,7 @@ FROM (
 """
 
 
-async def guest_login(request):
+async def guest_signin(request):
     model, siw_method = SIGNIN_MODELS[request.match_info['site']]
     m = await parse_request(request, model)
     details = await siw_method(m, app=request.app)
@@ -140,7 +144,21 @@ async def guest_login(request):
     session = await new_session(request)
     session.update({'user_id': user_id, 'user_role': 'guest', 'last_active': int(time())})
 
-    await record_event(request, user_id, 'guest-signin')
+    await record_action(request, user_id, ActionTypes.guest_signin)
 
     json_str = await request['conn'].fetchval(GET_GUEST_USER_SQL, company_id, user_id)
     return raw_json_response(json_str)
+
+
+async def unsubscribe(request):
+    user_id = int(request.match_info['id'])
+    url_base = request_root(request)
+
+    given_sig = request.query.get('sig', '')
+    expected_sig = unsubscribe_sig(user_id, request.app['settings']),
+    if not compare_digest(given_sig, expected_sig):
+        raise HTTPTemporaryRedirect(location=url_base + '/unsubscribe-invalid/')
+
+    await request['conn'].execute('UPDATE users SET receive_emails=FALSE WHERE id=$1', user_id)
+    await record_action(request, user_id, ActionTypes.unsubscribe)
+    raise HTTPTemporaryRedirect(location=url_base + '/unsubscribe-valid/')

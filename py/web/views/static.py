@@ -5,6 +5,8 @@ from aiohttp.web import Response
 from aiohttp.web_exceptions import HTTPForbidden, HTTPNotFound
 from aiohttp.web_fileresponse import FileResponse
 
+from web.utils import request_root
+
 logger = logging.getLogger('nosht.web.static')
 
 
@@ -33,9 +35,7 @@ async def static_handler(request):
         raise HTTPNotFound() from exc
 
     if request_path == 'login/iframe.html':
-        # request.url.scheme doesn't work as https is terminated, could use https forward header or referer
-        scheme = 'https' if request.app['settings'].on_heroku else 'http'
-        new_root = f'{scheme}://{request.headers["Host"]}'
+        new_root = request_root(request)
         content = filepath.read_text().replace('http://localhost:3000', new_root)
         return Response(text=content, content_type='text/html')
     elif filepath.is_file():

@@ -23,7 +23,7 @@ def stripe_factory(factory, db_conn):
             values=Values(
                 company=factory.company_id,
                 user_id=factory.user_id,
-                type='reserve_tickets'
+                type='reserve-tickets'
             )
         )
         await db_conn.execute_b(
@@ -85,7 +85,7 @@ async def test_stripe_successful(cli, db_conn, stripe_factory: Factory):
     )
     assert (ticket_limit, tickets_taken) == (10, 1)
 
-    paid_action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='buy_tickets'")
+    paid_action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='buy-tickets'")
 
     assert paid_action['company'] == stripe_factory.company_id
     assert paid_action['user_id'] == stripe_factory.user_id
@@ -137,7 +137,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, stripe_factory: Facto
     new_customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', stripe_factory.user_id)
     assert new_customer_id == customer_id
 
-    extra = await db_conn.fetchval("SELECT extra FROM actions WHERE type='buy_tickets'")
+    extra = await db_conn.fetchval("SELECT extra FROM actions WHERE type='buy-tickets'")
 
     extra = json.loads(extra)
     assert extra == {

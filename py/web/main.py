@@ -16,7 +16,7 @@ from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
 from .views import index
-from .views.auth import authenticate_token, guest_login, login, login_with, logout
+from .views.auth import authenticate_token, guest_signin, login, login_with, logout, unsubscribe
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public)
 from .views.events import (BuyTickets, EventBread, ReserveTickets, SetEventStatus, booking_info, event_categories,
@@ -88,7 +88,9 @@ def create_app(*, settings: Settings=None):
         web.post('/login/{site:(google|facebook)}/', login_with, name='login-google-facebook'),
         web.post('/auth-token/', authenticate_token, name='auth-token'),
         web.post('/logout/', logout, name='logout'),
-        web.post('/login/guest/{site:(google|facebook|email)}/', guest_login, name='login-guest'),
+        web.post('/login/guest/{site:(google|facebook|email)}/', guest_signin, name='login-guest'),
+
+        web.get('/unsubscribe/{id:\d+}/', unsubscribe, name='unsubscribe'),
 
         *UserBread.routes('/users/'),
     ])
