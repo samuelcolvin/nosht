@@ -1,6 +1,7 @@
 import asyncio
 import json
 import random
+import uuid
 from datetime import datetime
 from pprint import pformat
 from textwrap import shorten
@@ -29,6 +30,7 @@ def settings():
         DATABASE_URL='postgres://postgres:waffle@localhost:5432/nosht_testing',
         REDISCLOUD_URL='redis://localhost:6379/1',
         bcrypt_work_factor=6,
+        stripe_idempotency_extra=str(uuid.uuid4())
     )
 
 

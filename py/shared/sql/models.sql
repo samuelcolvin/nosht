@@ -11,6 +11,7 @@ CREATE TABLE companies (
   stripe_secret_key VARCHAR(63),
   currency CURRENCY NOT NULL DEFAULT 'gbp',
   image VARCHAR(255),
+  logo VARCHAR(255),
   email_from VARCHAR(255),
   email_template TEXT
 );

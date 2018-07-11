@@ -12,18 +12,22 @@ from typing import List
 from urllib.parse import urlencode
 
 import chevron
+import sass
 from aiohttp import ClientSession, ClientTimeout
 from arq import Actor
 from buildpg import asyncpg
 from misaka import Markdown, HtmlRenderer, SaferHtmlRenderer
 
-from .settings import Settings
-from .utils import RequestError
-from .email_defaults import EMAIL_DEFAULTS, Triggers
+from ..settings import Settings
+from ..utils import RequestError
+from .defaults import EMAIL_DEFAULTS, Triggers
 
 logger = logging.getLogger('nosht.email')
 
-DEFAULT_EMAIL_TEMPLATE = (Path(__file__).parent / 'default_email_template.html').read_text()
+THIS_DIR = Path(__file__).parent
+DEFAULT_EMAIL_TEMPLATE = (THIS_DIR / 'default_email_template.html').read_text()
+STYLES = (THIS_DIR / 'styles.scss').read_text()
+STYLES = sass.compile(string=STYLES, output_style='compressed', precision=10).strip('\n')
 
 _AWS_HOST = 'email.{region}.amazonaws.com'
 _AWS_ENDPOINT = 'https://{host}/'
@@ -160,7 +164,7 @@ class EmailActor(Actor):
 
         e_msg.set_content(raw_body)
 
-        # TODO unsubscribe link, css
+        # TODO unsubscribe link
         ctx['main_message'] = safe_markdown(raw_body)
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
         e_msg.add_alternative(html_body, subtype='html')
@@ -180,7 +184,7 @@ class EmailActor(Actor):
 
             r = await conn.fetchrow(
                 """
-                SELECT active, subject, title, body 
+                SELECT active, subject, title, body
                 FROM email_definitions
                 WHERE company=$1 AND trigger=$2
                 """,
@@ -204,6 +208,7 @@ class EmailActor(Actor):
                 company_id, user_ids
             )
 
+        ctx['styles'] = STYLES
         await asyncio.gather(*[
             self.send_email(user, subject, title, body, e_from, template, ctx)
             for user in users
