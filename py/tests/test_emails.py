@@ -110,6 +110,7 @@ async def test_send_ticket_email(email_actor: EmailActor, db_conn, factory: Fact
         '</div>\n'
     ) in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
+    assert '"@type":"EventReservation"' in html
 
 
 async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):

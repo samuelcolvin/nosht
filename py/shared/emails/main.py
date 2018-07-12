@@ -5,7 +5,7 @@ from typing import Optional
 
 from arq import concurrent
 
-from shared.misc import display_cash, static_map_link
+from shared.misc import display_cash, iso_timedelta, static_map_link
 
 from .defaults import Triggers
 from .setup import BaseEmailActor, UserEmail
@@ -37,9 +37,15 @@ class EmailActor(BaseEmailActor):
             )
             buyer_user_id = data['user_id']
 
-            r = await conn.fetch('SELECT user_id FROM tickets WHERE paid_action=$1', paid_action_id)
-            other_user_ids = {r_[0] for r_ in r}
-            other_user_ids.remove(buyer_user_id)
+            user_data = await conn.fetch(
+                """
+                SELECT t.user_id, t.id AS ticket_id,
+                  coalesce(first_name || ' ' || last_name, first_name, last_name, email) as user_name
+                FROM tickets AS t
+                JOIN users u on t.user_id = u.id
+                WHERE t.paid_action=$1
+                """,
+                paid_action_id)
 
         duration: Optional[datetime.timedelta] = data['duration']
         ctx = {
@@ -58,24 +64,63 @@ class EmailActor(BaseEmailActor):
                 static_map=static_map_link(lat, lng, settings=self.settings),
                 google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
             )
-        ticket_count = len(other_user_ids) + 1
+        ticket_count = len(user_data)
+        buyer_user_data = next(u for u in user_data if u['user_id'] == buyer_user_id)
+
         ctx_buyer = {
+            **ctx,
+            'markup_data': get_event_schema(data, buyer_user_data),
             'ticket_count': ticket_count,
             'ticket_count_plural': ticket_count > 1,
             'total_price': display_cash(data['price'] * ticket_count, data['currency']),
         }
         if data['extra']:
             action_extra = json.loads(data['extra'])
-            ctx['card_details'] = '{card_expiry} - ending {card_last4}'.format(**action_extra)
+            ctx_buyer['card_details'] = '{card_expiry} - ending {card_last4}'.format(**action_extra)
 
         await self.send_emails.direct(
             data['company'],
             Triggers.ticket_buyer,
-            [UserEmail(id=buyer_user_id, ctx={**ctx, **ctx_buyer})]
+            [UserEmail(id=buyer_user_id, ctx=ctx_buyer)]
         )
-        if other_user_ids:
+        other_user_emails = [
+            UserEmail(id=u['id'], ctx={'markup_data': get_event_schema(data, u), **ctx})
+            for u in user_data if u['user_id'] != buyer_user_id
+        ]
+        if other_user_emails:
             await self.send_emails.direct(
                 data['company'],
                 Triggers.ticket_other,
-                [UserEmail(id=user_id, ctx=ctx) for user_id in other_user_ids]
+                other_user_emails,
             )
+
+
+def get_event_schema(event_data, user_data):
+    lat, lng = event_data['location_lat'], event_data['location_lng']
+    return {
+        '@context': 'http://schema.org',
+        '@type': 'EventReservation',
+        'reservationNumber': 'T{ticket_id}'.format(**user_data),
+        'ticketNumber': 'T{ticket_id}'.format(**user_data),
+        'ticketToken': 'code:{ticket_id}'.format(**user_data),  # TODO I guess needs signature
+        'reservationStatus': 'http://schema.org/Confirmed',
+        'underName': {
+            '@type': 'Person',
+            'name': user_data['user_name']
+        },
+        'reservationFor': {
+            '@type': 'Event',
+            'name': event_data['name'],
+            'startDate': event_data['start_ts'].isoformat(),
+            'duration': iso_timedelta(event_data['duration']),
+            'location': {
+                '@type': 'Place',
+                'name': event_data['location'],
+                'geo': lat and lng and {
+                    '@type': 'GeoCoordinates',
+                    'latitude': f'{lat:0.7f}',
+                    'longitude': f'{lng:0.7f}',
+                },
+            }
+        },
+    }

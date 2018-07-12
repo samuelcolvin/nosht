@@ -306,7 +306,6 @@ class ReserveTickets(UpdateView):
             logger.warning('CheckViolationError: %s', e)
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
 
-        debug(self.session['user_id'])
         user = await self.conn.fetchrow(
             """
             SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name, email, role

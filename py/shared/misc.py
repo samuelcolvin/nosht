@@ -57,3 +57,17 @@ def format_duration(td: timedelta):
         return f'{hours} hours'
     else:
         return f'{hours} hours {minutes} mins'
+
+
+def iso_timedelta(dt: timedelta):
+    """
+    ISO 8601 encoding
+    """
+    dt = dt or timedelta(days=1)
+    seconds = dt.total_seconds()
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+    days, hours, minutes = map(int, (days, hours, minutes))
+    seconds = round(seconds, 6)
+    return f'P{days}DT{hours}H{minutes}M{seconds:0.0f}S'

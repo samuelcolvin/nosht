@@ -164,21 +164,17 @@ class BaseEmailActor(Actor):
                          template: str,
                          e_from: str,
                          global_ctx: Dict[str, Any]):
-        """
-        TODO: jsonld to add structured data to the email
-        """
-
         base_url = global_ctx['base_url']
 
         full_name = '{first_name} {last_name}'.format(**user).strip(' ')
         user_email = user['email']
-
         extra_ctx = dict(
             first_name=user['first_name'] or user['last_name'] or user['email'],
             full_name=full_name or user['email'],
             unsubscribe_link=f'/api/unsubscribe/{user["id"]}/?sig={unsubscribe_sig(user["id"], self.settings)}',
         )
         ctx = clean_ctx({**global_ctx, **extra_ctx, **user_ctx}, base_url)
+        markup_data = ctx.pop('markup_data', None)
 
         e_msg = EmailMessage(policy=SMTP)
         subject = chevron.render(subject, data=ctx)
@@ -199,6 +195,8 @@ class BaseEmailActor(Actor):
             main_message=safe_markdown(raw_body),
             message_preview=shorten(strip_markdown(raw_body), 60, placeholder='…'),
         )
+        if markup_data:
+            ctx['markup_data'] = json.dumps(markup_data, separators=(',', ':'))
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
         e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
 
