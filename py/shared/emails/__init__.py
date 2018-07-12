@@ -30,11 +30,7 @@ logger = logging.getLogger('nosht.email')
 THIS_DIR = Path(__file__).parent
 DEFAULT_EMAIL_TEMPLATE = (THIS_DIR / 'default_template.html').read_text()
 STYLES = (THIS_DIR / 'styles.scss').read_text()
-# using compressed here seems to mess up emails in some cases, eg. where they code through a MTU due
-# to lines being too long
-STYLES = sass.compile(string=STYLES, output_style='compact', precision=10).strip('\n')
-STYLES = re.sub('\n{2,}', '\n', STYLES)
-STYLES = re.sub(r'(?:({) | (}))', r'\1\2', STYLES)
+STYLES = sass.compile(string=STYLES, output_style='compressed', precision=10).strip('\n')
 
 _AWS_SERVICE = 'ses'
 _AWS_AUTH_REQUEST = 'aws4_request'
@@ -189,17 +185,14 @@ class EmailActor(Actor):
         e_msg['To'] = f'{full_name} <{user_email}>' if full_name else user_email
         e_msg['List-Unsubscribe'] = f'<{unsubscribe_link}>'
 
-        e_msg.set_content(raw_body)
+        e_msg.set_content(raw_body, cte='quoted-printable')
 
         ctx.update(
             main_message=safe_markdown(raw_body),
             message_preview=strip_markdown(raw_body),
         )
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
-        e_msg.add_alternative(html_body, subtype='html')
-
-        # e_msg['Content-Transfer-Encoding'] = 'quoted-printable'
-        # e_msg.set_payload(quopri.encodestring(html_body.encode()))
+        e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
 
         msg_id = await self.aws_send(e_from=e_from, to=[user_email], email_msg=e_msg)
         logger.info('email sent "%s", id %0.12s...', subject, msg_id)
