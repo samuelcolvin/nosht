@@ -6,8 +6,9 @@ from aiohttp import BasicAuth
 from buildpg import Values
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
-from web.utils import encrypt_json
 from web.stripe import Reservation, StripePayModel, stripe_pay, stripe_request
+from web.utils import encrypt_json
+
 from .conftest import Factory
 
 stripe_public_key = 'pk_test_PMjnIfWjalY8jr4pkm1pexwR'

@@ -309,8 +309,8 @@ class ReserveTickets(UpdateView):
         debug(self.session['user_id'])
         user = await self.conn.fetchrow(
             """
-            SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name, email, role 
-            FROM users 
+            SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name, email, role
+            FROM users
             WHERE id=$1
             """,
             self.session['user_id']

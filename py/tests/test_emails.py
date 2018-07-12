@@ -1,4 +1,3 @@
-import datetime
 import json
 import re
 
@@ -6,7 +5,7 @@ import pytest
 from buildpg import Values
 from pytest_toolbox.comparison import RegexStr
 
-from shared.emails import EmailActor, UserEmail, Triggers
+from shared.emails import EmailActor, Triggers, UserEmail
 from shared.settings import Settings
 from web.actions import ActionTypes
 

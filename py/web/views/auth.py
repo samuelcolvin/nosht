@@ -20,7 +20,7 @@ class LoginModel(BaseModel):
 
 
 get_user_sql = """
-SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name, 
+SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name,
   email, role, status, password_hash
 FROM users
 WHERE company=$1 AND email=$2 AND status='active' AND role!='guest'
