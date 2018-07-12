@@ -2,6 +2,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import re
 from binascii import hexlify
@@ -10,7 +11,8 @@ from email.message import EmailMessage
 from email.policy import SMTP
 from functools import reduce
 from pathlib import Path
-from typing import List
+from textwrap import shorten
+from typing import Any, Dict, List, NamedTuple
 from urllib.parse import urlencode
 
 import chevron
@@ -18,7 +20,7 @@ import sass
 from aiohttp import ClientSession, ClientTimeout
 from arq import Actor, concurrent
 from buildpg import asyncpg
-from misaka import Markdown, HtmlRenderer, SaferHtmlRenderer
+from misaka import Markdown, SaferHtmlRenderer
 
 from shared.misc import unsubscribe_sig
 from ..settings import Settings
@@ -56,14 +58,11 @@ _AUTH_HEADER = (
 
 flags = ('hard-wrap',)
 extensions = ('no-intra-emphasis',)
-markdown = Markdown(
-    HtmlRenderer(flags=flags),
-    extensions=extensions
-)
 safe_markdown = Markdown(
     SaferHtmlRenderer(flags=flags),
     extensions=extensions
 )
+DEBUG_PRINT_REGEX = re.compile(r'{{ ?__print_debug_context__ ?}}')
 
 strip_markdown_re = [
     (re.compile(r'\<.*?\>', flags=re.S), ''),
@@ -80,6 +79,11 @@ def strip_markdown(s):
     for regex, p in strip_markdown_re:
         s = regex.sub(p, s)
     return s
+
+
+class UserEmail(NamedTuple):
+    id: int
+    ctx: Dict[str, Any] = {}
 
 
 class EmailActor(Actor):
@@ -163,43 +167,61 @@ class EmailActor(Actor):
         msg_id = re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
         return msg_id + f'@{self.settings.aws_region}.amazonses.com'
 
-    async def send_email(self, user, subject, title, body, e_from, template, base_url, ctx):
-        ctx = dict(ctx)
+    async def send_email(self,
+                         *,
+                         user: Dict[str, Any],
+                         user_ctx: Dict[str, Any],
+                         subject: str,
+                         title: str,
+                         body: str,
+                         template: str,
+                         e_from: str,
+                         global_ctx: Dict[str, Any]):
+
+        base_url = global_ctx['base_url']
+
         full_name = '{first_name} {last_name}'.format(**user).strip(' ')
+        user_email = user['email']
 
         unsubscribe_link = f'{base_url}/api/unsubscribe/{user["id"]}/?sig={unsubscribe_sig(user["id"], self.settings)}'
 
-        ctx.update(
+        extra_ctx = dict(
             first_name=user['first_name'] or user['email'],
             full_name=full_name or user['email'],
             unsubscribe_link=unsubscribe_link
         )
-        # TODO deal with links
-        raw_body = chevron.render(body, data=ctx)
+        ctx = {**global_ctx, **extra_ctx, **user_ctx}
 
         e_msg = EmailMessage(policy=SMTP)
         subject = chevron.render(subject, data=ctx)
         e_msg['Subject'] = subject
         e_msg['From'] = e_from
-        user_email = user['email']
         e_msg['To'] = f'{full_name} <{user_email}>' if full_name else user_email
         e_msg['List-Unsubscribe'] = f'<{unsubscribe_link}>'
 
+        if DEBUG_PRINT_REGEX.search(body):
+            ctx['__print_debug_context__'] = json.dumps(ctx, indent=2)
+
+        raw_body = chevron.render(body, data=ctx)
         e_msg.set_content(raw_body, cte='quoted-printable')
 
         ctx.update(
+            styles=STYLES,
             main_message=safe_markdown(raw_body),
-            message_preview=strip_markdown(raw_body),
+            message_preview=shorten(strip_markdown(raw_body), 60, placeholder='…'),
         )
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
         e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
 
         msg_id = await self.aws_send(e_from=e_from, to=[user_email], email_msg=e_msg)
-        logger.info('email sent "%s", id %0.12s...', subject, msg_id)
+        logger.info('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
 
     @concurrent
-    async def send_emails(self, company_id: int, trigger: str, user_ids: List[int], ctx: dict=None):
+    async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail]):
         trigger = Triggers(trigger)
+
+        dft = EMAIL_DEFAULTS[trigger]
+        subject, title, body = dft['subject'], dft['title'], dft['body']
 
         async with self.pg.acquire() as conn:
             company_name, e_from, template, company_logo, company_domain = await conn.fetchrow(
@@ -217,33 +239,40 @@ class EmailActor(Actor):
                 company_id, trigger.value
             )
             if r:
-                active, subject, title, body = r
-                if not active:
+                if not r['active']:
                     logger.info('not sending email %s (%d), email definition inactive', trigger.value, company_id)
                     return
-            else:
-                dft = EMAIL_DEFAULTS[trigger]
-                subject, title, body = dft['subject'], dft['title'], dft['body']
+                subject = r['subject'] or subject
+                title = r['title'] or title
+                body = r['body'] or body
 
-            users = await conn.fetch(
+            user_data = await conn.fetch(
                 """
                 SELECT id, first_name, last_name, email
                 FROM users
                 WHERE company=$1 AND status!='suspended' AND receive_emails=TRUE AND email IS NOT NULL AND id=ANY($2)
                 """,
-                company_id, user_ids
+                company_id, [u[0] for u in users_emails]
             )
 
-        ctx = ctx or {}
-        ctx.update(
-            styles=STYLES,
+        global_ctx = dict(
             company_name=company_name,
             company_logo=company_logo,
+            base_url=f'https://{company_domain}',
         )
-        base_url = f'https://{company_domain}'
-        ctx['styles'] = STYLES
+        user_ctx_lookup = {u[0]: u[1] for u in users_emails}
         await asyncio.gather(*[
-            self.send_email(user, subject, title, body, e_from, template, base_url, ctx)
-            for user in users
+            self.send_email(
+                user=u_data,
+                user_ctx=user_ctx_lookup[u_data['id']],
+                subject=subject,
+                title=title,
+                body=body,
+                template=template,
+                e_from=e_from,
+                global_ctx=global_ctx,
+            )
+            for u_data in user_data
         ])
-        logger.info('%d emails sent for trigger %s, company %s (%d)', len(users), trigger, company_domain, company_id)
+        logger.info('%d emails sent for trigger %s, company %s (%d)',
+                    len(user_data), trigger, company_domain, company_id)

@@ -2,17 +2,20 @@ from enum import Enum
 
 
 class Triggers(str, Enum):
-    confirmation_buyer = 'confirmation_buyer'
-    confirmation_other = 'confirmation_other'
-    event_update = 'event_update'
-    event_reminder = 'event_reminder'
+    """
+    Must match EMAIL_TRIGGERS in sql/models.py
+    """
+    confirmation_buyer = 'confirmation-buyer'
+    confirmation_other = 'confirmation-other'
+    event_update = 'event-update'
+    event_reminder = 'event-reminder'
 
-    event_booking = 'event_booking'
-    event_host_update = 'event_host_update'
+    event_booking = 'event-booking'
+    event_host_update = 'event-host-update'
 
-    password_reset = 'password_reset'
-    account_created = 'account_created'
-    admin_notification = 'admin_notification'
+    password_reset = 'password-reset'
+    account_created = 'account-created'
+    admin_notification = 'admin-notification'
 
 
 EMAIL_DEFAULTS = {
@@ -73,7 +76,7 @@ Email event_host_update
 """
     },
     Triggers.password_reset: {
-        'subject': 'password_reset',
+        'subject': '{{{ company_name }}} Password Reset',
         'title': '',
         'body': """
 Email password_reset

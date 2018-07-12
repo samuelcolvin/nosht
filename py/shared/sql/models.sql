@@ -118,14 +118,21 @@ CREATE TABLE tickets (
 );
 CREATE INDEX ticket_event ON tickets USING btree (event);
 
+-- must match triggers from emails/defaults.py!
+CREATE TYPE EMAIL_TRIGGERS AS ENUM (
+  'confirmation-buyer', 'confirmation-other', 'event-update', 'event-reminder', 'event-booking',
+  'event-host-update', 'password-reset', 'account-created', 'admin-notification'
+);
 
 CREATE TABLE email_definitions (
   id SERIAL PRIMARY KEY,
   company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
-  trigger VARCHAR(31),
+  trigger EMAIL_TRIGGERS NOT NULL,
   active BOOLEAN DEFAULT TRUE,
-  subject VARCHAR(255) NOT NULL,
-  title VARCHAR(127) NOT NULL DEFAULT '',
-  body TEXT NOT NULL
+  subject VARCHAR(255),
+  title VARCHAR(127),
+  body TEXT
 );
 CREATE UNIQUE INDEX email_def_unique ON email_definitions USING btree (company, trigger);
+
+-- TODO email events

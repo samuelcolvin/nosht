@@ -28,7 +28,7 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope='session')
-def settings():
+def settings_session():
     return Settings(
         DATABASE_URL='postgres://postgres:waffle@localhost:5432/nosht_testing',
         REDISCLOUD_URL='redis://localhost:6379/6',
@@ -40,11 +40,29 @@ def settings():
 
 
 @pytest.fixture(scope='session')
-def clean_db(request, settings):
+def clean_db(request, settings_session):
     # loop fixture has function scope so can't be used here.
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(prepare_database(settings, not request.config.getoption('--reuse-db')))
+    loop.run_until_complete(prepare_database(settings_session, not request.config.getoption('--reuse-db')))
     teardown_test_loop(loop)
+
+
+@pytest.fixture
+async def dummy_server(loop, aiohttp_server):
+    return await create_dummy_server(loop, aiohttp_server)
+
+
+@pytest.fixture
+def settings(dummy_server):
+    return Settings(
+        DATABASE_URL='postgres://postgres:waffle@localhost:5432/nosht_testing',
+        REDISCLOUD_URL='redis://localhost:6379/6',
+        bcrypt_work_factor=6,
+        stripe_idempotency_extra=str(uuid.uuid4()),
+        aws_access_key='testing_access_key',
+        aws_secret_key='testing_secret_key',
+        aws_ses_endpoint=dummy_server.app['server_name'] + '/send/email/',
+    )
 
 
 @pytest.fixture
@@ -254,8 +272,3 @@ def url(cli):
             raise KeyError(f'invalid url name, choices: {pformat(inner_app.router._named_resources)}') from e
         return r.url_for(**{k: str(v) for k, v in kwargs.items()})
     return f
-
-
-@pytest.fixture
-async def dummy_server(loop, aiohttp_server):
-    return await create_dummy_server(loop, aiohttp_server)
