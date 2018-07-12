@@ -26,3 +26,4 @@ js/README.md
 js/src/styles/bootstrap-scss
 activate.dev.sh
 /deploy-settings/
+/setup.cfg

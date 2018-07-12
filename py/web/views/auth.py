@@ -155,7 +155,7 @@ async def unsubscribe(request):
     url_base = request_root(request)
 
     given_sig = request.query.get('sig', '')
-    expected_sig = unsubscribe_sig(user_id, request.app['settings']),
+    expected_sig = unsubscribe_sig(user_id, request.app['settings'])
     if not compare_digest(given_sig, expected_sig):
         raise HTTPTemporaryRedirect(location=url_base + '/unsubscribe-invalid/')
 

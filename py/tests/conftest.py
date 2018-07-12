@@ -27,16 +27,19 @@ def pytest_addoption(parser):
     )
 
 
+settings_args = dict(
+    DATABASE_URL='postgres://postgres:waffle@localhost:5432/nosht_testing',
+    REDISCLOUD_URL='redis://localhost:6379/6',
+    bcrypt_work_factor=6,
+    stripe_idempotency_extra=str(uuid.uuid4()),
+    aws_access_key='testing_access_key',
+    aws_secret_key='testing_secret_key',
+)
+
+
 @pytest.fixture(scope='session')
 def settings_session():
-    return Settings(
-        DATABASE_URL='postgres://postgres:waffle@localhost:5432/nosht_testing',
-        REDISCLOUD_URL='redis://localhost:6379/6',
-        bcrypt_work_factor=6,
-        stripe_idempotency_extra=str(uuid.uuid4()),
-        aws_access_key='testing_access_key',
-        aws_secret_key='testing_secret_key',
-    )
+    return Settings(**settings_args)
 
 
 @pytest.fixture(scope='session')
@@ -55,13 +58,8 @@ async def dummy_server(loop, aiohttp_server):
 @pytest.fixture
 def settings(dummy_server):
     return Settings(
-        DATABASE_URL='postgres://postgres:waffle@localhost:5432/nosht_testing',
-        REDISCLOUD_URL='redis://localhost:6379/6',
-        bcrypt_work_factor=6,
-        stripe_idempotency_extra=str(uuid.uuid4()),
-        aws_access_key='testing_access_key',
-        aws_secret_key='testing_secret_key',
         aws_ses_endpoint=dummy_server.app['server_name'] + '/send/email/',
+        **settings_args
     )
 
 

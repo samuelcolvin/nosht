@@ -47,7 +47,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'buy-tickets',
   'edit-event',
   'edit-other',
-  'unsubscribed'
+  'unsubscribe'
 );
 CREATE TABLE actions (
   id SERIAL PRIMARY KEY,

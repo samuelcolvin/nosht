@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from .settings import Settings
@@ -32,3 +33,27 @@ def static_map_link(lat, lng, *, settings: Settings, size=(500, 300), zoom=13):
         'key': settings.google_maps_static_key,
         'scale': 2,
     })
+
+
+def format_duration(td: timedelta):
+    """
+    should match js/src/utils.js > format_duration
+    """
+    seconds = td.total_seconds()
+    minutes = seconds // 60
+
+    if minutes == 60:
+        return '1 hour'
+
+    if minutes < 60:
+        return f'{minutes} mins'
+
+    hours = minutes // 60
+    minutes = minutes % 60
+    if hours == 1:
+        return f'1 hour {minutes} mins'
+
+    if minutes == 0:
+        return f'{hours} hours'
+    else:
+        return f'{hours} hours {minutes} mins'

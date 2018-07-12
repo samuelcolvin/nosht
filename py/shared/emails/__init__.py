@@ -22,7 +22,7 @@ from arq import Actor, concurrent
 from buildpg import asyncpg
 from misaka import Markdown, HtmlRenderer
 
-from shared.misc import display_cash, static_map_link, unsubscribe_sig
+from shared.misc import display_cash, static_map_link, unsubscribe_sig, format_duration
 from ..settings import Settings
 from ..utils import RequestError
 from .defaults import EMAIL_DEFAULTS, Triggers
@@ -63,52 +63,8 @@ safe_markdown = Markdown(
     extensions=extensions
 )
 DEBUG_PRINT_REGEX = re.compile(r'{{ ?__print_debug_context__ ?}}')
-
-
-strip_markdown_re = [
-    (re.compile(r'\<.*?\>', flags=re.S), ''),
-    (re.compile(r'_(\S.*?\S)_'), r'\1'),
-    (re.compile(r'\[(.+?)\]\(.+?\)'), r'\1'),
-    (re.compile(r'\*\*'), ''),
-    (re.compile('^#+ ', flags=re.M), ''),
-    (re.compile('`'), ''),
-    (re.compile('\n+'), ' '),
-]
 date_fmt = '%d %b %y'
 datetime_fmt = '%H:%M %d %b %y'
-markdown_macros = {
-    'centered_button(text | link)': (
-        '<div class="button">\n'
-        '  <a href="{{ link }}"><span>{{ text }}</span></a>\n'
-        '</div>\n'
-    )
-}
-
-
-def strip_markdown(s):
-    for regex, p in strip_markdown_re:
-        s = regex.sub(p, s)
-    return s
-
-
-def clean_ctx(context, base_url):
-    context = context or {}
-    if not isinstance(context, dict):
-        return context
-    for key, value in context.items():
-        if key.endswith('link') and isinstance(value, str):
-            value = value or '/'
-            assert value.startswith('/'), f'link field found which doesn\'t start "/". {key}: {value}'
-            context[key] = base_url + value
-        elif isinstance(value, datetime.datetime):
-            context[key] = value.strftime(datetime_fmt)
-        elif isinstance(value, datetime.date) or (isinstance(value, datetime.datetime) and key == 'date'):
-            context[key] = value.strftime(date_fmt)
-        elif isinstance(value, dict):
-            context[key] = clean_ctx(value, base_url=base_url)
-        elif isinstance(value, list):
-            context[key] = [clean_ctx(v, base_url=base_url) for v in value]
-    return context
 
 
 class UserEmail(NamedTuple):
@@ -207,6 +163,9 @@ class EmailActor(Actor):
                          template: str,
                          e_from: str,
                          global_ctx: Dict[str, Any]):
+        """
+        TODO: jsonld to add structured data to the email
+        """
 
         base_url = global_ctx['base_url']
 
@@ -230,6 +189,7 @@ class EmailActor(Actor):
         if DEBUG_PRINT_REGEX.search(body):
             ctx['__print_debug_context__'] = json.dumps(ctx, indent=2)
 
+        body = apply_macros(body)
         raw_body = chevron.render(body, data=ctx)
         e_msg.set_content(raw_body, cte='quoted-printable')
 
@@ -246,11 +206,6 @@ class EmailActor(Actor):
 
     @concurrent
     async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail]):
-        """
-        TODO: partials for macros like centered button
-        TODO: jsonld to add structured data to the email
-        """
-
         trigger = Triggers(trigger)
 
         dft = EMAIL_DEFAULTS[trigger]
@@ -354,13 +309,15 @@ class EmailActor(Actor):
                 google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
             )
         ticket_count = len(other_user_ids) + 1
-        action_extra = json.loads(data['extra'])
         ctx_buyer = {
             'ticket_count': ticket_count,
             'ticket_count_plural': ticket_count > 1,
             'total_price': display_cash(data['price'] * ticket_count, data['currency']),
-            'card_details': '{card_expiry} - ending {card_last4}'.format(**action_extra),
         }
+        if data['extra']:
+            action_extra = json.loads(data['extra'])
+            ctx['card_details'] = '{card_expiry} - ending {card_last4}'.format(**action_extra)
+
         await self.send_emails.direct(
             data['company'],
             Triggers.ticket_buyer,
@@ -372,3 +329,66 @@ class EmailActor(Actor):
                 Triggers.ticket_other,
                 [UserEmail(id=user_id, ctx=ctx) for user_id in other_user_ids]
             )
+
+
+strip_markdown_re = [
+    (re.compile(r'\<.*?\>', flags=re.S), ''),
+    (re.compile(r'_(\S.*?\S)_'), r'\1'),
+    (re.compile(r'\[(.+?)\]\(.+?\)'), r'\1'),
+    (re.compile(r'\*\*'), ''),
+    (re.compile('^#+ ', flags=re.M), ''),
+    (re.compile('`'), ''),
+    (re.compile('\n+'), ' '),
+]
+
+
+def strip_markdown(s):
+    for regex, p in strip_markdown_re:
+        s = regex.sub(p, s)
+    return s
+
+
+def clean_ctx(context, base_url):
+    context = context or {}
+    if not isinstance(context, dict):
+        return context
+    for key, value in context.items():
+        if key.endswith('link') and isinstance(value, str):
+            value = value or '/'
+            assert value.startswith('/'), f'link field found which doesn\'t start "/". {key}: {value}'
+            context[key] = base_url + value
+        elif isinstance(value, datetime.datetime):
+            context[key] = value.strftime(datetime_fmt)
+        elif isinstance(value, datetime.timedelta):
+            context[key] = format_duration(value)
+        elif isinstance(value, dict):
+            context[key] = clean_ctx(value, base_url=base_url)
+        elif isinstance(value, list):
+            context[key] = [clean_ctx(v, base_url=base_url) for v in value]
+    return context
+
+
+markdown_macros = [
+    {
+        'name': 'centered_button',
+        'args': ('text', 'link'),
+        'body': (
+            '<div class="button">\n'
+            '  <a href="{{ link }}"><span>{{ text }}</span></a>\n'
+            '</div>\n'
+        )
+    }
+]
+
+
+def apply_macros(s):
+    for macro in markdown_macros:
+        def replace_macro(m):
+            arg_values = [a.strip(' ') for a in m.group(1).split('|') if a.strip(' ')]
+            if len(macro['args']) != len(arg_values):
+                raise RuntimeError(f'invalid macro call "{m.group()}"')
+            else:
+                return chevron.render(macro['body'], data=dict(zip(macro['args'], arg_values)))
+
+        s = re.sub(r'{{ ?%s\((.*?)\) ?}}' % macro['name'], replace_macro, s)
+    return s

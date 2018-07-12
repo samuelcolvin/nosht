@@ -25,8 +25,9 @@ EMAIL_DEFAULTS = {
         'body': """
 Hi {{ first_name }},
 
-Thanks for booking your ticket{{#ticket_count_plural}}s{{/ticket_count_plural}} for \
-[{{ event_name }}]({{ event_link }}).
+Thanks for booking your ticket{{#ticket_count_plural}}s{{/ticket_count_plural}} for **{{ event_name }}**.
+
+{{ centered_button(View Event | {{ event_link }}) }}
 
 Event:
 
@@ -46,20 +47,17 @@ Payment:
 
 
 _(Card Charged: **{{ card_details }})_
-
-```
-{{{ __print_debug_context__ }}}
-```
 """
     },
     Triggers.ticket_other: {
-        'subject': '{{{ event_name }}} Ticket ({{{ event_name }}})',
+        'subject': '{{{ event_name }}} Ticket ({{{ company_name }}})',
         'title': '',
         'body': """
 Hi {{ first_name }},
 
-Great news! {{ buyer_name }} has bought you a ticket for \
-"[{{ event_name }}]({{ event_link }})".
+Great news! {{ buyer_name }} has bought you a ticket for **{{ event_name }}**.
+
+{{ centered_button(View Event | {{ event_link }}) }}
 
 Event:
 
@@ -70,10 +68,6 @@ Event:
 {{#static_map}}
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
 {{/static_map}}
-
-```
-{{{ __print_debug_context__ }}}
-```
 """
     },
     Triggers.event_update: {
@@ -119,10 +113,12 @@ Email account_created
 """
     },
     Triggers.admin_notification: {
-        'subject': 'admin_notification',
+        'subject': '{{{ company_name }}} notification',
         'title': '',
         'body': """
-Email admin_notification
+```
+{{{ __print_debug_context__ }}}
+```
 """
     },
 }
