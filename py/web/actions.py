@@ -32,6 +32,7 @@ async def record_action(request, user_id, action_type: ActionTypes, **extra):
 
 async def record_action_id(request, user_id, action_type: ActionTypes, **extra):
     extra = json.dumps({**actions_request_extra(request), **extra})
-    await request['conn'].fetchval(
+    return await request['conn'].fetchval(
         'INSERT INTO actions (company, user_id, type, extra) VALUES ($1, $2, $3, $4) RETURNING id',
-        request['company_id'], user_id, action_type.value, extra)
+        request['company_id'], user_id, action_type.value, extra
+    )

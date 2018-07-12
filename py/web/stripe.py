@@ -32,7 +32,7 @@ class StripePayModel(BaseModel):
     booking_token: bytes
 
 
-async def stripe_pay(m: StripePayModel, company_id: int, user_id: int, app, conn: BuildPgConnection):
+async def stripe_pay(m: StripePayModel, company_id: int, user_id: int, app, conn: BuildPgConnection) -> int:
     res = Reservation(**decrypt_json(app, m.booking_token, ttl=590))
     assert user_id == res.user_id, "user ids don't match"
 
@@ -128,11 +128,18 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: int, app, conn
         )
     await conn.execute(
         'UPDATE actions SET extra=$1 WHERE id=$2',
-        json.dumps({'new_customer': new_customer, 'new_card': new_card, 'charge_id': charge['id']}),
+        json.dumps({
+            'new_customer': new_customer,
+            'new_card': new_card,
+            'charge_id': charge['id'],
+            'card_last4': charge['source']['last4'],
+            'card_expiry': f"{charge['source']['exp_month']}/{charge['source']['exp_year'] - 2000}",
+        }),
         paid_action_id,
     )
     if new_customer:
         await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, res.user_id)
+    return paid_action_id
 
 
 def _card_ref(c):

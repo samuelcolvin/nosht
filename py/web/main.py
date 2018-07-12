@@ -9,10 +9,10 @@ from buildpg import asyncpg
 from cryptography import fernet
 
 from shared.db import prepare_database
+from shared.emails import EmailActor
 from shared.logs import setup_logging
 from shared.settings import Settings
 from shared.utils import mk_password
-from shared.worker import MainActor
 
 from .middleware import error_middleware, host_middleware, pg_middleware
 from .views import index
@@ -31,18 +31,19 @@ async def startup(app: web.Application):
     settings: Settings = app['settings']
     await prepare_database(settings, False)
     redis = await create_pool_lenient(settings.redis_settings, app.loop)
+    http_client = ClientSession(timeout=ClientTimeout(total=20), loop=app.loop)
     app.update(
         pg=app.get('pg') or await asyncpg.create_pool_b(dsn=settings.pg_dsn, min_size=2),
         redis=redis,
-        worker=MainActor(settings=settings, existing_redis=redis),
-        http_client=ClientSession(timeout=ClientTimeout(total=20), loop=app.loop),
+        email_actor=EmailActor(settings=settings, existing_redis=redis, http_client=http_client),
+        http_client=http_client,
         # custom stripe client to make stripe requests as speedy as possible
         stripe_client=ClientSession(timeout=ClientTimeout(total=5), loop=app.loop),
     )
 
 
 async def cleanup(app: web.Application):
-    await app['worker'].close(True)
+    await app['email_actor'].close()
     await app['pg'].close()
     await app['http_client'].close()
     await app['stripe_client'].close()

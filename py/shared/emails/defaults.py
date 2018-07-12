@@ -5,8 +5,8 @@ class Triggers(str, Enum):
     """
     Must match EMAIL_TRIGGERS in sql/models.py
     """
-    confirmation_buyer = 'confirmation-buyer'
-    confirmation_other = 'confirmation-other'
+    ticket_buyer = 'ticket-buyer'
+    ticket_other = 'ticket-other'
     event_update = 'event-update'
     event_reminder = 'event-reminder'
 
@@ -19,32 +19,61 @@ class Triggers(str, Enum):
 
 
 EMAIL_DEFAULTS = {
-    Triggers.confirmation_buyer: {
-        'subject': '{{{ company_name }}} Ticket Confirmation',
-        'title': 'Ticket Purchase Confirmation',
+    Triggers.ticket_buyer: {
+        'subject': '{{{ event_name }}} Ticket Confirmation ({{{ company_name }}})',
+        'title': 'Ticket Confirmation',
         'body': """
-Dear {{ first_name }}
+Hi {{ first_name }},
 
-This is a **test** of emails.
+Thanks for booking your ticket{{#ticket_count_plural}}s{{/ticket_count_plural}} for \
+[{{ event_name }}]({{ event_link }}).
 
-# With a title (h1)
+Event:
 
-and a like [to something](https://www.example.com).
+* Start Time: **{{ event_start }}**
+* Duration: **{{ event_duration }}**
+* Location: **{{ event_location }}**
 
-## this is h2
+{{#static_map}}
+[![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
+{{/static_map}}
 
-with some body
+Payment:
 
-### this is an h3
+* Ticket Price: **{{ ticket_price }}**
+* Tickets Purchased: **{{ ticket_count }}**
+* Total Amount Charged: **{{ total_price }}**
 
-hello people
+
+_(Card Charged: **{{ card_details }})_
+
+```
+{{{ __print_debug_context__ }}}
+```
 """
     },
-    Triggers.confirmation_other: {
-        'subject': 'confirmation_other',
+    Triggers.ticket_other: {
+        'subject': '{{{ event_name }}} Ticket ({{{ event_name }}})',
         'title': '',
         'body': """
-Email confirmation_other
+Hi {{ first_name }},
+
+Great news! {{ buyer_name }} has bought you a ticket for \
+"[{{ event_name }}]({{ event_link }})".
+
+Event:
+
+* Start Time: **{{ event_start }}**
+* Duration: **{{ event_duration }}**
+* Location: **{{ event_location }}**
+
+{{#static_map}}
+[![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
+{{/static_map}}
+
+```
+{{{ __print_debug_context__ }}}
+```
 """
     },
     Triggers.event_update: {

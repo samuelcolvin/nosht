@@ -23,12 +23,15 @@ async def email_actor(settings: Settings, db_pool, loop):
 async def test_send_email(email_actor: EmailActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_user(email='testing@scolvin.com')
-
-    await email_actor.send_emails(factory.company_id, Triggers.confirmation_buyer,
-                                  [UserEmail(id=factory.user_id, ctx={'foo': 42})])
+    ctx = {
+        'event_name': 'Testing Event',
+    }
+    await email_actor.send_emails(factory.company_id, Triggers.ticket_buyer,
+                                  [UserEmail(id=factory.user_id, ctx=ctx)])
 
     assert dummy_server.app['log'] == [
-        ('email_send_endpoint', 'Subject: "Testing Ticket Confirmation", To: "Frank Spencer <testing@scolvin.com>"'),
+        ('email_send_endpoint', 'Subject: "Testing Event Ticket Confirmation (Testing)", '
+                                'To: "Frank Spencer <testing@scolvin.com>"'),
     ]
 
 

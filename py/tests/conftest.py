@@ -243,13 +243,13 @@ async def pre_startup_app(app):
 
 async def post_startup_app(app):
     inner_app = app['main_app']
-    inner_app['worker']._concurrency_enabled = False
-    await inner_app['worker'].startup()
+    inner_app['email_actor']._concurrency_enabled = False
+    await inner_app['email_actor'].startup()
 
 
 async def shutdown_modify_app(app):
     pass
-    # await app['worker'].session.close()
+    # await app['email_actor'].session.close()
 
 
 @pytest.fixture

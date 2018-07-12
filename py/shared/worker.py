@@ -1,25 +1,11 @@
-import logging
+from arq import BaseWorker
 
-from arq import Actor, BaseWorker, concurrent
-
+from .emails import EmailActor
 from .settings import Settings
-
-logger = logging.getLogger('nosht.worker')
-
-
-class MainActor(Actor):
-    def __init__(self, *, settings: Settings, **kwargs):
-        self.settings = settings
-        self.redis_settings = self.settings.redis_settings
-        super().__init__(**kwargs)
-
-    @concurrent
-    async def testing(self):
-        print('testing worker')
 
 
 class Worker(BaseWorker):
-    shadows = [MainActor]
+    shadows = [EmailActor]
 
     def __init__(self, **kwargs):  # pragma: no cover
         self.settings = Settings()

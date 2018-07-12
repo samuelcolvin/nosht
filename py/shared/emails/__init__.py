@@ -1,18 +1,18 @@
 import asyncio
 import base64
+import datetime
 import hashlib
 import hmac
 import json
 import logging
 import re
 from binascii import hexlify
-from datetime import datetime
 from email.message import EmailMessage
 from email.policy import SMTP
 from functools import reduce
 from pathlib import Path
 from textwrap import shorten
-from typing import Any, Dict, List, NamedTuple
+from typing import Any, Dict, List, Optional, NamedTuple
 from urllib.parse import urlencode
 
 import chevron
@@ -20,9 +20,9 @@ import sass
 from aiohttp import ClientSession, ClientTimeout
 from arq import Actor, concurrent
 from buildpg import asyncpg
-from misaka import Markdown, SaferHtmlRenderer
+from misaka import Markdown, HtmlRenderer
 
-from shared.misc import unsubscribe_sig
+from shared.misc import display_cash, static_map_link, unsubscribe_sig
 from ..settings import Settings
 from ..utils import RequestError
 from .defaults import EMAIL_DEFAULTS, Triggers
@@ -59,10 +59,11 @@ _AUTH_HEADER = (
 flags = ('hard-wrap',)
 extensions = ('no-intra-emphasis',)
 safe_markdown = Markdown(
-    SaferHtmlRenderer(flags=flags),
+    HtmlRenderer(flags=flags),  # maybe should use SaferHtmlRenderer
     extensions=extensions
 )
 DEBUG_PRINT_REGEX = re.compile(r'{{ ?__print_debug_context__ ?}}')
+
 
 strip_markdown_re = [
     (re.compile(r'\<.*?\>', flags=re.S), ''),
@@ -73,12 +74,41 @@ strip_markdown_re = [
     (re.compile('`'), ''),
     (re.compile('\n+'), ' '),
 ]
+date_fmt = '%d %b %y'
+datetime_fmt = '%H:%M %d %b %y'
+markdown_macros = {
+    'centered_button(text | link)': (
+        '<div class="button">\n'
+        '  <a href="{{ link }}"><span>{{ text }}</span></a>\n'
+        '</div>\n'
+    )
+}
 
 
 def strip_markdown(s):
     for regex, p in strip_markdown_re:
         s = regex.sub(p, s)
     return s
+
+
+def clean_ctx(context, base_url):
+    context = context or {}
+    if not isinstance(context, dict):
+        return context
+    for key, value in context.items():
+        if key.endswith('link') and isinstance(value, str):
+            value = value or '/'
+            assert value.startswith('/'), f'link field found which doesn\'t start "/". {key}: {value}'
+            context[key] = base_url + value
+        elif isinstance(value, datetime.datetime):
+            context[key] = value.strftime(datetime_fmt)
+        elif isinstance(value, datetime.date) or (isinstance(value, datetime.datetime) and key == 'date'):
+            context[key] = value.strftime(date_fmt)
+        elif isinstance(value, dict):
+            context[key] = clean_ctx(value, base_url=base_url)
+        elif isinstance(value, list):
+            context[key] = [clean_ctx(v, base_url=base_url) for v in value]
+    return context
 
 
 class UserEmail(NamedTuple):
@@ -105,7 +135,7 @@ class EmailActor(Actor):
         await self.pg.close()
 
     def _aws_headers(self, data):
-        n = datetime.utcnow()
+        n = datetime.datetime.utcnow()
         x_amz_date = n.strftime('%Y%m%dT%H%M%SZ')
         date_stamp = n.strftime('%Y%m%d')
         ctx = dict(
@@ -183,21 +213,19 @@ class EmailActor(Actor):
         full_name = '{first_name} {last_name}'.format(**user).strip(' ')
         user_email = user['email']
 
-        unsubscribe_link = f'{base_url}/api/unsubscribe/{user["id"]}/?sig={unsubscribe_sig(user["id"], self.settings)}'
-
         extra_ctx = dict(
-            first_name=user['first_name'] or user['email'],
+            first_name=user['first_name'] or user['last_name'] or user['email'],
             full_name=full_name or user['email'],
-            unsubscribe_link=unsubscribe_link
+            unsubscribe_link=f'/api/unsubscribe/{user["id"]}/?sig={unsubscribe_sig(user["id"], self.settings)}',
         )
-        ctx = {**global_ctx, **extra_ctx, **user_ctx}
+        ctx = clean_ctx({**global_ctx, **extra_ctx, **user_ctx}, base_url)
 
         e_msg = EmailMessage(policy=SMTP)
         subject = chevron.render(subject, data=ctx)
         e_msg['Subject'] = subject
         e_msg['From'] = e_from
         e_msg['To'] = f'{full_name} <{user_email}>' if full_name else user_email
-        e_msg['List-Unsubscribe'] = f'<{unsubscribe_link}>'
+        e_msg['List-Unsubscribe'] = '<{unsubscribe_link}>'.format(**ctx)
 
         if DEBUG_PRINT_REGEX.search(body):
             ctx['__print_debug_context__'] = json.dumps(ctx, indent=2)
@@ -214,10 +242,15 @@ class EmailActor(Actor):
         e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
 
         msg_id = await self.aws_send(e_from=e_from, to=[user_email], email_msg=e_msg)
-        logger.info('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
+        logger.debug('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
 
     @concurrent
     async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail]):
+        """
+        TODO: partials for macros like centered button
+        TODO: jsonld to add structured data to the email
+        """
+
         trigger = Triggers(trigger)
 
         dft = EMAIL_DEFAULTS[trigger]
@@ -276,3 +309,66 @@ class EmailActor(Actor):
         ])
         logger.info('%d emails sent for trigger %s, company %s (%d)',
                     len(user_data), trigger, company_domain, company_id)
+
+    @concurrent
+    async def send_event_conf_emails(self, paid_action_id: int):
+        async with self.pg.acquire() as conn:
+            data = await conn.fetchrow(
+                """
+                SELECT t.user_id, COALESCE(u.first_name || ' ' || u.last_name, u.email) AS user_name,
+                  e.slug, cat.slug as cat_slug, e.name, e.short_description,
+                  e.location, e.location_lat, e.location_lng,
+                  e.start_ts, e.duration, e.price, cat.company, co.currency, a.extra
+                FROM tickets AS t
+                JOIN actions AS a ON t.paid_action = a.id
+                JOIN users AS u ON t.user_id = u.id
+                JOIN events AS e ON t.event = e.id
+                JOIN categories AS cat ON e.category = cat.id
+                JOIN companies co on cat.company = co.id
+                WHERE t.paid_action=$1
+                LIMIT 1
+                """,
+                paid_action_id
+            )
+            buyer_user_id = data['user_id']
+
+            r = await conn.fetch('SELECT user_id FROM tickets WHERE paid_action=$1', paid_action_id)
+            other_user_ids = {r_[0] for r_ in r}
+            other_user_ids.remove(buyer_user_id)
+
+        duration: Optional[datetime.timedelta] = data['duration']
+        ctx = {
+            'event_link': '/{cat_slug}/{slug}/'.format(**data),
+            'event_name': data['name'],
+            'event_short_description': data['short_description'],
+            'event_start': data['start_ts'] if duration else data['start_ts'].date(),
+            'event_duration': int(duration.total_seconds()) if duration else 'All day',
+            'event_location': data['location'],
+            'ticket_price': display_cash(data['price'], data['currency']),
+            'buyer_name': data['user_name']
+        }
+        lat, lng = data['location_lat'], data['location_lng']
+        if lat and lng:
+            ctx.update(
+                static_map=static_map_link(lat, lng, settings=self.settings),
+                google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
+            )
+        ticket_count = len(other_user_ids) + 1
+        action_extra = json.loads(data['extra'])
+        ctx_buyer = {
+            'ticket_count': ticket_count,
+            'ticket_count_plural': ticket_count > 1,
+            'total_price': display_cash(data['price'] * ticket_count, data['currency']),
+            'card_details': '{card_expiry} - ending {card_last4}'.format(**action_extra),
+        }
+        await self.send_emails.direct(
+            data['company'],
+            Triggers.ticket_buyer,
+            [UserEmail(id=buyer_user_id, ctx={**ctx, **ctx_buyer})]
+        )
+        if other_user_ids:
+            await self.send_emails.direct(
+                data['company'],
+                Triggers.ticket_other,
+                [UserEmail(id=user_id, ctx=ctx) for user_id in other_user_ids]
+            )
