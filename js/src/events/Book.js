@@ -64,6 +64,8 @@ class BookWrapper extends React.Component {
       this.props.setRootState({error})
       return
     }
+    this.props.setRootState({user: r.user})
+    delete r.user
     delete r._response_status
     this.setState({reservation: r})
     // TODO update the user here

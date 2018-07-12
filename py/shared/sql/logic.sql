@@ -21,7 +21,7 @@ CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT) RETURNS INT AS 
   BEGIN
     DELETE FROM tickets WHERE status='reserved' AND (now() - created_ts) > interval '10 minutes';
 
-    SELECT COALESCE(COUNT(*), 0) INTO tickets_taken_
+    SELECT coalesce(COUNT(*), 0) INTO tickets_taken_
     FROM tickets
     WHERE event=event_id AND status != 'cancelled';
 

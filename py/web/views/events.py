@@ -306,6 +306,15 @@ class ReserveTickets(UpdateView):
             logger.warning('CheckViolationError: %s', e)
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
 
+        debug(self.session['user_id'])
+        user = await self.conn.fetchrow(
+            """
+            SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name, email, role 
+            FROM users 
+            WHERE id=$1
+            """,
+            self.session['user_id']
+        )
         price_cent = int(event_price * ticket_count * 100)
         res = Reservation(
             user_id=self.session['user_id'],
@@ -321,6 +330,7 @@ class ReserveTickets(UpdateView):
             'ticket_count': ticket_count,
             'item_price_cent': int(event_price * 100),
             'total_price_cent': price_cent,
+            'user': dict(user)
         }
 
     async def create_users(self, tickets: List[TicketModel]):

@@ -270,7 +270,8 @@ class EmailActor(Actor):
         async with self.pg.acquire() as conn:
             data = await conn.fetchrow(
                 """
-                SELECT t.user_id, COALESCE(u.first_name || ' ' || u.last_name, u.email) AS user_name,
+                SELECT t.user_id, 
+                  coalesce(u.first_name || ' ' || u.last_name, u.first_name, u.last_name, u.email) AS user_name,
                   e.slug, cat.slug as cat_slug, e.name, e.short_description,
                   e.location, e.location_lat, e.location_lng,
                   e.start_ts, e.duration, e.price, cat.company, co.currency, a.extra
