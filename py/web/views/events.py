@@ -185,6 +185,33 @@ class EventBread(Bread):
         return self.prepare(data)
 
 
+event_ticket_sql = """
+SELECT json_build_object('tickets', tickets)
+FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS tickets FROM (
+    SELECT t.id as ticket_id, t.extra, u.id AS user_id,
+      full_name(u.first_name, u.last_name, NULL) AS user_name, a.ts AS bought_at,
+      ub.id as buyer_id, full_name(ub.first_name, ub.last_name, NULL) AS buyer_name
+    FROM tickets AS t
+    JOIN users u on t.user_id = u.id
+    JOIN actions a on t.paid_action = a.id
+    JOIN users ub on a.user_id = ub.id
+    WHERE t.event=$1 AND t.status='paid'
+    ORDER BY a.ts
+  ) AS t
+) AS tickets
+"""
+
+
+@is_admin_or_host
+async def event_tickets(request):
+    pass
+    # TODO filtering by permissions
+    # event_id = int(request.match_info['id'])
+    # json_str = await request['conn'].fetchval(event_ticket_sql, event_id)
+    # return raw_json_response(json_str)
+
+
 class StatusChoices(Enum):
     pending = 'pending'
     published = 'published'
@@ -219,7 +246,6 @@ class SetEventStatus(UpdateView):
 
 @is_auth
 async def booking_info(request):
-    # TODO more info, eg information require from cat, whether already booked
     event_id = int(request.match_info['id'])
     conn: BuildPgConnection = request['conn']
     settings = request.app['settings']
@@ -322,7 +348,7 @@ class ReserveTickets(UpdateView):
 
         user = await self.conn.fetchrow(
             """
-            SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name, email, role
+            SELECT id, full_name(first_name, last_name, email) AS name, email, role
             FROM users
             WHERE id=$1
             """,

@@ -82,13 +82,6 @@ async def category_images(request):
     return json_response(images=sorted(images))
 
 
-CAT_SET_IMAGE_SQL = """
-UPDATE categories
-SET image = $1
-WHERE id = $2
-"""
-
-
 class ImageActionModel(BaseModel):
     image: str
 
@@ -102,7 +95,7 @@ async def category_default_image(request):
     if m.image not in images:
         raise JsonErrors.HTTPBadRequest(message='image does not exist')
     cat_id = int(request.match_info['cat_id'])
-    await request['conn'].execute(CAT_SET_IMAGE_SQL, m.image, cat_id)
+    await request['conn'].execute('UPDATE categories SET image = $1 WHERE id = $2', m.image, cat_id)
     return json_response(status='success')
 
 

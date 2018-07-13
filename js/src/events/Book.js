@@ -36,8 +36,7 @@ class BookWrapper extends React.Component {
   }
 
   set_ticket_state (key, t_key, value) {
-    const t = Object.assign({}, this.state[key] || {})
-    t[t_key] = value
+    const t = Object.assign({}, this.state[key] || {}, {[t_key]: value})
     this.setState({[key]: t})
   }
 
@@ -68,8 +67,7 @@ class BookWrapper extends React.Component {
       return
     }
     if (r._response_status === 470) {
-      const booking_info = Object.assign({}, this.state.booking_info)
-      booking_info.tickets_remaining = r.tickets_remaining
+      const booking_info = Object.assign({}, this.state.booking_info, {tickets_remaining: r.tickets_remaining})
       this.setState({reservation_error: r.message, booking_info})
     } else {
       this.props.setRootState({user: r.user})

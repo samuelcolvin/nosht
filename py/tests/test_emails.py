@@ -97,7 +97,7 @@ async def test_send_ticket_email(email_actor: EmailActor, db_conn, factory: Fact
     await email_actor.send_event_conf_emails(paid_action_id)
 
     assert dummy_server.app['log'] == [
-        ('email_send_endpoint', 'Subject: "The Event Name Ticket Confirmation (Testing)", '
+        ('email_send_endpoint', 'Subject: "The Event Name Ticket Confirmation", '
                                 'To: "Frank Spencer <testing@scolvin.com>"'),
     ]
     assert len(dummy_server.app['emails']) == 1

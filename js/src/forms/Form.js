@@ -45,8 +45,7 @@ export class Form extends React.Component {
   }
 
   set_form_data (name, value) {
-    const form_data = Object.assign({}, this.state.form_data)
-    form_data[name] = value
+    const form_data = Object.assign({}, this.state.form_data, {[name]: value})
     this.setState({form_data})
     this.props.onChange && this.props.onChange(form_data)
   }

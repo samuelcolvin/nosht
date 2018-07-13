@@ -20,8 +20,8 @@ class Triggers(str, Enum):
 
 EMAIL_DEFAULTS = {
     Triggers.ticket_buyer: {
-        'subject': '{{{ event_name }}} Ticket Confirmation ({{{ company_name }}})',
-        'title': 'Ticket Confirmation',
+        'subject': '{{{ event_name }}} Ticket Confirmation',
+        'title': '{{{ company_name }}}',
         'body': """
 Hi {{ first_name }},
 
@@ -50,8 +50,8 @@ _(Card Charged: **{{ card_details }})_
 """
     },
     Triggers.ticket_other: {
-        'subject': '{{{ event_name }}} Ticket ({{{ company_name }}})',
-        'title': '',
+        'subject': '{{{ event_name }}} Ticket',
+        'title': '{{{ company_name }}}',
         'body': """
 Hi {{ first_name }},
 

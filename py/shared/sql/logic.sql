@@ -1,5 +1,4 @@
 CREATE OR REPLACE FUNCTION update_user_ts() RETURNS trigger AS $$
-  DECLARE
   BEGIN
     UPDATE users SET active_ts=now() WHERE id=NEW.user_id;
     return NULL;
@@ -26,5 +25,14 @@ CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT, ttl INT) RETURN
     UPDATE events SET tickets_taken=tickets_taken_ WHERE id=event_id;
 
     return (SELECT ticket_limit - tickets_taken FROM events WHERE id=event_id);
+  END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION full_name(first_name VARCHAR(255), last_name VARCHAR(255),
+    email VARCHAR(255)) RETURNS VARCHAR(255) AS $$
+  DECLARE
+  BEGIN
+    return coalesce(first_name || ' ' || last_name, first_name, last_name, email);
   END;
 $$ LANGUAGE plpgsql;

@@ -65,7 +65,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
         ],
         'company': {
             'id': await db_conn.fetchval('SELECT id FROM companies'),
-            'name': 'Testing',
+            'name': 'Testing Company',
             'image': 'https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G',
         },
         'user': None,

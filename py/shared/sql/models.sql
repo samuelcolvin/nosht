@@ -115,7 +115,6 @@ CREATE TABLE tickets (
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   paid_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',
-  created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   extra JSONB
 );
 CREATE INDEX ticket_event ON tickets USING btree (event);

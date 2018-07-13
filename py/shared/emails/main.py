@@ -19,7 +19,7 @@ class EmailActor(BaseEmailActor):
             data = await conn.fetchrow(
                 """
                 SELECT t.user_id,
-                  coalesce(u.first_name || ' ' || u.last_name, u.first_name, u.last_name, u.email) AS user_name,
+                  full_name(u.first_name, u.last_name, u.email) AS user_name,
                   e.slug, cat.slug as cat_slug, e.name, e.short_description,
                   e.location_name, e.location_lat, e.location_lng,
                   e.start_ts, e.duration, e.price, cat.company, co.currency, a.extra

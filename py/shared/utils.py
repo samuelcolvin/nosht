@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 import re
 from datetime import timedelta
 from urllib.parse import urlencode

@@ -20,7 +20,7 @@ class LoginModel(BaseModel):
 
 
 get_user_sql = """
-SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name,
+SELECT id, full_name(first_name, last_name, email) AS name,
   email, role, status, password_hash
 FROM users
 WHERE company=$1 AND email=$2 AND status='active' AND role!='guest'
@@ -116,7 +116,7 @@ RETURNING id, status
 GET_GUEST_USER_SQL = """
 SELECT json_build_object('user', row_to_json(user_data))
 FROM (
-  SELECT id, coalesce(first_name || ' ' || last_name, first_name, last_name, email) AS name, email, role
+  SELECT id, full_name(first_name, last_name, email) AS name, email, role
   FROM users
   WHERE company=$1 AND id=$2
 ) AS user_data;
