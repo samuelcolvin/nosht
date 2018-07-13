@@ -33,7 +33,8 @@ class StripePayModel(BaseModel):
 
 
 async def stripe_pay(m: StripePayModel, company_id: int, user_id: int, app, conn: BuildPgConnection) -> int:
-    res = Reservation(**decrypt_json(app, m.booking_token, ttl=590))
+    ticket_ttl = app['settings'].ticket_ttl
+    res = Reservation(**decrypt_json(app, m.booking_token, ttl=ticket_ttl - 10))
     assert user_id == res.user_id, "user ids don't match"
 
     user_name, user_email, user_role, stripe_customer_id, stripe_secret_key, currency = await conn.fetchrow(
@@ -109,7 +110,7 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: int, app, conn
             "UPDATE tickets SET status='paid', paid_action=$1 WHERE reserve_action=$2",
             paid_action_id, res.action_id,
         )
-        await conn.execute('SELECT check_tickets_remaining($1)', res.event_id)
+        await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, ticket_ttl)
 
         charge = await stripe_post(
             'charges',

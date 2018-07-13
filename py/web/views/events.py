@@ -16,7 +16,7 @@ from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import Reservation, StripePayModel, stripe_pay
-from web.utils import JsonErrors, encrypt_json, raw_json_response, decrypt_json, json_response
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response
 
 logger = logging.getLogger('nosht.events')
 
@@ -37,10 +37,10 @@ FROM (
          e.price,
          e.start_ts,
          EXTRACT(epoch FROM e.duration)::int AS duration,
-         CASE 
+         CASE
            WHEN e.ticket_limit IS NULL THEN NULL
            WHEN e.ticket_limit - e.tickets_taken >= 10 THEN NULL
-           ELSE e.ticket_limit - e.tickets_taken 
+           ELSE e.ticket_limit - e.tickets_taken
          END AS tickets_available,
          h.id AS host_id,
          h.first_name || ' ' || h.last_name AS host_name,
@@ -222,12 +222,13 @@ async def booking_info(request):
     # TODO more info, eg information require from cat, whether already booked
     event_id = int(request.match_info['id'])
     conn: BuildPgConnection = request['conn']
-    tickets_remaining = await conn.fetchval('SELECT check_tickets_remaining($1)', event_id)
+    settings = request.app['settings']
+    tickets_remaining = await conn.fetchval('SELECT check_tickets_remaining($1, $2)', event_id, settings.ticket_ttl)
     existing_tickets = await conn.fetchval(
         """
-        SELECT COUNT(*) 
+        SELECT COUNT(*)
         FROM tickets
-        JOIN actions a on tickets.reserve_action = a.id 
+        JOIN actions a on tickets.reserve_action = a.id
         WHERE event=$1 AND a.user_id=$2 AND status='paid'
         """,
         event_id,
@@ -288,7 +289,10 @@ class ReserveTickets(UpdateView):
         if status != 'published':
             raise JsonErrors.HTTPBadRequest(message='Event not published')
 
-        tickets_remaining = await self.conn.fetchval('SELECT check_tickets_remaining($1)', event_id)
+        tickets_remaining = await self.conn.fetchval(
+            'SELECT check_tickets_remaining($1, $2)',
+            event_id, self.settings.ticket_ttl)
+
         if tickets_remaining is not None and ticket_count > tickets_remaining:
             raise JsonErrors.HTTP470(message=f'only {tickets_remaining} tickets remaining',
                                      tickets_remaining=tickets_remaining)
@@ -310,7 +314,7 @@ class ReserveTickets(UpdateView):
                         for t in m.tickets
                     ])
                 )
-                await self.conn.execute('SELECT check_tickets_remaining($1)', event_id)
+                await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
 
         except CheckViolationError as e:
             logger.warning('CheckViolationError: %s', e)
@@ -335,11 +339,11 @@ class ReserveTickets(UpdateView):
         )
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
-            'reserve_time': int(time()),
             'ticket_count': ticket_count,
             'item_price_cent': int(event_price * 100),
             'total_price_cent': price_cent,
-            'user': dict(user)
+            'user': dict(user),
+            'timeout': int(time()) + self.settings.ticket_ttl,
         }
 
     async def create_users(self, tickets: List[TicketModel]):
@@ -375,11 +379,11 @@ class CancelReservedTickets(UpdateView):
         booking_token: bytes
 
     async def execute(self, m: Model):
-        res = Reservation(**decrypt_json(self.app, m.booking_token, ttl=600))
+        res = Reservation(**decrypt_json(self.app, m.booking_token, ttl=self.settings.ticket_ttl))
         assert self.session['user_id'] == res.user_id, "user ids don't match"
         async with self.conn.transaction():
             await self.conn.execute('DELETE FROM tickets WHERE reserve_action=$1', res.action_id)
-            await self.conn.execute('SELECT check_tickets_remaining($1)', res.event_id)
+            await self.conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, self.settings.ticket_ttl)
             await record_action(self.request, self.session['user_id'], ActionTypes.cancel_reserved_tickets)
 
 

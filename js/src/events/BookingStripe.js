@@ -49,7 +49,7 @@ class StripeForm_ extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
-      time_left: 600,
+      time_left: 0,
       card_error: null,
       card_complete: false,
       submitting: false,
@@ -60,14 +60,21 @@ class StripeForm_ extends React.Component {
       city: null,
       postcode: null,
     }
-    this.clear = setInterval(() => {
-      const t = 600 + props.reservation.reserve_time - (new Date()).getTime() / 1000
-      this.setState({time_left: Math.floor(t / 60)})
-    }, 500)
+    this.update_timer = this.update_timer.bind(this)
     this.as_price = p => (
       currency_lookup[this.props.event.currency] + (p/100).toFixed(2)
     )
     this.render_form = this.render_form.bind(this)
+  }
+
+  update_timer () {
+    const t = this.props.reservation.timeout - (new Date()).getTime() / 1000
+    this.setState({time_left: Math.floor(t / 60)})
+  }
+
+  componentDidMount () {
+    this.update_timer()
+    this.clear = setInterval(this.update_timer, 500)
   }
 
   componentWillUnmount () {

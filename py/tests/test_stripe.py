@@ -64,7 +64,7 @@ async def test_stripe_successful(cli, db_conn, stripe_factory: Factory):
         stripe_card_ref='4242-32-01',
         booking_token=encrypt_json(app, res.dict()),
     )
-    await db_conn.execute('SELECT check_tickets_remaining($1)', res.event_id)
+    await db_conn.execute('SELECT check_tickets_remaining($1, 10)', res.event_id)
     customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', stripe_factory.user_id)
     assert customer_id is None
 

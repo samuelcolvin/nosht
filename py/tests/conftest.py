@@ -34,6 +34,7 @@ settings_args = dict(
     stripe_idempotency_extra=str(uuid.uuid4()),
     aws_access_key='testing_access_key',
     aws_secret_key='testing_secret_key',
+    ticket_ttl=5,
 )
 
 

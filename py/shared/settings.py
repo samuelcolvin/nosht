@@ -46,6 +46,8 @@ class Settings(BaseSettings):
 
     default_email_address: str = 'Nosht <nosht@scolvin.com>'
 
+    ticket_ttl = 300
+
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):
         return v or 'DYNO' in os.environ
