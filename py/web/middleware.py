@@ -15,7 +15,7 @@ async def log_extra(request, response=None):
     try:
         response_text = await request.text()
     except Exception:
-        # UnicodeDecodeError or HTTPRequestEntityTooLarge by maybe other things too
+        # UnicodeDecodeError or HTTPRequestEntityTooLarge maybe other things too
         response_text = None
     return {'data': dict(
         request_url=str(request.rel_url),
@@ -38,6 +38,10 @@ async def log_warning(request, response):
     })
 
 
+def should_warn(r):
+    return r.status > 310 and r.status != 404
+
+
 @middleware
 async def error_middleware(request, handler):
     try:
@@ -47,7 +51,7 @@ async def error_middleware(request, handler):
         else:
             r = await handler(request)
     except HTTPException as e:
-        if e.status > 310:
+        if should_warn(e):
             await log_warning(request, e)
         raise
     except BaseException as e:
@@ -57,7 +61,7 @@ async def error_middleware(request, handler):
         })
         raise HTTPInternalServerError()
     else:
-        if r.status > 310:
+        if should_warn(r):
             await log_warning(request, r)
     return r
 

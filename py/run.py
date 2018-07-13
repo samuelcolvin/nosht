@@ -1,7 +1,6 @@
 #!/usr/bin/env python3.6
 import asyncio
 import logging.config
-import os
 import sys
 
 import uvloop
@@ -15,34 +14,43 @@ from shared.settings import Settings
 logger = logging.getLogger('nosht.run')
 
 
-if __name__ == '__main__':
+def main():
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    setup_logging()
-    settings = Settings()
+    logging_client = setup_logging()
     try:
-        _, command, *args = sys.argv
-    except ValueError:
-        logger.info('no command provided, options are: "reset_database", "patch", "worker" or "web"')
-        sys.exit(1)
+        settings = Settings()
+        try:
+            _, command, *args = sys.argv
+        except ValueError:
+            logger.info('no command provided, options are: "reset_database", "patch", "worker" or "web"')
+            return 1
 
-    if command == 'reset_database':
-        logger.info('running reset_database...')
-        reset_database(settings)
-    elif command == 'patch':
-        logger.info('running patch...')
-        live = '--live' in args
-        if live:
-            args.remove('--live')
-        run_patch(settings, live, args[0] if args else None)
-    elif command == 'web':
-        logger.info('running web server...')
-        from web.main import create_app
-        app = create_app(settings=settings)
-        port = int(os.getenv('PORT', 8000))
-        web.run_app(app, port=settings.port, shutdown_timeout=6, access_log=None, print=lambda *args: None)
-    elif command == 'worker':
-        logger.info('running worker...')
-        RunWorkerProcess('shared/worker.py', 'Worker')
-    else:
-        logger.error(f'unknown command "{command}"')
-        sys.exit(1)
+        if command == 'reset_database':
+            logger.info('running reset_database...')
+            reset_database(settings)
+        elif command == 'patch':
+            logger.info('running patch...')
+            live = '--live' in args
+            if live:
+                args.remove('--live')
+            run_patch(settings, live, args[0] if args else None)
+        elif command == 'web':
+            logger.info('running web server...')
+            from web.main import create_app
+            app = create_app(settings=settings)
+            web.run_app(app, port=settings.port, shutdown_timeout=6, access_log=None, print=lambda *args: None)
+        elif command == 'worker':
+            logger.info('running worker...')
+            RunWorkerProcess('shared/worker.py', 'Worker')
+        else:
+            logger.error(f'unknown command "{command}"')
+            sys.exit(1)
+    finally:
+        loop = asyncio.get_event_loop()
+        transport = logging_client.remote.get_transport()
+        if transport and not loop.is_closed():
+            loop.run_until_complete(transport.close())
+
+
+if __name__ == '__main__':
+    sys.exit(main() or 0)

@@ -4,6 +4,7 @@ import os
 import sys
 
 from raven import Client
+from raven_aiohttp import AioHttpTransport
 
 
 def setup_logging(disable_existing=False):
@@ -16,6 +17,13 @@ def setup_logging(disable_existing=False):
     if raven_dsn in ('', '-'):
         # thus setting an environment variable of "-" means no raven
         raven_dsn = None
+
+    client = Client(
+        transport=AioHttpTransport,
+        dsn=raven_dsn,
+        release=os.getenv('COMMIT', None),
+        name=os.getenv('IMAGE_NAME', None),
+    )
     config = {
         'version': 1,
         'disable_existing_loggers': disable_existing,
@@ -33,11 +41,7 @@ def setup_logging(disable_existing=False):
             'sentry': {
                 'level': 'WARNING',
                 'class': 'raven.handlers.logging.SentryHandler',
-                'client': Client(
-                    dsn=raven_dsn,
-                    release=os.getenv('COMMIT', None),
-                    name=os.getenv('IMAGE_NAME', None),
-                ),
+                'client': client,
             },
         },
         'loggers': {
@@ -52,3 +56,4 @@ def setup_logging(disable_existing=False):
         },
     }
     logging.config.dictConfig(config)
+    return client

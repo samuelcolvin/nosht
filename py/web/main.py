@@ -47,10 +47,13 @@ async def cleanup(app: web.Application):
     await app['pg'].close()
     await app['http_client'].close()
     await app['stripe_client'].close()
+    transport = app['logging_client'].remote.get_transport()
+    if transport:
+        await transport.close()
 
 
-def create_app(*, settings: Settings=None):
-    setup_logging()
+def create_app(*, settings: Settings=None, logging_client=None):
+    logging_client = logging_client or setup_logging()
     settings = settings or Settings()
 
     app = web.Application(middlewares=(
@@ -62,7 +65,8 @@ def create_app(*, settings: Settings=None):
     app.update(
         settings=settings,
         auth_fernet=fernet.Fernet(settings.auth_key),
-        dummy_password_hash=mk_password(settings.dummy_password, settings)
+        dummy_password_hash=mk_password(settings.dummy_password, settings),
+        logging_client=logging_client,
     )
     app.on_startup.append(startup)
     app.on_cleanup.append(cleanup)
