@@ -161,4 +161,5 @@ async def stripe_request(app, auth, method, path, *, idempotency_key=None, **dat
             return await r.json()
         else:
             # check stripe > developer > logs for more info
-            raise RequestError(r.status, full_path)
+            text = await r.text()
+            raise RequestError(r.status, full_path, info=text)

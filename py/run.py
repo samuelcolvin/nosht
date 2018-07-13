@@ -47,9 +47,9 @@ def main():
             sys.exit(1)
     finally:
         loop = asyncio.get_event_loop()
-        transport = logging_client.remote.get_transport()
-        if transport and not loop.is_closed():
-            loop.run_until_complete(transport.close())
+        if logging_client and not loop.is_closed():
+            transport = logging_client.remote.get_transport()
+            transport and loop.run_until_complete(transport.close())
 
 
 if __name__ == '__main__':

@@ -245,18 +245,12 @@ async def post_startup_app(app):
     await inner_app['email_actor'].startup()
 
 
-async def shutdown_modify_app(app):
-    pass
-    # await app['email_actor'].session.close()
-
-
 @pytest.fixture
 async def cli(settings, db_conn, aiohttp_client, redis):
     app = create_app(settings=settings)
     app['test_conn'] = db_conn
     app.on_startup.insert(0, pre_startup_app)
     app.on_startup.append(post_startup_app)
-    app.on_shutdown.append(shutdown_modify_app)
     return await aiohttp_client(app)
 
 

@@ -7,7 +7,7 @@ from aiohttp_session import new_session
 from buildpg import Values
 from pydantic import BaseModel, EmailStr, constr
 
-from shared.misc import unsubscribe_sig
+from shared.utils import unsubscribe_sig
 from web.auth import (ActionTypes, FacebookSiwModel, GoogleSiwModel, facebook_get_details, google_get_details,
                       invalidate_session, is_auth, record_action, validate_email)
 from web.utils import (JsonErrors, decrypt_json, encrypt_json, json_response, parse_request, raw_json_response,

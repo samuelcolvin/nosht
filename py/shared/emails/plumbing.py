@@ -22,11 +22,9 @@ from arq import Actor, concurrent
 from buildpg import asyncpg
 from misaka import HtmlRenderer, Markdown
 
-from shared.emails.defaults import EMAIL_DEFAULTS, Triggers
-from shared.misc import format_duration, unsubscribe_sig
-
 from ..settings import Settings
-from ..utils import RequestError
+from ..utils import RequestError, format_duration, unsubscribe_sig
+from .defaults import EMAIL_DEFAULTS, Triggers
 
 logger = logging.getLogger('nosht.email.setup')
 
@@ -147,10 +145,9 @@ class BaseEmailActor(Actor):
 
         headers = self._aws_headers(data)
         async with self.client.post(self._endpoint, data=data, headers=headers, timeout=5) as r:
-            status_code = r.status
             text = await r.text()
-        if status_code != 200:
-            raise RequestError(status_code, self._endpoint, info=text)
+        if r.status != 200:
+            raise RequestError(r.status, self._endpoint, info=text)
         msg_id = re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
         return msg_id + f'@{self.settings.aws_region}.amazonses.com'
 

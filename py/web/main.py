@@ -47,9 +47,9 @@ async def cleanup(app: web.Application):
     await app['pg'].close()
     await app['http_client'].close()
     await app['stripe_client'].close()
-    transport = app['logging_client'].remote.get_transport()
-    if transport:
-        await transport.close()
+    logging_client = app['logging_client']
+    transport = logging_client and logging_client.remote.get_transport()
+    transport and await transport.close()
 
 
 def create_app(*, settings: Settings=None, logging_client=None):

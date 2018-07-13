@@ -1,5 +1,6 @@
 import logging
 import re
+from time import time
 
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
@@ -11,7 +12,7 @@ from .utils import JsonErrors, get_ip
 logger = logging.getLogger('nosht.web.mware')
 
 
-async def log_extra(request, response=None):
+async def log_extra(start, request, response=None, **more):
     try:
         response_text = await request.text()
     except Exception:
@@ -19,6 +20,8 @@ async def log_extra(request, response=None):
         response_text = None
     return {'data': dict(
         request_url=str(request.rel_url),
+        user_agent=request.headers.get('User-Agent'),
+        request_time=time() - start,
         request_ip=get_ip(request),
         request_method=request.method,
         request_host=request.host,
@@ -26,24 +29,32 @@ async def log_extra(request, response=None):
         request_text=response_text,
         response_status=getattr(response, 'status', None),
         response_headers=dict(getattr(response, 'headers', {})),
-        response_text=getattr(response, 'text', None)
+        response_text=getattr(response, 'text', None),
+        **more,
     )}
 
 
-async def log_warning(request, response):
-    ip, ua = get_ip(request), request.headers.get('User-Agent')
-    logger.warning('%s %d from %s ua: "%s"', request.rel_url, response.status, ip, ua, extra={
+async def log_warning(start, request, response):
+    logger.warning('%s %d', request.rel_url, response.status, extra={
         'fingerprint': [request.rel_url, str(response.status)],
-        'data': await log_extra(request, response)
+        'data': await log_extra(start, request, response)
     })
 
 
 def should_warn(r):
-    return r.status > 310 and r.status != 404
+    return r.status > 310 and r.status not in {401, 404}
+
+
+def get_request_start(request):
+    try:
+        return float(request.headers.get('X-Request-Start', '.')) / 1000
+    except ValueError:
+        return time()
 
 
 @middleware
 async def error_middleware(request, handler):
+    start = get_request_start(request)
     try:
         http_exception = getattr(request.match_info, 'http_exception', None)
         if http_exception:
@@ -52,17 +63,23 @@ async def error_middleware(request, handler):
             r = await handler(request)
     except HTTPException as e:
         if should_warn(e):
-            await log_warning(request, e)
+            await log_warning(start, request, e)
         raise
     except BaseException as e:
+        exception_extra = getattr(e, 'extra', None)
+        if exception_extra:
+            try:
+                exception_extra = exception_extra()
+            except Exception:
+                pass
         logger.exception('%s: %s', e.__class__.__name__, e, extra={
             'fingerprint': [e.__class__.__name__, str(e)],
-            'data': await log_extra(request)
+            'data': await log_extra(start, request, exception_extra=exception_extra)
         })
         raise HTTPInternalServerError()
     else:
         if should_warn(r):
-            await log_warning(request, r)
+            await log_warning(start, request, r)
     return r
 
 

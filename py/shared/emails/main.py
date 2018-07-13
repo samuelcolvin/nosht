@@ -5,10 +5,9 @@ from typing import Optional
 
 from arq import concurrent
 
-from shared.misc import display_cash, static_map_link
-
+from ..utils import display_cash, static_map_link
 from .defaults import Triggers
-from .setup import BaseEmailActor, UserEmail
+from .plumbing import BaseEmailActor, UserEmail
 
 logger = logging.getLogger('nosht.email')
 

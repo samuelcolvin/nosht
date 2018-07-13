@@ -18,12 +18,14 @@ def setup_logging(disable_existing=False):
         # thus setting an environment variable of "-" means no raven
         raven_dsn = None
 
-    client = Client(
-        transport=AioHttpTransport,
-        dsn=raven_dsn,
-        release=os.getenv('COMMIT', None),
-        name=os.getenv('IMAGE_NAME', None),
-    )
+    client = None
+    if raven_dsn:
+        client = Client(
+            transport=AioHttpTransport,
+            dsn=raven_dsn,
+            release=os.getenv('COMMIT', None),
+            name=os.getenv('IMAGE_NAME', None),
+        )
     config = {
         'version': 1,
         'disable_existing_loggers': disable_existing,
@@ -42,7 +44,11 @@ def setup_logging(disable_existing=False):
                 'level': 'WARNING',
                 'class': 'raven.handlers.logging.SentryHandler',
                 'client': client,
-            },
+            } if client else {
+                'level': 'WARNING',
+                'class': 'logging.StreamHandler',
+                'formatter': 'nosht.default',
+            }
         },
         'loggers': {
             'nosht': {
