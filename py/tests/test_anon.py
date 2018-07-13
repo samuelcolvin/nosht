@@ -29,7 +29,7 @@ async def test_root(cli, url, factory: Factory):
                 'slug': 'the-event-name',
                 'image': None,
                 'short_description': RegexStr('.*'),
-                'location': 'Testing Location',
+                'location_name': 'Testing Location',
                 'start_ts': '2020-01-28T19:00:00',
                 'duration': None,
             },

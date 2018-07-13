@@ -237,9 +237,9 @@ li.react-datepicker__time-list-item {
   &.StripeElement--invalid {
     border: $border-width solid $form-feedback-invalid-color;
   }
-  &.StripeElement--complete {
-    border: $border-width solid $form-feedback-valid-color;
-  }
+  // &.StripeElement--complete {
+  //   border: $border-width solid $form-feedback-valid-color;
+  // }
 }
 
 .vertical-center {

@@ -18,20 +18,24 @@ async def log_extra(start, request, response=None, **more):
     except Exception:
         # UnicodeDecodeError or HTTPRequestEntityTooLarge maybe other things too
         response_text = None
-    return {'data': dict(
-        request_url=str(request.rel_url),
-        user_agent=request.headers.get('User-Agent'),
-        request_time=time() - start,
-        request_ip=get_ip(request),
-        request_method=request.method,
-        request_host=request.host,
-        request_headers=dict(request.headers),
-        request_text=response_text,
-        response_status=getattr(response, 'status', None),
-        response_headers=dict(getattr(response, 'headers', {})),
-        response_text=getattr(response, 'text', None),
-        **more,
-    )}
+    return dict(
+        request=dict(
+            url=str(request.rel_url),
+            user_agent=request.headers.get('User-Agent'),
+            duration=time() - start,
+            ip=get_ip(request),
+            method=request.method,
+            host=request.host,
+            headers=dict(request.headers),
+            text=response_text,
+        ),
+        response=dict(
+            status=getattr(response, 'status', None),
+            headers=dict(getattr(response, 'headers', {})),
+            text=getattr(response, 'text', None),
+        ),
+        **more
+    )
 
 
 async def log_warning(start, request, response):
@@ -114,6 +118,6 @@ async def host_middleware(request, handler):
         company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', host)
         msg = 'no company found for this host'
     if not company_id:
-        return JsonErrors.HTTPNotFound(message=msg)
+        return JsonErrors.HTTPBadRequest(message=msg)
     request['company_id'] = company_id
     return await handler(request)

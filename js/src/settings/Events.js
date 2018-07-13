@@ -70,7 +70,7 @@ export class EventsDetails extends RenderDetails {
       return
     }
     const item = Object.assign({}, this.state.item)
-    item.location = {name: item.location, lat: item.location_lat, lng: item.location_lng}
+    item.location = {name: item.location_name, lat: item.location_lat, lng: item.location_lng}
     item.date = {dt: item.start_ts, dur: item.duration}
     return [
       <ModalForm {...this.props}

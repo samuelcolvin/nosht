@@ -16,7 +16,7 @@ CATEGORY_PUBLIC_SQL = """
 SELECT json_build_object('events', events)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS events FROM (
-    SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location, e.start_ts,
+    SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location_name, e.start_ts,
       EXTRACT(epoch FROM e.duration)::int AS duration
     FROM events AS e
     JOIN categories as c on e.category = c.id

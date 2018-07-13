@@ -75,6 +75,11 @@ class StripeForm_ extends React.Component {
 
   async take_payment (e) {
     e.preventDefault()
+    const required = ['card_complete', 'name', 'address', 'city', 'postcode']
+    if (this.state.submitting || !required.every(f => this.state[f])) {
+      required.filter(f => !this.state[f]).map(f => this.setState({[`${f}_error`]: 'Required'}))
+      return
+    }
     this.setState({submitting: true})
 
     try {
@@ -124,20 +129,24 @@ class StripeForm_ extends React.Component {
         <div style={{height: form_height}}>
           <Input field={name_field}
                   value={this.state.name}
-                  set_value={v => this.setState({name: v})}/>
+                  error={this.state.name_error}
+                  set_value={v => this.setState({name: v, name_error: null})}/>
           <Input field={address_field}
                   value={this.state.address}
-                  set_value={v => this.setState({address: v})}/>
+                  error={this.state.address_error}
+                  set_value={v => this.setState({address: v, address_error: null})}/>
           <Row>
             <Col md="6">
               <Input field={city_field}
                       value={this.state.city}
-                      set_value={v => this.setState({city: v})}/>
+                      error={this.state.city_error}
+                      set_value={v => this.setState({city: v, city_error: null})}/>
             </Col>
             <Col md="6">
               <Input field={postcode_field}
                       value={this.state.postcode}
-                      set_value={v => this.setState({postcode: v})}/>
+                      error={this.state.postcode_error}
+                      set_value={v => this.setState({postcode: v, postcode_error: null})}/>
             </Col>
           </Row>
           <FormGroup>
@@ -196,7 +205,7 @@ class StripeForm_ extends React.Component {
         </ModalBody>
         <ModalFooter finished={this.props.finished}
                      label="Take Payment"
-                     disabled={expired || this.state.submitting || this.state.submitted || !this.state.card_complete}/>
+                     disabled={expired || this.state.submitting || !this.state.card_complete}/>
       </BootstrapForm>
     )
   }
