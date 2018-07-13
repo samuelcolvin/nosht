@@ -72,7 +72,7 @@ async def test_send_ticket_email(email_actor: EmailActor, db_conn, factory: Fact
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(email='testing@scolvin.com')
-    await factory.create_event(price=10, location='The Location', location_lat=51.5, location_lng=-0.2)
+    await factory.create_event(price=10, location_name='The Location', location_lat=51.5, location_lng=-0.2)
 
     res_action_id = await db_conn.fetchval_b(
         'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
@@ -110,7 +110,6 @@ async def test_send_ticket_email(email_actor: EmailActor, db_conn, factory: Fact
         '</div>\n'
     ) in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
-    assert '"@type":"EventReservation"' in html
 
 
 async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):

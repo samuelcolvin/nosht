@@ -3,7 +3,7 @@ from enum import Enum
 
 class Triggers(str, Enum):
     """
-    Must match EMAIL_TRIGGERS in sql/models.py
+    Must match EMAIL_TRIGGERS in sql/models.sql
     """
     ticket_buyer = 'ticket-buyer'
     ticket_other = 'ticket-other'

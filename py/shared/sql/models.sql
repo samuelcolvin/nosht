@@ -93,9 +93,11 @@ CREATE TABLE events (
   short_description VARCHAR(140),
   long_description TEXT,
   public BOOLEAN DEFAULT TRUE,
-  location VARCHAR(140),
+
+  location_name VARCHAR(140),
   location_lat FLOAT,
   location_lng FLOAT,
+
   price NUMERIC(7, 2) CONSTRAINT price_gt_1 CHECK (price > 1),
   ticket_limit INT CONSTRAINT ticket_limit_gt_0 CHECK (ticket_limit > 0),
   tickets_taken INT NOT NULL DEFAULT 0,  -- sold and reserved

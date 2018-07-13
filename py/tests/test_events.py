@@ -1,7 +1,56 @@
 import json
 from datetime import datetime, timedelta
 
+from pytest_toolbox.comparison import RegexStr
+
 from .conftest import Factory
+
+
+async def test_event_public(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(
+        status='published',
+        location_name='Testing Location',
+        location_lat=51.5,
+        location_lng=-0.5
+    )
+    cat_slug, event_slug = await db_conn.fetchrow(
+        """
+        SELECT cat.slug, e.slug
+        FROM events AS e
+        JOIN categories cat on e.category = cat.id
+        WHERE e.id=$1
+        """,
+        factory.event_id)
+    r = await cli.get(url('event-get', category=cat_slug, event=event_slug))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    # debug(data)
+    assert data == {
+        'event': {
+            'id': factory.event_id,
+            'name': 'The Event Name',
+            'image': None,
+            'short_description': RegexStr('.*'),
+            'long_description': RegexStr('.*'),
+            'category_content': None,
+            'location': {
+                'name': 'Testing Location',
+                'lat': 51.5,
+                'lng': -0.5,
+            },
+            'price': None,
+            'start_ts': '2020-01-28T19:00:00',
+            'duration': None,
+            'ticket_limit': None,
+            'host_id': factory.user_id,
+            'host_name': 'Frank Spencer',
+            'stripe_key': None,
+            'currency': 'gbp',
+        },
+    }
 
 
 async def test_event_categories(cli, url, factory: Factory, login):
@@ -67,7 +116,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
         'short_description': 'I love to party',
         'long_description': 'I love to party',
         'public': True,
-        'location': 'London',
+        'location_name': 'London',
         'location_lat': 50.0,
         'location_lng': 0.0,
         'price': None,

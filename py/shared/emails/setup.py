@@ -251,7 +251,7 @@ class BaseEmailActor(Actor):
         await asyncio.gather(*[
             self.send_email(
                 user=u_data,
-                user_ctx=user_ctx_lookup[u_data['id']],
+                user_ctx=dict(user_ctx_lookup[u_data['id']]),
                 subject=subject,
                 title=title,
                 body=body,

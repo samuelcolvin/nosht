@@ -30,7 +30,7 @@ FROM (
          e.long_description,
          c.event_content AS category_content,
          json_build_object(
-           'name', e.location,
+           'name', e.location_name,
            'lat', e.location_lat,
            'lng', e.location_lng
          ) AS location,
@@ -126,7 +126,7 @@ class EventBread(Bread):
         'e.public',
         'e.status',
         'e.ticket_limit',
-        'e.location',
+        'e.location_name',
         'e.location_lat',
         'e.location_lng',
         'e.long_description',
@@ -159,7 +159,7 @@ class EventBread(Bread):
         loc = data.pop('location', None)
         if loc:
             data.update(
-                location=loc['name'],
+                location_name=loc['name'],
                 location_lat=loc['lat'],
                 location_lng=loc['lng'],
             )
