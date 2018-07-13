@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from time import time
@@ -12,12 +13,21 @@ from .utils import JsonErrors, get_ip
 logger = logging.getLogger('nosht.web.mware')
 
 
+def lenient_json(v):
+    if isinstance(v, (str, bytes)):
+        try:
+            return json.loads(v)
+        except (ValueError, TypeError):
+            pass
+    return v
+
+
 async def log_extra(start, request, response=None, **more):
     try:
-        response_text = await request.text()
+        request_text = await request.text()
     except Exception:
         # UnicodeDecodeError or HTTPRequestEntityTooLarge maybe other things too
-        response_text = None
+        request_text = None
     return dict(
         request=dict(
             url=str(request.rel_url),
@@ -27,12 +37,12 @@ async def log_extra(start, request, response=None, **more):
             method=request.method,
             host=request.host,
             headers=dict(request.headers),
-            text=response_text,
+            body=lenient_json(request_text),
         ),
         response=dict(
             status=getattr(response, 'status', None),
             headers=dict(getattr(response, 'headers', {})),
-            text=getattr(response, 'text', None),
+            text=lenient_json(getattr(response, 'text', None)),
         ),
         **more
     )
@@ -46,7 +56,7 @@ async def log_warning(start, request, response):
 
 
 def should_warn(r):
-    return r.status > 310 and r.status not in {401, 404}
+    return r.status > 310 and r.status not in {401, 404, 470}
 
 
 def get_request_start(request):
@@ -78,7 +88,7 @@ async def error_middleware(request, handler):
                 pass
         logger.exception('%s: %s', e.__class__.__name__, e, extra={
             'fingerprint': [e.__class__.__name__, str(e)],
-            'data': await log_extra(start, request, exception_extra=exception_extra)
+            'data': await log_extra(start, request, exception_extra=lenient_json(exception_extra))
         })
         raise HTTPInternalServerError()
     else:

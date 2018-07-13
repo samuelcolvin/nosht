@@ -141,11 +141,13 @@ const TicketForm = props => {
       <ModalBody>
         <Row className="justify-content-between">
           <div>
-            {existing_tickets &&
+            {existing_tickets ?
               <b>
                 You've already bought {existing_tickets} ticket{existing_tickets > 1 ? 's': ''} for this event.
               </b>
-              }
+              :
+              null
+            }
           </div>
           <User {...props}/>
         </Row>

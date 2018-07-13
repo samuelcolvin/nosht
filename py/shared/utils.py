@@ -35,13 +35,10 @@ class RequestError(RuntimeError):
         self.info = info
 
     def __str__(self):
-        return f'response {self.status} from "{self.url}"' + (f':\n{self.info[:200]}' if self.info else '')
+        return f'response {self.status} from "{self.url}"' + (f':\n{self.info[:400]}' if self.info else '')
 
     def extra(self):
-        try:
-            return json.loads(self.info)
-        except (ValueError, TypeError):
-            return self.info
+        return self.info
 
 
 def unsubscribe_sig(user_id, settings: Settings):
