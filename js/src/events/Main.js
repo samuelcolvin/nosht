@@ -60,9 +60,12 @@ class Event extends React.Component {
             </p>
           </Col>
           <Col md="3" className="text-right">
-            <Button color="primary" size="lg" className="hover-raise" tag={Link} to={this.uri + 'book/'}>
+            <Button color={event.tickets_available ? 'danger': 'primary'} size="lg"
+                    className="hover-raise" tag={Link} to={this.uri + 'book/'}>
               Book Now
             </Button>
+            {event.tickets_available &&
+              <div className="font-weight-bold mt-3">Only {event.tickets_available} Tickets Remaining</div>}
           </Col>
         </Row>
 

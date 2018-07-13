@@ -1,18 +1,15 @@
--- TODO: update user active_ts on actions
-
-
--- TODo remove ticket_insert and call check_tickets_remaining instead
-CREATE OR REPLACE FUNCTION ticket_insert() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION update_user_ts() RETURNS trigger AS $$
   DECLARE
   BEGIN
-    UPDATE events SET tickets_taken = tickets_taken + 1 WHERE id=NEW.event;
+    UPDATE users SET active_ts=now() WHERE id=NEW.user_id;
     return NULL;
   END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS ticket_insert ON tickets;
-CREATE TRIGGER ticket_insert AFTER INSERT ON tickets FOR EACH ROW EXECUTE PROCEDURE ticket_insert();
+DROP TRIGGER IF EXISTS update_user_ts ON actions;
+CREATE TRIGGER update_user_ts AFTER INSERT ON actions FOR EACH ROW EXECUTE PROCEDURE update_user_ts();
 
+DROP TRIGGER IF EXISTS ticket_insert ON tickets;
 
 CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT) RETURNS INT AS $$
   DECLARE

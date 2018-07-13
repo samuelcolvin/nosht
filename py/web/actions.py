@@ -1,18 +1,8 @@
 import json
-from enum import Enum
 
-from web.utils import get_ip
+from shared.db import ActionTypes
 
-
-class ActionTypes(str, Enum):
-    login = 'login'
-    guest_signin = 'guest-signin'
-    logout = 'logout'
-    reserve_tickets = 'reserve-tickets'
-    buy_tickets = 'buy-tickets'
-    edit_event = 'edit-event'
-    edit_other = 'edit-other'
-    unsubscribe = 'unsubscribe'
+from .utils import get_ip
 
 
 def actions_request_extra(request):

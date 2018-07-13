@@ -31,6 +31,7 @@ export default function AsModal (WrappedComponent) {
         shown: this.path_match()
       }
       this.toggle = this.toggle.bind(this)
+      this.toggle_handlers = []
     }
 
     toggle (r) {
@@ -38,6 +39,7 @@ export default function AsModal (WrappedComponent) {
       this.setState({
         shown: shown_new
       })
+      this.toggle_handlers.map(h => h(r))
       if (!this.state.shown_new) {
         this.props.history.push(this.props.parent_uri + (r && r.pk ? `${r.pk}/`: ''))
       }
@@ -58,6 +60,7 @@ export default function AsModal (WrappedComponent) {
           <WrappedComponent
             {...this.props}
             finished={this.toggle}
+            register_toggle_handler={h => this.toggle_handlers.push(h)}
             form_body_class="modal-body"
             form_footer_class="modal-footer"/>
         </Modal>

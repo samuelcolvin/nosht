@@ -4,6 +4,7 @@ import {
   Col,
   Collapse,
   Form as BootstrapForm,
+  FormFeedback,
   ModalBody,
   Row,
 } from 'reactstrap'
@@ -124,6 +125,7 @@ const TicketInfo = ({index, state, set_ticket_state, user}) => {
 const TicketForm = props => {
   const state = props.state
   const remaining = state.booking_info ? state.booking_info.tickets_remaining : null
+  const existing_tickets = state.booking_info ? state.booking_info.existing_tickets : null
   if (remaining !== null && remaining < 1) {
     return (
       <div>
@@ -137,23 +139,34 @@ const TicketForm = props => {
   return (
     <BootstrapForm onSubmit={props.reserve}>
       <ModalBody>
-        <User {...props}/>
+        <Row className="justify-content-between">
+          <div>
+            {existing_tickets &&
+              <b>
+                You've already bought {existing_tickets} ticket{existing_tickets > 1 ? 's': ''} for this event.
+              </b>
+              }
+          </div>
+          <User {...props}/>
+        </Row>
 
         <div className="text-center font-weight-bold">
           Ticket Quantity
         </div>
         <Row className="justify-content-center my-1">
-          <Button color="danger" disabled={state.ticket_count === 1} onClick={() => change_count(-1)}>
+          <Button color="danger" disabled={state.ticket_count <= 1} onClick={() => change_count(-1)}>
             <FontAwesomeIcon icon="minus"/>
           </Button>
           <span className="my-1 mx-3 larger font-weight-bold">{state.ticket_count}</span>
-          <Button color="success" disabled={state.ticket_count === max_tickets} onClick={() => change_count(1)}>
+          <Button color="success" disabled={state.ticket_count >= max_tickets} onClick={() => change_count(1)}>
             <FontAwesomeIcon icon="plus"/>
           </Button>
         </Row>
         <div className="text-muted text-center small">
           Select the number of tickets you would like to purchase.
         </div>
+        {state.reservation_error &&
+          <FormFeedback className="text-center" style={{display: 'block'}}>{state.reservation_error}</FormFeedback>}
 
         <div className="guests-info">
           {[...Array(state.ticket_count).keys()].map(i => (

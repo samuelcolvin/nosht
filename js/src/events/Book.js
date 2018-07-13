@@ -9,6 +9,7 @@ class BookWrapper extends React.Component {
     super(props)
     this.state = {
       ticket_count: 1,
+      reservation_error: null,
       got_booking_info: false,
       booking_info: null,
       reservation: null,
@@ -30,7 +31,8 @@ class BookWrapper extends React.Component {
       this.props.setRootState({error})
       return
     }
-    this.setState({booking_info: r.event})
+    delete r._response_status
+    this.setState({booking_info: r})
   }
 
   set_ticket_state (key, t_key, value) {
@@ -59,16 +61,22 @@ class BookWrapper extends React.Component {
     tickets[0].email = tickets[0].email || this.props.user.email
     let r
     try {
-      r = await this.props.requests.post(`events/${this.props.event.id}/reserve/`, {tickets})
+      r = await this.props.requests.post(`events/${this.props.event.id}/reserve/`,
+          {tickets}, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})
       return
     }
-    this.props.setRootState({user: r.user})
-    delete r.user
-    delete r._response_status
-    this.setState({reservation: r})
-    // TODO update the user here
+    if (r._response_status === 470) {
+      const booking_info = Object.assign({}, this.state.booking_info)
+      booking_info.tickets_remaining = r.tickets_remaining
+      this.setState({reservation_error: r.message, booking_info})
+    } else {
+      this.props.setRootState({user: r.user})
+      delete r.user
+      delete r._response_status
+      this.setState({reservation: r})
+    }
   }
 
   render () {

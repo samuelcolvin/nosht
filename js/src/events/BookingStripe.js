@@ -54,6 +54,7 @@ class StripeForm_ extends React.Component {
       card_complete: false,
       submitting: false,
       submitted: false,
+      cancelled: false,
       name: props.user_name,
       address: null,
       city: null,
@@ -71,6 +72,24 @@ class StripeForm_ extends React.Component {
 
   componentWillUnmount () {
     clearInterval(this.clear)
+  }
+
+  async componentWillMount () {
+    this.props.register_toggle_handler(this.cancel_reservation.bind(this))
+  }
+
+  async cancel_reservation () {
+    if (!this.state.submitting && !this.state.cancelled) {
+      this.setState({cancelled: true})
+      try {
+        await this.props.requests.post(`events/cancel-reservation/`, {
+          booking_token: this.props.reservation.booking_token,
+        })
+      } catch (error) {
+        this.props.setRootState({error})
+        return
+      }
+    }
   }
 
   async take_payment (e) {

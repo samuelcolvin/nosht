@@ -3,17 +3,31 @@ import logging
 import os
 import random
 from datetime import datetime, timedelta
+from enum import Enum
 from textwrap import shorten
 
 import lorem
 from async_timeout import timeout
 from buildpg import Values, asyncpg
 
+from .emails.defaults import Triggers
 from .settings import Settings
 from .utils import mk_password, slugify
 
 logger = logging.getLogger('nosht.db')
 patches = []
+
+
+class ActionTypes(str, Enum):
+    login = 'login'
+    guest_signin = 'guest-signin'
+    logout = 'logout'
+    reserve_tickets = 'reserve-tickets'
+    buy_tickets = 'buy-tickets'
+    cancel_reserved_tickets = 'cancel-reserved-tickets'
+    edit_event = 'edit-event'
+    edit_other = 'edit-other'
+    unsubscribe = 'unsubscribe'
 
 
 async def lenient_conn(settings: Settings, with_db=True):
@@ -114,7 +128,7 @@ def reset_database(settings: Settings):
         print('done.')
 
 
-def run_patch(settings: Settings, live, patch_name):
+def run_patch(settings: Settings, live, direct, patch_name):
     if patch_name is None:
         print('available patches:\n{}'.format(
             '\n'.join('  {}: {}'.format(p.__name__, p.__doc__.strip('\n ')) for p in patches)
@@ -126,30 +140,41 @@ def run_patch(settings: Settings, live, patch_name):
     except KeyError as e:
         raise RuntimeError(f'patch "{patch_name}" not found in patches: {[p.__name__ for p in patches]}') from e
 
-    print(f'running patch {patch_name} live {live}')
+    if direct:
+        print(f'running patch {patch_name} direct')
+    else:
+        print(f'running patch {patch_name} live {live}')
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(_run_patch(settings, live, patch_func))
+    loop.run_until_complete(_run_patch(settings, live, direct, patch_func))
 
 
-async def _run_patch(settings, live, patch_func):
+async def _run_patch(settings, live, direct, patch_func):
     conn = await lenient_conn(settings)
-    tr = conn.transaction()
-    await tr.start()
+    tr = None
+    if not direct:
+        tr = conn.transaction()
+        await tr.start()
     print('=' * 40)
     try:
         await patch_func(conn, settings=settings, live=live)
     except BaseException as e:
         print('=' * 40)
-        await tr.rollback()
-        raise RuntimeError('error running patch, rolling back') from e
+        if direct:
+            raise RuntimeError('error running patch') from e
+        else:
+            await tr.rollback()
+            raise RuntimeError('error running patch, rolling back') from e
     else:
         print('=' * 40)
-        if live:
-            print('live, committed patch')
-            await tr.commit()
+        if direct:
+            print('committed patch')
         else:
-            print('not live, rolling back')
-            await tr.rollback()
+            if live:
+                print('live, committed patch')
+                await tr.commit()
+            else:
+                print('not live, rolling back')
+                await tr.rollback()
     finally:
         await conn.close()
 
@@ -165,6 +190,17 @@ async def run_logic_sql(conn, settings, **kwargs):
     run logic.sql code.
     """
     await conn.execute(settings.logic_sql)
+
+
+@patch
+async def update_enums(conn, settings, **kwargs):
+    """
+    update sql from ActionTypes and Triggers enums
+    """
+    for t in ActionTypes:
+        await conn.execute(f"ALTER TYPE ACTION_TYPES ADD VALUE IF NOT EXISTS '{t.value}'")
+    for t in Triggers:
+        await conn.execute(f"ALTER TYPE EMAIL_TRIGGERS ADD VALUE IF NOT EXISTS '{t.value}'")
 
 
 USERS = [

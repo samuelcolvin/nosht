@@ -12,11 +12,11 @@ from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, constr
 
 from shared.utils import slugify
-from web.actions import ActionTypes, record_action_id
+from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import Reservation, StripePayModel, stripe_pay
-from web.utils import JsonErrors, encrypt_json, raw_json_response
+from web.utils import JsonErrors, encrypt_json, raw_json_response, decrypt_json, json_response
 
 logger = logging.getLogger('nosht.events')
 
@@ -37,7 +37,11 @@ FROM (
          e.price,
          e.start_ts,
          EXTRACT(epoch FROM e.duration)::int AS duration,
-         e.ticket_limit,
+         CASE 
+           WHEN e.ticket_limit IS NULL THEN NULL
+           WHEN e.ticket_limit - e.tickets_taken >= 10 THEN NULL
+           ELSE e.ticket_limit - e.tickets_taken 
+         END AS tickets_available,
          h.id AS host_id,
          h.first_name || ' ' || h.last_name AS host_name,
          co.stripe_public_key AS stripe_key,
@@ -213,23 +217,26 @@ class SetEventStatus(UpdateView):
         )
 
 
-EVENT_BOOKING_INFO_SQL = """
-SELECT json_build_object('event', row_to_json(event_data))
-FROM (
-  SELECT check_tickets_remaining(e.id) AS tickets_remaining
-  FROM events AS e
-  JOIN categories cat on e.category = cat.id
-  WHERE cat.company=$1 AND e.id=$2 AND e.status='published'
-) AS event_data;
-"""
-
-
 @is_auth
 async def booking_info(request):
     # TODO more info, eg information require from cat, whether already booked
     event_id = int(request.match_info['id'])
-    json_str = await request['conn'].fetchval(EVENT_BOOKING_INFO_SQL, request['company_id'], event_id)
-    return raw_json_response(json_str)
+    conn: BuildPgConnection = request['conn']
+    tickets_remaining = await conn.fetchval('SELECT check_tickets_remaining($1)', event_id)
+    existing_tickets = await conn.fetchval(
+        """
+        SELECT COUNT(*) 
+        FROM tickets
+        JOIN actions a on tickets.reserve_action = a.id 
+        WHERE event=$1 AND a.user_id=$2 AND status='paid'
+        """,
+        event_id,
+        request['session']['user_id']
+    )
+    return json_response(
+        tickets_remaining=tickets_remaining if (tickets_remaining and tickets_remaining < 10) else None,
+        existing_tickets=existing_tickets or 0,
+    )
 
 
 class DietaryReqEnum(Enum):
@@ -283,7 +290,8 @@ class ReserveTickets(UpdateView):
 
         tickets_remaining = await self.conn.fetchval('SELECT check_tickets_remaining($1)', event_id)
         if tickets_remaining is not None and ticket_count > tickets_remaining:
-            raise JsonErrors.HTTPBadRequest(message=f'only {tickets_remaining} tickets remaining')
+            raise JsonErrors.HTTP470(message=f'only {tickets_remaining} tickets remaining',
+                                     tickets_remaining=tickets_remaining)
 
         try:
             async with self.conn.transaction():
@@ -302,6 +310,8 @@ class ReserveTickets(UpdateView):
                         for t in m.tickets
                     ])
                 )
+                await self.conn.execute('SELECT check_tickets_remaining($1)', event_id)
+
         except CheckViolationError as e:
             logger.warning('CheckViolationError: %s', e)
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
@@ -358,6 +368,19 @@ class ReserveTickets(UpdateView):
             values=MultipleValues(*user_values)
         )
         return {r['email']: r['id'] for r in rows}
+
+
+class CancelReservedTickets(UpdateView):
+    class Model(BaseModel):
+        booking_token: bytes
+
+    async def execute(self, m: Model):
+        res = Reservation(**decrypt_json(self.app, m.booking_token, ttl=600))
+        assert self.session['user_id'] == res.user_id, "user ids don't match"
+        async with self.conn.transaction():
+            await self.conn.execute('DELETE FROM tickets WHERE reserve_action=$1', res.action_id)
+            await self.conn.execute('SELECT check_tickets_remaining($1)', res.event_id)
+            await record_action(self.request, self.session['user_id'], ActionTypes.cancel_reserved_tickets)
 
 
 class BuyTickets(UpdateView):
