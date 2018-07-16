@@ -234,3 +234,35 @@ async def test_set_event_status_bad(cli, url, db_conn, factory: Factory, login):
     }
 
     assert 'pending' == await db_conn.fetchval('SELECT status FROM events')
+
+
+async def test_booking_info(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(ticket_limit=20)
+    await login()
+
+    r = await cli.get(url('event-booking-info', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'tickets_remaining': None,
+        'existing_tickets': 0,
+    }
+
+
+async def test_booking_info_limited(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(ticket_limit=8)
+    await login()
+
+    r = await cli.get(url('event-booking-info', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'tickets_remaining': 8,
+        'existing_tickets': 0,
+    }

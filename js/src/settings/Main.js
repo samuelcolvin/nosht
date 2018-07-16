@@ -45,7 +45,7 @@ export default class Settings extends React.Component {
     return (
       <Row>
         <Col md="3">
-        <div className="list-groupm mb-2">
+        <div className="list-group mb-2">
           {PAGES.map(p => (
             <MenuItem key={p.name} page={p} location={this.props.location}/>
           ))}
