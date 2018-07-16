@@ -57,7 +57,7 @@ CREATE TABLE actions (
   type ACTION_TYPES NOT NULL,
   extra JSONB
 );
-CREATE INDEX action_compound ON actions USING btree (company, user_id, type);
+CREATE INDEX action_compound ON actions USING btree (company, user_id);
 
 
 CREATE TYPE EVENT_TYPES AS ENUM ('ticket_sales', 'donation_requests');
@@ -118,7 +118,7 @@ CREATE TABLE tickets (
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   extra JSONB
 );
-CREATE INDEX ticket_event ON tickets USING btree (event);
+CREATE UNIQUE INDEX ticket_user_unique ON tickets USING btree (event, user_id);
 
 -- must match triggers from emails/defaults.py!
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (

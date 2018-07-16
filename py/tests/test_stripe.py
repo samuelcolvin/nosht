@@ -95,7 +95,9 @@ async def test_stripe_successful(cli, db_conn, stripe_factory: Factory):
     assert extra == {
         'new_card': True,
         'new_customer': True,
-        'charge_id': RegexStr('ch_.+')
+        'charge_id': RegexStr('ch_.+'),
+        'card_expiry': RegexStr('\d+/\d+'),
+        'card_last4': '4242',
     }
 
     charge = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', f'charges/{extra["charge_id"]}')
@@ -144,5 +146,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, stripe_factory: Facto
     assert extra == {
         'new_card': False,
         'new_customer': False,
-        'charge_id': RegexStr('ch_.+')
+        'charge_id': RegexStr('ch_.+'),
+        'card_expiry': RegexStr('\d+/\d+'),
+        'card_last4': '4242',
     }

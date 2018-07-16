@@ -1,8 +1,10 @@
 import json
 from datetime import datetime, timedelta
 
-from pytest_toolbox.comparison import RegexStr
+from buildpg import MultipleValues, Values
+from pytest_toolbox.comparison import RegexStr, CloseToNow
 
+from shared.db import ActionTypes
 from .conftest import Factory
 
 
@@ -265,4 +267,58 @@ async def test_booking_info_limited(cli, url, factory: Factory, login):
     assert data == {
         'tickets_remaining': 8,
         'existing_tickets': 0,
+    }
+
+
+async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+
+    user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.com')
+
+    r = await db_conn.fetch_b(
+        'INSERT INTO actions (:values__names) VALUES :values RETURNING id', values=MultipleValues(
+            Values(
+                company=factory.company_id,
+                user_id=user2_id,
+                type=ActionTypes.reserve_tickets
+            ),
+            Values(
+                company=factory.company_id,
+                user_id=user2_id,
+                type=ActionTypes.buy_tickets
+            ),
+        )
+    )
+    reserve_action, paid_action = [r_['id'] for r_ in r]
+    ticket_id = await db_conn.fetchval_b(
+        'INSERT INTO tickets (:values__names) VALUES :values RETURNING id',
+        values=Values(
+            event=factory.event_id,
+            user_id=user2_id,
+            reserve_action=reserve_action,
+            paid_action=paid_action,
+            status='paid'
+        )
+    )
+
+    await login()
+
+    r = await cli.get(url('event-tickets', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'tickets': [
+            {
+                'ticket_id': ticket_id,
+                'extra': None,
+                'user_id': user2_id,
+                'user_name': 'guest guest',
+                'bought_at': CloseToNow(),
+                'buyer_id': user2_id,
+                'buyer_name': 'guest guest',
+            },
+        ],
     }

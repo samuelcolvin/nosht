@@ -196,7 +196,7 @@ FROM (
     JOIN users u on t.user_id = u.id
     JOIN actions a on t.paid_action = a.id
     JOIN users ub on a.user_id = ub.id
-    WHERE t.event=$1 AND t.status='paid'
+    WHERE t.event=$1 AND a.company=$2 AND t.status='paid'
     ORDER BY a.ts
   ) AS t
 ) AS tickets
@@ -205,11 +205,14 @@ FROM (
 
 @is_admin_or_host
 async def event_tickets(request):
-    pass
-    # TODO filtering by permissions
-    # event_id = int(request.match_info['id'])
-    # json_str = await request['conn'].fetchval(event_ticket_sql, event_id)
-    # return raw_json_response(json_str)
+    event_id = int(request.match_info['id'])
+    if request['session']['user_role'] == 'host':
+        host_id = await request['conn'].fetchval('SELECT host FROM events WHERE id=$1', event_id)
+        if host_id != request['session']['user_id']:
+            raise JsonErrors.HTTPForbidden(message='use is not the host of this event')
+
+    json_str = await request['conn'].fetchval(event_ticket_sql, event_id, request['company_id'])
+    return raw_json_response(json_str)
 
 
 class StatusChoices(Enum):
@@ -317,7 +320,8 @@ class ReserveTickets(UpdateView):
 
         tickets_remaining = await self.conn.fetchval(
             'SELECT check_tickets_remaining($1, $2)',
-            event_id, self.settings.ticket_ttl)
+            event_id, self.settings.ticket_ttl
+        )
 
         if tickets_remaining is not None and ticket_count > tickets_remaining:
             raise JsonErrors.HTTP470(message=f'only {tickets_remaining} tickets remaining',
