@@ -19,6 +19,19 @@ const Buttons = ({buttons, className}) => (
   </div>
 )
 
+export const Dash = () => <span>&mdash;</span>
+
+export const Detail = ({name, children}) => (
+  <div className="item-detail">
+    <div className="key">
+      {name}
+    </div>
+    <div className="value">
+      {children || <Dash/>}
+    </div>
+  </div>
+)
+
 export class RenderItem extends React.Component {
   constructor (props) {
     super(props)
@@ -161,14 +174,7 @@ export class RenderDetails extends RenderItem {
       <Buttons key={1} buttons={this.state.buttons}/>,
       <div key={2} className="mb-4">
         {keys.map((key, i) => (
-          <div key={key} className="item-detail">
-            <div className="key">
-              {this.render_key(key)}
-            </div>
-            <div className="value">
-              {this.render_value(this.state.item, key)}
-            </div>
-          </div>
+          <Detail key={key} name={this.render_key(key)}>{this.render_value(this.state.item, key)}</Detail>
         ))}
       </div>,
       <div key={3}>

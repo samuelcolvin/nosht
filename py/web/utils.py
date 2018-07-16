@@ -8,6 +8,7 @@ from aiohttp.web import Response
 from aiohttp.web_exceptions import HTTPClientError
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError
+from pydantic.json import pydantic_encoder
 
 JSON_CONTENT_TYPE = 'application/json'
 
@@ -135,3 +136,9 @@ def decrypt_json(app, token: bytes, *, ttl: int=None) -> Dict[str, Any]:
         return json.loads(app['auth_fernet'].decrypt(token, ttl=ttl).decode())
     except InvalidToken:
         raise JsonErrors.HTTPBadRequest(message='invalid token')
+
+
+def to_json_if(obj):
+    obj_ = {k: v for k, v in obj.items() if v}
+    if obj_:
+        return json.dumps(obj_, default=pydantic_encoder)

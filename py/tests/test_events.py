@@ -6,6 +6,7 @@ from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
 from shared.db import ActionTypes
 from web.utils import decrypt_json
+
 from .conftest import Factory
 
 
@@ -310,9 +311,10 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         'timeout': AnyInt(),
     }
     booking_token = decrypt_json(cli.app['main_app'], data['booking_token'].encode())
+    reserve_action_id = await db_conn.fetchval("SELECT id FROM actions WHERE type='reserve-tickets'")
     assert booking_token == {
         'user_id': factory.user_id,
-        'action_id': await db_conn.fetchval("SELECT id FROM actions WHERE type='reserve-tickets'"),
+        'action_id': reserve_action_id,
         'event_id': factory.event_id,
         'price_cent': 20_00,
         'ticket_count': 2,
@@ -332,6 +334,31 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
             'last_name': 'Person',
             'email': 'other.person@example.com',
             'role': 'guest',
+        },
+    ]
+    users = [dict(r) for r in await db_conn.fetch(
+        """
+        SELECT event, user_id, reserve_action, paid_action, status, extra
+        FROM tickets
+        ORDER BY user_id
+        """
+    )]
+    assert users == [
+        {
+            'event': factory.event_id,
+            'user_id': factory.user_id,
+            'reserve_action': reserve_action_id,
+            'paid_action': None,
+            'status': 'reserved',
+            'extra': None,
+        },
+        {
+            'event': factory.event_id,
+            'user_id': await db_conn.fetchval('SELECT id FROM users WHERE email=$1', 'other.person@example.com'),
+            'reserve_action': reserve_action_id,
+            'paid_action': None,
+            'status': 'reserved',
+            'extra': '{"extra_info": "I love to party"}',
         },
     ]
 

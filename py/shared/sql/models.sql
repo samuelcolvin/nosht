@@ -45,6 +45,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'logout',
   'reserve-tickets',
   'buy-tickets',
+  'cancel-reserved-tickets',
   'edit-event',
   'edit-other',
   'unsubscribe'
@@ -118,7 +119,6 @@ CREATE TABLE tickets (
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   extra JSONB
 );
-CREATE UNIQUE INDEX ticket_user_unique ON tickets USING btree (event, user_id);
 
 -- must match triggers from emails/defaults.py!
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (

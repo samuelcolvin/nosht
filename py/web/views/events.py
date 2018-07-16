@@ -16,7 +16,7 @@ from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import Reservation, StripePayModel, stripe_pay
-from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, to_json_if
 
 logger = logging.getLogger('nosht.events')
 
@@ -190,10 +190,10 @@ SELECT json_build_object('tickets', tickets)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS tickets FROM (
     SELECT t.id as ticket_id, t.extra, u.id AS user_id,
-      full_name(u.first_name, u.last_name, NULL) AS user_name, a.ts AS bought_at,
-      ub.id as buyer_id, full_name(ub.first_name, ub.last_name, NULL) AS buyer_name
+      full_name(u.first_name, u.last_name, u.email) AS user_name, a.ts AS bought_at,
+      ub.id as buyer_id, full_name(ub.first_name, ub.last_name, u.email) AS buyer_name
     FROM tickets AS t
-    JOIN users u on t.user_id = u.id
+    LEFT JOIN users u on t.user_id = u.id
     JOIN actions a on t.paid_action = a.id
     JOIN users ub on a.user_id = ub.id
     WHERE t.event=$1 AND a.company=$2 AND t.status='paid'
@@ -317,6 +317,8 @@ class ReserveTickets(UpdateView):
             raise JsonErrors.HTTP470(message=f'only {tickets_remaining} tickets remaining',
                                      tickets_remaining=tickets_remaining)
 
+        # TODO check user isn't already booked
+
         try:
             async with self.conn.transaction():
                 user_lookup = await self.create_users(m.tickets)
@@ -329,13 +331,12 @@ class ReserveTickets(UpdateView):
                             event=event_id,
                             user_id=user_lookup[t.email.lower()] if t.email else None,
                             reserve_action=action_id,
-                            extra=m.json(include={'dietary_req', 'extra_info'})
+                            extra=to_json_if(t.dict(include={'dietary_req', 'extra_info'})),
                         )
                         for t in m.tickets
                     ])
                 )
                 await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
-
         except CheckViolationError as e:
             logger.warning('CheckViolationError: %s', e)
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')

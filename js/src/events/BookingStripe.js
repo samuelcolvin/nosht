@@ -140,7 +140,7 @@ class StripeForm_ extends React.Component {
   }
 
   render_form (expired) {
-    const form_height = 280
+    const form_height = 300
     if (expired) {
       return <h4 className="has-error">Rervation expired</h4>
     } else if (this.state.submitted) {

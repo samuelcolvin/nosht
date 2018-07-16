@@ -1,6 +1,9 @@
 import React from 'react'
-import {format_event_start, format_event_duration} from '../utils'
-import {RenderList, RenderDetails} from './Utils'
+import {Link} from 'react-router-dom'
+import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
+import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {format_event_start, format_event_duration, format_datetime} from '../utils'
+import {Dash, Detail, RenderList, RenderDetails} from './Utils'
 import {ModalForm} from '../forms/Form'
 
 export class EventsList extends RenderList {
@@ -37,6 +40,80 @@ const EVENT_STATUS_FIELDS = [
   ]},
 ]
 
+class Tickets extends React.Component {
+  constructor (props) {
+    super(props)
+    this.state = {selected: null}
+  }
+
+  render () {
+    if (!this.props.tickets || !this.props.tickets.length) {
+      return <small>No Tickets bought for this event</small>
+    }
+    const close = () => this.setState({selected: null})
+    const selected = this.state.selected || {}
+    return (
+      <div>
+        <Modal isOpen={!!this.state.selected} toggle={close} size="lg">
+          <ModalHeader toggle={close}>{selected.user_name || <Dash/>}</ModalHeader>
+          <ModalBody>
+            <Detail name="Guest">
+              {selected.user_id ?
+                <Link to={`/settings/users/${selected.user_id}/`}>{selected.user_name }</Link>
+                :
+                <span className="text-muted">Guest of "{selected.buyer_name}", no name provided</span>
+              }
+            </Detail>
+            <Detail name="Buyer">
+              {selected.user_id === selected.buyer_id ?
+                <span className="text-muted">this guest</span>
+                :
+                <Link to={`/settings/users/${selected.buyer_id}/`}>{selected.buyer_name}</Link>
+              }
+            </Detail>
+            <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
+            <Detail name="Dietary Requirments">{selected.extra && selected.extra.dietary_req}</Detail>
+            <Detail name="Extra Info">{selected.extra && selected.extra.extra_info}</Detail>
+          </ModalBody>
+          <ModalFooter>
+            <Button color="secondary" onClick={close}>Close</Button>
+          </ModalFooter>
+        </Modal>
+        <h4>Tickets</h4>
+        <Table striped>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Guest</th>
+              <th>Buyer</th>
+              <th>Bought at</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {this.props.tickets.map((t, i) => (
+              <tr key={i} onClick={() => this.setState({selected: t})}>
+                <th scope="row">{i + 1}</th>
+                <td>{t.user_name || <Dash/>}</td>
+                <td>{t.buyer_name}</td>
+                <td>{format_datetime(t.bought_at)}</td>
+                <td className="text-right">
+                  {t.extra &&
+                    <span className="text-danger cursor-pointer px-2" title="Dietary Requirments or extra information">
+                      <FontAwesomeIcon icon="exclamation" />
+                    </span>
+                  }
+                  <Button size="sm">More Info</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
+    )
+  }
+}
+
 export class EventsDetails extends RenderDetails {
   constructor (props) {
     super(props)
@@ -52,17 +129,30 @@ export class EventsDetails extends RenderDetails {
       cat_slug: null,
       location_lat: null,
       location_lng: null,
+      long_description: null,
     }
     this.uri = `/settings/events/${this.id}/`
   }
 
   async got_data (data) {
     super.got_data(data)
-    this.setState({buttons: [
-      {name: 'Edit', link: this.uri + 'edit/'},
-      {name: 'Set Status', link: this.uri + 'set-status/'},
-      {name: 'View Public Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'}
-    ]})
+    let r
+    try {
+      r = await this.requests.get(`/events/${this.id}/tickets/`)
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+    this.setState(
+      {
+        tickets: r.tickets,
+        buttons: [
+          {name: 'Edit', link: this.uri + 'edit/'},
+          {name: 'Set Status', link: this.uri + 'set-status/'},
+          {name: 'View Public Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'}
+        ]
+      }
+    )
   }
 
   extra () {
@@ -73,10 +163,11 @@ export class EventsDetails extends RenderDetails {
     item.location = {name: item.location_name, lat: item.location_lat, lng: item.location_lng}
     item.date = {dt: item.start_ts, dur: item.duration}
     return [
+      <Tickets key="1" tickets={this.state.tickets}/>,
       <ModalForm {...this.props}
                  title="Edit Event"
                  request_method="put"
-                 key="1"
+                 key="2"
                  parent_uri={this.uri}
                  mode="edit"
                  success_msg='Event updated'
@@ -85,7 +176,7 @@ export class EventsDetails extends RenderDetails {
                  action={`/events/${this.id}/`}
                  fields={EVENT_FIELDS}/>,
       <ModalForm {...this.props}
-                 key="2"
+                 key="3"
                  title="Set Event Status"
                  parent_uri={this.uri}
                  regex={/set-status\/$/}
@@ -95,7 +186,6 @@ export class EventsDetails extends RenderDetails {
                  update={this.update}
                  action={`/events/${this.id}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
-
     ]
   }
 }

@@ -88,8 +88,7 @@ export class CategoriesDetails extends RenderDetails {
       this.props.setRootState({error})
       return
     }
-    const item = Object.assign({}, this.state.item, {suggested_images: r.images})
-    this.setState({item})
+    this.setState({item: Object.assign({}, this.state.item, {suggested_images: r.images})})
   }
 
   async image_action (action, image) {
