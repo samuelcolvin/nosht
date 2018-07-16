@@ -283,16 +283,6 @@ class TicketModel(BaseModel):
     extra_info: str = None
 
 
-def split_name(raw_name):
-    if not raw_name:
-        return None, None
-    if ' ' not in raw_name:
-        # assume just last_name
-        return None, raw_name.strip(' ')
-    else:
-        return [n.strip(' ') for n in raw_name.split(' ', 1)]
-
-
 class ReserveTickets(UpdateView):
     class Model(BaseModel):
         tickets: List[TicketModel]
@@ -358,6 +348,7 @@ class ReserveTickets(UpdateView):
             """,
             self.session['user_id']
         )
+        # TODO needs to work when the event is free
         price_cent = int(event_price * ticket_count * 100)
         res = Reservation(
             user_id=self.session['user_id'],
@@ -376,12 +367,22 @@ class ReserveTickets(UpdateView):
             'timeout': int(time()) + self.settings.ticket_ttl,
         }
 
+    @staticmethod
+    def _split_name(raw_name):
+        if not raw_name:
+            return None, None
+        if ' ' not in raw_name:
+            # assume just last_name
+            return None, raw_name.strip(' ')
+        else:
+            return [n.strip(' ') or None for n in raw_name.split(' ', 1)]
+
     async def create_users(self, tickets: List[TicketModel]):
         user_values = []
 
         for t in tickets:
             if t.name or t.email:
-                first_name, last_name = split_name(t.name)
+                first_name, last_name = self._split_name(t.name)
                 user_values.append(
                     Values(
                         company=self.request['company_id'],

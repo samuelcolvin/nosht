@@ -2,9 +2,10 @@ import json
 from datetime import datetime, timedelta
 
 from buildpg import MultipleValues, Values
-from pytest_toolbox.comparison import RegexStr, CloseToNow
+from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
 from shared.db import ActionTypes
+from web.utils import decrypt_json
 from .conftest import Factory
 
 
@@ -268,6 +269,71 @@ async def test_booking_info_limited(cli, url, factory: Factory, login):
         'tickets_remaining': 8,
         'existing_tickets': 0,
     }
+
+
+async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.com')
+    await factory.create_event(status='published', price=10)
+    await login(email='ticket.buyer@example.com')
+
+    data = {
+        'tickets': [
+            {
+                't': True,
+                'name': 'Ticket Buyer',
+                'email': 'ticket.buyer@example.com',
+            },
+            {
+                't': True,
+                'name': 'Other Person',
+                'email': 'other.person@example.com',
+                'extra_info': 'I love to party'
+            },
+        ]
+    }
+    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'booking_token': RegexStr('.+'),
+        'ticket_count': 2,
+        'item_price_cent': 10_00,
+        'total_price_cent': 20_00,
+        'user': {
+            'id': factory.user_id,
+            'name': 'Ticket Buyer',
+            'email': 'ticket.buyer@example.com',
+            'role': 'admin',
+        },
+        'timeout': AnyInt(),
+    }
+    booking_token = decrypt_json(cli.app['main_app'], data['booking_token'].encode())
+    assert booking_token == {
+        'user_id': factory.user_id,
+        'action_id': await db_conn.fetchval("SELECT id FROM actions WHERE type='reserve-tickets'"),
+        'event_id': factory.event_id,
+        'price_cent': 20_00,
+        'ticket_count': 2,
+        'event_name': 'The Event Name',
+    }
+
+    users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
+    assert users == [
+        {
+            'first_name': 'Ticket',
+            'last_name': 'Buyer',
+            'email': 'ticket.buyer@example.com',
+            'role': 'admin',
+        },
+        {
+            'first_name': 'Other',
+            'last_name': 'Person',
+            'email': 'other.person@example.com',
+            'role': 'guest',
+        },
+    ]
 
 
 async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
