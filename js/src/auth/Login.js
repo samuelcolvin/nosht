@@ -109,7 +109,7 @@ export default class Login extends React.Component {
         </Col>
         {this.state.error &&
           <Col md="12" className="text-center mt-2">
-            <FormFeedback style={{display: 'block'}}>{this.state.error}</FormFeedback>
+            <FormFeedback className="display-block">{this.state.error}</FormFeedback>
           </Col>
         }
       </Row>,

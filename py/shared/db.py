@@ -21,6 +21,7 @@ patches = []
 class ActionTypes(str, Enum):
     login = 'login'
     guest_signin = 'guest-signin'
+    host_signup = 'host-signup'
     logout = 'logout'
     reserve_tickets = 'reserve-tickets'
     buy_tickets = 'buy-tickets'
@@ -335,7 +336,7 @@ async def create_demo_data(conn, settings, **kwargs):
             name='Testing Company',
             slug='testing-co',
             image='https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G',
-            domain=kwargs.get('company_domain', 'localhost'),
+            domain=kwargs.get('company_domain', os.getenv('NEW_COMPANY_DOMAIN', 'localhost')),
             # from "Scolvin Testing" testing account
             stripe_public_key='pk_test_efpfygU2qxGIwgcjn5T5DTTI',
             stripe_secret_key='sk_test_GLQSaid6wFrYZp44d3dcTl8f'

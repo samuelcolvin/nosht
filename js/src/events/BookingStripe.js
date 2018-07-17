@@ -154,25 +154,25 @@ class StripeForm_ extends React.Component {
       return (
         <div style={{height: form_height}}>
           <Input field={name_field}
-                  value={this.state.name}
-                  error={this.state.name_error}
-                  set_value={v => this.setState({name: v, name_error: null})}/>
+                 value={this.state.name}
+                 error={this.state.name_error}
+                 set_value={v => this.setState({name: v, name_error: null})}/>
           <Input field={address_field}
-                  value={this.state.address}
-                  error={this.state.address_error}
-                  set_value={v => this.setState({address: v, address_error: null})}/>
+                 value={this.state.address}
+                 error={this.state.address_error}
+                 set_value={v => this.setState({address: v, address_error: null})}/>
           <Row>
             <Col md="6">
               <Input field={city_field}
-                      value={this.state.city}
-                      error={this.state.city_error}
-                      set_value={v => this.setState({city: v, city_error: null})}/>
+                     value={this.state.city}
+                     error={this.state.city_error}
+                     set_value={v => this.setState({city: v, city_error: null})}/>
             </Col>
             <Col md="6">
               <Input field={postcode_field}
-                      value={this.state.postcode}
-                      error={this.state.postcode_error}
-                      set_value={v => this.setState({postcode: v, postcode_error: null})}/>
+                     value={this.state.postcode}
+                     error={this.state.postcode_error}
+                     set_value={v => this.setState({postcode: v, postcode_error: null})}/>
             </Col>
           </Row>
           <FormGroup>
@@ -185,7 +185,7 @@ class StripeForm_ extends React.Component {
                           style={stripe_styles}/>
             {
               this.state.card_error &&
-              <FormFeedback style={{display: 'block'}}>
+              <FormFeedback className="display-block">
                 <FontAwesomeIcon icon="times" className="mr-1"/>
                 {this.state.card_error}
               </FormFeedback>

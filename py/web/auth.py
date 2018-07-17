@@ -12,10 +12,10 @@ import aiodns
 from async_timeout import timeout
 from google.auth import jwt as google_jwt
 from google.auth._helpers import padded_urlsafe_b64decode
-from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
 from pydantic import BaseModel, constr
 
 from shared.settings import Settings
+from shared.utils import RequestError
 
 from .actions import ActionTypes, record_action
 from .utils import JsonErrors
@@ -97,14 +97,19 @@ async def validate_email(email, loop):
         return True
 
 
-class GoogleSiwModel(BaseModel):
+class GrecaptchaModel(BaseModel):
+    grecaptcha_token: str = None  # TODO make required
+
+
+class GoogleSiwModel(GrecaptchaModel):
     id_token: constr(min_length=200, max_length=2000)
 
 
 async def google_get_details(m: GoogleSiwModel, app):
     settings: Settings = app['settings']
-    async with app['http_client'].get(_GOOGLE_OAUTH2_CERTS_URL) as r:
-        assert r.status == 200, r.status
+    async with app['http_client'].get(settings.google_siw_url) as r:
+        if r.status != 200:
+            raise RequestError(r.status, settings.google_siw_url, info=await r.text())
         certs = await r.json()
     id_info = google_jwt.decode(m.id_token, certs=certs, audience=settings.google_siw_client_key)
 
@@ -120,7 +125,7 @@ async def google_get_details(m: GoogleSiwModel, app):
     }
 
 
-class FacebookSiwModel(BaseModel):
+class FacebookSiwModel(GrecaptchaModel):
     signed_request: bytes
     access_token: str
     user_id: str
@@ -147,12 +152,13 @@ async def facebook_get_details(m: FacebookSiwModel, app):
     signed_data = json.loads(padded_urlsafe_b64decode(data).decode())
 
     # can add 'picture' here, but it seems to be low res.
-    details_url = f'https://graph.facebook.com/v3.0/me?' + urlencode({
+    details_url = settings.facebook_siw_url + '?' + urlencode({
         'access_token': m.access_token,
         'fields': ['email', 'first_name', 'last_name']
     })
     async with app['http_client'].get(details_url) as r:
-        assert r.status == 200, r.status
+        if r.status != 200:
+            raise RequestError(r.status, details_url, info=await r.text())
         response_data = await r.json()
 
     if not (response_data['id'] == signed_data['user_id'] == m.user_id):
@@ -166,3 +172,24 @@ async def facebook_get_details(m: FacebookSiwModel, app):
         'first_name': response_data['first_name'],
         'last_name': response_data['last_name'],
     }
+
+
+async def check_grecaptcha(m: GrecaptchaModel, client_ip, app):
+    if not m.grecaptcha_token:
+        # TODO remove once grecaptcha_token is required
+        raise JsonErrors.HTTPBadRequest(message='grecaptcha token missing')
+
+    settings: Settings = app['settings']
+    post_data = {
+        'secret': settings.grecaptcha_secret,
+        'response': m.grecaptcha_token,
+        'remoteip': client_ip,
+    }
+    async with app['http_client'].post(settings.grecaptcha_url, data=post_data) as r:
+        if r.status != 200:
+            raise RequestError(r.status, settings.grecaptcha_url, info=await r.text())
+        data = await r.json()
+
+    if not data['success'] or data['score'] < settings.grecaptcha_threshold:
+        logger.warning('grecaptcha failure, ip=%s, response=%s', client_ip, data)
+        raise JsonErrors.HTTPBadRequest(message='Invalid recaptcha value')

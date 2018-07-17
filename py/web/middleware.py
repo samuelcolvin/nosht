@@ -6,7 +6,6 @@ from time import time
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
 from aiohttp_session import get_session
-from buildpg.asyncpg import BuildPgConnection
 
 from .utils import JsonErrors, get_ip
 
@@ -115,7 +114,7 @@ REMOVE_PORT = re.compile(r':\d{2,}$')
 
 @middleware
 async def host_middleware(request, handler):
-    conn: BuildPgConnection = request['conn']
+    conn = request['conn']
     request['session'] = await get_session(request)
     user_id = request['session'].get('user_id')
 

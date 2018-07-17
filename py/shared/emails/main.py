@@ -9,7 +9,7 @@ from ..utils import display_cash, static_map_link
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail
 
-logger = logging.getLogger('nosht.email')
+logger = logging.getLogger('nosht.email.main')
 
 
 class EmailActor(BaseEmailActor):

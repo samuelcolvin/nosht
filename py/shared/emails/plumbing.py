@@ -26,7 +26,7 @@ from ..settings import Settings
 from ..utils import RequestError, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
 
-logger = logging.getLogger('nosht.email.setup')
+logger = logging.getLogger('nosht.email.plumbing')
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_EMAIL_TEMPLATE = (THIS_DIR / 'default_template.html').read_text()

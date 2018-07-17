@@ -142,3 +142,14 @@ def to_json_if(obj):
     obj_ = {k: v for k, v in obj.items() if v}
     if obj_:
         return json.dumps(obj_, default=pydantic_encoder)
+
+
+def split_name(raw_name):
+    if not raw_name:
+        return None, None
+    raw_name = raw_name.strip(' ')
+    if ' ' not in raw_name:
+        # assume just last_name
+        return None, raw_name
+    else:
+        return [n.strip(' ') or None for n in raw_name.split(' ', 1)]

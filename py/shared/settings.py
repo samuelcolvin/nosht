@@ -3,6 +3,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from arq import RedisSettings
+from google.oauth2.id_token import _GOOGLE_OAUTH2_CERTS_URL
 from pydantic import BaseSettings, conint, validator
 
 THIS_DIR = Path(__file__).parent
@@ -37,7 +38,14 @@ class Settings(BaseSettings):
     aws_ses_endpoint = 'https://{host}/'
 
     google_siw_client_key = '315422204069-no6540693ciica79g07rs43v705d348g.apps.googleusercontent.com'
+    google_siw_url = _GOOGLE_OAUTH2_CERTS_URL
+
     facebook_siw_app_secret: bytes = b'b9c0c236dfbdab904e7101560328f0e3'
+    facebook_siw_url = 'https://graph.facebook.com/v3.0/me'
+
+    grecaptcha_url = 'https://www.google.com/recaptcha/api/siteverify'
+    grecaptcha_secret = 'xxx'
+    grecaptcha_threshold = 0.5
 
     google_maps_static_key = 'AIzaSyBu9cMA2IpeeIDRu5gu54n2-BZ_fGon4P4'
 

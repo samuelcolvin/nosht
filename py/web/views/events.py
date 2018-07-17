@@ -16,7 +16,7 @@ from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import Reservation, StripePayModel, stripe_pay
-from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, to_json_if
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, split_name, to_json_if
 
 logger = logging.getLogger('nosht.events')
 
@@ -368,22 +368,12 @@ class ReserveTickets(UpdateView):
             'timeout': int(time()) + self.settings.ticket_ttl,
         }
 
-    @staticmethod
-    def _split_name(raw_name):
-        if not raw_name:
-            return None, None
-        if ' ' not in raw_name:
-            # assume just last_name
-            return None, raw_name.strip(' ')
-        else:
-            return [n.strip(' ') or None for n in raw_name.split(' ', 1)]
-
     async def create_users(self, tickets: List[TicketModel]):
         user_values = []
 
         for t in tickets:
             if t.name or t.email:
-                first_name, last_name = self._split_name(t.name)
+                first_name, last_name = split_name(t.name)
                 user_values.append(
                     Values(
                         company=self.request['company_id'],

@@ -168,7 +168,7 @@ const TicketForm = props => {
           Select the number of tickets you would like to purchase.
         </div>
         {state.reservation_error &&
-          <FormFeedback className="text-center" style={{display: 'block'}}>{state.reservation_error}</FormFeedback>}
+          <FormFeedback className="text-center display-block">{state.reservation_error}</FormFeedback>}
 
         <div className="guests-info">
           {[...Array(state.ticket_count).keys()].map(i => (

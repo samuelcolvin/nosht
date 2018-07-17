@@ -267,7 +267,7 @@ class GeoLocation extends React.Component {
           }
         </div>
         <Map geolocation={loc} on_drag={this.on_ondrag.bind(this)}/>
-        {error && <FormFeedback style={{display: 'block'}}>{error}</FormFeedback>}
+        {error && <FormFeedback className="display-block">{error}</FormFeedback>}
         <HelpText field={field}/>
       </FormGroup>
     )

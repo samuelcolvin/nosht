@@ -3,7 +3,7 @@ import {
   Button,
   Col,
   FormFeedback,
-  Input as BsInput,
+  Input,
   InputGroup,
   InputGroupAddon,
   ModalBody,
@@ -33,8 +33,7 @@ export default class BookingLogin extends React.Component {
     this.setState({siw_error: null})
     const auth_data = await google_login(this.props.setRootState)
     if (auth_data) {
-      const error_msg = await this.auth('google', auth_data)
-      error_msg && this.setState({siw_error: error_msg})
+      await this.auth('google', auth_data)
     }
   }
 
@@ -42,8 +41,7 @@ export default class BookingLogin extends React.Component {
     this.setState({siw_error: null})
     const auth_data = await facebook_login(this.props.setRootState)
     if (auth_data) {
-      const error_msg = await this.auth('facebook', auth_data)
-      error_msg && this.setState({siw_error: error_msg})
+      await this.auth('facebook', auth_data)
     }
   }
 
@@ -51,23 +49,24 @@ export default class BookingLogin extends React.Component {
     e.preventDefault()
     this.setState({email_error: null})
     if (this.state.email) {
-      const error_msg = await this.auth('email', {email: this.state.email})
+      const error_msg = await this.auth('email', {email: this.state.email}, [200, 470])
       error_msg && this.setState({email_error: error_msg})
     }
   }
 
-  async auth (site, login_data) {
+  async auth (site, login_data, status) {
     let data
     try {
-      data = await this.props.requests.post(`/login/guest/${site}/`, login_data, {expected_statuses: [200, 470]})
+      data = await this.props.requests.post(`/login/guest/${site}/`, login_data, {expected_statuses: status || 200})
     } catch (error) {
       this.props.setRootState({error})
       return
     }
-    if (data._response_status === 470) {
+    if (data._response_status !== 200) {
       return data.message
     } else {
       this.props.setRootState({user: data.user})
+      this.props.clear_reservation()
     }
   }
 
@@ -95,10 +94,10 @@ export default class BookingLogin extends React.Component {
           <Row className="justify-content-center my-1">
             <Col md="8">
               <InputGroup>
-                <BsInput type="email"
-                         invalid={!!this.state.email_error}
-                         required value={this.state.email}
-                         onChange={e => this.setState({email: e.target.value})}/>
+                <Input type="email"
+                       invalid={!!this.state.email_error}
+                       required value={this.state.email}
+                       onChange={e => this.setState({email: e.target.value})}/>
 
                 <InputGroupAddon addonType="append">
                   <Button color="primary">Signin with Email</Button>

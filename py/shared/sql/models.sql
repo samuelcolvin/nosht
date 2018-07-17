@@ -42,6 +42,7 @@ CREATE UNIQUE INDEX user_email ON users USING btree (company, email);
 CREATE TYPE ACTION_TYPES AS ENUM (
   'login',
   'guest-signin',
+  'host-signup',
   'logout',
   'reserve-tickets',
   'buy-tickets',

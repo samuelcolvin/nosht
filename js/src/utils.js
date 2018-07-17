@@ -1,5 +1,7 @@
 import format from 'date-fns/format'
 
+export const grecaptcha_key = process.env.REACT_APP_RECAPTCHA_KEY
+
 const _add_script = (url, reject) => {
   const script = document.createElement('script')
   script.src = url
@@ -23,13 +25,14 @@ export const load_script = url => {
 }
 
 export const load_script_callback = url => {
+  const callback_name = '_load_script_complete_' + btoa(url).substr(0, 30)
   return new Promise((resolve, reject) => {
-    url = url.replace('<callback-function>', '_load_script_complete')
+    url = url.replace('<callback-function>', callback_name)
     if (document.querySelector(`script[src="${url}"]`)) {
       // script already loaded, but wait to resolve to make sure the callback has been called
       setTimeout(() => resolve(), 100)
     } else {
-      window._load_script_complete = () => resolve()
+      window[callback_name] = () => resolve()
       _add_script(url, reject)
     }
   })
