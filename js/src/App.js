@@ -11,6 +11,7 @@ import Event from './events/Main'
 import Login from './auth/Login'
 import Logout from './auth/Logout'
 import Signup from './auth/Signup'
+import SetPassword from './auth/SetPassword'
 import CreateEvent from './events/Create'
 import Settings from './settings/Main'
 
@@ -42,6 +43,14 @@ const Routes = ({app}) => (
                 requests={app.requests}
                 {...props}/>
       )} />
+
+      <Route exact path="/set-password/" render={props => (
+        <SetPassword setRootState={s => app.setState(s)}
+                     set_message={app.set_message}
+                     requests={app.requests}
+                     {...props}/>
+      )} />
+
 
       <Route path="/settings/" render={props => (
         <Settings setRootState={s => app.setState(s)}

@@ -20,6 +20,7 @@ import sass
 from aiohttp import ClientSession, ClientTimeout
 from arq import Actor, concurrent
 from buildpg import asyncpg
+from cryptography import fernet
 from misaka import HtmlRenderer, Markdown
 
 from ..settings import Settings
@@ -81,6 +82,8 @@ class BaseEmailActor(Actor):
 
         self._host = self.settings.aws_ses_host.format(region=self.settings.aws_region)
         self._endpoint = self.settings.aws_ses_endpoint.format(host=self._host)
+        self.auth_fernet = fernet.Fernet(self.settings.auth_key)
+        self.send_via_aws = self.settings.aws_access_key and not self.settings.print_emails
 
     async def startup(self):
         self.pg = self.pg or await asyncpg.create_pool_b(dsn=self.settings.pg_dsn, min_size=2)
@@ -132,15 +135,14 @@ class BaseEmailActor(Actor):
             'Authorization': authorization_header
         }
 
-    async def aws_send(self, *, e_from: str, email_msg: EmailMessage, to: List[str], bcc: List[str]=None):
+    async def aws_send(self, *, e_from: str, email_msg: EmailMessage, to: List[str]):
         data = {
             'Action': 'SendRawEmail',
             'Source': e_from,
             'RawMessage.Data': base64.b64encode(email_msg.as_string().encode())
         }
         data.update({f'Destination.ToAddresses.member.{i + 1}': t.encode() for i, t in enumerate(to)})
-        if bcc:
-            data.update({f'Destination.BccAddresses.member.{i + 1}': t.encode() for i, t in enumerate(bcc)})
+        # data.update({f'Destination.BccAddresses.member.{i + 1}': t.encode() for i, t in enumerate(bcc)})
         data = urlencode(data).encode()
 
         headers = self._aws_headers(data)
@@ -150,6 +152,25 @@ class BaseEmailActor(Actor):
             raise RequestError(r.status, self._endpoint, info=text)
         msg_id = re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
         return msg_id + f'@{self.settings.aws_region}.amazonses.com'
+
+    async def print_email(self, *, e_from: str, email_msg: EmailMessage, to: List[str]):  # pragma: no cover
+        d = dict(email_msg)
+        d['AWS-Source'] = e_from
+        d['AWS-To'] = ', '.join(to)
+
+        print('=' * 80)
+        for f in ('AWS-Source', 'AWS-To', 'Subject', 'From', 'To', 'List-Unsubscribe'):
+            print(f'{f:>30}: {d[f]}')
+
+        for part in email_msg.walk():
+            payload = part.get_payload(decode=True)
+            if payload:
+                print('-' * 80)
+                print(f'{part.get_content_type()}:')
+                print(payload.decode().replace('\r\n', '\n').strip(' \n'))
+
+        print('=' * 80)
+        return '-'
 
     async def send_email(self,
                          *,
@@ -197,7 +218,9 @@ class BaseEmailActor(Actor):
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
         e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
 
-        msg_id = await self.aws_send(e_from=e_from, to=[user_email], email_msg=e_msg)
+        send_method = self.aws_send if self.send_via_aws else self.print_email
+        msg_id = await send_method(e_from=e_from, to=[user_email], email_msg=e_msg)
+
         logger.debug('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
 
     @concurrent

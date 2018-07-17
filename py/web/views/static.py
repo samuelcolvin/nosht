@@ -34,7 +34,7 @@ async def static_handler(request):
         logger.warning('error resolving path %r', request_path, exc_info=True)
         raise HTTPNotFound() from exc
 
-    if request_path == 'login/iframe.html':
+    if request_path.startswith('iframes/') and request_path.endswith('.html'):
         new_root = request_root(request)
         content = filepath.read_text().replace('http://localhost:3000', new_root)
         return Response(text=content, content_type='text/html')

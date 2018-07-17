@@ -23,6 +23,7 @@ class ActionTypes(str, Enum):
     guest_signin = 'guest-signin'
     host_signup = 'host-signup'
     logout = 'logout'
+    password_reset = 'password-reset'
     reserve_tickets = 'reserve-tickets'
     buy_tickets = 'buy-tickets'
     cancel_reserved_tickets = 'cancel-reserved-tickets'

@@ -21,7 +21,7 @@ class Triggers(str, Enum):
 EMAIL_DEFAULTS = {
     Triggers.ticket_buyer: {
         'subject': '{{{ event_name }}} Ticket Confirmation',
-        'title': '{{{ company_name }}}',
+        'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},
 
@@ -51,7 +51,7 @@ _(Card Charged: **{{ card_details }})_
     },
     Triggers.ticket_other: {
         'subject': '{{{ event_name }}} Ticket',
-        'title': '{{{ company_name }}}',
+        'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},
 
@@ -106,10 +106,25 @@ Email password_reset
 """
     },
     Triggers.account_created: {
-        'subject': 'account_created',
-        'title': '',
+        'subject': (
+            '{{{ company_name }}} Account Created{{#confirm_email_link}} (Action required){{/confirm_email_link}}'
+        ),
+        'title': '{{ company_name }}',
         'body': """
-Email account_created
+Hi {{ first_name }},
+
+Thanks for signing up for an account with {{ company_name }}.
+
+{{#confirm_email_link}}
+You need to confirm your email address before you can publish events.
+
+{{ centered_button(Confirm Email | {{ confirm_email_link }}) }}
+{{/confirm_email_link}}
+{{^confirm_email_link}}
+You can create and publish events whenever you wish.
+
+{{ centered_button(Create & Publish Events | {{ my_events_link }}) }}
+{{/confirm_email_link}}
 """
     },
     Triggers.admin_notification: {

@@ -36,6 +36,7 @@ settings_args = dict(
     aws_secret_key='testing_secret_key',
     ticket_ttl=15,
     facebook_siw_app_secret='testing',
+    print_emails=False,
 )
 
 
@@ -252,8 +253,8 @@ async def pre_startup_app(app):
 
 async def post_startup_app(app):
     inner_app = app['main_app']
+    inner_app['email_actor'].pg = inner_app['pg']
     inner_app['email_actor']._concurrency_enabled = False
-    await inner_app['email_actor'].startup()
 
 
 @pytest.fixture(name='cli')

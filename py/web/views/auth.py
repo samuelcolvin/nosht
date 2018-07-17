@@ -5,9 +5,9 @@ import bcrypt
 from aiohttp.web_exceptions import HTTPTemporaryRedirect
 from aiohttp_session import new_session
 from buildpg import Values
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, constr, validator
 
-from shared.utils import unsubscribe_sig
+from shared.utils import mk_password, unsubscribe_sig
 from web.auth import (ActionTypes, FacebookSiwModel, GoogleSiwModel, GrecaptchaModel, check_grecaptcha,
                       facebook_get_details, google_get_details, invalidate_session, is_auth, record_action,
                       validate_email)
@@ -93,6 +93,48 @@ async def logout(request):
     return json_response(status='success')
 
 
+class PasswordModel(BaseModel):
+    password1: constr(min_length=5, max_length=72)
+    password2: constr(min_length=5, max_length=72)
+    token: bytes
+
+    @validator('password2')
+    def passwords_match(cls, v, values, **kwargs):
+        if 'password1' in values and v != values['password1']:
+            raise ValueError('passwords do not match')
+        return v
+
+
+async def set_password(request):
+    h = {'Access-Control-Allow-Origin': 'null'}
+    conn = request['conn']
+    m = await parse_request(request, PasswordModel, error_headers=h)
+    data = decrypt_json(request.app, m.token, ttl=3600 * 24 * 7)
+    user_id, nonce = data['user_id'], data['nonce']
+
+    already_used = await conn.fetchval(
+        """
+        SELECT 1 FROM actions
+        WHERE user_id=$1 AND type='password-reset' AND now() - ts < interval '7 days' AND extra->>'nonce'=$2
+        """, user_id, nonce)
+    if already_used:
+        raise JsonErrors.HTTP470(message='This password reset link has already been used.')
+
+    company_id, status = await conn.fetchrow('SELECT company, status FROM users WHERE id=$1', user_id)
+    if company_id != request['company_id']:
+        # should not happen
+        raise JsonErrors.HTTPBadRequest(message='company and user do not match')
+    if status == 'suspended':
+        raise JsonErrors.HTTP470(message='user suspended, password update not allowed.')
+
+    pw_hash = mk_password(m.password1, request.app['settings'])
+    del m
+
+    await conn.execute("UPDATE users SET password_hash=$1, status='active' WHERE id=$2", pw_hash, user_id)
+    await record_action(request, user_id, ActionTypes.password_reset, nonce=nonce)
+    return json_response(status='success', headers_=h)
+
+
 class EmailModel(GrecaptchaModel):
     email: EmailStr
 
@@ -174,7 +216,8 @@ SIGNUP_MODELS = {
 
 
 async def host_signup(request):
-    model, siw_method = SIGNUP_MODELS[request.match_info['site']]
+    signin_method = request.match_info['site']
+    model, siw_method = SIGNUP_MODELS[signin_method]
     m: GrecaptchaModel = await parse_request(request, model)
 
     await check_grecaptcha(m, get_ip(request), app=request.app)
@@ -202,6 +245,7 @@ async def host_signup(request):
         values=Values(
             company=company_id,
             role='host',
+            status='active' if signin_method in {'facebook', 'google'} else 'pending',
             email=details['email'].lower(),
             first_name=details.get('first_name'),
             last_name=details.get('last_name'),
@@ -210,8 +254,10 @@ async def host_signup(request):
     session = await new_session(request)
     session.update({'user_id': user_id, 'user_role': 'host', 'last_active': int(time())})
 
-    await record_action(request, user_id, ActionTypes.host_signup, existing_user=bool(existing_role))
+    await record_action(request, user_id, ActionTypes.host_signup,
+                        existing_user=bool(existing_role), signin_method=signin_method)
 
+    await request.app['email_actor'].send_account_created(user_id)
     json_str = await request['conn'].fetchval(GET_USER_SQL, company_id, user_id)
     return raw_json_response(json_str)
 

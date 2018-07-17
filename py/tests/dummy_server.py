@@ -22,6 +22,7 @@ async def aws_ses(request):
 
 async def grecaptcha(request):
     data = await request.post()
+    request.app['log'].append(('grecaptcha', data['response']))
     if data['response'] == '__ok__':
         return json_response(dict(success=True, score=1))
     elif data['response'] == '__low_score__':
@@ -31,10 +32,12 @@ async def grecaptcha(request):
 
 
 async def google_siw(request):
+    request.app['log'].append(('google_siw', None))
     return json_response({'certs': 'testing'})
 
 
 async def facebook_siw(request):
+    request.app['log'].append(('facebook_siw', None))
     return json_response({
         'id': '123456',
         'email': 'facebook-auth@EXAMPLE.com',

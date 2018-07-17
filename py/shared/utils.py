@@ -1,6 +1,8 @@
 import hashlib
 import hmac
+import json
 import re
+import secrets
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -98,3 +100,12 @@ def iso_timedelta(dt: timedelta):
     days, hours, minutes = map(int, (days, hours, minutes))
     seconds = round(seconds, 6)
     return f'P{days}DT{hours}H{minutes}M{seconds:0.0f}S'
+
+
+def encrypt_json(data, *, auth_fernet) -> str:
+    return auth_fernet.encrypt(json.dumps(data).encode()).decode()
+
+
+def password_reset_link(user_id, *, auth_fernet):
+    nonce = secrets.token_hex()[:20]
+    return '/set-password/?sig=' + encrypt_json({'user_id': user_id, 'nonce': nonce}, auth_fernet=auth_fernet)

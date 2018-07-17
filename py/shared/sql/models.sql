@@ -37,6 +37,9 @@ CREATE TABLE users (
   active_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX user_email ON users USING btree (company, email);
+CREATE INDEX user_role ON users USING btree (role);
+CREATE INDEX user_status ON users USING btree (status);
+CREATE INDEX user_company ON users USING btree (company);
 
 
 CREATE TYPE ACTION_TYPES AS ENUM (
@@ -44,6 +47,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'guest-signin',
   'host-signup',
   'logout',
+  'password-reset',
   'reserve-tickets',
   'buy-tickets',
   'cancel-reserved-tickets',
@@ -60,6 +64,8 @@ CREATE TABLE actions (
   extra JSONB
 );
 CREATE INDEX action_compound ON actions USING btree (company, user_id);
+CREATE INDEX action_type ON actions USING btree (type);
+CREATE INDEX action_ts ON actions USING btree (ts);
 
 
 CREATE TYPE EVENT_TYPES AS ENUM ('ticket_sales', 'donation_requests');
@@ -78,7 +84,11 @@ CREATE TABLE categories (
   image VARCHAR(255),
   CHECK (suggested_price > 1)
 );
-CREATE UNIQUE INDEX category_slug ON categories USING btree (company, slug);
+CREATE UNIQUE INDEX category_co_slug ON categories USING btree (company, slug);
+CREATE INDEX category_company ON categories USING btree (company);
+CREATE INDEX category_slug ON categories USING btree (slug);
+CREATE INDEX category_live ON categories USING btree (live);
+CREATE INDEX category_sort_index ON categories USING btree (sort_index);
 
 
 CREATE TYPE EVENT_STATUS AS ENUM ('pending', 'published', 'suspended');
@@ -106,7 +116,13 @@ CREATE TABLE events (
   image VARCHAR(255),
   CONSTRAINT ticket_limit_check CHECK (tickets_taken <= ticket_limit)
 );
-CREATE UNIQUE INDEX event_slug ON events USING btree (category, slug);
+CREATE UNIQUE INDEX event_cat_slug ON events USING btree (category, slug);
+CREATE INDEX event_slug ON events USING btree (slug);
+CREATE INDEX event_status ON events USING btree (status);
+CREATE INDEX event_public ON events USING btree (public);
+CREATE INDEX event_highlight ON events USING btree (highlight);
+CREATE INDEX event_start_ts ON events USING btree (start_ts);
+CREATE INDEX event_category ON events USING btree (category);
 
 
 CREATE TYPE TICKET_STATUS AS ENUM ('reserved', 'paid', 'cancelled');

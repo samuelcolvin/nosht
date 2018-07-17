@@ -1,5 +1,5 @@
 import React from 'react'
-import {Link, Redirect} from 'react-router-dom'
+import {Link} from 'react-router-dom'
 import {
   Button,
   Col,
@@ -78,21 +78,18 @@ export default class Signup extends React.Component {
       return
     }
     if (data._response_status === 470 && data.status === 'existing-user') {
-      this.setState({redirect_to: '/login/'})
+      this.props.history.push('/login/')
       this.props.set_message({icon: 'user', message: 'User already exists - please login.'})
     } else if (data._response_status === 470) {
       this.setState({error: data.message})
     } else {
       this.props.setRootState({user: data.user})
-      this.setState({redirect_to: '/create/'})
+      this.props.history.replace('/create/')
       this.props.set_message({icon: 'user', message: `Logged in successfully as ${data.user.name}`})
     }
   }
 
   render () {
-    if (this.state.redirect_to) {
-      return <Redirect to={this.state.redirect_to}/>
-    }
     return (
       <div>
         <p className="text-center">

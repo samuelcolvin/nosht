@@ -1,5 +1,4 @@
 import React from 'react'
-import {Redirect} from 'react-router'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 
@@ -34,7 +33,7 @@ export default class Login extends React.Component {
       return
     }
     this.props.setRootState({user: data.user})
-    this.setState({redirect_to: '/'})
+    this.props.history.replace('/')
     this.props.set_message({icon: 'user', message: `Logged in successfully as ${data.user.name}`})
   }
 
@@ -89,9 +88,6 @@ export default class Login extends React.Component {
   }
 
   render () {
-    if (this.state.redirect_to) {
-      return <Redirect to={this.state.redirect_to}/>
-    }
     return [
       <Row key="1" className="justify-content-center mb-2">
         <Col md="6">
@@ -116,12 +112,11 @@ export default class Login extends React.Component {
       <Row key="2" className="justify-content-center">
         <Col md="4" className="login">
           <iframe
-            id="login-iframe"
             title="Login"
             frameBorder="0"
             scrolling="no"
             sandbox="allow-forms allow-scripts"
-            src="/login/iframe.html"/>
+            src="/iframes/login.html"/>
         </Col>
       </Row>
     ]

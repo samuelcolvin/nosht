@@ -1,7 +1,7 @@
 import datetime
 import json
 from decimal import Decimal
-from typing import Any, Dict, Type, TypeVar
+from typing import Any, Type, TypeVar
 from uuid import UUID
 
 from aiohttp.web import Response
@@ -9,6 +9,8 @@ from aiohttp.web_exceptions import HTTPClientError
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError
 from pydantic.json import pydantic_encoder
+
+from shared.utils import encrypt_json as _encrypt_json
 
 JSON_CONTENT_TYPE = 'application/json'
 
@@ -127,11 +129,11 @@ class JsonErrors:
         status_code = 470
 
 
-def encrypt_json(app, data: Dict[str, Any]) -> str:
-    return app['auth_fernet'].encrypt(json.dumps(data).encode()).decode()
+def encrypt_json(app, data: Any) -> str:
+    return _encrypt_json(data, auth_fernet=app['auth_fernet'])
 
 
-def decrypt_json(app, token: bytes, *, ttl: int=None) -> Dict[str, Any]:
+def decrypt_json(app, token: bytes, *, ttl: int=None) -> Any:
     try:
         return json.loads(app['auth_fernet'].decrypt(token, ttl=ttl).decode())
     except InvalidToken:

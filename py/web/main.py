@@ -16,7 +16,8 @@ from shared.utils import mk_password
 
 from .middleware import error_middleware, host_middleware, pg_middleware
 from .views import index
-from .views.auth import authenticate_token, guest_signin, host_signup, login, login_with, logout, unsubscribe
+from .views.auth import (authenticate_token, guest_signin, host_signup, login, login_with, logout, set_password,
+                         unsubscribe)
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public)
 from .views.events import (BuyTickets, CancelReservedTickets, EventBread, ReserveTickets, SetEventStatus, booking_info,
@@ -94,6 +95,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/login/', login, name='login'),
         web.post('/login/{site:(google|facebook)}/', login_with, name='login-google-facebook'),
         web.post('/auth-token/', authenticate_token, name='auth-token'),
+        web.post('/set-password/', set_password, name='set-password'),
         web.post('/logout/', logout, name='logout'),
         web.post('/login/guest/{site:(google|facebook|email)}/', guest_signin, name='login-guest'),
         web.post('/signup/{site:(google|facebook|email)}/', host_signup, name='signup-host'),

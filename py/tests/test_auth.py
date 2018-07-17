@@ -2,9 +2,11 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 
 import pytest
-from pytest_toolbox.comparison import AnyInt
+from cryptography import fernet
+from pytest_toolbox.comparison import AnyInt, RegexStr
 
 from .conftest import Factory
 
@@ -34,7 +36,7 @@ async def test_login_successful(cli, url, factory: Factory):
     assert r.status == 200, await r.text()
 
 
-async def test_host_signup_email(cli, url, factory: Factory, db_conn):
+async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_server, settings):
     await factory.create_company()
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
     data = {
@@ -47,7 +49,7 @@ async def test_host_signup_email(cli, url, factory: Factory, db_conn):
     response_data = await r.json()
 
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
-    user = await db_conn.fetchrow('SELECT id, company, first_name, last_name, email, role FROM users')
+    user = await db_conn.fetchrow('SELECT id, company, first_name, last_name, email, role, status FROM users')
 
     assert response_data == {
         'user': {
@@ -64,12 +66,28 @@ async def test_host_signup_email(cli, url, factory: Factory, db_conn):
         'last_name': 'Doe',
         'email': 'testing@gmail.com',
         'role': 'host',
+        'status': 'pending',
+    }
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        (
+            'email_send_endpoint',
+            'Subject: "Testing Account Created (Action required)", To: "Jane Doe <testing@gmail.com>"',
+        ),
+    ]
+    email = dummy_server.app['emails'][0]['part:text/plain']
+    assert 'Confirm Email' in email
+    assert 'Create &amp; Publish Events' not in email
+    token = re.search('/set-password/\?sig=([^"]+)', email).group(1)
+    token_data = json.loads(fernet.Fernet(settings.auth_key).decrypt(token.encode()).decode())
+    assert token_data == {
+        'user_id': user['id'],
+        'nonce': RegexStr('.{20}'),
     }
 
 
-async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker):
+async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, dummy_server):
     await factory.create_company()
-    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
     data = {
         'id_token': 'good.test.token',
         'grecaptcha_token': '__ok__',
@@ -86,7 +104,7 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker):
     response_data = await r.json()
 
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
-    user_id, user_company = await db_conn.fetchrow('SELECT id, company FROM users')
+    user_id, user_company, status = await db_conn.fetchrow('SELECT id, company, status FROM users')
 
     assert response_data == {
         'user': {
@@ -97,7 +115,20 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker):
         },
     }
     assert user_company == factory.company_id
+    assert status == 'active'
     mock_jwt_decode.assert_called_once()
+
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        ('google_siw', None),
+        (
+            'email_send_endpoint',
+            'Subject: "Testing Account Created", To: "Foo Bar <google-auth@example.com>"',
+        ),
+    ]
+    email = dummy_server.app['emails'][0]['part:text/plain']
+    assert 'Create &amp; Publish Events' in email
+    assert 'Confirm Email' not in email
 
 
 @pytest.fixture(name='signed_fb_request')
@@ -113,7 +144,6 @@ def _fix_signed_fb_request(settings):
 
 async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_fb_request):
     await factory.create_company()
-    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
     data = {
         'signedRequest': signed_fb_request({'user_id': '123456'}),
         'accessToken': '__ok__',
@@ -136,3 +166,19 @@ async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_
         },
     }
     assert user_company == factory.company_id
+
+
+async def test_host_signup_grecaptcha_invalid(cli, url, factory: Factory, db_conn, dummy_server, settings):
+    await factory.create_company()
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+    data = {
+        'email': 'testing@gmail.com',
+        'name': 'Jane Doe',
+        'grecaptcha_token': '__low_score__',
+    }
+    r = await cli.post(url('signup-host', site='email'), data=json.dumps(data))
+    assert r.status == 400, await r.text()
+    response_data = await r.json()
+    assert response_data == {
+        'message': 'Invalid recaptcha value',
+    }

@@ -5,7 +5,7 @@ from typing import Optional
 
 from arq import concurrent
 
-from ..utils import display_cash, static_map_link
+from ..utils import display_cash, password_reset_link, static_map_link
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail
 
@@ -14,7 +14,7 @@ logger = logging.getLogger('nosht.email.main')
 
 class EmailActor(BaseEmailActor):
     @concurrent
-    async def send_event_conf_emails(self, paid_action_id: int):
+    async def send_event_conf(self, paid_action_id: int):
         async with self.pg.acquire() as conn:
             data = await conn.fetchrow(
                 """
@@ -79,3 +79,13 @@ class EmailActor(BaseEmailActor):
                 Triggers.ticket_other,
                 [UserEmail(id=user_id, ctx=ctx) for user_id in other_user_ids]
             )
+
+    @concurrent
+    async def send_account_created(self, user_id: int):
+        async with self.pg.acquire() as conn:
+            company_id, status = await conn.fetchrow('SELECT company, status FROM users WHERE id=$1', user_id)
+        ctx = dict(my_events_link='/my-events/')
+        if status == 'pending':
+            ctx['confirm_email_link'] = password_reset_link(user_id, auth_fernet=self.auth_fernet)
+
+        await self.send_emails.direct(company_id, Triggers.account_created, [UserEmail(id=user_id, ctx=ctx)])

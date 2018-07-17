@@ -16,7 +16,7 @@ CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT, ttl INT) RETURN
     tickets_taken_ INT;
   BEGIN
     DELETE FROM tickets
-    WHERE status='reserved' AND event=event_id AND (now() - created_ts) > (ttl || ' seconds')::interval;
+    WHERE status='reserved' AND event=event_id AND now() - created_ts > (ttl || ' seconds')::interval;
 
     SELECT coalesce(COUNT(*), 0) INTO tickets_taken_
     FROM tickets
