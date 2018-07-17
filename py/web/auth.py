@@ -12,7 +12,7 @@ import aiodns
 from async_timeout import timeout
 from google.auth import jwt as google_jwt
 from google.auth._helpers import padded_urlsafe_b64decode
-from pydantic import BaseModel, constr
+from pydantic import BaseModel
 
 from shared.settings import Settings
 from shared.utils import RequestError
@@ -102,7 +102,7 @@ class GrecaptchaModel(BaseModel):
 
 
 class GoogleSiwModel(GrecaptchaModel):
-    id_token: constr(min_length=200, max_length=2000)
+    id_token: str
 
 
 async def google_get_details(m: GoogleSiwModel, app):
@@ -111,7 +111,11 @@ async def google_get_details(m: GoogleSiwModel, app):
         if r.status != 200:
             raise RequestError(r.status, settings.google_siw_url, info=await r.text())
         certs = await r.json()
-    id_info = google_jwt.decode(m.id_token, certs=certs, audience=settings.google_siw_client_key)
+    try:
+        id_info = google_jwt.decode(m.id_token, certs=certs, audience=settings.google_siw_client_key)
+    except ValueError as e:
+        logger.warning('google jwt decode error: %s', e)
+        raise JsonErrors.HTTPBadRequest(message='google jwt decode error')
 
     # this should happen very rarely, if it does someone is doing something nefarious or things have gone very wrong
     assert id_info['iss'] in {'accounts.google.com', 'https://accounts.google.com'}, 'wrong google iss'

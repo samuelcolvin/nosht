@@ -2,10 +2,10 @@ import base64
 from email import message_from_bytes
 
 from aiohttp import web
-from aiohttp.web_response import Response
+from aiohttp.web_response import Response, json_response
 
 
-async def email_send_endpoint(request):
+async def aws_ses(request):
     data = await request.post()
     raw_email = base64.b64decode(data['RawMessage.Data'])
     email = message_from_bytes(raw_email)
@@ -20,10 +20,36 @@ async def email_send_endpoint(request):
     return Response(text='<MessageId>testing</MessageId>')
 
 
+async def grecaptcha(request):
+    data = await request.post()
+    if data['response'] == '__ok__':
+        return json_response(dict(success=True, score=1))
+    elif data['response'] == '__low_score__':
+        return json_response(dict(success=True, score=0.1))
+    else:
+        return json_response(dict(success=False))
+
+
+async def google_siw(request):
+    return json_response({'certs': 'testing'})
+
+
+async def facebook_siw(request):
+    return json_response({
+        'id': '123456',
+        'email': 'facebook-auth@EXAMPLE.com',
+        'first_name': None,
+        'last_name': 'Book',
+    })
+
+
 async def create_dummy_server(loop, create_server):
     app = web.Application(loop=loop)
     app.add_routes([
-        web.post('/send/email/', email_send_endpoint),
+        web.post('/aws_ses_endpoint/', aws_ses),
+        web.post('/grecaptcha_url/', grecaptcha),
+        web.get('/google_siw_url/', google_siw),
+        web.get('/facebook_siw_url/', facebook_siw),
     ])
     server = await create_server(app)
     app.update(

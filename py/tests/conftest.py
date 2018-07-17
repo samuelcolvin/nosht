@@ -35,37 +35,47 @@ settings_args = dict(
     aws_access_key='testing_access_key',
     aws_secret_key='testing_secret_key',
     ticket_ttl=15,
+    facebook_siw_app_secret='testing',
 )
 
 
-@pytest.fixture(scope='session')
-def settings_session():
+@pytest.fixture(scope='session', name='settings_session')
+def _fix_settings_session():
     return Settings(**settings_args)
 
 
-@pytest.fixture(scope='session')
-def clean_db(request, settings_session):
+@pytest.fixture(scope='session', name='clean_db')
+def _fix_clean_db(request, settings_session):
     # loop fixture has function scope so can't be used here.
     loop = asyncio.new_event_loop()
     loop.run_until_complete(prepare_database(settings_session, not request.config.getoption('--reuse-db')))
     teardown_test_loop(loop)
 
 
-@pytest.fixture
-async def dummy_server(loop, aiohttp_server):
+@pytest.fixture(name='dummy_server')
+async def _fix_dummy_server(loop, aiohttp_server):
     return await create_dummy_server(loop, aiohttp_server)
 
 
-@pytest.fixture
-def settings(dummy_server):
+replaced_url_fields = (
+    'aws_ses_endpoint',
+    'grecaptcha_url',
+    'google_siw_url',
+    'facebook_siw_url',
+)
+
+
+@pytest.fixture(name='settings')
+def _fix_settings(dummy_server):
+    server_name = dummy_server.app['server_name']
     return Settings(
-        aws_ses_endpoint=dummy_server.app['server_name'] + '/send/email/',
+        **{f: f'{server_name}/{f}/' for f in replaced_url_fields},
         **settings_args
     )
 
 
-@pytest.fixture
-async def db_conn(loop, settings, clean_db):
+@pytest.fixture(name='db_conn')
+async def _fix_db_conn(loop, settings, clean_db):
     conn = await asyncpg.connect_b(dsn=settings.pg_dsn, loop=loop)
 
     tr = conn.transaction()
@@ -246,8 +256,8 @@ async def post_startup_app(app):
     await inner_app['email_actor'].startup()
 
 
-@pytest.fixture
-async def cli(settings, db_conn, aiohttp_client, redis):
+@pytest.fixture(name='cli')
+async def _fix_cli(settings, db_conn, aiohttp_client, redis):
     app = create_app(settings=settings)
     app['test_conn'] = db_conn
     app.on_startup.insert(0, pre_startup_app)
@@ -255,8 +265,8 @@ async def cli(settings, db_conn, aiohttp_client, redis):
     return await aiohttp_client(app)
 
 
-@pytest.fixture
-def url(cli):
+@pytest.fixture(name='url')
+def _fix_url(cli):
     def f(name, **kwargs):
         inner_app = cli.server.app['main_app']
         try:

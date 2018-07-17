@@ -15,7 +15,7 @@ ADD ./js/public /home/root/public
 ADD ./deploy-settings/favicons/* /home/root/public/
 RUN yarn build
 RUN rm build/service-worker.js
-RUN find build/ -type f
+RUN find build/ -type f | xargs ls -lh
 
 # ===============================================
 # pre-built python build stage
