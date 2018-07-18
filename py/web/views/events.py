@@ -402,11 +402,11 @@ class CancelReservedTickets(UpdateView):
 
     async def execute(self, m: Model):
         res = Reservation(**decrypt_json(self.app, m.booking_token, ttl=self.settings.ticket_ttl))
-        assert self.session['user_id'] == res.user_id, "user ids don't match"
         async with self.conn.transaction():
+            user_id = await self.conn.fetchval('SELECT user_id FROM actions WHERE id=$1', res.action_id)
             await self.conn.execute('DELETE FROM tickets WHERE reserve_action=$1', res.action_id)
             await self.conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, self.settings.ticket_ttl)
-            await record_action(self.request, self.session['user_id'], ActionTypes.cancel_reserved_tickets)
+            await record_action(self.request, user_id, ActionTypes.cancel_reserved_tickets)
 
 
 class BuyTickets(UpdateView):

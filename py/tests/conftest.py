@@ -136,6 +136,8 @@ class Factory:
                              slug=None,
                              image='https://www.example.com/co.png',
                              domain='127.0.0.1',
+                             stripe_public_key='stripe_key_xxx',
+                             stripe_secret_key='stripe_secret_xxx',
                              **kwargs):
         company_id = await self.conn.fetchval_b(
             'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
@@ -144,6 +146,8 @@ class Factory:
                 slug=slug or slugify(name),
                 image=image,
                 domain=domain,
+                stripe_public_key=stripe_public_key,
+                stripe_secret_key=stripe_secret_key,
                 **kwargs,
             )
         )
@@ -240,6 +244,7 @@ class Factory:
                 reserve_action=action_id,
             )
         )
+        await self.conn.execute('SELECT check_tickets_remaining($1, $2)', self.event_id, self.settings.ticket_ttl)
         return Reservation(
             user_id=self.user_id,
             action_id=action_id,

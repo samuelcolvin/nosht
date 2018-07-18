@@ -19,7 +19,7 @@ lint:
 .PHONY: test
 test:
 	mkdir -p js/build
-	pytest py --cov=py --cov-config py/setup.cfg
+	pytest py/tests --cov=py --cov-config py/setup.cfg --isort py/tests
 
 .PHONY: testcov
 testcov: test

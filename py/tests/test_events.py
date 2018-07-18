@@ -5,7 +5,7 @@ from buildpg import MultipleValues, Values
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
 from shared.db import ActionTypes
-from web.utils import decrypt_json
+from web.utils import decrypt_json, encrypt_json
 
 from .conftest import Factory
 
@@ -51,7 +51,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'tickets_available': None,
             'host_id': factory.user_id,
             'host_name': 'Frank Spencer',
-            'stripe_key': None,
+            'stripe_key': 'stripe_key_xxx',
             'currency': 'gbp',
         },
     }
@@ -415,3 +415,22 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             },
         ],
     }
+
+
+async def test_cancel_reservation(cli, url, db_conn, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=12.5)
+
+    res = await factory.create_reservation()
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
+    assert 1 == await db_conn.fetchval('SELECT tickets_taken FROM events')
+
+    booking_token = encrypt_json(cli.app['main_app'], res.dict())
+    r = await cli.post(url('event-cancel-reservation'), data=json.dumps({'booking_token': booking_token}))
+    assert r.status == 200, await r.text()
+
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
+    assert 0 == await db_conn.fetchval('SELECT tickets_taken FROM events')
