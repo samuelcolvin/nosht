@@ -9,7 +9,7 @@ from asyncpg import CheckViolationError
 from buildpg import MultipleValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, constr, validator
 
 from shared.utils import slugify
 from web.actions import ActionTypes, record_action, record_action_id
@@ -287,14 +287,18 @@ class ReserveTickets(UpdateView):
     class Model(BaseModel):
         tickets: List[TicketModel]
 
+        @validator('tickets', whole=True)
+        def check_ticket_count(cls, v):
+            if not v:
+                raise ValueError('at least one ticket must be purchased')
+            return v
+
     async def check_permissions(self):
         await check_session(self.request, 'admin', 'host', 'guest')
 
     async def execute(self, m: Model):
         event_id = int(self.request.match_info['id'])
         ticket_count = len(m.tickets)
-        if ticket_count < 1:
-            raise JsonErrors.HTTPBadRequest(message='at least one ticket must be purchased')
 
         status, event_price, event_name = await self.conn.fetchrow(
             """
@@ -308,16 +312,13 @@ class ReserveTickets(UpdateView):
         if status != 'published':
             raise JsonErrors.HTTPBadRequest(message='Event not published')
 
-        tickets_remaining = await self.conn.fetchval(
-            'SELECT check_tickets_remaining($1, $2)',
-            event_id, self.settings.ticket_ttl
-        )
-
-        if tickets_remaining is not None and ticket_count > tickets_remaining:
-            raise JsonErrors.HTTP470(message=f'only {tickets_remaining} tickets remaining',
-                                     tickets_remaining=tickets_remaining)
-
-        # TODO check user isn't already booked
+        if self.settings.ticket_reservation_precheck:  # should only be false during CheckViolationError tests
+            tickets_remaining = await self.conn.fetchval(
+                'SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl
+            )
+            if tickets_remaining is not None and ticket_count > tickets_remaining:
+                raise JsonErrors.HTTP470(message=f'only {tickets_remaining} tickets remaining',
+                                         tickets_remaining=tickets_remaining)
 
         try:
             async with self.conn.transaction():

@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     default_email_address: str = 'Nosht <nosht@scolvin.com>'
 
     ticket_ttl = 300
+    ticket_reservation_precheck = True  # should only be set to false during a few specific tets
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):

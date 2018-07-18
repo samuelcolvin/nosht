@@ -363,6 +363,64 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     ]
 
 
+async def test_reserve_0_tickets(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.com')
+    await factory.create_event(status='published', price=10)
+    await login(email='ticket.buyer@example.com')
+
+    data = {
+        'tickets': []
+    }
+    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    assert r.status == 400, await r.text()
+
+
+async def test_reserve_tickets_none_left(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.com')
+    await factory.create_event(status='published', price=10, ticket_limit=1)
+    await login(email='ticket.buyer@example.com')
+
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'foo1@example.com'},
+            {'t': True, 'email': 'foo2@example.com'},
+        ]
+    }
+    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    assert r.status == 470, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'only 1 tickets remaining',
+        'tickets_remaining': 1,
+    }
+
+
+async def test_reserve_tickets_none_left_no_precheck(cli, url, factory: Factory, login, settings):
+    settings.ticket_reservation_precheck = False
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.com')
+    await factory.create_event(status='published', price=10, ticket_limit=1)
+    await login(email='ticket.buyer@example.com')
+
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'foo1@example.com'},
+            {'t': True, 'email': 'foo2@example.com'},
+        ]
+    }
+    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'insufficient tickets remaining',
+    }
+
+
 async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
