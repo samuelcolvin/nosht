@@ -413,5 +413,6 @@ class BuyTickets(UpdateView):
     Model = StripePayModel
 
     async def execute(self, m: StripePayModel):
-        paid_action_id = await stripe_pay(m, self.request['company_id'], self.session['user_id'], self.app, self.conn)
+        paid_action_id = await stripe_pay(m, self.request['company_id'], self.session.get('user_id'),
+                                          self.app, self.conn)
         await self.app['email_actor'].send_event_conf(paid_action_id)

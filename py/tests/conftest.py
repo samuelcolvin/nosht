@@ -17,6 +17,7 @@ from shared.db import prepare_database
 from shared.settings import Settings
 from shared.utils import mk_password, slugify
 from web.main import create_app
+from web.stripe import Reservation
 
 from .dummy_server import create_dummy_server
 
@@ -63,14 +64,20 @@ replaced_url_fields = (
     'grecaptcha_url',
     'google_siw_url',
     'facebook_siw_url',
+    'stripe_root_url',
 )
 
 
 @pytest.fixture(name='settings')
-def _fix_settings(dummy_server):
+def _fix_settings(dummy_server, request):
+    # alter stripe_root_url if the real_stripe_test decorator is applied
+    real_stripe = any('REAL_STRIPE_TESTS' in m.kwargs.get('reason', '') for m in request.keywords.get('pytestmark', []))
+    fields = set(replaced_url_fields)
+    if real_stripe:
+        fields.remove('stripe_root_url')
     server_name = dummy_server.app['server_name']
     return Settings(
-        **{f: f'{server_name}/{f}/' for f in replaced_url_fields},
+        **{f: f'{server_name}/{f}/' for f in fields},
         **settings_args
     )
 
@@ -215,6 +222,32 @@ class Factory:
         )
         self.event_id = self.event_id or event_id
         return event_id
+
+    async def create_reservation(self):
+        action_id = await self.conn.fetchval_b(
+            'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+            values=Values(
+                company=self.company_id,
+                user_id=self.user_id,
+                type='reserve-tickets'
+            )
+        )
+        await self.conn.execute_b(
+            'INSERT INTO tickets (:values__names) VALUES :values',
+            values=Values(
+                event=self.event_id,
+                user_id=self.user_id,
+                reserve_action=action_id,
+            )
+        )
+        return Reservation(
+            user_id=self.user_id,
+            action_id=action_id,
+            event_id=self.event_id,
+            price_cent=10_00,
+            ticket_count=1,
+            event_name='Foobar',
+        )
 
 
 @pytest.fixture

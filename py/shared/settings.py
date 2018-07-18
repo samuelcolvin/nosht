@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     google_maps_static_key = 'AIzaSyBu9cMA2IpeeIDRu5gu54n2-BZ_fGon4P4'
 
-    stripe_root = 'https://api.stripe.com/v1/'
+    stripe_root_url = 'https://api.stripe.com/v1/'
     stripe_idempotency_extra = ''
 
     default_email_address: str = 'Nosht <nosht@scolvin.com>'

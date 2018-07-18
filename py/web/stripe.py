@@ -1,6 +1,7 @@
 import json
 import logging
 from functools import partial
+from typing import Optional
 
 from aiohttp import BasicAuth, ClientSession
 from buildpg import Values
@@ -32,10 +33,10 @@ class StripePayModel(BaseModel):
     booking_token: bytes
 
 
-async def stripe_pay(m: StripePayModel, company_id: int, user_id: int, app, conn: BuildPgConnection) -> int:
+async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int], app, conn: BuildPgConnection) -> int:
     ticket_ttl = app['settings'].ticket_ttl
     res = Reservation(**decrypt_json(app, m.booking_token, ttl=ticket_ttl - 10))
-    assert user_id == res.user_id, "user ids don't match"
+    assert user_id in {None, res.user_id}, "user ids don't match"
 
     user_name, user_email, user_role, stripe_customer_id, stripe_secret_key, currency = await conn.fetchrow(
         """
@@ -156,7 +157,7 @@ async def stripe_request(app, auth, method, path, *, idempotency_key=None, **dat
     headers = {}
     if idempotency_key:
         headers['Idempotency-Key'] = idempotency_key + settings.stripe_idempotency_extra
-    full_path = settings.stripe_root + path
+    full_path = settings.stripe_root_url + path
     async with client.request(method, full_path, data=data or None, auth=auth, headers=headers) as r:
         if r.status == 200:
             return await r.json()

@@ -46,6 +46,43 @@ async def facebook_siw(request):
     })
 
 
+async def stripe_get_customer_sources(request):
+    request.app['log'].append(('stripe_get_customer_sources', None))
+    return json_response('TODO')
+
+
+async def stripe_post_customer_sources(request):
+    request.app['log'].append(('stripe_post_customer_sources', None))
+    return json_response('TODO')
+
+
+async def stripe_post_customers(request):
+    request.app['log'].append(('stripe_post_customers', None))
+    return json_response({
+        'id': 'customer-id',
+        'sources': {
+            'data': [
+                {
+                    'id': 'source-id-1'
+                }
+            ]
+        }
+    })
+
+
+async def stripe_post_charges(request):
+    request.app['log'].append(('stripe_post_charges', None))
+    return json_response({
+        'id': 'charge-id',
+        'source': {
+            'id': 'source-id',
+            'last4': '1234',
+            'exp_month': '12',
+            'exp_year': 2032,
+        }
+    })
+
+
 async def create_dummy_server(loop, create_server):
     app = web.Application(loop=loop)
     app.add_routes([
@@ -53,6 +90,11 @@ async def create_dummy_server(loop, create_server):
         web.post('/grecaptcha_url/', grecaptcha),
         web.get('/google_siw_url/', google_siw),
         web.get('/facebook_siw_url/', facebook_siw),
+
+        web.get('/stripe_root_url/customers/{stripe_customer_id}/sources', stripe_get_customer_sources),
+        web.post('/stripe_root_url/customers/{stripe_customer_id}/sources', stripe_post_customer_sources),
+        web.post('/stripe_root_url/customers', stripe_post_customers),
+        web.post('/stripe_root_url/charges', stripe_post_charges),
     ])
     server = await create_server(app)
     app.update(
