@@ -307,11 +307,14 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
 
 @pytest.fixture(name='url')
 def _fix_url(cli):
-    def f(name, **kwargs):
+    def f(name, *, query=None, **kwargs):
         inner_app = cli.server.app['main_app']
         try:
             r = inner_app.router[name]
         except KeyError as e:
             raise KeyError(f'invalid url name, choices: {pformat(inner_app.router._named_resources)}') from e
-        return r.url_for(**{k: str(v) for k, v in kwargs.items()})
+        url = r.url_for(**{k: str(v) for k, v in kwargs.items()})
+        if query:
+            url = url.with_query(**query)
+        return url
     return f

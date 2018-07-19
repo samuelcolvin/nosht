@@ -107,5 +107,4 @@ def encrypt_json(data, *, auth_fernet) -> str:
 
 
 def password_reset_link(user_id, *, auth_fernet):
-    nonce = secrets.token_hex()[:20]
-    return '/set-password/?sig=' + encrypt_json({'user_id': user_id, 'nonce': nonce}, auth_fernet=auth_fernet)
+    return '/set-password/?sig=' + encrypt_json(user_id, auth_fernet=auth_fernet)

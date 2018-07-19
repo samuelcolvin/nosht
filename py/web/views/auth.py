@@ -99,7 +99,7 @@ async def logout(request):
 class PasswordModel(BaseModel):
     password1: constr(min_length=5, max_length=72)
     password2: constr(min_length=5, max_length=72)
-    token: bytes
+    token: str
 
     @validator('password2')
     def passwords_match(cls, v, values, **kwargs):
@@ -112,8 +112,8 @@ async def set_password(request):
     h = {'Access-Control-Allow-Origin': 'null'}
     conn = request['conn']
     m = await parse_request(request, PasswordModel, error_headers=h)
-    data = decrypt_json(request.app, m.token, ttl=3600 * 24 * 7)
-    user_id, nonce = data['user_id'], data['nonce']
+    user_id = decrypt_json(request.app, m.token.encode(), ttl=3600 * 24 * 7)
+    nonce = m.token[:20]
 
     already_used = await conn.fetchval(
         """

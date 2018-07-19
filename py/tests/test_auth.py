@@ -8,6 +8,7 @@ import pytest
 from cryptography import fernet
 from pytest_toolbox.comparison import AnyInt, RegexStr
 
+from web.utils import encrypt_json
 from .conftest import Factory
 
 
@@ -82,10 +83,7 @@ async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_serv
     assert 'Create &amp; Publish Events' not in email
     token = re.search('/set-password/\?sig=([^"]+)', email).group(1)
     token_data = json.loads(fernet.Fernet(settings.auth_key).decrypt(token.encode()).decode())
-    assert token_data == {
-        'user_id': user['id'],
-        'nonce': RegexStr('.{20}'),
-    }
+    assert token_data == user['id']
 
 
 async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, dummy_server):
@@ -255,3 +253,71 @@ async def test_guest_signup_google(cli, url, factory: Factory, db_conn, mocker):
         'company': factory.company_id,
     }
     mock_jwt_decode.assert_called_once()
+
+
+async def test_set_password(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_user()
+
+    pw_before = await db_conn.fetchval('SELECT password_hash FROM users WHERE id=$1', factory.user_id)
+
+    with pytest.raises(AssertionError):
+        await login(password='testing-new-password')
+
+    data = {
+        'password1': 'testing-new-password',
+        'password2': 'testing-new-password',
+        'token': encrypt_json(cli.app['main_app'], factory.user_id),
+    }
+    r = await cli.post(url('set-password'), data=json.dumps(data))
+    assert r.status == 200, await r.text()
+    pw_after = await db_conn.fetchval('SELECT password_hash FROM users WHERE id=$1', factory.user_id)
+    assert pw_after != pw_before
+    await login(password='testing-new-password')
+
+
+async def test_set_password_reuse_token(cli, url, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+
+    data = {
+        'password1': 'testing-new-password',
+        'password2': 'testing-new-password',
+        'token': encrypt_json(cli.app['main_app'], factory.user_id),
+    }
+    r = await cli.post(url('set-password'), data=json.dumps(data))
+    assert r.status == 200, await r.text()
+
+    r = await cli.post(url('set-password'), data=json.dumps(data))
+    assert r.status == 470, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'This password reset link has already been used.',
+    }
+
+
+async def test_set_password_mismatch(cli, url, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+
+    data = {
+        'password1': 'testing-new-password',
+        'password2': 'testing-new-password2',
+        'token': encrypt_json(cli.app['main_app'], factory.user_id),
+    }
+    r = await cli.post(url('set-password'), data=json.dumps(data))
+    assert r.status == 400, await r.text()
+
+    data = await r.json()
+    assert data == {
+        'message': 'Invalid Data',
+        'details': [
+            {
+                'loc': [
+                    'password2',
+                ],
+                'msg': 'passwords do not match',
+                'type': 'value_error',
+            },
+        ],
+    }
