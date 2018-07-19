@@ -3,7 +3,7 @@ import logging
 import re
 from time import time
 
-from aiohttp.hdrs import METH_OPTIONS, METH_POST
+from aiohttp.hdrs import METH_GET, METH_OPTIONS, METH_POST
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
 from aiohttp.web_response import Response
@@ -150,15 +150,16 @@ def referrer_check(request):
 @middleware
 async def csrf_middleware(request, handler):
     h = request.headers
-    if request.method == METH_OPTIONS and 'Access-Control-Request-Method' in h:
-        if (h.get('Access-Control-Request-Method') == METH_POST and
-                h.get('Access-Control-Request-Headers').lower() == 'content-type' and
-                origin_check(request)):
-            headers = {'Access-Control-Allow-Headers': 'Content-Type', **HEADER_CROSS_ORIGIN}
-            return Response(text='ok', headers=headers)
-        else:
-            raise JsonErrors.HTTPForbidden(error='Access-Control checks failed', headers_=HEADER_CROSS_ORIGIN)
-    elif request.method == METH_POST:
+    if request.method == METH_OPTIONS:
+        if 'Access-Control-Request-Method' in h:
+            if (h.get('Access-Control-Request-Method') == METH_POST and
+                    h.get('Access-Control-Request-Headers').lower() == 'content-type' and
+                    origin_check(request)):
+                headers = {'Access-Control-Allow-Headers': 'Content-Type', **HEADER_CROSS_ORIGIN}
+                return Response(text='ok', headers=headers)
+            else:
+                raise JsonErrors.HTTPForbidden(error='Access-Control checks failed', headers_=HEADER_CROSS_ORIGIN)
+    elif request.method != METH_GET:
         if not (h.get('Content-Type') == JSON_CONTENT_TYPE and origin_check(request) and referrer_check(request)):
             logger.warning('CSRF failure, Content-Type: "%s", Origin: "%s", Referer: "%s"',
                            h.get('Content-Type'), h.get('Origin'), h.get('Referer'))

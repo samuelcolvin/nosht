@@ -36,7 +36,7 @@ async def test_preflight_failed(cli, url, factory: Factory):
 async def test_post_csrf(cli, url, factory: Factory):
     await factory.create_company()
 
-    r = await cli.post_vanilla(url('login'))
+    r = await cli.post(url('login'))
     assert r.status == 403, await r.text()
     obj = await r.json()
     assert obj == {

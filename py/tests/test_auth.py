@@ -27,10 +27,10 @@ async def test_login_successful(cli, url, factory: Factory):
         password='testing',
         grecaptcha_token='__ok__',
     )
-    r = await cli.post(url('login'), data=json.dumps(data))
+    r = await cli.json_post(url('login'), data=data)
     assert r.status == 200, await r.text()
     data = await r.json()
-    r = await cli.post(url('auth-token'), data=json.dumps({'token': data['auth_token']}))
+    r = await cli.json_post(url('auth-token'), data={'token': data['auth_token']})
     assert r.status == 200, await r.text()
 
     assert len(cli.session.cookie_jar) == 1
@@ -47,7 +47,7 @@ async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_serv
         'name': 'Jane Doe',
         'grecaptcha_token': '__ok__',
     }
-    r = await cli.post(url('signup-host', site='email'), data=json.dumps(data))
+    r = await cli.json_post(url('signup-host', site='email'), data=data)
     assert r.status == 200, await r.text()
     response_data = await r.json()
 
@@ -100,7 +100,7 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
         'given_name': 'Foo',
         'family_name': 'Bar',
     })
-    r = await cli.post(url('signup-host', site='google'), data=json.dumps(data))
+    r = await cli.json_post(url('signup-host', site='google'), data=data)
     assert r.status == 200, await r.text()
     response_data = await r.json()
 
@@ -152,7 +152,7 @@ async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_
         'userID': 123456,
         'grecaptcha_token': '__ok__',
     }
-    r = await cli.post(url('signup-host', site='facebook'), data=json.dumps(data))
+    r = await cli.json_post(url('signup-host', site='facebook'), data=data)
     assert r.status == 200, await r.text()
     response_data = await r.json()
 
@@ -178,7 +178,7 @@ async def test_host_signup_grecaptcha_invalid(cli, url, factory: Factory, db_con
         'name': 'Jane Doe',
         'grecaptcha_token': '__low_score__',
     }
-    r = await cli.post(url('signup-host', site='email'), data=json.dumps(data))
+    r = await cli.json_post(url('signup-host', site='email'), data=data)
     assert r.status == 400, await r.text()
     response_data = await r.json()
     assert response_data == {
@@ -194,7 +194,7 @@ async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
         'email': 'testing@gmail.com',
         'grecaptcha_token': '__ok__',
     }
-    r = await cli.post(url('signup-guest', site='email'), data=json.dumps(data))
+    r = await cli.json_post(url('signup-guest', site='email'), data=data)
     assert r.status == 200, await r.text()
     response_data = await r.json()
     assert response_data == {
@@ -231,7 +231,7 @@ async def test_guest_signup_google(cli, url, factory: Factory, db_conn, mocker):
         'given_name': 'Foo',
         'family_name': 'Bar',
     })
-    r = await cli.post(url('signup-guest', site='google'), data=json.dumps(data))
+    r = await cli.json_post(url('signup-guest', site='google'), data=data)
     assert r.status == 200, await r.text()
     response_data = await r.json()
     assert response_data == {
@@ -270,7 +270,7 @@ async def test_set_password(cli, url, factory: Factory, db_conn, login):
         'password2': 'testing-new-password',
         'token': encrypt_json(cli.app['main_app'], factory.user_id),
     }
-    r = await cli.post(url('set-password'), data=json.dumps(data))
+    r = await cli.json_post(url('set-password'), data=data)
     assert r.status == 200, await r.text()
     pw_after = await db_conn.fetchval('SELECT password_hash FROM users WHERE id=$1', factory.user_id)
     assert pw_after != pw_before
@@ -286,10 +286,10 @@ async def test_set_password_reuse_token(cli, url, factory: Factory):
         'password2': 'testing-new-password',
         'token': encrypt_json(cli.app['main_app'], factory.user_id),
     }
-    r = await cli.post(url('set-password'), data=json.dumps(data))
+    r = await cli.json_post(url('set-password'), data=data)
     assert r.status == 200, await r.text()
 
-    r = await cli.post(url('set-password'), data=json.dumps(data))
+    r = await cli.json_post(url('set-password'), data=data)
     assert r.status == 470, await r.text()
     data = await r.json()
     assert data == {
@@ -306,7 +306,7 @@ async def test_set_password_mismatch(cli, url, factory: Factory):
         'password2': 'testing-new-password2',
         'token': encrypt_json(cli.app['main_app'], factory.user_id),
     }
-    r = await cli.post(url('set-password'), data=json.dumps(data))
+    r = await cli.json_post(url('set-password'), data=data)
     assert r.status == 400, await r.text()
 
     data = await r.json()

@@ -3,6 +3,7 @@ import json
 import random
 import uuid
 from datetime import datetime
+from functools import partial
 from pprint import pformat
 from textwrap import shorten
 
@@ -264,10 +265,10 @@ async def factory(db_conn, settings):
 def login(cli, url):
     async def f(email='frank@example.com', password='testing'):
         data = dict(email=email, password=password, grecaptcha_token='__ok__')
-        r = await cli.post(url('login'), data=json.dumps(data))
+        r = await cli.json_post(url('login'), data=data)
         assert r.status == 200, await r.text()
         data = await r.json()
-        r = await cli.post(url('auth-token'), data=json.dumps({'token': data['auth_token']}))
+        r = await cli.json_post(url('auth-token'), data={'token': data['auth_token']})
         assert r.status == 200, await r.text()
         assert len(cli.session.cookie_jar) == 1
 
@@ -303,9 +304,8 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
     app.on_startup.insert(0, pre_startup_app)
     app.on_startup.append(post_startup_app)
     cli = await aiohttp_client(app)
-    cli.post_vanilla = cli.post
 
-    def json_post(url, *, data=None, headers=None):
+    def json_data_request(method, url, *, data=None, headers=None):
         if data and not isinstance(data, str):
             data = json.dumps(data)
         headers = {
@@ -313,9 +313,10 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
             # 'Origin': 'http://{'
             **(headers or {}),
         }
-        return cli.post_vanilla(url, data=data, headers=headers)
+        return cli.request(method, url, data=data, headers=headers)
 
-    cli.post = json_post
+    cli.json_post = partial(json_data_request, 'POST')
+    cli.json_put = partial(json_data_request, 'PUT')
     return cli
 
 

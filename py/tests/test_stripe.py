@@ -135,7 +135,7 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
         booking_token=encrypt_json(app, res.dict()),
     )
 
-    r = await cli.post(url('event-buy-tickets'), data=m.json())
+    r = await cli.json_post(url('event-buy-tickets'), data=m.json())
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [

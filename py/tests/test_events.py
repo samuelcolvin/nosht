@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timedelta
 
 from buildpg import MultipleValues, Values
@@ -99,7 +98,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
         long_description='I love to party'
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
-    r = await cli.post(url('event-add'), data=json.dumps(data))
+    r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 201, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     data = await r.json()
@@ -147,7 +146,7 @@ async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login
         },
         long_description='I love to party'
     )
-    r = await cli.post(url('event-add'), data=json.dumps(data))
+    r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 201, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     public, start_ts, duration = await db_conn.fetchrow('SELECT public, start_ts, duration FROM events')
@@ -168,7 +167,7 @@ async def test_not_auth(cli, url, db_conn, factory: Factory):
         date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': None},
         long_description='I love to party'
     )
-    r = await cli.post(url('event-add'), data=json.dumps(data))
+    r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 401, await r.text()
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
 
@@ -191,7 +190,7 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
             'lng': 1,
         }
     )
-    r = await cli.put(url('event-edit', pk=event_id), data=json.dumps(data))
+    r = await cli.json_put(url('event-edit', pk=event_id), data=data)
     assert r.status == 200, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     ticket_limit, location_lat = await db_conn.fetchrow('SELECT ticket_limit, location_lat FROM events')
@@ -208,7 +207,7 @@ async def test_set_event_status(cli, url, db_conn, factory: Factory, login):
 
     assert 'pending' == await db_conn.fetchval('SELECT status FROM events')
 
-    r = await cli.post(url('event-set-status', id=factory.event_id), data=json.dumps(dict(status='published')))
+    r = await cli.json_post(url('event-set-status', id=factory.event_id), data=dict(status='published'))
     assert r.status == 200, await r.text()
 
     assert 'published' == await db_conn.fetchval('SELECT status FROM events')
@@ -223,7 +222,7 @@ async def test_set_event_status_bad(cli, url, db_conn, factory: Factory, login):
 
     assert 'pending' == await db_conn.fetchval('SELECT status FROM events')
 
-    r = await cli.post(url('event-set-status', id=factory.event_id), data=json.dumps(dict(status='foobar')))
+    r = await cli.json_post(url('event-set-status', id=factory.event_id), data=dict(status='foobar'))
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {
@@ -296,7 +295,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
             },
         ]
     }
-    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
@@ -383,7 +382,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
             },
         ]
     }
-    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
@@ -445,7 +444,7 @@ async def test_reserve_0_tickets(cli, url, factory: Factory, login):
     data = {
         'tickets': []
     }
-    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 400, await r.text()
 
 
@@ -462,7 +461,7 @@ async def test_reserve_tickets_none_left(cli, url, factory: Factory, login):
             {'t': True, 'email': 'foo2@example.com'},
         ]
     }
-    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 470, await r.text()
     data = await r.json()
     assert data == {
@@ -485,7 +484,7 @@ async def test_reserve_tickets_none_left_no_precheck(cli, url, factory: Factory,
             {'t': True, 'email': 'foo2@example.com'},
         ]
     }
-    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {
@@ -559,7 +558,7 @@ async def test_cancel_reservation(cli, url, db_conn, factory: Factory):
     assert 1 == await db_conn.fetchval('SELECT tickets_taken FROM events')
 
     booking_token = encrypt_json(cli.app['main_app'], res.dict())
-    r = await cli.post(url('event-cancel-reservation'), data=json.dumps({'booking_token': booking_token}))
+    r = await cli.json_post(url('event-cancel-reservation'), data={'booking_token': booking_token})
     assert r.status == 200, await r.text()
 
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
