@@ -18,13 +18,11 @@ install:
 - pip install -U pip setuptools
 - pip install -r py/tests/requirements.txt
 - pip install -r py/requirements.txt
+- cp py/setup.cfg .
 
 script:
 - make lint
-- REAL_STRIPE_TESTS=1 make test
+# send to codecov if make test passes regardless of other fails, also without waiting for build
+- REAL_STRIPE_TESTS=1 make test && bash <(curl -s https://codecov.io/bash)
 - make build
-
-after_success:
 - ls -lha
-- cp py/setup.cfg .
-- bash <(curl -s https://codecov.io/bash)

@@ -172,9 +172,8 @@ async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_
     assert user_company == factory.company_id
 
 
-async def test_host_signup_grecaptcha_invalid(cli, url, factory: Factory, db_conn, dummy_server, settings):
+async def test_host_signup_grecaptcha_invalid(cli, url, factory: Factory, db_conn):
     await factory.create_company()
-    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
     data = {
         'email': 'testing@gmail.com',
         'name': 'Jane Doe',
@@ -186,3 +185,73 @@ async def test_host_signup_grecaptcha_invalid(cli, url, factory: Factory, db_con
     assert response_data == {
         'message': 'Invalid recaptcha value',
     }
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+
+
+async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+    data = {
+        'email': 'testing@gmail.com',
+        'grecaptcha_token': '__ok__',
+    }
+    r = await cli.post(url('signup-guest', site='email'), data=json.dumps(data))
+    assert r.status == 200, await r.text()
+    response_data = await r.json()
+    assert response_data == {
+        'user': {
+            'id': await db_conn.fetchval('SELECT id FROM users'),
+            'first_name': None,
+            'last_name': None,
+            'email': 'testing@gmail.com',
+            'role': 'guest',
+        },
+    }
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+    user = dict(await db_conn.fetchrow('SELECT first_name, last_name, email, role, status, company FROM users'))
+    assert user == {
+        'first_name': None,
+        'last_name': None,
+        'email': 'testing@gmail.com',
+        'role': 'guest',
+        'status': 'pending',
+        'company': factory.company_id,
+    }
+
+
+async def test_guest_signup_google(cli, url, factory: Factory, db_conn, mocker):
+    await factory.create_company()
+    data = {
+        'id_token': 'good.test.token',
+        'grecaptcha_token': '__ok__',
+    }
+    mock_jwt_decode = mocker.patch('web.auth.google_jwt.decode', return_value={
+        'iss': 'accounts.google.com',
+        'email_verified': True,
+        'email': 'google-auth@EXAMPLE.com',
+        'given_name': 'Foo',
+        'family_name': 'Bar',
+    })
+    r = await cli.post(url('signup-guest', site='google'), data=json.dumps(data))
+    assert r.status == 200, await r.text()
+    response_data = await r.json()
+    assert response_data == {
+        'user': {
+            'id': await db_conn.fetchval('SELECT id FROM users'),
+            'first_name': 'Foo',
+            'last_name': 'Bar',
+            'email': 'google-auth@example.com',
+            'role': 'guest',
+        },
+    }
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+    user = dict(await db_conn.fetchrow('SELECT first_name, last_name, email, role, status, company FROM users'))
+    assert user == {
+        'first_name': 'Foo',
+        'last_name': 'Bar',
+        'email': 'google-auth@example.com',
+        'role': 'guest',
+        'status': 'active',
+        'company': factory.company_id,
+    }
+    mock_jwt_decode.assert_called_once()

@@ -318,7 +318,6 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     }
 
     users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
-    debug(users)
     assert users == [
         {
             'first_name': None,
@@ -360,6 +359,78 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
             'paid_action': None,
             'status': 'reserved',
             'extra': '{"extra_info": "I love to party"}',
+        },
+    ]
+
+
+async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(first_name='T', last_name='B', email='ticket.buyer@example.com')
+    await factory.create_event(status='published', price=10)
+    await login(email='ticket.buyer@example.com')
+
+    data = {
+        'tickets': [
+            {
+                't': True,
+                'first_name': 'TT',
+                'last_name': 'BB',
+                'email': 'ticket.buyer@example.com',
+            },
+            {
+                't': True,
+            },
+        ]
+    }
+    r = await cli.post(url('event-reserve-tickets', id=factory.event_id), data=json.dumps(data))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'booking_token': RegexStr('.+'),
+        'ticket_count': 2,
+        'item_price_cent': 10_00,
+        'total_price_cent': 20_00,
+        'timeout': AnyInt(),
+    }
+
+    users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
+    assert users == [
+        {
+            'first_name': 'T',
+            'last_name': 'B',
+            'email': 'ticket.buyer@example.com',
+            'role': 'admin',
+        },
+    ]
+    users = [dict(r) for r in await db_conn.fetch(
+        """
+        SELECT event, user_id, first_name, last_name, reserve_action, paid_action, status, extra
+        FROM tickets
+        ORDER BY user_id
+        """
+    )]
+    reserve_action_id = await db_conn.fetchval("SELECT id FROM actions WHERE type='reserve-tickets'")
+    assert users == [
+        {
+            'event': factory.event_id,
+            'user_id': factory.user_id,
+            'first_name': 'TT',
+            'last_name': 'BB',
+            'reserve_action': reserve_action_id,
+            'paid_action': None,
+            'status': 'reserved',
+            'extra': None,
+        },
+        {
+            'event': factory.event_id,
+            'user_id': None,
+            'first_name': None,
+            'last_name': None,
+            'reserve_action': reserve_action_id,
+            'paid_action': None,
+            'status': 'reserved',
+            'extra': None,
         },
     ]
 

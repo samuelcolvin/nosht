@@ -16,7 +16,7 @@ from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import Reservation, StripePayModel, stripe_pay
-from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, split_name, to_json_if
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, to_json_if
 
 logger = logging.getLogger('nosht.events')
 
