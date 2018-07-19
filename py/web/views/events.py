@@ -145,8 +145,7 @@ class EventBread(Bread):
     def where(self):
         logic = V('c.company') == self.request['company_id']
         session = self.request['session']
-        user_role = session['user_role']
-        if user_role != 'admin':
+        if session['role'] != 'admin':
             logic &= V('e.host') == session['user_id']
         return Where(logic)
 
@@ -206,7 +205,7 @@ FROM (
 @is_admin_or_host
 async def event_tickets(request):
     event_id = int(request.match_info['id'])
-    if request['session']['user_role'] == 'host':
+    if request['session']['role'] == 'host':
         host_id = await request['conn'].fetchval('SELECT host FROM events WHERE id=$1', event_id)
         if host_id != request['session']['user_id']:
             raise JsonErrors.HTTPForbidden(message='use is not the host of this event')
@@ -257,7 +256,7 @@ async def booking_info(request):
         """
         SELECT COUNT(*)
         FROM tickets
-        JOIN actions a on tickets.reserve_action = a.id
+        JOIN actions AS a ON tickets.reserve_action = a.id
         WHERE event=$1 AND a.user_id=$2 AND status='paid'
         """,
         event_id,
@@ -299,6 +298,7 @@ class ReserveTickets(UpdateView):
     async def execute(self, m: Model):
         event_id = int(self.request.match_info['id'])
         ticket_count = len(m.tickets)
+        user_id = self.session['user_id']
 
         status, event_price, event_name = await self.conn.fetchrow(
             """
@@ -322,38 +322,30 @@ class ReserveTickets(UpdateView):
 
         try:
             async with self.conn.transaction():
-                user_lookup = await self.create_users(m.tickets)
+                await self.create_users(m.tickets)
 
-                action_id = await record_action_id(self.request, self.session['user_id'], ActionTypes.reserve_tickets)
+                action_id = await record_action_id(self.request, user_id, ActionTypes.reserve_tickets)
                 await self.conn.execute_b(
-                    'INSERT INTO tickets (:values__names) VALUES :values',
-                    values=MultipleValues(*[
-                        Values(
-                            event=event_id,
-                            user_id=user_lookup[t.email.lower()] if t.email else None,
-                            reserve_action=action_id,
-                            extra=to_json_if(t.dict(include={'dietary_req', 'extra_info'})),
-                        )
-                        for t in m.tickets
-                    ])
+                    """
+                    WITH v (email, first_name, last_name, extra) AS (VALUES :values)
+                    INSERT INTO tickets (event, reserve_action, user_id, first_name, last_name, extra)
+                    SELECT :event, :reserve_action, u.id, v.first_name, v.last_name, v.extra FROM v
+                    LEFT JOIN users AS u ON v.email=u.email AND u.company=:company_id
+                    """,
+                    event=event_id,
+                    reserve_action=action_id,
+                    company_id=self.request['company_id'],
+                    values=MultipleValues(*self.create_ticket_values(m.tickets)),
                 )
                 await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
         except CheckViolationError as e:
             logger.warning('CheckViolationError: %s', e)
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
 
-        user = await self.conn.fetchrow(
-            """
-            SELECT id, full_name(first_name, last_name, email) AS name, email, role
-            FROM users
-            WHERE id=$1
-            """,
-            self.session['user_id']
-        )
         # TODO needs to work when the event is free
         price_cent = int(event_price * ticket_count * 100)
         res = Reservation(
-            user_id=self.session['user_id'],
+            user_id=user_id,
             action_id=action_id,
             price_cent=price_cent,
             event_id=event_id,
@@ -365,36 +357,37 @@ class ReserveTickets(UpdateView):
             'ticket_count': ticket_count,
             'item_price_cent': int(event_price * 100),
             'total_price_cent': price_cent,
-            'user': dict(user),
             'timeout': int(time()) + self.settings.ticket_ttl,
         }
 
     async def create_users(self, tickets: List[TicketModel]):
-        user_values = []
+        user_values = [
+            Values(
+                company=self.request['company_id'],
+                role='guest',
+                email=t.email.lower(),
+            )
+            for t in tickets if t.email
+        ]
 
-        for t in tickets:
-            if t.name or t.email:
-                first_name, last_name = split_name(t.name)
-                user_values.append(
-                    Values(
-                        company=self.request['company_id'],
-                        role='guest',
-                        first_name=first_name,
-                        last_name=last_name,
-                        email=t.email and t.email.lower(),
-                    )
-                )
-        rows = await self.conn.fetch_b(
+        await self.conn.execute_b(
             """
             INSERT INTO users AS u (:values__names) VALUES :values
-            ON CONFLICT (company, email) DO UPDATE SET
-              first_name=coalesce(u.first_name, EXCLUDED.first_name),
-              last_name=coalesce(u.last_name, EXCLUDED.last_name)
-            RETURNING id, email
+            ON CONFLICT (company, email) DO NOTHING
             """,
             values=MultipleValues(*user_values)
         )
-        return {r['email']: r['id'] for r in rows}
+
+    @staticmethod
+    def create_ticket_values(tickets: List[TicketModel]):
+        for t in tickets:
+            first_name, last_name = split_name(t.name)
+            yield Values(
+                email=t.email and t.email.lower(),
+                first_name=first_name,
+                last_name=last_name,
+                extra=funcs.cast(to_json_if(t.dict(include={'dietary_req', 'extra_info'})), 'jsonb'),
+            )
 
 
 class CancelReservedTickets(UpdateView):

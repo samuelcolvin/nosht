@@ -130,12 +130,20 @@ CREATE TABLE tickets (
   id SERIAL PRIMARY KEY,
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
   user_id INT REFERENCES users ON DELETE CASCADE,
+  -- separate from the user's name to avoid confusing updates of the user's name
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   paid_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   extra JSONB
 );
+CREATE INDEX ticket_event ON tickets USING btree (event);
+CREATE INDEX ticket_user ON tickets USING btree (user_id);
+CREATE INDEX ticket_reserve_action ON tickets USING btree (reserve_action);
+CREATE INDEX ticket_status ON tickets USING btree (status);
+CREATE INDEX ticket_created_ts ON tickets USING btree (created_ts);
 
 -- must match triggers from emails/defaults.py!
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (

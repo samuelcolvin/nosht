@@ -275,7 +275,7 @@ async def test_booking_info_limited(cli, url, factory: Factory, login):
 async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.com')
+    await factory.create_user(first_name=None, last_name=None, email='ticket.buyer@example.com')
     await factory.create_event(status='published', price=10)
     await login(email='ticket.buyer@example.com')
 
@@ -302,12 +302,6 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         'ticket_count': 2,
         'item_price_cent': 10_00,
         'total_price_cent': 20_00,
-        'user': {
-            'id': factory.user_id,
-            'name': 'Ticket Buyer',
-            'email': 'ticket.buyer@example.com',
-            'role': 'admin',
-        },
         'timeout': AnyInt(),
     }
     booking_token = decrypt_json(cli.app['main_app'], data['booking_token'].encode())
@@ -322,23 +316,24 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     }
 
     users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
+    debug(users)
     assert users == [
         {
-            'first_name': 'Ticket',
-            'last_name': 'Buyer',
+            'first_name': None,
+            'last_name': None,
             'email': 'ticket.buyer@example.com',
             'role': 'admin',
         },
         {
-            'first_name': 'Other',
-            'last_name': 'Person',
+            'first_name': None,
+            'last_name': None,
             'email': 'other.person@example.com',
             'role': 'guest',
         },
     ]
     users = [dict(r) for r in await db_conn.fetch(
         """
-        SELECT event, user_id, reserve_action, paid_action, status, extra
+        SELECT event, user_id, first_name, last_name, reserve_action, paid_action, status, extra
         FROM tickets
         ORDER BY user_id
         """
@@ -347,6 +342,8 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         {
             'event': factory.event_id,
             'user_id': factory.user_id,
+            'first_name': 'Ticket',
+            'last_name': 'Buyer',
             'reserve_action': reserve_action_id,
             'paid_action': None,
             'status': 'reserved',
@@ -355,6 +352,8 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         {
             'event': factory.event_id,
             'user_id': await db_conn.fetchval('SELECT id FROM users WHERE email=$1', 'other.person@example.com'),
+            'first_name': 'Other',
+            'last_name': 'Person',
             'reserve_action': reserve_action_id,
             'paid_action': None,
             'status': 'reserved',

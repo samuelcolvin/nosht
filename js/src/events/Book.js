@@ -73,8 +73,6 @@ class BookWrapper extends React.Component {
         this.setState({booking_info})
       }
     } else {
-      this.props.setRootState({user: r.user})
-      delete r.user
       delete r._response_status
       this.setState({reservation: r})
     }

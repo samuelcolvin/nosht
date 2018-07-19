@@ -50,5 +50,6 @@ FROM (
 async def index(request):
     company_id = request['company_id']
     user_id = request['session'].get('user_id', None)
+    # TODO could cache this in redis as it's called A LOT
     json_str = await request['conn'].fetchval(company_sql, company_id, user_id)
     return raw_json_response(json_str)

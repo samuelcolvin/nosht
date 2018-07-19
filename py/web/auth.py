@@ -28,19 +28,20 @@ async def invalidate_session(request, reason):
     extra = {
         'age': int(time()) - session.created,
         'reason': reason,
+        'email': session.get('email')
     }
-    user_id = session['user_id']
+    user_id = session.get('user_id')
     session.invalidate()
     await record_action(request, user_id, ActionTypes.logout, **extra)
 
 
 async def check_session(request, *roles):
     session = request['session']
-    user_role = session.get('user_role')
-    if user_role is None:
+    role = session.get('role')
+    if role is None:
         raise JsonErrors.HTTPUnauthorized(message='Authentication required to view this page')
 
-    if user_role not in roles:
+    if role not in roles:
         raise JsonErrors.HTTPForbidden(message='role must be in: {}'.format(', '.join(roles)))
 
     last_active = session['last_active']

@@ -24,12 +24,12 @@ LOGIN_USER_SQL = """
 SELECT id, full_name(first_name, last_name, email) AS name,
   email, role, status, password_hash
 FROM users
-WHERE company=$1 AND email=$2 AND status='active' AND role!='guest'
+WHERE company=$1 AND email=$2 AND status='active'
 """
 
 
 def successful_login(user, app, headers_=None):
-    auth_session = {'user_id': user['id'], 'user_role': user['role'], 'last_active': int(time())}
+    auth_session = {'user_id': user['id'], 'email': user['email'], 'role': user['role'], 'last_active': int(time())}
     auth_token = encrypt_json(app, auth_session)
     return json_response(status='success', auth_token=auth_token, user=user, headers_=headers_)
 
@@ -151,33 +151,32 @@ SIGNIN_MODELS = {
     'facebook': (FacebookSiwModel, facebook_get_details),
     'google': (GoogleSiwModel, google_get_details),
 }
+# if first and last name are available it's from google or facebook and we can trust them
 CREATE_USER_SQL = """
 INSERT INTO users (:values__names) VALUES :values
-ON CONFLICT (company, email) DO UPDATE SET email=EXCLUDED.email
+ON CONFLICT (company, email) DO UPDATE SET
+  first_name=coalesce(first_name, EXCLUDED.first_name),
+  last_name=coalesce(last_name, EXCLUDED.last_name)
 RETURNING id, status
-"""
-GET_USER_SQL = """
-SELECT json_build_object('user', row_to_json(user_data))
-FROM (
-  SELECT id, full_name(first_name, last_name, email) AS name, email, role
-  FROM users
-  WHERE company=$1 AND id=$2
-) AS user_data;
 """
 
 
 async def guest_signin(request):
-    model, siw_method = SIGNIN_MODELS[request.match_info['site']]
+    signin_method = request.match_info['site']
+    model, siw_method = SIGNIN_MODELS[signin_method]
     m = await parse_request(request, model)
     details = await siw_method(m, app=request.app)
 
+    name_confirmed = signin_method in {'facebook', 'google'}
     company_id = request['company_id']
+    user_email = details['email'].lower()
     user_id, status = await request['conn'].fetchrow_b(
         CREATE_USER_SQL,
         values=Values(
             company=company_id,
             role='guest',
-            email=details['email'].lower(),
+            email=user_email,
+            status='active' if name_confirmed else 'pending',
             first_name=details.get('first_name'),
             last_name=details.get('last_name'),
         )
@@ -186,12 +185,18 @@ async def guest_signin(request):
         raise JsonErrors.HTTPBadRequest(message='user suspended')
 
     session = await new_session(request)
-    session.update({'user_id': user_id, 'user_role': 'guest', 'last_active': int(time())})
+    session.update({'user_id': user_id, 'role': 'guest', 'last_active': int(time())})
 
-    await record_action(request, user_id, ActionTypes.guest_signin)
+    await record_action(request, user_id, ActionTypes.guest_signin, signin_method=signin_method)
 
-    json_str = await request['conn'].fetchval(GET_USER_SQL, company_id, user_id)
-    return raw_json_response(json_str)
+    return json_response(
+        user=dict(
+            id=user_id,
+            name=(details.get('first_name', '') + ' ' + details.get('last_name', '')).strip(' ') or user_email,
+            email=user_email,
+            role='guest',
+        )
+    )
 
 
 class EmailNameModel(EmailModel):
@@ -236,11 +241,11 @@ async def host_signup(request):
         if status == 'suspended':
             raise JsonErrors.HTTP470(message='user suspended')
 
-    user_id = await request['conn'].fetchval_b(
+    user_id, user_email = await request['conn'].fetchrow_b(
         """
         INSERT INTO users (:values__names) VALUES :values
         ON CONFLICT (company, email) DO UPDATE SET role=EXCLUDED.role
-        RETURNING id
+        RETURNING id, email
         """,
         values=Values(
             company=company_id,
@@ -252,13 +257,22 @@ async def host_signup(request):
         )
     )
     session = await new_session(request)
-    session.update({'user_id': user_id, 'user_role': 'host', 'last_active': int(time())})
+    session.update({'user_id': user_id, 'email': user_email, 'role': 'host', 'last_active': int(time())})
 
     await record_action(request, user_id, ActionTypes.host_signup,
                         existing_user=bool(existing_role), signin_method=signin_method)
 
     await request.app['email_actor'].send_account_created(user_id)
-    json_str = await request['conn'].fetchval(GET_USER_SQL, company_id, user_id)
+    json_str = await request['conn'].fetchval(
+        """
+        SELECT json_build_object('user', row_to_json(user_data))
+        FROM (
+          SELECT id, full_name(first_name, last_name, email) AS name, email, role
+          FROM users
+          WHERE company=$1 AND id=$2
+        ) AS user_data;
+        """,
+        company_id, user_id)
     return raw_json_response(json_str)
 
 
