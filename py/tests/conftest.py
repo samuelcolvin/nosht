@@ -1,4 +1,7 @@
 import asyncio
+import base64
+import hashlib
+import hmac
 import json
 import random
 import uuid
@@ -332,4 +335,15 @@ def _fix_url(cli):
         if query:
             url = url.with_query(**query)
         return url
+    return f
+
+
+@pytest.fixture(name='signed_fb_request')
+def _fix_signed_fb_request(settings):
+    def f(data):
+        raw_data = base64.urlsafe_b64encode(json.dumps(data, separators=(',', ':')).encode())[:-1]
+        sig_raw = hmac.new(settings.facebook_siw_app_secret, raw_data, hashlib.sha256).digest()
+        sig = base64.urlsafe_b64encode(sig_raw).decode()
+        return sig[:-1] + '.' + raw_data.decode()
+
     return f

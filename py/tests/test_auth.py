@@ -1,6 +1,3 @@
-import base64
-import hashlib
-import hmac
 import json
 import re
 
@@ -37,6 +34,92 @@ async def test_login_successful(cli, url, factory: Factory):
 
     r = await cli.get(url('event-categories'))
     assert r.status == 200, await r.text()
+
+
+@pytest.mark.parametrize('post_data', [
+    dict(email='not-frank@example.com', password='testing', grecaptcha_token='__ok__'),
+    dict(email='frank@example.com', password='testing1', grecaptcha_token='__ok__'),
+    dict(email='not-frank@example.com', password='testing1', grecaptcha_token='__ok__'),
+    dict(email='frank@example.com', password='_dummy_password_', grecaptcha_token='__ok__'),
+])
+async def test_login_unsuccessful(post_data, cli, url, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+
+    assert len(cli.session.cookie_jar) == 0
+
+    r = await cli.json_post(url('login'), data=post_data)
+    assert r.status == 470, await r.text()
+    data = await r.json()
+    assert data == {
+        'status': 'invalid',
+        'message': 'invalid email or password',
+    }
+
+    assert len(cli.session.cookie_jar) == 0
+    r = await cli.get(url('event-categories'))
+    assert r.status == 401, await r.text()
+
+
+async def test_login_with(cli, url, factory: Factory, signed_fb_request):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.com')
+
+    data = {
+        'signedRequest': signed_fb_request({'user_id': '123456'}),
+        'accessToken': '__ok__',
+        'userID': 123456,
+        'grecaptcha_token': '__ok__',
+    }
+
+    r = await cli.json_post(url('login-google-facebook', site='facebook'), data=data)
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    r = await cli.json_post(url('auth-token'), data={'token': data['auth_token']})
+    assert r.status == 200, await r.text()
+
+    assert len(cli.session.cookie_jar) == 1
+
+    r = await cli.get(url('event-categories'))
+    assert r.status == 200, await r.text()
+
+
+async def test_login_with_missing(cli, url, factory: Factory, signed_fb_request):
+    await factory.create_company()
+    await factory.create_user()
+
+    data = {
+        'signedRequest': signed_fb_request({'user_id': '123456'}),
+        'accessToken': '__ok__',
+        'userID': 123456,
+        'grecaptcha_token': '__ok__',
+    }
+    r = await cli.json_post(url('login-google-facebook', site='facebook'), data=data)
+    assert r.status == 470, await r.text()
+    data = await r.json()
+    assert data == {
+        'status': 'invalid',
+        'message': 'User with email address "facebook-auth@example.com" not found',
+    }
+
+    assert len(cli.session.cookie_jar) == 0
+    r = await cli.get(url('event-categories'))
+    assert r.status == 401, await r.text()
+
+
+async def test_logout(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    r = await cli.get(url('event-categories'))
+    assert r.status == 200, await r.text()
+
+    r = await cli.json_post(url('logout'))
+    assert r.status == 200, await r.text()
+
+    r = await cli.get(url('event-categories'))
+    assert r.status == 401, await r.text()
 
 
 async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_server, settings):
@@ -131,17 +214,6 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
     email = dummy_server.app['emails'][0]['part:text/plain']
     assert 'Create &amp; Publish Events' in email
     assert 'Confirm Email' not in email
-
-
-@pytest.fixture(name='signed_fb_request')
-def _fix_signed_fb_request(settings):
-    def f(data):
-        raw_data = base64.urlsafe_b64encode(json.dumps(data, separators=(',', ':')).encode())[:-1]
-        sig_raw = hmac.new(settings.facebook_siw_app_secret, raw_data, hashlib.sha256).digest()
-        sig = base64.urlsafe_b64encode(sig_raw).decode()
-        return sig[:-1] + '.' + raw_data.decode()
-
-    return f
 
 
 async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_fb_request):
