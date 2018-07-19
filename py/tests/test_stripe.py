@@ -138,9 +138,10 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
     r = await cli.json_post(url('event-buy-tickets'), data=m.json())
     assert r.status == 200, await r.text()
 
+    debug(dummy_server.app['log'])
     assert dummy_server.app['log'] == [
-        ('stripe_post_customers', None),
-        ('stripe_post_charges', None),
+        'stripe_root_url/customers',
+        'stripe_root_url/charges',
         (
             'email_send_endpoint',
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.com>"',

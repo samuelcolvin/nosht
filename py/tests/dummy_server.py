@@ -2,6 +2,7 @@ import base64
 from email import message_from_bytes
 
 from aiohttp import web
+from aiohttp.web_middlewares import middleware
 from aiohttp.web_response import Response, json_response
 
 
@@ -15,14 +16,14 @@ async def aws_ses(request):
         if payload:
             d[f'part:{part.get_content_type()}'] = payload.decode().replace('\r\n', '\n')
 
-    request.app['log'].append(('email_send_endpoint', 'Subject: "{Subject}", To: "{To}"'.format(**email)))
+    request.app['log'][-1] = ('email_send_endpoint', 'Subject: "{Subject}", To: "{To}"'.format(**email))
     request.app['emails'].append(d)
     return Response(text='<MessageId>testing</MessageId>')
 
 
 async def grecaptcha(request):
     data = await request.post()
-    request.app['log'].append(('grecaptcha', data['response']))
+    request.app['log'][-1] = ('grecaptcha', data['response'])
     if data['response'] == '__ok__':
         return json_response(dict(success=True, score=1, action='testing', hostname='127.0.0.1'))
     elif data['response'] == '__low_score__':
@@ -32,12 +33,10 @@ async def grecaptcha(request):
 
 
 async def google_siw(request):
-    request.app['log'].append(('google_siw', None))
     return json_response({'certs': 'testing'})
 
 
 async def facebook_siw(request):
-    request.app['log'].append(('facebook_siw', None))
     return json_response({
         'id': '123456',
         'email': 'facebook-auth@EXAMPLE.com',
@@ -47,17 +46,14 @@ async def facebook_siw(request):
 
 
 async def stripe_get_customer_sources(request):
-    request.app['log'].append(('stripe_get_customer_sources', None))
     return json_response('TODO')
 
 
 async def stripe_post_customer_sources(request):
-    request.app['log'].append(('stripe_post_customer_sources', None))
     return json_response('TODO')
 
 
 async def stripe_post_customers(request):
-    request.app['log'].append(('stripe_post_customers', None))
     return json_response({
         'id': 'customer-id',
         'sources': {
@@ -71,7 +67,6 @@ async def stripe_post_customers(request):
 
 
 async def stripe_post_charges(request):
-    request.app['log'].append(('stripe_post_charges', None))
     return json_response({
         'id': 'charge-id',
         'source': {
@@ -83,8 +78,14 @@ async def stripe_post_charges(request):
     })
 
 
+@middleware
+async def log_middleware(request, handler):
+    request.app['log'].append(request.path.strip('/'))
+    return await handler(request)
+
+
 async def create_dummy_server(loop, create_server):
-    app = web.Application(loop=loop)
+    app = web.Application(loop=loop, middlewares=(log_middleware,))
     app.add_routes([
         web.post('/aws_ses_endpoint/', aws_ses),
         web.post('/grecaptcha_url/', grecaptcha),

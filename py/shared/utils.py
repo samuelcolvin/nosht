@@ -74,17 +74,17 @@ def format_duration(td: timedelta):
         return '1 hour'
 
     if minutes < 60:
-        return f'{minutes} mins'
+        return f'{minutes:0.0f} mins'
 
     hours = minutes // 60
     minutes = minutes % 60
     if hours == 1:
-        return f'1 hour {minutes} mins'
+        return f'1 hour {minutes:0.0f} mins'
 
     if minutes == 0:
-        return f'{hours} hours'
+        return f'{hours:0.0f} hours'
     else:
-        return f'{hours} hours {minutes} mins'
+        return f'{hours:0.0f} hours {minutes:0.0f} mins'
 
 
 def iso_timedelta(dt: timedelta):

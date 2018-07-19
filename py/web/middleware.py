@@ -11,7 +11,7 @@ from aiohttp_session import get_session
 from .auth import remove_port
 from .utils import HEADER_CROSS_ORIGIN, JSON_CONTENT_TYPE, JsonErrors, get_ip, request_root
 
-logger = logging.getLogger('nosht.web.mware')
+logger = logging.getLogger('nosht.middleware')
 
 
 def lenient_json(v):

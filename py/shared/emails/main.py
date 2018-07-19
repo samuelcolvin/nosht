@@ -45,7 +45,7 @@ class EmailActor(BaseEmailActor):
             'event_name': data['name'],
             'event_short_description': data['short_description'],
             'event_start': data['start_ts'] if duration else data['start_ts'].date(),
-            'event_duration': int(duration.total_seconds()) if duration else 'All day',
+            'event_duration': duration or 'All day',
             'event_location': data['location_name'],
             'ticket_price': display_cash(data['price'], data['currency']),
             'buyer_name': data['user_name']

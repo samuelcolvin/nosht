@@ -1,9 +1,7 @@
 from datetime import datetime, timedelta
 
-from buildpg import MultipleValues, Values
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
-from shared.db import ActionTypes
 from web.utils import decrypt_json, encrypt_json
 
 from .conftest import Factory
@@ -500,31 +498,8 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
 
     user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.com')
 
-    r = await db_conn.fetch_b(
-        'INSERT INTO actions (:values__names) VALUES :values RETURNING id', values=MultipleValues(
-            Values(
-                company=factory.company_id,
-                user_id=user2_id,
-                type=ActionTypes.reserve_tickets
-            ),
-            Values(
-                company=factory.company_id,
-                user_id=user2_id,
-                type=ActionTypes.buy_tickets
-            ),
-        )
-    )
-    reserve_action, paid_action = [r_['id'] for r_ in r]
-    ticket_id = await db_conn.fetchval_b(
-        'INSERT INTO tickets (:values__names) VALUES :values RETURNING id',
-        values=Values(
-            event=factory.event_id,
-            user_id=user2_id,
-            reserve_action=reserve_action,
-            paid_action=paid_action,
-            status='paid'
-        )
-    )
+    res = await factory.create_reservation(user2_id)
+    await factory.buy_tickets(res, user2_id)
 
     await login()
 
@@ -534,7 +509,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     assert data == {
         'tickets': [
             {
-                'ticket_id': ticket_id,
+                'ticket_id': await db_conn.fetchval('SELECT id from tickets'),
                 'extra': None,
                 'user_id': user2_id,
                 'user_name': 'guest guest',

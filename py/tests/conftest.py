@@ -14,14 +14,14 @@ import lorem
 import pytest
 from aiohttp.test_utils import teardown_test_loop
 from aioredis import create_redis
-from buildpg import Values, asyncpg
+from buildpg import MultipleValues, Values, asyncpg
 
 from shared.db import create_demo_data as _create_demo_data
 from shared.db import prepare_database
 from shared.settings import Settings
-from shared.utils import mk_password, slugify
+from shared.utils import encrypt_json, mk_password, slugify
 from web.main import create_app
-from web.stripe import Reservation
+from web.stripe import Reservation, StripePayModel, stripe_pay
 
 from .dummy_server import create_dummy_server
 
@@ -127,9 +127,10 @@ async def create_demo_data(db_conn, settings):
 
 
 class Factory:
-    def __init__(self, conn, settings):
+    def __init__(self, conn, app):
         self.conn = conn
-        self.settings = settings
+        self.app = app
+        self.settings: Settings = app['settings']
         self.company_id = None
         self.category_id = None
         self.user_id = None
@@ -231,26 +232,38 @@ class Factory:
         self.event_id = self.event_id or event_id
         return event_id
 
-    async def create_reservation(self):
+    async def create_reservation(self, user_id=None, *extra_user_ids):
+        user_id = user_id or self.user_id
         action_id = await self.conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
             values=Values(
                 company=self.company_id,
-                user_id=self.user_id,
+                user_id=user_id,
                 type='reserve-tickets'
             )
         )
-        await self.conn.execute_b(
-            'INSERT INTO tickets (:values__names) VALUES :values',
-            values=Values(
+        ticket_values = [
+            Values(
                 event=self.event_id,
-                user_id=self.user_id,
+                user_id=user_id,
                 reserve_action=action_id,
             )
+        ]
+        for extra_user_id in extra_user_ids:
+            ticket_values.append(
+                Values(
+                    event=self.event_id,
+                    user_id=extra_user_id,
+                    reserve_action=action_id,
+                )
+            )
+        await self.conn.execute_b(
+            'INSERT INTO tickets (:values__names) VALUES :values',
+            values=MultipleValues(*ticket_values)
         )
         await self.conn.execute('SELECT check_tickets_remaining($1, $2)', self.event_id, self.settings.ticket_ttl)
         return Reservation(
-            user_id=self.user_id,
+            user_id=user_id,
             action_id=action_id,
             event_id=self.event_id,
             price_cent=10_00,
@@ -258,10 +271,19 @@ class Factory:
             event_name='Foobar',
         )
 
+    async def buy_tickets(self, reservation: Reservation, user_id=None):
+        m = StripePayModel(
+            stripe_token='tok_visa',
+            stripe_client_ip='0.0.0.0',
+            stripe_card_ref='4242-32-01',
+            booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
+        )
+        return await stripe_pay(m, self.company_id, user_id or self.user_id, self.app, self.conn)
+
 
 @pytest.fixture
-async def factory(db_conn, settings):
-    return Factory(db_conn, settings)
+async def factory(db_conn, cli):
+    return Factory(db_conn, cli.app['main_app'])
 
 
 @pytest.fixture

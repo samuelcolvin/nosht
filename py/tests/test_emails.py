@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import timedelta
 
 import pytest
 from buildpg import Values
@@ -7,7 +8,6 @@ from pytest_toolbox.comparison import RegexStr
 
 from shared.emails import EmailActor, Triggers, UserEmail
 from shared.settings import Settings
-from web.actions import ActionTypes
 
 from .conftest import Factory
 
@@ -68,35 +68,20 @@ async def test_with_def(email_actor: EmailActor, factory: Factory, dummy_server,
     }
 
 
-async def test_send_ticket_email(email_actor: EmailActor, db_conn, factory: Factory, dummy_server):
+async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(email='testing@scolvin.com')
     await factory.create_event(price=10, location_name='The Location', location_lat=51.5, location_lng=-0.2)
 
-    res_action_id = await db_conn.fetchval_b(
-        'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-        values=Values(company=factory.company_id, user_id=factory.user_id, type=ActionTypes.reserve_tickets)
-    )
-    paid_action_id = await db_conn.fetchval_b(
-        'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-        values=Values(company=factory.company_id, user_id=factory.user_id, type=ActionTypes.buy_tickets)
-    )
-
-    await db_conn.execute_b(
-        'INSERT INTO tickets (:values__names) VALUES :values RETURNING id',
-        values=Values(
-            event=factory.event_id,
-            user_id=factory.user_id,
-            reserve_action=res_action_id,
-            paid_action=paid_action_id,
-            status='paid',
-        )
-    )
+    res = await factory.create_reservation()
+    paid_action_id = await factory.buy_tickets(res)
 
     await email_actor.send_event_conf(paid_action_id)
 
     assert dummy_server.app['log'] == [
+        'stripe_root_url/customers',
+        'stripe_root_url/charges',
         ('email_send_endpoint', 'Subject: "The Event Name Ticket Confirmation", '
                                 'To: "Frank Spencer <testing@scolvin.com>"'),
     ]
@@ -110,6 +95,37 @@ async def test_send_ticket_email(email_actor: EmailActor, db_conn, factory: Fact
         '</div>\n'
     ) in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
+    assert '<li>Duration: <strong>All day</strong></li>' in html
+
+
+async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(email='testing@scolvin.com')
+    await factory.create_event(price=10, location_name='The Location',
+                               location_lat=51.5, location_lng=-0.2, duration=timedelta(hours=1.5))
+
+    res = await factory.create_reservation()
+    paid_action_id = await factory.buy_tickets(res)
+
+    await email_actor.send_event_conf(paid_action_id)
+
+    assert dummy_server.app['log'] == [
+        'stripe_root_url/customers',
+        'stripe_root_url/charges',
+        ('email_send_endpoint', 'Subject: "The Event Name Ticket Confirmation", '
+                                'To: "Frank Spencer <testing@scolvin.com>"'),
+    ]
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    html = email['part:text/html']
+    assert (
+        '<div class="button">\n'
+        '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n'
+        '</div>\n'
+    ) in html
+    assert '<p><a href="https://www.google.com/maps/place/' in html
+    assert '<li>Duration: <strong>1 hour 30 mins</strong></li>' in html
 
 
 async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):

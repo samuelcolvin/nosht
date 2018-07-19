@@ -46,7 +46,7 @@ Payment:
 * Total Amount Charged: **{{ total_price }}**
 
 
-_(Card Charged: **{{ card_details }})_
+_(Card Charged: {{ card_details }})_
 """
     },
     Triggers.ticket_other: {
