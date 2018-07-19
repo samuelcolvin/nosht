@@ -2,7 +2,6 @@ import hashlib
 import hmac
 import json
 import re
-import secrets
 from datetime import timedelta
 from urllib.parse import urlencode
 

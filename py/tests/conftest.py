@@ -302,7 +302,21 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
     app['test_conn'] = db_conn
     app.on_startup.insert(0, pre_startup_app)
     app.on_startup.append(post_startup_app)
-    return await aiohttp_client(app)
+    cli = await aiohttp_client(app)
+    cli.post_vanilla = cli.post
+
+    def json_post(url, *, data=None, headers=None):
+        if data and not isinstance(data, str):
+            data = json.dumps(data)
+        headers = {
+            'Content-Type': 'application/json',
+            # 'Origin': 'http://{'
+            **(headers or {}),
+        }
+        return cli.post_vanilla(url, data=data, headers=headers)
+
+    cli.post = json_post
+    return cli
 
 
 @pytest.fixture(name='url')

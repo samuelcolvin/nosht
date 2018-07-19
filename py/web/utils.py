@@ -13,6 +13,7 @@ from pydantic.json import pydantic_encoder
 from shared.utils import encrypt_json as _encrypt_json
 
 JSON_CONTENT_TYPE = 'application/json'
+HEADER_CROSS_ORIGIN = {'Access-Control-Allow-Origin': 'null'}
 
 
 def isoformat(o):

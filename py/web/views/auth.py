@@ -11,8 +11,8 @@ from shared.utils import mk_password, unsubscribe_sig
 from web.auth import (ActionTypes, FacebookSiwModel, GoogleSiwModel, GrecaptchaModel, check_grecaptcha,
                       facebook_get_details, google_get_details, invalidate_session, is_auth, record_action,
                       validate_email)
-from web.utils import (JsonErrors, decrypt_json, encrypt_json, json_response, parse_request, raw_json_response,
-                       request_root, split_name)
+from web.utils import (HEADER_CROSS_ORIGIN, JsonErrors, decrypt_json, encrypt_json, json_response, parse_request,
+                       raw_json_response, request_root, split_name)
 
 
 class LoginModel(GrecaptchaModel):
@@ -34,9 +34,8 @@ def successful_login(user, app, headers_=None):
 
 
 async def login(request):
-    h = {'Access-Control-Allow-Origin': 'null'}
-    m = await parse_request(request, LoginModel, error_headers=h)
-    await check_grecaptcha(m, request, threshold=0.8, error_headers=h)
+    m = await parse_request(request, LoginModel, error_headers=HEADER_CROSS_ORIGIN)
+    await check_grecaptcha(m, request, threshold=0.8, error_headers=HEADER_CROSS_ORIGIN)
 
     if m.password != request.app['settings'].dummy_password:
         r = await request['conn'].fetchrow(LOGIN_USER_SQL, request['company_id'], m.email)
@@ -51,9 +50,10 @@ async def login(request):
         password_hash = password_hash or request.app['dummy_password_hash']
 
         if bcrypt.checkpw(m.password.encode(), password_hash.encode()):
-            return successful_login(user, request.app, h)
+            return successful_login(user, request.app, HEADER_CROSS_ORIGIN)
 
-    return json_response(status='invalid', message='invalid email or password', headers_=h, status_=470)
+    return json_response(status='invalid', message='invalid email or password',
+                         headers_=HEADER_CROSS_ORIGIN, status_=470)
 
 
 LOGIN_MODELS = {
@@ -109,9 +109,8 @@ class PasswordModel(BaseModel):
 
 
 async def set_password(request):
-    h = {'Access-Control-Allow-Origin': 'null'}
     conn = request['conn']
-    m = await parse_request(request, PasswordModel, error_headers=h)
+    m = await parse_request(request, PasswordModel, error_headers=HEADER_CROSS_ORIGIN)
     user_id = decrypt_json(request.app, m.token.encode(), ttl=3600 * 24 * 7)
     nonce = m.token[:20]
 
@@ -135,7 +134,7 @@ async def set_password(request):
 
     await conn.execute("UPDATE users SET password_hash=$1, status='active' WHERE id=$2", pw_hash, user_id)
     await record_action(request, user_id, ActionTypes.password_reset, nonce=nonce)
-    return json_response(status='success', headers_=h)
+    return json_response(status='success', headers_=HEADER_CROSS_ORIGIN)
 
 
 class EmailModel(GrecaptchaModel):

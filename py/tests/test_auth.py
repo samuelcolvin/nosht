@@ -6,9 +6,10 @@ import re
 
 import pytest
 from cryptography import fernet
-from pytest_toolbox.comparison import AnyInt, RegexStr
+from pytest_toolbox.comparison import AnyInt
 
 from web.utils import encrypt_json
+
 from .conftest import Factory
 
 

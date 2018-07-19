@@ -96,6 +96,7 @@ export const request = (method, path, config) => {
     const on_error = (user_msg, error_details) => reject({user_msg, url, xhr, error_details, status: xhr.status})
     xhr.open(method, url)
     xhr.setRequestHeader('Accept', 'application/json')
+    method === 'POST' && xhr.setRequestHeader('Content-Type', 'application/json')
     xhr.onload = () => {
       if (config.expected_statuses.includes(xhr.status)) {
         try {

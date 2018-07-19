@@ -14,7 +14,7 @@ from shared.logs import setup_logging
 from shared.settings import Settings
 from shared.utils import mk_password
 
-from .middleware import error_middleware, host_middleware, pg_middleware
+from .middleware import csrf_middleware, error_middleware, host_middleware, pg_middleware
 from .views import index
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout, set_password,
                          unsubscribe)
@@ -61,6 +61,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         session_middleware(EncryptedCookieStorage(settings.auth_key, cookie_name='nosht')),
         pg_middleware,
         host_middleware,
+        csrf_middleware,
     ))
 
     app.update(

@@ -3,11 +3,13 @@ import logging
 import re
 from time import time
 
+from aiohttp.hdrs import METH_OPTIONS, METH_POST
 from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
+from aiohttp.web_response import Response
 from aiohttp_session import get_session
 
-from .utils import JsonErrors, get_ip
+from .utils import HEADER_CROSS_ORIGIN, JSON_CONTENT_TYPE, JsonErrors, get_ip, request_root
 
 logger = logging.getLogger('nosht.web.mware')
 
@@ -129,4 +131,37 @@ async def host_middleware(request, handler):
     if not company_id:
         return JsonErrors.HTTPBadRequest(message=msg)
     request['company_id'] = company_id
+    return await handler(request)
+
+
+ALLOWED_HOSTS = 'localhost', '127.0.0.1'
+
+
+def origin_check(request):
+    # origin and host ports differ on localhost when testing
+    return request.headers.get('Origin') == f'https://{request.host}/' or request.host.startswith(ALLOWED_HOSTS)
+
+
+def referrer_check(request):
+    r = request.headers.get('Referer')
+    return r is None or r.startswith(request_root(request) + '/')
+
+
+@middleware
+async def csrf_middleware(request, handler):
+    h = request.headers
+    if request.method == METH_OPTIONS and 'Access-Control-Request-Method' in h:
+        if (h.get('Access-Control-Request-Method') == METH_POST and
+                h.get('Access-Control-Request-Headers').lower() == 'content-type' and
+                origin_check(request)):
+            headers = {'Access-Control-Allow-Headers': 'Content-Type', **HEADER_CROSS_ORIGIN}
+            return Response(text='ok', headers=headers)
+        else:
+            raise JsonErrors.HTTPForbidden(error='Access-Control checks failed', headers_=HEADER_CROSS_ORIGIN)
+    elif request.method == METH_POST:
+        if not (h.get('Content-Type') == JSON_CONTENT_TYPE and origin_check(request) and referrer_check(request)):
+            logger.warning('CSRF failure, Content-Type: "%s", Origin: "%s", Referer: "%s"',
+                           h.get('Content-Type'), h.get('Origin'), h.get('Referer'))
+            raise JsonErrors.HTTPForbidden(error='CSRF failure', headers_=HEADER_CROSS_ORIGIN)
+
     return await handler(request)

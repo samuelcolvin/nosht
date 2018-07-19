@@ -6,7 +6,7 @@
     <title>Login Form</title>
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'none';
-      script-src 'sha256-9UHSUAWQlciag9xRDDytTAP3dws1E3S85/k69telKrw=';
+      script-src 'unsafe-inline';
       style-src http://localhost:3000 https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/;
       connect-src http://localhost:3000;
     ">
@@ -79,6 +79,7 @@
         const xhr = new XMLHttpRequest()
         xhr.open(form.method, form.action)
         xhr.setRequestHeader('Accept', 'application/json')
+        xhr.setRequestHeader('Content-Type', 'application/json')
         xhr.onload = function () {
           let data
           try {
