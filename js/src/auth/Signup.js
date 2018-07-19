@@ -8,7 +8,7 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {grecaptcha_key} from '../utils'
+import {grecaptcha_execute} from '../utils'
 import Input from '../forms/Input'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
@@ -69,7 +69,7 @@ export default class Signup extends React.Component {
   }
 
   async auth (site, post_data) {
-    post_data.grecaptcha_token = await window.grecaptcha.execute(grecaptcha_key, {action: 'signup'})
+    post_data.grecaptcha_token = await grecaptcha_execute('host_signup')
     let data
     try {
       data = await this.props.requests.post(`/signup/${site}/`, post_data, {expected_statuses: [200, 470]})

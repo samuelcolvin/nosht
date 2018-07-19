@@ -18,7 +18,7 @@ from shared.settings import Settings
 from shared.utils import RequestError
 
 from .actions import ActionTypes, record_action
-from .utils import JsonErrors
+from .utils import JsonErrors, get_ip
 
 logger = logging.getLogger('nosht.auth')
 
@@ -99,7 +99,7 @@ async def validate_email(email, loop):
 
 
 class GrecaptchaModel(BaseModel):
-    grecaptcha_token: str = None  # TODO make required
+    grecaptcha_token: str
 
 
 class GoogleSiwModel(GrecaptchaModel):
@@ -179,22 +179,23 @@ async def facebook_get_details(m: FacebookSiwModel, app):
     }
 
 
-async def check_grecaptcha(m: GrecaptchaModel, client_ip, app):
-    if not m.grecaptcha_token:
-        # TODO remove once grecaptcha_token is required
-        raise JsonErrors.HTTPBadRequest(message='grecaptcha token missing')
-
-    settings: Settings = app['settings']
+async def check_grecaptcha(m: GrecaptchaModel, request, *, threshold=None, error_headers=None) -> float:
+    settings: Settings = request.app['settings']
+    client_ip = get_ip(request)
     post_data = {
         'secret': settings.grecaptcha_secret,
         'response': m.grecaptcha_token,
         'remoteip': client_ip,
     }
-    async with app['http_client'].post(settings.grecaptcha_url, data=post_data) as r:
+    async with request.app['http_client'].post(settings.grecaptcha_url, data=post_data) as r:
         if r.status != 200:
             raise RequestError(r.status, settings.grecaptcha_url, info=await r.text())
         data = await r.json()
 
-    if not data['success'] or data['score'] < settings.grecaptcha_threshold:
+    threshold = threshold or settings.grecaptcha_threshold
+    if not data['success'] or data['score'] < threshold:
         logger.warning('grecaptcha failure, ip=%s, response=%s', client_ip, data)
-        raise JsonErrors.HTTPBadRequest(message='Invalid recaptcha value')
+        raise JsonErrors.HTTPBadRequest(message='Invalid recaptcha value', headers_=error_headers)
+    else:
+        logger.info('grecaptcha success, score=%0.3f, action=%s', data['score'], data['action'])
+        return data['score']

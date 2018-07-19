@@ -55,7 +55,7 @@ class StripeForm_ extends React.Component {
       submitting: false,
       submitted: false,
       cancelled: false,
-      name: props.user_name,
+      name: props.billing_name,
       address: null,
       city: null,
       postcode: null,
@@ -209,6 +209,9 @@ class StripeForm_ extends React.Component {
       {name: 'Total Price', value: this.as_price(res.total_price_cent)},
     ]
     const expired = this.state.time_left < 1
+    if (expired) {
+      items.splice(0, 1)
+    }
     return (
       <BootstrapForm className="pad-less" onSubmit={this.take_payment.bind(this)}>
         <ModalBody>

@@ -9,6 +9,7 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
 
@@ -32,7 +33,7 @@ export class User extends React.Component {
         </small>
         &nbsp;
         <small className="text-dark">
-          {this.props.user.name}
+          {user_full_name(this.props.user)}
         </small>
         <Button onClick={this.logout.bind(this)} color="link" size="sm" className="pl-1 pr-0">
           (Logout)
@@ -45,9 +46,15 @@ export class User extends React.Component {
 const TicketInfo = ({index, state, set_ticket_state, user}) => {
   const key = `ticket_${index}`
   const ticket_info = state[key] || {}
-  const name_field = {
-    name: key + 'name',
-    placeholder: 'name',
+  const first_name_field = {
+    name: key + 'first_name',
+    placeholder: 'first name',
+    show_label: false,
+    help_text: index === 0 ? '' : "Leave blank if you don't know the guest's name."
+  }
+  const last_name_field = {
+    name: key + 'last_name',
+    placeholder: 'last name',
     show_label: false,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's name."
   }
@@ -87,16 +94,24 @@ const TicketInfo = ({index, state, set_ticket_state, user}) => {
     <div className="mb-1 pb-1">
       <h5>{title}</h5>
       <Row>
-        <Col md="6">
+        <Col md="4">
           <Input className="my-0"
-                value={!ticket_info.name && index === 0 && user.name && user.name !== user.email ?
-                       user.name : ticket_info.name}
-                field={name_field}
-                set_value={v => set_ticket_state(key, 'name', v)}/>
+                value={!ticket_info.first_name && index === 0 && user.first_name ?
+                       user.first_name : ticket_info.first_name}
+                field={first_name_field}
+                set_value={v => set_ticket_state(key, 'first_name', v)}/>
         </Col>
-        <Col md="6">
+        <Col md="4">
           <Input className="my-0"
-                value={!ticket_info.email && index === 0 ? user.email : ticket_info.email}
+                value={!ticket_info.last_name && index === 0 && user.last_name ?
+                       user.last_name :
+                        ticket_info.last_name}
+                field={last_name_field}
+                set_value={v => set_ticket_state(key, 'last_name', v)}/>
+        </Col>
+        <Col md="4">
+          <Input className="my-0"
+                value={ticket_info.email === undefined && index === 0 ? user.email : ticket_info.email}
                 field={email_field}
                 set_value={v => set_ticket_state(key, 'email', v)}/>
         </Col>

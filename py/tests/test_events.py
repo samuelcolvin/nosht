@@ -283,12 +283,14 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         'tickets': [
             {
                 't': True,
-                'name': 'Ticket Buyer',
+                'first_name': 'Ticket',
+                'last_name': 'Buyer',
                 'email': 'ticket.buyer@example.com',
             },
             {
                 't': True,
-                'name': 'Other Person',
+                'first_name': 'Other',
+                'last_name': 'Person',
                 'email': 'other.person@example.com',
                 'extra_info': 'I love to party'
             },

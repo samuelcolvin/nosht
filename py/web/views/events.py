@@ -276,7 +276,8 @@ class DietaryReqEnum(Enum):
 
 class TicketModel(BaseModel):
     t: bool
-    name: constr(max_length=255) = None
+    first_name: constr(max_length=255) = None
+    last_name: constr(max_length=255) = None
     email: EmailStr = None
     dietary_req: DietaryReqEnum = None
     extra_info: str = None
@@ -325,6 +326,16 @@ class ReserveTickets(UpdateView):
                 await self.create_users(m.tickets)
 
                 action_id = await record_action_id(self.request, user_id, ActionTypes.reserve_tickets)
+                ticket_values = [
+                    Values(
+                        email=t.email and t.email.lower(),
+                        first_name=t.first_name,
+                        last_name=t.last_name,
+                        extra=funcs.cast(to_json_if(t.dict(include={'dietary_req', 'extra_info'})), 'jsonb'),
+                    )
+                    for t in m.tickets
+                ]
+
                 await self.conn.execute_b(
                     """
                     WITH v (email, first_name, last_name, extra) AS (VALUES :values)
@@ -335,7 +346,7 @@ class ReserveTickets(UpdateView):
                     event=event_id,
                     reserve_action=action_id,
                     company_id=self.request['company_id'],
-                    values=MultipleValues(*self.create_ticket_values(m.tickets)),
+                    values=MultipleValues(*ticket_values),
                 )
                 await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
         except CheckViolationError as e:
@@ -377,17 +388,6 @@ class ReserveTickets(UpdateView):
             """,
             values=MultipleValues(*user_values)
         )
-
-    @staticmethod
-    def create_ticket_values(tickets: List[TicketModel]):
-        for t in tickets:
-            first_name, last_name = split_name(t.name)
-            yield Values(
-                email=t.email and t.email.lower(),
-                first_name=first_name,
-                last_name=last_name,
-                extra=funcs.cast(to_json_if(t.dict(include={'dietary_req', 'extra_info'})), 'jsonb'),
-            )
 
 
 class CancelReservedTickets(UpdateView):

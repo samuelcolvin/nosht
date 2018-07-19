@@ -2,6 +2,8 @@ import format from 'date-fns/format'
 
 export const grecaptcha_key = process.env.REACT_APP_RECAPTCHA_KEY
 
+export const grecaptcha_execute = action => window.grecaptcha.execute(grecaptcha_key, {action})
+
 const _add_script = (url, reject) => {
   const script = document.createElement('script')
   script.src = url
@@ -179,3 +181,5 @@ export const as_title = s => s.replace(/(_|\b)\w/g, l => l.toUpperCase().replace
 export const get_component_name = WrappedComponent => (
   WrappedComponent.displayName || WrappedComponent.name || 'Component'
 )
+
+export const user_full_name = user => `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email

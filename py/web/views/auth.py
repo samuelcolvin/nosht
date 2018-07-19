@@ -11,20 +11,19 @@ from shared.utils import mk_password, unsubscribe_sig
 from web.auth import (ActionTypes, FacebookSiwModel, GoogleSiwModel, GrecaptchaModel, check_grecaptcha,
                       facebook_get_details, google_get_details, invalidate_session, is_auth, record_action,
                       validate_email)
-from web.utils import (JsonErrors, decrypt_json, encrypt_json, get_ip, json_response, parse_request, raw_json_response,
+from web.utils import (JsonErrors, decrypt_json, encrypt_json, json_response, parse_request, raw_json_response,
                        request_root, split_name)
 
 
-class LoginModel(BaseModel):
+class LoginModel(GrecaptchaModel):
     email: EmailStr
     password: constr(max_length=100)
 
 
 LOGIN_USER_SQL = """
-SELECT id, full_name(first_name, last_name, email) AS name,
-  email, role, status, password_hash
+SELECT id, first_name, last_name, email, role, status, password_hash
 FROM users
-WHERE company=$1 AND email=$2 AND status='active'
+WHERE company=$1 AND email=$2 AND status='active' AND role!='guest'
 """
 
 
@@ -37,6 +36,8 @@ def successful_login(user, app, headers_=None):
 async def login(request):
     h = {'Access-Control-Allow-Origin': 'null'}
     m = await parse_request(request, LoginModel, error_headers=h)
+    await check_grecaptcha(m, request, threshold=0.8, error_headers=h)
+
     if m.password != request.app['settings'].dummy_password:
         r = await request['conn'].fetchrow(LOGIN_USER_SQL, request['company_id'], m.email)
         if r:
@@ -63,8 +64,10 @@ LOGIN_MODELS = {
 
 async def login_with(request):
     model, siw_method = LOGIN_MODELS[request.match_info['site']]
-    m = await parse_request(request, model)
+    m: GrecaptchaModel = await parse_request(request, model)
+    await check_grecaptcha(m, request)
     details = await siw_method(m, app=request.app)
+
     email = details['email']
     r = await request['conn'].fetchrow(LOGIN_USER_SQL, request['company_id'], email)
     if r:
@@ -153,18 +156,19 @@ SIGNIN_MODELS = {
 }
 # if first and last name are available it's from google or facebook and we can trust them
 CREATE_USER_SQL = """
-INSERT INTO users (:values__names) VALUES :values
+INSERT INTO users AS u (:values__names) VALUES :values
 ON CONFLICT (company, email) DO UPDATE SET
-  first_name=coalesce(first_name, EXCLUDED.first_name),
-  last_name=coalesce(last_name, EXCLUDED.last_name)
+  first_name=coalesce(u.first_name, EXCLUDED.first_name),
+  last_name=coalesce(u.last_name, EXCLUDED.last_name)
 RETURNING id, status
 """
 
 
-async def guest_signin(request):
+async def guest_signup(request):
     signin_method = request.match_info['site']
     model, siw_method = SIGNIN_MODELS[signin_method]
-    m = await parse_request(request, model)
+    m: GrecaptchaModel = await parse_request(request, model)
+    score = await check_grecaptcha(m, request)
     details = await siw_method(m, app=request.app)
 
     name_confirmed = signin_method in {'facebook', 'google'}
@@ -187,12 +191,14 @@ async def guest_signin(request):
     session = await new_session(request)
     session.update({'user_id': user_id, 'role': 'guest', 'last_active': int(time())})
 
-    await record_action(request, user_id, ActionTypes.guest_signin, signin_method=signin_method)
+    await record_action(request, user_id, ActionTypes.guest_signin,
+                        signin_method=signin_method, grecaptcha_score=score)
 
     return json_response(
         user=dict(
             id=user_id,
-            name=(details.get('first_name', '') + ' ' + details.get('last_name', '')).strip(' ') or user_email,
+            first_name=details.get('first_name'),
+            last_name=details.get('last_name'),
             email=user_email,
             role='guest',
         )
@@ -224,8 +230,7 @@ async def host_signup(request):
     signin_method = request.match_info['site']
     model, siw_method = SIGNUP_MODELS[signin_method]
     m: GrecaptchaModel = await parse_request(request, model)
-
-    await check_grecaptcha(m, get_ip(request), app=request.app)
+    score = await check_grecaptcha(m, request)
     details = await siw_method(m, app=request.app)
 
     company_id = request['company_id']
@@ -260,14 +265,14 @@ async def host_signup(request):
     session.update({'user_id': user_id, 'email': user_email, 'role': 'host', 'last_active': int(time())})
 
     await record_action(request, user_id, ActionTypes.host_signup,
-                        existing_user=bool(existing_role), signin_method=signin_method)
+                        existing_user=bool(existing_role), signin_method=signin_method, grecaptcha_score=score)
 
     await request.app['email_actor'].send_account_created(user_id)
     json_str = await request['conn'].fetchval(
         """
         SELECT json_build_object('user', row_to_json(user_data))
         FROM (
-          SELECT id, full_name(first_name, last_name, email) AS name, email, role
+          SELECT id, first_name, last_name, email, role
           FROM users
           WHERE company=$1 AND id=$2
         ) AS user_data;

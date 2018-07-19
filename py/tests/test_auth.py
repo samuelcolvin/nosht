@@ -23,6 +23,7 @@ async def test_login_successful(cli, url, factory: Factory):
     data = dict(
         email='frank@example.com',
         password='testing',
+        grecaptcha_token='__ok__',
     )
     r = await cli.post(url('login'), data=json.dumps(data))
     assert r.status == 200, await r.text()
@@ -54,7 +55,8 @@ async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_serv
     assert response_data == {
         'user': {
             'id': user['id'],
-            'name': 'Jane Doe',
+            'first_name': 'Jane',
+            'last_name': 'Doe',
             'email': 'testing@gmail.com',
             'role': 'host',
         },
@@ -109,7 +111,8 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
     assert response_data == {
         'user': {
             'id': user_id,
-            'name': 'Foo Bar',
+            'first_name': 'Foo',
+            'last_name': 'Bar',
             'email': 'google-auth@example.com',
             'role': 'host',
         },
@@ -160,7 +163,8 @@ async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_
     assert response_data == {
         'user': {
             'id': user_id,
-            'name': 'Book',
+            'first_name': None,
+            'last_name': 'Book',
             'email': 'facebook-auth@example.com',
             'role': 'host',
         },

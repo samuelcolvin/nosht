@@ -6,7 +6,7 @@
     <title>Login Form</title>
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'none';
-      script-src 'sha256-z1c2Z9MHwBWgtmEK99ef5SbqQscuZ9bzhymW1HrTPDQ=';
+      script-src 'sha256-9UHSUAWQlciag9xRDDytTAP3dws1E3S85/k69telKrw=';
       style-src http://localhost:3000 https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/;
       connect-src http://localhost:3000;
     ">
@@ -38,6 +38,8 @@
       const email_el = document.getElementById('email')
       const password_el = document.getElementById('password')
 
+      // window.parent.postMessage('foobar', origin)
+
       function on_error (user_msg, xhr, details) {
         console.warn('Error:', user_msg, xhr, details, form)
         window.parent.postMessage(JSON.stringify({
@@ -57,10 +59,21 @@
         email_el.readOnly = true
         password_el.readOnly = true
         user_error.innerText = ''
+        window.parent.postMessage('grecaptcha_token_request', origin)
+      }
 
+      let g = null
+      window.addEventListener('message', function (event) {
+        if (event.origin === origin) {
+          submit_form(event.data)
+        }
+      }, false)
+
+      function submit_form(grecaptcha_token) {
         const data = JSON.stringify({
           email: email_el.value,
-          password: password_el.value
+          password: password_el.value,
+          grecaptcha_token,
         })
 
         const xhr = new XMLHttpRequest()
@@ -77,6 +90,7 @@
             user_error.innerText = 'Email address or password incorrect.'
             email_el.readOnly = false
             password_el.readOnly = false
+            password_el.value = ''
           } else if (xhr.status === 200) {
             window.parent.postMessage(JSON.stringify(data), origin)
           } else {

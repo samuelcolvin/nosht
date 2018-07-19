@@ -10,6 +10,7 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {grecaptcha_execute} from '../utils'
 import {setup_siw, facebook_login, google_login} from '../auth/login_with'
 import {ModalFooter} from '../general/Modal'
 
@@ -55,9 +56,10 @@ export default class BookingLogin extends React.Component {
   }
 
   async auth (site, login_data, status) {
+    login_data.grecaptcha_token = await grecaptcha_execute('guest_signup')
     let data
     try {
-      data = await this.props.requests.post(`/login/guest/${site}/`, login_data, {expected_statuses: status || 200})
+      data = await this.props.requests.post(`/signup/guest/${site}/`, login_data, {expected_statuses: status || 200})
     } catch (error) {
       this.props.setRootState({error})
       return

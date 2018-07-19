@@ -13,10 +13,8 @@ class BookWrapper extends React.Component {
       got_booking_info: false,
       booking_info: null,
       reservation: null,
+      billing_name: null,
     }
-    this.get_user_name = () => (
-      this.props.user.name && this.props.user.name !== this.props.user.email ? this.props.user.name : null
-    )
   }
 
   async componentDidUpdate () {
@@ -50,14 +48,22 @@ class BookWrapper extends React.Component {
       .map(index => this.state[`ticket_${index}`] || {})
       .map(t => ({
         t: true,
-        name: t.name || null,
+        first_name: t.first_name || null,
+        last_name: t.last_name || null,
         email: t.email || null,
         dietary_req: t.dietary_req || null,
         extra_info: t.extra_info || null,
       }))
 
-    tickets[0].name = tickets[0].name || this.get_user_name()
+    tickets[0].first_name = tickets[0].first_name || this.props.user.first_name
+    tickets[0].last_name = tickets[0].last_name || this.props.user.last_name
     tickets[0].email = tickets[0].email || this.props.user.email
+
+    this.setState({billing_name:
+      tickets[0].email === this.props.user.email ?
+      `${tickets[0].first_name || ''} ${tickets[0].last_name || ''}`.trim() : ''
+    })
+
     let r
     try {
       r = await this.props.requests.post(`events/${this.props.event.id}/reserve/`,
@@ -92,7 +98,9 @@ class BookWrapper extends React.Component {
           reserve={this.reserve.bind(this)}
           change_ticket_count={this.change_ticket_count.bind(this)}/>
     } else {
-      return <BookingStripe {...this.props} reservation={this.state.reservation} user_name={this.get_user_name()}/>
+      return <BookingStripe {...this.props}
+          reservation={this.state.reservation}
+          billing_name={this.state.billing_name}/>
     }
   }
 }

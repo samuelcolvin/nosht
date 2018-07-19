@@ -2,6 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col} from 'reactstrap'
+import {user_full_name} from '../utils'
 
 const Footer = ({user}) => {
   let menu = [
@@ -38,7 +39,7 @@ const Footer = ({user}) => {
           <Col className="text-right footer-menu">
             {user && <div>
               <FontAwesomeIcon icon="user" className="mr-1" />
-              Logged in as {user.name} ({user.role})
+              Logged in as {user_full_name(user)} ({user.role})
             </div>}
             {menu.map((item, i) => (
               <Link key={i} to={item.to}>{item.name}</Link>

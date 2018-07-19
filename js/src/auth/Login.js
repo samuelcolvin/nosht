@@ -1,7 +1,7 @@
 import React from 'react'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-
+import {grecaptcha_execute} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
 export default class Login extends React.Component {
@@ -10,10 +10,16 @@ export default class Login extends React.Component {
     this.state = {redirect_to: null, error: null}
     this.on_message = this.on_message.bind(this)
     this.authenticate = this.authenticate.bind(this)
+    this.login_with = this.login_with.bind(this)
   }
 
   async on_message (event) {
     if (event.origin !== 'null') {
+      return
+    }
+    if (event.data === 'grecaptcha_token_request') {
+      const grecaptcha_token = await grecaptcha_execute('login_password')
+      document.getElementById('login-iframe').contentWindow.postMessage(grecaptcha_token, '*')
       return
     }
 
@@ -43,16 +49,11 @@ export default class Login extends React.Component {
     await setup_siw()
   }
 
-  async google_auth () {
-    this.setState({error: null})
-    const auth_data = await google_login(this.props.setRootState)
-    if (!auth_data) {
-      return
-    }
-
+  async login_with (site, login_data) {
+    login_data.grecaptcha_token = await grecaptcha_execute(`login_with_${site}`)
     let data
     try {
-      data = await this.props.requests.post('/login/google/', auth_data, {expected_statuses: [200, 470]})
+      data = await this.props.requests.post(`/login/${site}/`, login_data, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})
       return
@@ -64,6 +65,15 @@ export default class Login extends React.Component {
     }
   }
 
+  async google_auth () {
+    this.setState({error: null})
+    const auth_data = await google_login(this.props.setRootState)
+    if (!auth_data) {
+      return
+    }
+    await this.login_with('google', auth_data)
+  }
+
   async facebook_auth () {
     this.setState({error: null})
 
@@ -71,20 +81,7 @@ export default class Login extends React.Component {
     if (!auth_data) {
       return
     }
-
-    let data
-    try {
-      data = await this.props.requests.post('/login/facebook/', auth_data, {expected_statuses: [200, 470]})
-    } catch (error) {
-      this.props.setRootState({error})
-      return
-    }
-
-    if (data._response_status === 470) {
-      this.setState({error: data.message})
-    } else {
-      await this.authenticate(data)
-    }
+    await this.login_with('facebook', auth_data)
   }
 
   render () {
@@ -112,6 +109,7 @@ export default class Login extends React.Component {
       <Row key="2" className="justify-content-center">
         <Col md="4" className="login">
           <iframe
+            id="login-iframe"
             title="Login"
             frameBorder="0"
             scrolling="no"
