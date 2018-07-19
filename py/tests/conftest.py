@@ -313,7 +313,8 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
             data = json.dumps(data)
         headers = {
             'Content-Type': 'application/json',
-            # 'Origin': 'http://{'
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
             **(headers or {}),
         }
         return cli.request(method, url, data=data, headers=headers)

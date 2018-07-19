@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from time import time
 
 from aiohttp.hdrs import METH_GET, METH_OPTIONS, METH_POST
@@ -9,6 +8,7 @@ from aiohttp.web_middlewares import middleware
 from aiohttp.web_response import Response
 from aiohttp_session import get_session
 
+from .auth import remove_port
 from .utils import HEADER_CROSS_ORIGIN, JSON_CONTENT_TYPE, JsonErrors, get_ip, request_root
 
 logger = logging.getLogger('nosht.web.mware')
@@ -111,7 +111,6 @@ FROM users
 JOIN companies AS c ON c.id=company
 WHERE c.domain=$1 AND users.id=$2
 """
-REMOVE_PORT = re.compile(r':\d{2,}$')
 
 
 @middleware
@@ -121,7 +120,7 @@ async def host_middleware(request, handler):
     user_id = request['session'].get('user_id')
 
     # port is removed as won't matter and messes up on localhost:3000/8000
-    host = REMOVE_PORT.sub('', request.host)
+    host = remove_port(request.host)
     if user_id:
         company_id = await conn.fetchval(USER_COMPANY_SQL, host, user_id)
         msg = 'company not found for this host and user'
@@ -134,17 +133,20 @@ async def host_middleware(request, handler):
     return await handler(request)
 
 
-ALLOWED_HOSTS = 'localhost', '127.0.0.1'
-
-
 def origin_check(request):
     # origin and host ports differ on localhost when testing
-    return request.headers.get('Origin') == f'https://{request.host}/' or request.host.startswith(ALLOWED_HOSTS)
+    return request.headers.get('Origin') == request_root(request) or request.host.startswith('localhost')
 
 
 def referrer_check(request):
     r = request.headers.get('Referer')
-    return r is None or r.startswith(request_root(request) + '/')
+    return r and r.startswith(request_root(request) + '/')
+
+
+CROSS_ORIGIN_URLS = {
+    '/api/login/',
+    '/api/set-password/',
+}
 
 
 @middleware
@@ -153,16 +155,16 @@ async def csrf_middleware(request, handler):
     if request.method == METH_OPTIONS:
         if 'Access-Control-Request-Method' in h:
             if (h.get('Access-Control-Request-Method') == METH_POST and
-                    h.get('Access-Control-Request-Headers').lower() == 'content-type' and
-                    origin_check(request)):
+                    request.path in CROSS_ORIGIN_URLS and
+                    h.get('Access-Control-Request-Headers').lower() == 'content-type'):
+                # can't check origin here as it's null since the iframe's requests are "cross-origin"
                 headers = {'Access-Control-Allow-Headers': 'Content-Type', **HEADER_CROSS_ORIGIN}
                 return Response(text='ok', headers=headers)
             else:
                 raise JsonErrors.HTTPForbidden(error='Access-Control checks failed', headers_=HEADER_CROSS_ORIGIN)
     elif request.method != METH_GET:
-        if not (h.get('Content-Type') == JSON_CONTENT_TYPE and origin_check(request) and referrer_check(request)):
-            logger.warning('CSRF failure, Content-Type: "%s", Origin: "%s", Referer: "%s"',
-                           h.get('Content-Type'), h.get('Origin'), h.get('Referer'))
+        if not (h.get('Content-Type') == JSON_CONTENT_TYPE and
+                (request.path in CROSS_ORIGIN_URLS or (origin_check(request) and referrer_check(request)))):
             raise JsonErrors.HTTPForbidden(error='CSRF failure', headers_=HEADER_CROSS_ORIGIN)
 
     return await handler(request)

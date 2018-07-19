@@ -6,7 +6,7 @@
     <title>Login Form</title>
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'none';
-      script-src 'unsafe-inline';
+      script-src 'sha256-vrt4cX1CmzM/wCxjh07MzQNlHjMp1P7pviaZFSZS3bY=';
       style-src http://localhost:3000 https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/;
       connect-src http://localhost:3000;
     ">
@@ -38,8 +38,6 @@
       const email_el = document.getElementById('email')
       const password_el = document.getElementById('password')
 
-      // window.parent.postMessage('foobar', origin)
-
       function on_error (user_msg, xhr, details) {
         console.warn('Error:', user_msg, xhr, details, form)
         window.parent.postMessage(JSON.stringify({
@@ -61,6 +59,7 @@
         user_error.innerText = ''
         window.parent.postMessage('grecaptcha_token_request', origin)
       }
+      form.addEventListener('submit', on_submit, true)
 
       let g = null
       window.addEventListener('message', function (event) {
@@ -101,8 +100,6 @@
         xhr.onerror = function (e) {on_error('Network Error', xhr, e)}
         xhr.send(data)
       }
-
-      form.addEventListener('submit', on_submit, true)
     </script>
   </body>
 </html>

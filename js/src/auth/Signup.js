@@ -72,7 +72,7 @@ export default class Signup extends React.Component {
     post_data.grecaptcha_token = await grecaptcha_execute('host_signup')
     let data
     try {
-      data = await this.props.requests.post(`/signup/${site}/`, post_data, {expected_statuses: [200, 470]})
+      data = await this.props.requests.post(`/signup/host/${site}/`, post_data, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})
       return

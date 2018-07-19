@@ -24,7 +24,7 @@ async def grecaptcha(request):
     data = await request.post()
     request.app['log'].append(('grecaptcha', data['response']))
     if data['response'] == '__ok__':
-        return json_response(dict(success=True, score=1, action='testing'))
+        return json_response(dict(success=True, score=1, action='testing', hostname='127.0.0.1'))
     elif data['response'] == '__low_score__':
         return json_response(dict(success=True, score=0.1))
     else:

@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 import secrets
 from functools import wraps
 from time import time
@@ -21,6 +22,11 @@ from .actions import ActionTypes, record_action
 from .utils import JsonErrors, get_ip
 
 logger = logging.getLogger('nosht.auth')
+REMOVE_PORT = re.compile(r':\d{2,}$')
+
+
+def remove_port(url):
+    return REMOVE_PORT.sub('', url)
 
 
 async def invalidate_session(request, reason):
@@ -193,9 +199,10 @@ async def check_grecaptcha(m: GrecaptchaModel, request, *, threshold=None, error
         data = await r.json()
 
     threshold = threshold or settings.grecaptcha_threshold
-    if not data['success'] or data['score'] < threshold:
-        logger.warning('grecaptcha failure, ip=%s, response=%s', client_ip, data)
-        raise JsonErrors.HTTPBadRequest(message='Invalid recaptcha value', headers_=error_headers)
-    else:
-        logger.info('grecaptcha success, score=%0.3f, action=%s', data['score'], data['action'])
+    if data['success'] and data['score'] > threshold and remove_port(request.host) == data['hostname']:
+        logger.info('grecaptcha success, score=%0.3f action=%s', data['score'], data['action'])
         return data['score']
+    else:
+        logger.warning('grecaptcha failure, path="%s" ip=%s response=%s', request.path, client_ip, data,
+                       extra={'data': {'grecaptcha_response': data}})
+        raise JsonErrors.HTTPBadRequest(message='Invalid recaptcha value', headers_=error_headers)
