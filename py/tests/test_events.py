@@ -50,6 +50,8 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'host_name': 'Frank Spencer',
             'stripe_key': 'stripe_key_xxx',
             'currency': 'gbp',
+            'ticket_extra_help_text': None,
+            'ticket_extra_title': None,
         },
     }
 

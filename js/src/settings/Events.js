@@ -1,7 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {format_event_start, format_event_duration, format_datetime} from '../utils'
 import {Dash, Detail, RenderList, RenderDetails} from './Utils'
 import {ModalForm} from '../forms/Form'
@@ -72,7 +71,6 @@ class Tickets extends React.Component {
               }
             </Detail>
             <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
-            <Detail name="Dietary Requirments">{selected.extra && selected.extra.dietary_req}</Detail>
             <Detail name="Extra Info">{selected.extra && selected.extra.extra_info}</Detail>
           </ModalBody>
           <ModalFooter>
@@ -87,23 +85,20 @@ class Tickets extends React.Component {
               <th>Guest</th>
               <th>Buyer</th>
               <th>Bought at</th>
-              <th></th>
+              <th>Extra Info</th>
             </tr>
           </thead>
           <tbody>
             {this.props.tickets.map((t, i) => (
-              <tr key={i} onClick={() => this.setState({selected: t})}>
+              <tr key={i} onClick={() => this.setState({selected: t})} className="cursor-pointer">
                 <th scope="row">{i + 1}</th>
                 <td>{t.user_name || <Dash/>}</td>
                 <td>{t.buyer_name}</td>
                 <td>{format_datetime(t.bought_at)}</td>
                 <td className="text-right">
-                  {t.extra &&
-                    <span className="text-danger cursor-pointer px-2" title="Dietary Requirments or extra information">
-                      <FontAwesomeIcon icon="exclamation" />
-                    </span>
-                  }
-                  <Button size="sm">More Info</Button>
+                  <small>
+                    {t.extra && t.extra.extra_info}
+                  </small>
                 </td>
               </tr>
             ))}
@@ -149,7 +144,7 @@ export class EventsDetails extends RenderDetails {
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
           {name: 'Set Status', link: this.uri + 'set-status/'},
-          {name: 'View Public Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'}
+          {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'}
         ]
       }
     )

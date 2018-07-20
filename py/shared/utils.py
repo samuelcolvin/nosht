@@ -11,9 +11,9 @@ from .settings import Settings
 
 URI_NOT_ALLOWED = re.compile(r'[^a-zA-Z0-9_\-/.]')
 CURRENCY_LOOKUP = {
-  'gbp': '£',
-  'usd': '$',
-  'eur': '€',
+    'gbp': '£',
+    'usd': '$',
+    'eur': '€',
 }
 
 

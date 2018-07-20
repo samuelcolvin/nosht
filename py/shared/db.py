@@ -229,6 +229,8 @@ CATS = [
         'name': 'Supper Clubs',
         'description': 'Eat, drink & discuss middle aged, middle class things like house prices and consumerist guilt',
         'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+        'ticket_extra_title': 'Dietary Requirements & Extra Information',
+        'ticket_extra_help_text': 'This is the help text for this field, tell us about your nut allergy',
         'sort_index': 1,
         'events': [
 
@@ -267,6 +269,8 @@ CATS = [
         'name': 'Singing Events',
         'description': 'Sing loudly and badly in the company of other people too polite to comment',
         'image': 'https://nosht.scolvin.com/cat/mountains/options/zwaxBXpsyu',
+        'ticket_extra_title': 'Extra Information',
+        'ticket_extra_help_text': 'This is the help text for this field',
         'sort_index': 2,
         'events': [
             {

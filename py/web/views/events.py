@@ -45,7 +45,9 @@ FROM (
          h.id AS host_id,
          h.first_name || ' ' || h.last_name AS host_name,
          co.stripe_public_key AS stripe_key,
-         co.currency as currency
+         co.currency as currency,
+         c.ticket_extra_title,
+         c.ticket_extra_help_text
   FROM events AS e
   JOIN categories AS c ON e.category = c.id
   JOIN companies AS co ON c.company = co.id
@@ -268,18 +270,11 @@ async def booking_info(request):
     )
 
 
-class DietaryReqEnum(Enum):
-    thing_1 = 'thing_1'
-    thing_2 = 'thing_2'
-    thing_3 = 'thing_3'
-
-
 class TicketModel(BaseModel):
     t: bool
     first_name: constr(max_length=255) = None
     last_name: constr(max_length=255) = None
     email: EmailStr = None
-    dietary_req: DietaryReqEnum = None
     extra_info: str = None
 
 
@@ -331,7 +326,7 @@ class ReserveTickets(UpdateView):
                         email=t.email and t.email.lower(),
                         first_name=t.first_name,
                         last_name=t.last_name,
-                        extra=funcs.cast(to_json_if(t.dict(include={'dietary_req', 'extra_info'})), 'jsonb'),
+                        extra=funcs.cast(to_json_if(t.dict(include={'extra_info'})), 'jsonb'),
                     )
                     for t in m.tickets
                 ]

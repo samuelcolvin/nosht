@@ -2,7 +2,6 @@ import React from 'react'
 import {
   Button,
   Col,
-  Collapse,
   Form as BootstrapForm,
   FormFeedback,
   ModalBody,
@@ -43,7 +42,7 @@ export class User extends React.Component {
   }
 }
 
-const TicketInfo = ({index, state, set_ticket_state, user}) => {
+const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
   const key = `ticket_${index}`
   const ticket_info = state[key] || {}
   const first_name_field = {
@@ -65,21 +64,10 @@ const TicketInfo = ({index, state, set_ticket_state, user}) => {
     show_label: false,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's email address."
   }
-  const dietary_field = {
-    name: key + 'dietary',
-    title: 'Dietary Requirements',
-    type: 'select',
-    choices: [
-      {value: 'thing_1'},
-      {value: 'thing_2'},
-      {value: 'thing_3'},
-    ]
-  }
   const extra_field = {
     name: key + 'extra',
-    title: 'Extra Information',
-    type: 'textarea',
-    help_text: 'Any other information about this booking for the Host.'
+    title: event.ticket_extra_title,
+    help_text: event.ticket_extra_help_text
   }
 
   let title = `Guest ${index + 1}'s Details`
@@ -116,23 +104,11 @@ const TicketInfo = ({index, state, set_ticket_state, user}) => {
                 set_value={v => set_ticket_state(key, 'email', v)}/>
         </Col>
       </Row>
-      <Button color="link"
-              size="sm"
-              className="mb-1 p-0 no-dec"
-              onClick={e => set_ticket_state(key, 'extra', !ticket_info.extra)}>
-        extra &nbsp;
-        <span className="rotate" style={{transform: `rotate(${ticket_info.extra ? '90' : '0'}deg)`}}>&rsaquo;</span>
-      </Button>
-      <Collapse isOpen={ticket_info.extra}>
-        <Input className="my-0"
-              value={ticket_info.dietary_req}
-              field={dietary_field}
-              set_value={v => set_ticket_state(key, 'dietary_req', v)}/>
-        <Input className="my-0"
-              value={ticket_info.extra_info}
-              field={extra_field}
-              set_value={v => set_ticket_state(key, 'extra_info', v)}/>
-      </Collapse>
+      {event.ticket_extra_title &&
+        <Input value={ticket_info.extra_info}
+               field={extra_field}
+               set_value={v => set_ticket_state(key, 'extra_info', v)}/>
+      }
     </div>
   )
 }
@@ -187,7 +163,8 @@ const TicketForm = props => {
 
         <div className="guests-info">
           {[...Array(state.ticket_count).keys()].map(i => (
-            <TicketInfo key={i} index={i} state={state} set_ticket_state={props.set_ticket_state} user={props.user}/>
+            <TicketInfo key={i} index={i} state={state} set_ticket_state={props.set_ticket_state}
+                        user={props.user} event={props.event}/>
           ))}
         </div>
       </ModalBody>

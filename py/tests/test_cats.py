@@ -62,6 +62,8 @@ async def test_create_cat(cli, url, db_conn, factory: Factory, login):
         'event_type': 'ticket_sales',
         'suggested_price': None,
         'image': None,
+        'ticket_extra_help_text': None,
+        'ticket_extra_title': None,
     }
 
 

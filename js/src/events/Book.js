@@ -51,7 +51,6 @@ class BookWrapper extends React.Component {
         first_name: t.first_name || null,
         last_name: t.last_name || null,
         email: t.email || null,
-        dietary_req: t.dietary_req || null,
         extra_info: t.extra_info || null,
       }))
 

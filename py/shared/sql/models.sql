@@ -79,6 +79,8 @@ CREATE TABLE categories (
   sort_index INT,
   event_content TEXT,
   host_advice TEXT,
+  ticket_extra_title VARCHAR(200),
+  ticket_extra_help_text TEXT,
   event_type EVENT_TYPES NOT NULL DEFAULT 'ticket_sales',
   suggested_price NUMERIC(7, 2),
   image VARCHAR(255),

@@ -21,7 +21,6 @@ export const load_script = url => {
     } else {
       const script = _add_script(url, reject)
       script.onload = () => resolve()
-      // script.onreadystatechange = () => resolve()
     }
   })
 }
