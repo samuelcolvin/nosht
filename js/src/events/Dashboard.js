@@ -2,7 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime} from '../utils'
-import {Dash, Detail, RenderList, RenderDetails} from './Utils'
+import {Dash, Detail, RenderList, RenderDetails} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 
 export class EventsList extends RenderList {
@@ -58,7 +58,7 @@ class Tickets extends React.Component {
           <ModalBody>
             <Detail name="Guest">
               {selected.user_id ?
-                <Link to={`/settings/users/${selected.user_id}/`}>{selected.user_name }</Link>
+                <Link to={`/dashboard/users/${selected.user_id}/`}>{selected.user_name }</Link>
                 :
                 <span className="text-muted">Guest of "{selected.buyer_name}", no name provided</span>
               }
@@ -67,7 +67,7 @@ class Tickets extends React.Component {
               {selected.user_id === selected.buyer_id ?
                 <span className="text-muted">this guest</span>
                 :
-                <Link to={`/settings/users/${selected.buyer_id}/`}>{selected.buyer_name}</Link>
+                <Link to={`/dashboard/users/${selected.buyer_id}/`}>{selected.buyer_name}</Link>
               }
             </Detail>
             <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
@@ -96,9 +96,11 @@ class Tickets extends React.Component {
                 <td>{t.buyer_name}</td>
                 <td>{format_datetime(t.bought_at)}</td>
                 <td className="text-right">
-                  <small>
-                    {t.extra && t.extra.extra_info}
-                  </small>
+                  {t.extra && t.extra.extra_info.length > 30 ?
+                    <small>{t.extra.extra_info}</small>
+                    :
+                    <span>{t.extra.extra_info}</span>
+                  }
                 </td>
               </tr>
             ))}
@@ -126,7 +128,7 @@ export class EventsDetails extends RenderDetails {
       location_lng: null,
       long_description: null,
     }
-    this.uri = `/settings/events/${this.id}/`
+    this.uri = `/dashboard/events/${this.id}/`
   }
 
   async got_data (data) {
@@ -143,7 +145,7 @@ export class EventsDetails extends RenderDetails {
         tickets: r.tickets,
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
-          {name: 'Set Status', link: this.uri + 'set-status/'},
+          this.props.user.role === 'admin' && {name: 'Set Status', link: this.uri + 'set-status/'},
           {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'}
         ]
       }

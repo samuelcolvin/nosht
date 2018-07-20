@@ -6,6 +6,10 @@ body {
   overflow-y: scroll;
 }
 
+.grecaptcha-badge {
+  bottom: 120px !important;
+}
+
 .extra-menu {
   top: 56px;
   background: $primary;

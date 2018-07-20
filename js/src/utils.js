@@ -1,8 +1,6 @@
 import format from 'date-fns/format'
 
-export const grecaptcha_key = process.env.REACT_APP_RECAPTCHA_KEY
-
-export const grecaptcha_execute = action => window.grecaptcha.execute(grecaptcha_key, {action})
+export const grecaptcha_execute = action => window.grecaptcha.execute(0, {action})
 
 const _add_script = (url, reject) => {
   const script = document.createElement('script')
@@ -26,7 +24,7 @@ export const load_script = url => {
 }
 
 export const load_script_callback = url => {
-  const callback_name = '_load_script_complete_' + btoa(url).substr(0, 30)
+  const callback_name = '_load_script_complete_' + btoa(url).substr(0, 10)
   return new Promise((resolve, reject) => {
     url = url.replace('<callback-function>', callback_name)
     if (document.querySelector(`script[src="${url}"]`)) {

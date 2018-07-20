@@ -1,19 +1,19 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 
-import {get, post, put, sleep, load_script, grecaptcha_key} from './utils'
+import {get, post, put, sleep, load_script_callback} from './utils'
 import {Error, NotFound, Loading} from './general/Errors'
 import Navbar from './general/Navbar'
 import Footer from './general/Footer'
 import Index from './Main'
-import Category from './Category'
+import Category from './cats/Main'
 import Event from './events/Main'
 import Login from './auth/Login'
 import Logout from './auth/Logout'
 import Signup from './auth/Signup'
 import SetPassword from './auth/SetPassword'
 import CreateEvent from './events/Create'
-import Settings from './settings/Main'
+import Dashboard from './Dashboard'
 
 
 const Routes = ({app}) => (
@@ -52,11 +52,12 @@ const Routes = ({app}) => (
       )} />
 
 
-      <Route path="/settings/" render={props => (
-        <Settings setRootState={s => app.setState(s)}
-                  set_message={app.set_message}
-                  requests={app.requests}
-                  {...props}/>
+      <Route path="/dashboard/" render={props => (
+        <Dashboard setRootState={s => app.setState(s)}
+                   user={app.state.user}
+                   set_message={app.set_message}
+                   requests={app.requests}
+                   {...props}/>
       )} />
 
       <Route path="/create/" render={props => (
@@ -123,8 +124,12 @@ class _App extends React.Component {
     } catch (err) {
       this.setState({error: err})
     }
-    await load_script(`https://www.google.com/recaptcha/api.js?render=${grecaptcha_key}`)
-    window.grecaptcha.ready(async () => {
+    await load_script_callback('https://www.google.com/recaptcha/api.js?onload=<callback-function>&render=onload')
+    window.grecaptcha.render({
+      sitekey: process.env.REACT_APP_RECAPTCHA_KEY,
+      badge: 'bottomleft',
+    })
+    window.grecaptcha.ready(() => {
       this.setState({grecaptcha_ready: true})
     })
   }

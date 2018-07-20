@@ -3,16 +3,16 @@ import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ButtonGroup, Button} from 'reactstrap'
 import {as_title} from '../utils'
-import {Loading} from '../general/Errors'
+import {Loading} from './Errors'
 
 export const render_bool = v => (
   <FontAwesomeIcon icon={v ? 'check' : 'times'} />
 )
 
-const Buttons = ({buttons, className}) => (
+const Buttons = ({buttons}) => (
   buttons && <div className="text-right mb-2">
     <ButtonGroup>
-      {buttons.map(b => (
+      {buttons.filter(b => b).map(b => (
         <Button key={b.name} tag={Link} to={b.link} disabled={b.disabled || false}>{b.name}</Button>
       ))}
     </ButtonGroup>
@@ -107,12 +107,19 @@ export class RenderList extends RenderItem {
   render () {
     if (!this.state.items) {
       return <Loading/>
+    } else if (this.state.items.length === 0) {
+      return [
+        <Buttons key="1" buttons={this.state.buttons}/>,
+        <div key="2" className="text-muted text-center h5 mt-4">
+          No {as_title(this.props.page.name)} found
+        </div>
+      ]
     }
     const keys = Object.keys(this.state.items[0])
     keys.splice(keys.indexOf('id'), 1)
     return [
-      <Buttons key={1} buttons={this.state.buttons}/>,
-      <table key={2} className="table">
+      <Buttons key="1" buttons={this.state.buttons}/>,
+      <table key="2" className="table">
         <thead>
           <tr>
             {keys.map((key, i) => (
@@ -136,7 +143,7 @@ export class RenderList extends RenderItem {
           ))}
         </tbody>
       </table>,
-      <div key={3}>
+      <div key="3">
         {this.extra()}
       </div>
     ]

@@ -7,24 +7,13 @@ import {user_full_name} from '../utils'
 const Footer = ({user}) => {
   let menu = [
     {name: 'Login', to: '/login/'},
-    {name: 'Create Event', to: '/signup/'},
+    {name: 'Signup', to: '/signup/'},
   ]
   if (user) {
-    if (user.role === 'admin') {
+    menu = []
+    if (user.role === 'admin' || user.role === 'host') {
       menu = [
-        {name: 'Settings', to: '/settings/events/'},
-        {name: 'Create Event', to: '/create/'},
-      ]
-    } else if (user.role === 'host') {
-      menu = [
-        {name: 'Account Settings', to: '/account/'},
-        {name: 'My Events', to: '/my-events/'},
-        {name: 'Create Event', to: '/create/'},
-      ]
-    } else {
-      // guest
-      menu = [
-        {name: 'Create Event', to: '/signup/'},
+        {name: 'Dashboard', to: '/dashboard/events/'},
       ]
     }
     menu.push({name: 'Logout', to: '/logout/'})

@@ -48,7 +48,7 @@ async def check_session(request, *roles):
         raise JsonErrors.HTTPUnauthorized(message='Authentication required to view this page')
 
     if role not in roles:
-        raise JsonErrors.HTTPForbidden(message='role must be in: {}'.format(', '.join(roles)))
+        raise JsonErrors.HTTPForbidden(message='role must be: {}'.format(', '.join(roles)))
 
     last_active = session['last_active']
     now = int(time())

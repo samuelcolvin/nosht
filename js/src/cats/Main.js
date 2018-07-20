@@ -1,7 +1,7 @@
 import React from 'react'
-import {NotFound} from './general/Errors'
-import PromptUpdate from './general/PromptUpdate'
-import EventCards from './events/Cards'
+import {NotFound} from '../general/Errors'
+import PromptUpdate from '../general/PromptUpdate'
+import EventCards from '../events/Cards'
 
 class Category extends React.Component {
   constructor (props) {

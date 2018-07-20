@@ -1,7 +1,7 @@
 import React from 'react'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {grecaptcha_execute} from '../utils'
+import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
 export default class Login extends React.Component {
@@ -39,8 +39,8 @@ export default class Login extends React.Component {
       return
     }
     this.props.setRootState({user: data.user})
-    this.props.history.replace('/')
-    this.props.set_message({icon: 'user', message: `Logged in successfully as ${data.user.name}`})
+    this.props.history.replace('/dashboard/events/')
+    this.props.set_message({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
   }
 
   async componentDidMount () {

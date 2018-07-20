@@ -1,6 +1,6 @@
 import React from 'react'
 import {Row, Col, ButtonGroup, Button} from 'reactstrap'
-import {RenderList, RenderDetails, ImageThumbnail} from './Utils'
+import {RenderList, RenderDetails, ImageThumbnail} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'
 
@@ -16,7 +16,7 @@ const CAT_FIELDS = [
 export class CategoriesList extends RenderList {
   constructor (props) {
     super(props)
-    this.uri = '/settings/categories/'
+    this.uri = '/dashboard/categories/'
     this.state['buttons'] = [
       {name: 'Add Category', link: this.uri + 'add/'},
     ]
@@ -26,7 +26,7 @@ export class CategoriesList extends RenderList {
     return <ModalForm {...this.props}
                       title="Add Category"
                       parent_uri={this.uri}
-                      success_msg={`${this.props.page.singular} added`}
+                      success_msg="Category Added"
                       mode="add"
                       action='/categories/add/'
                       fields={CAT_FIELDS}/>
@@ -64,7 +64,7 @@ const ImageList = ({suggested_images, default_image, image_action}) => (
 export class CategoriesDetails extends RenderDetails {
   constructor (props) {
     super(props)
-    this.uri = `/settings/categories/${this.id}/`
+    this.uri = `/dashboard/categories/${this.id}/`
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
       {name: 'Add Images', link: this.uri + 'add-image/'},
@@ -114,7 +114,7 @@ export class CategoriesDetails extends RenderDetails {
                  key="2"
                  parent_uri={this.uri}
                  mode="edit"
-                 success_msg={`${this.props.page.singular} updated`}
+                success_msg="Category Updated"
                  initial={this.state.item}
                  update={this.update}
                  action={`/categories/${this.id}/`}

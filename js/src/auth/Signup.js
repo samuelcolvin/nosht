@@ -8,7 +8,7 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {grecaptcha_execute} from '../utils'
+import {grecaptcha_execute, user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
@@ -84,8 +84,8 @@ export default class Signup extends React.Component {
       this.setState({error: data.message})
     } else {
       this.props.setRootState({user: data.user})
-      this.props.history.replace('/create/')
-      this.props.set_message({icon: 'user', message: `Logged in successfully as ${data.user.name}`})
+      this.props.history.replace('/dashboard/events/')
+      this.props.set_message({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
     }
   }
 

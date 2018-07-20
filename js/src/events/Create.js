@@ -38,7 +38,7 @@ export default class CreateEvent extends React.Component {
   }
 
   finished (r) {
-    this.props.history.push(`/settings/events/${r.pk}/`)
+    this.props.history.push(r ? `/dashboard/events/${r.pk}/` : '/dashboard/events/')
   }
 
   render () {

@@ -158,7 +158,7 @@ class ReadBread(BaseBread):
       'count', count_
     )
     FROM (
-      SELECT array_to_json(array_agg(row_to_json(t))) as items FROM (
+      SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') as items FROM (
         :items_query
       ) AS t
     ) AS items,
