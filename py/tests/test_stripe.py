@@ -138,7 +138,6 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
     r = await cli.json_post(url('event-buy-tickets'), data=m.json())
     assert r.status == 200, await r.text()
 
-    debug(dummy_server.app['log'])
     assert dummy_server.app['log'] == [
         'stripe_root_url/customers',
         'stripe_root_url/charges',

@@ -1,5 +1,6 @@
 import React from 'react'
 import {Redirect} from 'react-router'
+import Raven from 'raven-js'
 
 export class Error extends React.Component {
   componentWillMount () {
@@ -7,6 +8,11 @@ export class Error extends React.Component {
       this.props.set_message({icon: 'ban', message: this.props.error.user_msg || 'Login Required'})
     } else if (this.props.error.status !== 404) {
       console.warn('caught error:', this.props.error)
+      Raven.captureMessage(`caught error: ${this.props.error.user_msg}`, {
+        stacktrace: true,
+        level: 'warning',
+        extra: {error: this.props.error}
+      })
     }
   }
 
