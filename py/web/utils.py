@@ -68,7 +68,7 @@ def json_response(*, status_=200, list_=None, headers_=None, **data):
 T = TypeVar('Model', bound=BaseModel)
 
 
-async def parse_request(request, model: Type[T], *, error_headers=None) -> T:
+async def parse_request(request, model: Type[T], *, headers_=None) -> T:
     error_details = None
     try:
         data = await request.json()
@@ -84,7 +84,7 @@ async def parse_request(request, model: Type[T], *, error_headers=None) -> T:
     raise JsonErrors.HTTPBadRequest(
         message=error_msg,
         details=error_details,
-        headers_=error_headers
+        headers_=headers_
     )
 
 
@@ -134,11 +134,11 @@ def encrypt_json(app, data: Any) -> str:
     return _encrypt_json(data, auth_fernet=app['auth_fernet'])
 
 
-def decrypt_json(app, token: bytes, *, ttl: int=None) -> Any:
+def decrypt_json(app, token: bytes, *, ttl: int=None, headers_=None) -> Any:
     try:
         return json.loads(app['auth_fernet'].decrypt(token, ttl=ttl).decode())
     except InvalidToken:
-        raise JsonErrors.HTTPBadRequest(message='invalid token')
+        raise JsonErrors.HTTPBadRequest(message='invalid token', headers_=headers_)
 
 
 def to_json_if(obj):

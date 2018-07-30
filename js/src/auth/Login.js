@@ -49,6 +49,10 @@ export default class Login extends React.Component {
     await setup_siw()
   }
 
+  componentWillUnmount () {
+    window.removeEventListener('message', this.on_message)
+  }
+
   async login_with (site, login_data) {
     login_data.grecaptcha_token = await grecaptcha_execute(`login_with_${site}`)
     let data

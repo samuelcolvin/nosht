@@ -134,19 +134,23 @@ async def host_middleware(request, handler):
 
 
 def origin_check(request):
-    # origin and host ports differ on localhost when testing
-    return request.headers.get('Origin') == request_root(request) or request.host.startswith('localhost')
-
-
-def referrer_check(request):
-    r = request.headers.get('Referer')
-    return r and r.startswith(request_root(request) + '/')
+    # origin and host ports differ on localhost when testing, so ignore this case
+    origin = request.headers.get('Origin')
+    return origin == 'null' or origin == request_root(request) or request.host.startswith('localhost')
 
 
 CROSS_ORIGIN_URLS = {
     '/api/login/',
     '/api/set-password/',
 }
+
+
+def referrer_check(request):
+    if request.path in CROSS_ORIGIN_URLS:
+        # iframe requests don't include a referrer
+        return True
+    r = request.headers.get('Referer')
+    return r and r.startswith(request_root(request) + '/')
 
 
 @middleware
@@ -163,8 +167,7 @@ async def csrf_middleware(request, handler):
             else:
                 raise JsonErrors.HTTPForbidden(error='Access-Control checks failed', headers_=HEADER_CROSS_ORIGIN)
     elif request.method != METH_GET:
-        if not (h.get('Content-Type') == JSON_CONTENT_TYPE and
-                (request.path in CROSS_ORIGIN_URLS or (origin_check(request) and referrer_check(request)))):
+        if not (h.get('Content-Type') == JSON_CONTENT_TYPE and origin_check(request) and referrer_check(request)):
             raise JsonErrors.HTTPForbidden(error='CSRF failure', headers_=HEADER_CROSS_ORIGIN)
 
     return await handler(request)

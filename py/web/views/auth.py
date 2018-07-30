@@ -34,7 +34,7 @@ def successful_login(user, app, headers_=None):
 
 
 async def login(request):
-    m = await parse_request(request, LoginModel, error_headers=HEADER_CROSS_ORIGIN)
+    m = await parse_request(request, LoginModel, headers_=HEADER_CROSS_ORIGIN)
     await check_grecaptcha(m, request, threshold=0.8, error_headers=HEADER_CROSS_ORIGIN)
 
     if m.password != request.app['settings'].dummy_password:
@@ -110,8 +110,8 @@ class PasswordModel(BaseModel):
 
 async def set_password(request):
     conn = request['conn']
-    m = await parse_request(request, PasswordModel, error_headers=HEADER_CROSS_ORIGIN)
-    user_id = decrypt_json(request.app, m.token.encode(), ttl=3600 * 24 * 7)
+    m = await parse_request(request, PasswordModel, headers_=HEADER_CROSS_ORIGIN)
+    user_id = decrypt_json(request.app, m.token.encode(), ttl=3600 * 24 * 7, headers_=HEADER_CROSS_ORIGIN)
     nonce = m.token[:20]
 
     already_used = await conn.fetchval(
@@ -120,14 +120,15 @@ async def set_password(request):
         WHERE user_id=$1 AND type='password-reset' AND now() - ts < interval '7 days' AND extra->>'nonce'=$2
         """, user_id, nonce)
     if already_used:
-        raise JsonErrors.HTTP470(message='This password reset link has already been used.')
+        raise JsonErrors.HTTP470(message='This password reset link has already been used.',
+                                 headers_=HEADER_CROSS_ORIGIN)
 
     company_id, status = await conn.fetchrow('SELECT company, status FROM users WHERE id=$1', user_id)
     if company_id != request['company_id']:
         # should not happen
         raise JsonErrors.HTTPBadRequest(message='company and user do not match')
     if status == 'suspended':
-        raise JsonErrors.HTTP470(message='user suspended, password update not allowed.')
+        raise JsonErrors.HTTP470(message='user suspended, password update not allowed.', headers_=HEADER_CROSS_ORIGIN)
 
     pw_hash = mk_password(m.password1, request.app['settings'])
     del m

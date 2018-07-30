@@ -2,6 +2,11 @@ import React from 'react'
 import {Row, Col} from 'reactstrap'
 
 export default class SetPassword extends React.Component {
+  constructor (props) {
+    super(props)
+    this.on_message = this.on_message.bind(this)
+  }
+
   async on_message (event) {
     if (event.origin !== 'null') {
       return
@@ -17,7 +22,11 @@ export default class SetPassword extends React.Component {
   }
 
   async componentDidMount () {
-    window.addEventListener('message', this.on_message.bind(this))
+    window.addEventListener('message', this.on_message)
+  }
+
+  componentWillUnmount () {
+    window.removeEventListener('message', this.on_message)
   }
 
   render () {
