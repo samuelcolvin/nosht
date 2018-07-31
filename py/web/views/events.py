@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
+from secrets import token_hex
 from textwrap import shorten
 from time import time
 from typing import List, Optional
@@ -9,7 +10,7 @@ from asyncpg import CheckViolationError
 from buildpg import MultipleValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, EmailStr, constr, validator
+from pydantic import BaseModel, EmailStr, condecimal, constr, validator
 
 from shared.utils import slugify
 from web.actions import ActionTypes, record_action, record_action_id
@@ -105,8 +106,9 @@ class EventBread(Bread):
             lng: float
             name: constr(max_length=63)
 
-        location: LocationModel
+        location: LocationModel = None
         ticket_limit: int = None
+        price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
         long_description: str
 
     browse_enabled = True
@@ -121,17 +123,19 @@ class EventBread(Bread):
     browse_fields = (
         'e.id',
         'e.name',
-        V('c.name').as_('category'),
+        V('cat.name').as_('category'),
         'e.highlight',
         'e.start_ts',
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
     retrieve_fields = browse_fields + (
         'e.slug',
-        V('c.slug').as_('cat_slug'),
+        V('cat.slug').as_('cat_slug'),
         'e.public',
         'e.status',
         'e.ticket_limit',
+        'e.price',
+        V('co.currency').as_('currency'),
         'e.location_name',
         'e.location_lat',
         'e.location_lng',
@@ -142,10 +146,13 @@ class EventBread(Bread):
         await check_session(self.request, 'admin', 'host')
 
     def join(self):
-        return Join(V('categories').as_('c').on(V('c.id') == V('e.category')))
+        return (
+            Join(V('categories').as_('cat').on(V('cat.id') == V('e.category'))) +
+            Join(V('companies').as_('co').on(V('co.id') == V('cat.company')))
+        )
 
     def where(self):
-        logic = V('c.company') == self.request['company_id']
+        logic = V('cat.company') == self.request['company_id']
         session = self.request['session']
         if session['role'] != 'admin':
             logic &= V('e.host') == session['user_id']
@@ -174,16 +181,33 @@ class EventBread(Bread):
             data['short_description'] = shorten(long_desc, width=140, placeholder='…')
         return data
 
-    def prepare_add_data(self, data):
+    async def prepare_add_data(self, data):
         data = self.prepare(data)
+        session = self.request['session']
         data.update(
             slug=slugify(data['name']),
-            host=self.request['session'].get('user_id'),
+            host=session['user_id'],
         )
+        q = 'SELECT status FROM users WHERE id=$1'
+        if session['role'] == 'admin' or 'active' == await self.conn.fetchval(q, session['user_id']):
+            data['status'] = 'published'
         return data
 
-    def prepare_edit_data(self, data):
+    async def prepare_edit_data(self, data):
         return self.prepare(data)
+
+    add_sql = """
+    INSERT INTO :table (:values__names) VALUES :values
+    ON CONFLICT (category, slug) DO NOTHING
+    RETURNING :pk_field
+    """
+
+    async def add_execute(self, *, slug, **data):
+        pk = await super().add_execute(slug=slug, **data)
+        while pk is None:
+            # event with this slug already exists
+            pk = await super().add_execute(slug=slug + '-' + token_hex(2), **data)
+        return pk
 
 
 event_ticket_sql = """

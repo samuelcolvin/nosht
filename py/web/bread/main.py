@@ -252,7 +252,6 @@ class Bread(ReadBread):
     add_enabled = False
     edit_enabled = False
     delete_enabled = False
-    # TODO, could we do this returning json?
     add_sql = """
     INSERT INTO :table (:values__names) VALUES :values RETURNING :pk_field
     """
@@ -268,19 +267,22 @@ class Bread(ReadBread):
     ) AS t
     """
 
-    def prepare_add_data(self, data):
+    async def prepare_add_data(self, data):
         return data
 
-    async def add(self) -> web.Response:
-        m = await parse_request(self.request, self.model)
-        data = self.prepare_add_data(m.dict())
-        pk = await self.conn.fetchval_b(
+    async def add_execute(self, **data):
+        return await self.conn.fetchval_b(
             self.add_sql,
             table=Var(self.table),
             values=Values(**data),
             pk_field=Var(self.pk_field),
             print_=self.print_queries,
         )
+
+    async def add(self) -> web.Response:
+        m = await parse_request(self.request, self.model)
+        data = await self.prepare_add_data(m.dict())
+        pk = await self.add_execute(**data)
         return json_response(status='ok', pk=pk, status_=201)
 
     async def add_options(self) -> web.Response:
@@ -303,7 +305,7 @@ class Bread(ReadBread):
         if not v:
             raise JsonErrors.HTTPNotFound(message=f'{self.meta["single_title"]} not found')
 
-    def prepare_edit_data(self, data):
+    async def prepare_edit_data(self, data):
         return data
 
     async def edit_execute(self, pk, data):
@@ -331,7 +333,7 @@ class Bread(ReadBread):
                 if errors:
                     raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=errors)
 
-        data = self.prepare_edit_data(self.model.construct(**data).dict(include=raw_data.keys()))
+        data = await self.prepare_edit_data(self.model.construct(**data).dict(include=raw_data.keys()))
         if not data:
             raise JsonErrors.HTTPBadRequest(message=f'no data to save')
 

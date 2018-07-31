@@ -60,6 +60,11 @@ class Event extends React.Component {
             </p>
           </Col>
           <Col md="3" className="text-right">
+            {event.host_id === this.props.user.id &&
+              <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
+                Edit Event
+              </Button>
+            }
             <Button color={event.tickets_available ? 'danger': 'primary'} size="lg"
                     className="hover-raise" tag={Link} to={this.uri + 'book/'}>
               Book Now
@@ -79,10 +84,12 @@ class Event extends React.Component {
             hosted by {event.host_name}
           </span>
 
-          <span className="ml-4">
-            <FontAwesomeIcon icon={['fas', 'map-marker']} className="mr-1" />
-            at {event.location.name}
-          </span>
+          {event.location.name &&
+            <span className="ml-4">
+              <FontAwesomeIcon icon={['fas', 'map-marker']} className="mr-1" />
+              at {event.location.name}
+            </span>
+          }
         </div>
 
         <Map geolocation={event.location}/>

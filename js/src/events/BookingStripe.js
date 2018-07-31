@@ -11,7 +11,7 @@ import {
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ModalFooter} from '../general/Modal'
-import {load_script} from '../utils'
+import {format_money, load_script} from '../utils'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import {Waiting} from '../general/Errors'
@@ -23,11 +23,6 @@ const stripe_styles = {
   }
 }
 
-const currency_lookup = {
-  gbp: '£',
-  usd: '$',
-  eur: '€',
-}
 const name_field = {
   name: 'billing_name',
   required: true,
@@ -61,9 +56,7 @@ class StripeForm_ extends React.Component {
       postcode: null,
     }
     this.update_timer = this.update_timer.bind(this)
-    this.as_price = p => (
-      currency_lookup[this.props.event.currency] + (p/100).toFixed(2)
-    )
+    this.as_price = p => format_money(this.props.event.currency, p/100)
     this.render_form = this.render_form.bind(this)
   }
 

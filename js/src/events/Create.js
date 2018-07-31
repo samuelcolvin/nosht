@@ -33,6 +33,7 @@ export default class CreateEvent extends React.Component {
       {name: 'date', title: 'Event Start', type: 'datetime', required: true},
       {name: 'location', type: 'geolocation', help_text: 'Drag the marker to set the exact event location.'},
       {name: 'ticket_limit', type: 'integer'},
+      {name: 'price', type: 'number', step: 0.01, min: 1, max: 1000},
       {name: 'long_description', title: 'Description', type: 'textarea', required: true},
     ]
   }

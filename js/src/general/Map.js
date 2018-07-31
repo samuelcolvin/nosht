@@ -41,9 +41,9 @@ export default class Map extends React.Component {
         position: loc,
         title: loc.name,
         map: this.map,
-        draggable: Boolean(this.props.on_drag),
+        draggable: Boolean(this.props.onDrag),
       })
-      this.marker.addListener('dragend', this.props.on_drag)
+      this.marker.addListener('dragend', this.props.onDrag)
       window.gmaps_geocoder = new window.google.maps.Geocoder()
       if (this.props.click_handler) {
         window.google.maps.event.addListener(this.map, 'click', this.props.click_handler)

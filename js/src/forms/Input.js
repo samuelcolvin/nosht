@@ -41,20 +41,20 @@ const placeholder = field => {
   return null
 }
 
-const GeneralInput = ({className, field, error, disabled, value, onChange, custom_type, step}) => (
+const GeneralInput = ({className, field, error, disabled, value, onChange, custom_type, ...extra}) => (
   <FormGroup className={className}>
     <Label field={field}/>
     <BsInput type={custom_type || field.type || 'text'}
              invalid={!!error}
              disabled={disabled}
-             step={step || null}
              name={field.name}
              id={field.name}
              required={field.required}
              maxLength={field.max_length || 255}
              placeholder={placeholder(field)}
              value={value || ''}
-             onChange={e => onChange(e.target.value)}/>
+             onChange={e => onChange(e.target.value)}
+             {...extra}/>
     {error && <FormFeedback>{error}</FormFeedback>}
     <HelpText field={field}/>
   </FormGroup>
@@ -98,7 +98,11 @@ const Select = ({className, field, disabled, value, onChange}) => (
 )
 
 const IntegerInput = props => (
-  <GeneralInput {...props} custom_type="number" step="1"/>
+  <GeneralInput {...props} custom_type="number" step="1" min={props.field.min} max={props.field.max}/>
+)
+
+const NumberInput = props => (
+  <GeneralInput {...props} custom_type="number" step={props.field.step} min={props.field.min} max={props.field.max}/>
 )
 
 const DURATIONS = [
@@ -120,7 +124,7 @@ class DatetimeInput extends React.Component {
 
   render () {
     const field = this.props.field
-    const duration = this.props.value ? this.props.value.dur : null
+    const duration = this.props.value ? this.props.value.dur : 3600
     const dt = this.props.value ? this.props.value.dt : null
     const all_day = !duration
     return (
@@ -191,7 +195,7 @@ class GeoLocation extends React.Component {
     }
     let latlng
     try {
-      const loc = await this.geocode({'address': this.state.address})
+      const loc = await this.geocode({'address': this.state.address, 'region': 'gb'})
       latlng = loc.geometry.location
     } catch (e) {
       this.setState({error: 'location not found'})
@@ -202,7 +206,7 @@ class GeoLocation extends React.Component {
     this.update(latlng, this.state.address)
   }
 
-  async on_ondrag (e) {
+  async onDrag (e) {
     let address
     if (!this.state.address) {
       try {
@@ -238,10 +242,20 @@ class GeoLocation extends React.Component {
     }
   }
 
+  on_input_change (e) {
+    const v = e.target.value
+    this.setState({address: v, marker_moved: v === '' && this.props.value && this.props.value.lat})
+  }
+
   render () {
     const field = this.props.field
     // NOTE: this is hardcoded as central london for now
-    const loc = this.props.value || {lat: 51.507382, lng: -0.127654, name: '', zoom: 12}
+    // const loc = this.props.value || {lat: 51.507382, lng: -0.127654, name: '', zoom: 12}
+    const loc = this.props.value || {lat: null, lng: null, name: null, zoom: null}
+    loc.lat = loc.lat || 51.507382
+    loc.lng = loc.lng || -0.127654
+    loc.name = loc.name || ''
+    loc.zoom = loc.zoom || 12
     const error = this.state.error || this.props.error
     return (
       <FormGroup className={this.props.className}>
@@ -252,9 +266,9 @@ class GeoLocation extends React.Component {
                    disabled={this.props.disabled}
                    required={field.required}
                    placeholder={placeholder(field)}
-                   value={this.state.address}
+                   value={this.state.address || ''}
                    onKeyPress={this.on_key_press.bind(this)}
-                   onChange={e => this.setState({address: e.target.value})}/>
+                   onChange={this.on_input_change.bind(this)}/>
           <InputGroupAddon addonType="append">
             <Button onClick={this.search}>Search</Button>
           </InputGroupAddon>
@@ -266,7 +280,7 @@ class GeoLocation extends React.Component {
             </Button>
           }
         </div>
-        <Map geolocation={loc} on_drag={this.on_ondrag.bind(this)}/>
+        <Map geolocation={loc} onDrag={this.onDrag.bind(this)}/>
         {error && <FormFeedback className="display-block">{error}</FormFeedback>}
         <HelpText field={field}/>
       </FormGroup>
@@ -279,6 +293,7 @@ const INPUT_LOOKUP = {
   'select': Select,
   'datetime': DatetimeInput,
   'integer': IntegerInput,
+  'number': NumberInput,
   'geolocation': GeoLocation,
 }
 
@@ -286,7 +301,11 @@ const Input = props => {
   const InputComp = INPUT_LOOKUP[props.field.type] || GeneralInput
   props.field.title = props.field.title || as_title(props.field.name)
   const value = props.value || props.field.default
-  return <InputComp {...props} value={value} onChange={props.set_value}/>
+  return <InputComp field={props.field}
+                    error={props.error}
+                    value={value}
+                    disabled={props.disabled}
+                    onChange={props.set_value}/>
 }
 
 export default Input

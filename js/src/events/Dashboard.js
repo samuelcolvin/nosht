@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
-import {format_event_start, format_event_duration, format_datetime} from '../utils'
+import {format_event_start, format_event_duration, format_datetime, format_money} from '../utils'
 import {Dash, Detail, RenderList, RenderDetails} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 
@@ -29,6 +29,7 @@ const EVENT_FIELDS = [
   {name: 'date', title: 'Event Start', type: 'datetime', required: true},
   {name: 'location', type: 'geolocation', help_text: 'Drag the marker to set the exact event location.'},
   {name: 'ticket_limit', type: 'integer'},
+  {name: 'price', type: 'number', step: 0.01, min: 1, max: 1000},
   {name: 'long_description', title: 'Description', type: 'textarea', required: true},
 ]
 const EVENT_STATUS_FIELDS = [
@@ -122,6 +123,10 @@ export class EventsDetails extends RenderDetails {
       duration: {
         render: format_event_duration
       },
+      price: {
+        render: (v, item) => v && format_money(item.currency, v)
+      },
+      currency: null,
       slug: null,
       cat_slug: null,
       location_lat: null,

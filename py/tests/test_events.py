@@ -109,7 +109,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
     }
     assert event == {
         'category': factory.category_id,
-        'status': 'pending',
+        'status': 'published',
         'host': factory.user_id,
         'name': 'foobar',
         'slug': 'foobar',
@@ -153,6 +153,51 @@ async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login
     assert public is False
     assert start_ts == datetime(2020, 2, 1, 0, 0)
     assert duration is None
+
+
+async def test_create_event_duplicate_slug(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        long_description='I love to party',
+        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+    )
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 201, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 201, await r.text()
+    assert 2 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+    slug1, slug2 = [r[0] for r in await db_conn.fetch('SELECT slug FROM events ORDER BY id')]
+    assert slug1 == 'foobar'
+    assert slug2 == RegexStr(r'foobar\-[a-f0-9]{4}')
+
+
+async def test_create_event_host(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await login()
+    await db_conn.fetchval("UPDATE users SET status='pending'")
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        long_description='I love to party',
+        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 201, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+    status = await db_conn.fetchval('SELECT status FROM events')
+    assert status == 'pending'
 
 
 async def test_not_auth(cli, url, db_conn, factory: Factory):

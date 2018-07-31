@@ -1,5 +1,15 @@
 import format from 'date-fns/format'
 
+const currency_lookup = {
+  gbp: '£',
+  usd: '$',
+  eur: '€',
+}
+
+export const format_money = (currency, money) => (
+  currency_lookup[currency] + money.toFixed(2)
+)
+
 export const grecaptcha_execute = action => window.grecaptcha.execute(0, {action})
 
 const _add_script = (url, reject) => {
@@ -93,7 +103,7 @@ export const request = (method, path, config) => {
     const on_error = (user_msg, error_details) => reject({user_msg, url, xhr, error_details, status: xhr.status})
     xhr.open(method, url)
     xhr.setRequestHeader('Accept', 'application/json')
-    method === 'POST' && xhr.setRequestHeader('Content-Type', 'application/json')
+    method !== 'GET' && xhr.setRequestHeader('Content-Type', 'application/json')
     xhr.onload = () => {
       if (config.expected_statuses.includes(xhr.status)) {
         try {
