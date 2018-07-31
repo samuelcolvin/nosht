@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from time import time
 
 from aiohttp.hdrs import METH_GET, METH_OPTIONS, METH_POST
@@ -133,41 +134,51 @@ async def host_middleware(request, handler):
     return await handler(request)
 
 
-def origin_check(request):
-    # origin and host ports differ on localhost when testing, so ignore this case
-    origin = request.headers.get('Origin')
-    return origin == 'null' or origin == request_root(request) or request.host.startswith('localhost')
-
-
+FORM_PATHS = (
+    re.compile(r'/api/categories/\d+/add-image/'),
+)
 CROSS_ORIGIN_URLS = {
     '/api/login/',
     '/api/set-password/',
 }
 
 
-def referrer_check(request):
+def csrf_checks(request):
+    """
+    content-type, origin and referrer checks for CSRF
+    """
+    ct = request.headers.get('Content-Type')
+    if any(p.fullmatch(request.path) for p in FORM_PATHS):
+        yield ct.startswith('multipart/form-data; boundary')
+    else:
+        yield ct == JSON_CONTENT_TYPE
+
+    origin = request.headers.get('Origin')
+    path_root = request_root(request)
     if request.path in CROSS_ORIGIN_URLS:
-        # iframe requests don't include a referrer
-        return True
-    r = request.headers.get('Referer')
-    return r and r.startswith(request_root(request) + '/')
+        yield origin == 'null' or request.host.startswith('localhost')
+    else:
+        # origin and host ports differ on localhost when testing, so ignore this case
+        yield origin == path_root or request.host.startswith('localhost')
+
+        # iframe requests don't include a referrer, thus this isn't checked for cross origin urls
+        r = request.headers.get('Referer')
+        yield r.startswith(path_root + '/')
 
 
 @middleware
 async def csrf_middleware(request, handler):
-    h = request.headers
     if request.method == METH_OPTIONS:
-        if 'Access-Control-Request-Method' in h:
-            if (h.get('Access-Control-Request-Method') == METH_POST and
+        if 'Access-Control-Request-Method' in request.headers:
+            if (request.headers.get('Access-Control-Request-Method') == METH_POST and
                     request.path in CROSS_ORIGIN_URLS and
-                    h.get('Access-Control-Request-Headers').lower() == 'content-type'):
+                    request.headers.get('Access-Control-Request-Headers').lower() == 'content-type'):
                 # can't check origin here as it's null since the iframe's requests are "cross-origin"
                 headers = {'Access-Control-Allow-Headers': 'Content-Type', **HEADER_CROSS_ORIGIN}
                 return Response(text='ok', headers=headers)
             else:
                 raise JsonErrors.HTTPForbidden(error='Access-Control checks failed', headers_=HEADER_CROSS_ORIGIN)
-    elif request.method != METH_GET:
-        if not (h.get('Content-Type') == JSON_CONTENT_TYPE and origin_check(request) and referrer_check(request)):
-            raise JsonErrors.HTTPForbidden(error='CSRF failure', headers_=HEADER_CROSS_ORIGIN)
+    elif request.method != METH_GET and not all(csrf_checks(request)):
+        raise JsonErrors.HTTPForbidden(error='CSRF failure', headers_=HEADER_CROSS_ORIGIN)
 
     return await handler(request)

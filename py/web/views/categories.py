@@ -62,7 +62,10 @@ async def category_add_image(request):
         p = await request.post()
     except ValueError:
         raise HTTPRequestEntityTooLarge
-    image = p['image']
+    try:
+        image = p['image']
+    except KeyError:
+        raise JsonErrors.HTTPBadRequest(message='image missing')
     content = image.file.read()
     try:
         check_size_save(content)

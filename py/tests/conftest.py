@@ -290,7 +290,7 @@ async def factory(db_conn, cli):
 def login(cli, url):
     async def f(email='frank@example.com', password='testing'):
         data = dict(email=email, password=password, grecaptcha_token='__ok__')
-        r = await cli.json_post(url('login'), data=data)
+        r = await cli.json_post(url('login'), data=data, origin_null=True)
         assert r.status == 200, await r.text()
         data = await r.json()
         r = await cli.json_post(url('auth-token'), data={'token': data['auth_token']})
@@ -330,13 +330,13 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
     app.on_startup.append(post_startup_app)
     cli = await aiohttp_client(app)
 
-    def json_data_request(method, url, *, data=None, headers=None):
+    def json_data_request(method, url, *, data=None, headers=None, origin_null=False):
         if data and not isinstance(data, str):
             data = json.dumps(data)
         headers = {
             'Content-Type': 'application/json',
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
-            'Origin': f'http://127.0.0.1:{cli.server.port}',
+            'Origin': 'null' if origin_null else f'http://127.0.0.1:{cli.server.port}',
             **(headers or {}),
         }
         return cli.request(method, url, data=data, headers=headers)

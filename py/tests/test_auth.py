@@ -24,7 +24,7 @@ async def test_login_successful(cli, url, factory: Factory):
         password='testing',
         grecaptcha_token='__ok__',
     )
-    r = await cli.json_post(url('login'), data=data)
+    r = await cli.json_post(url('login'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
     data = await r.json()
     r = await cli.json_post(url('auth-token'), data={'token': data['auth_token']})
@@ -48,7 +48,7 @@ async def test_login_unsuccessful(post_data, cli, url, factory: Factory):
 
     assert len(cli.session.cookie_jar) == 0
 
-    r = await cli.json_post(url('login'), data=post_data)
+    r = await cli.json_post(url('login'), data=post_data, origin_null=True)
     assert r.status == 470, await r.text()
     data = await r.json()
     assert data == {
@@ -342,7 +342,7 @@ async def test_set_password(cli, url, factory: Factory, db_conn, login):
         'password2': 'testing-new-password',
         'token': encrypt_json(cli.app['main_app'], factory.user_id),
     }
-    r = await cli.json_post(url('set-password'), data=data)
+    r = await cli.json_post(url('set-password'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
     pw_after = await db_conn.fetchval('SELECT password_hash FROM users WHERE id=$1', factory.user_id)
     assert pw_after != pw_before
@@ -358,10 +358,10 @@ async def test_set_password_reuse_token(cli, url, factory: Factory):
         'password2': 'testing-new-password',
         'token': encrypt_json(cli.app['main_app'], factory.user_id),
     }
-    r = await cli.json_post(url('set-password'), data=data)
+    r = await cli.json_post(url('set-password'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
 
-    r = await cli.json_post(url('set-password'), data=data)
+    r = await cli.json_post(url('set-password'), data=data, origin_null=True)
     assert r.status == 470, await r.text()
     data = await r.json()
     assert data == {
@@ -378,7 +378,7 @@ async def test_set_password_mismatch(cli, url, factory: Factory):
         'password2': 'testing-new-password2',
         'token': encrypt_json(cli.app['main_app'], factory.user_id),
     }
-    r = await cli.json_post(url('set-password'), data=data)
+    r = await cli.json_post(url('set-password'), data=data, origin_null=True)
     assert r.status == 400, await r.text()
 
     data = await r.json()

@@ -26,7 +26,7 @@ def check_size_save(image_data: bytes):
         raise ValueError('invalid image')
     width, height = SMALL_SIZE
     if img.width < width or img.height < height:
-        raise ValueError(f'too small: {img.width}x{img.height}<{SMALL_SIZE[0]}x{SMALL_SIZE[1]}')
+        raise ValueError(f'image too small: {img.width}x{img.height}<{SMALL_SIZE[0]}x{SMALL_SIZE[1]}')
 
 
 def create_s3_session(settings: Settings):

@@ -249,13 +249,12 @@ class GeoLocation extends React.Component {
 
   render () {
     const field = this.props.field
-    // NOTE: this is hardcoded as central london for now
-    // const loc = this.props.value || {lat: 51.507382, lng: -0.127654, name: '', zoom: 12}
     const loc = this.props.value || {lat: null, lng: null, name: null, zoom: null}
+    // NOTE: this is hardcoded as central london for now
     loc.lat = loc.lat || 51.507382
     loc.lng = loc.lng || -0.127654
     loc.name = loc.name || ''
-    loc.zoom = loc.zoom || 12
+    loc.zoom = loc.zoom || 14
     const error = this.state.error || this.props.error
     return (
       <FormGroup className={this.props.className}>
