@@ -205,7 +205,7 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
 
     assert dummy_server.app['log'] == [
         ('grecaptcha', '__ok__'),
-        'google_siw_url',
+        'GET google_siw_url',
         (
             'email_send_endpoint',
             'Subject: "Testing Account Created", To: "Foo Bar <google-auth@example.com>"',

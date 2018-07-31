@@ -30,6 +30,7 @@ class Settings(BaseSettings):
 
     aws_access_key: str = None
     aws_secret_key: str = None
+    aws_endpoint_url: str = None  # only used when testing
     s3_bucket: str = None
     s3_domain: str = None
     aws_region: str = 'eu-west-1'

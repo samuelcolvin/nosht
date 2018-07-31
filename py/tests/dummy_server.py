@@ -78,9 +78,57 @@ async def stripe_post_charges(request):
     })
 
 
+s3_response = """\
+<?xml version="1.0" ?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <Name>testingbucket.example.com</Name>
+    <Prefix>co-slug/cat-slug/option</Prefix>
+    <KeyCount>14</KeyCount>
+    <MaxKeys>1000</MaxKeys>
+    <IsTruncated>false</IsTruncated>
+    <Contents>
+        <Key>co-slug/cat-slug/option/randomkey1/main.jpg</Key>
+        <LastModified>2032-07-31T18:12:48.000Z</LastModified>
+        <ETag>&quot;d9028601438a5f3f6b21f2ddb171182f&quot;</ETag>
+        <Size>1930930</Size>
+        <StorageClass>STANDARD</StorageClass>
+    </Contents>
+    <Contents>
+        <Key>co-slug/cat-slug/option/randomkey1/thumb.jpg</Key>
+        <LastModified>2032-07-31T18:12:48.000Z</LastModified>
+        <ETag>&quot;f0f075450aca93b87356c580a34d3f80&quot;</ETag>
+        <Size>53866</Size>
+        <StorageClass>STANDARD</StorageClass>
+    </Contents>
+    <Contents>
+        <Key>co-slug/cat-slug/option/randomkey2/main.jpg</Key>
+        <LastModified>2032-07-31T19:05:00.000Z</LastModified>
+        <ETag>&quot;e058658dc289ffc656fbaa761f653b0a&quot;</ETag>
+        <Size>1269965</Size>
+        <StorageClass>STANDARD</StorageClass>
+    </Contents>
+    <Contents>
+        <Key>co-slug/cat-slug/option/randomkey2/thumb.jpg</Key>
+        <LastModified>2032-07-31T19:05:00.000Z</LastModified>
+        <ETag>&quot;395ab74b92338d76e5f185fd5b8135de&quot;</ETag>
+        <Size>32279</Size>
+        <StorageClass>STANDARD</StorageClass>
+    </Contents>
+
+</ListBucketResult>"""
+
+
+async def aws_endpoint(request):
+    # very VERY simple mock of s3
+    if request.method == 'GET':
+        return Response(text=s3_response)
+    else:
+        return Response(text='')
+
+
 @middleware
 async def log_middleware(request, handler):
-    request.app['log'].append(request.path.strip('/'))
+    request.app['log'].append(request.method + ' ' + request.path.strip('/'))
     return await handler(request)
 
 
@@ -96,6 +144,8 @@ async def create_dummy_server(loop, create_server):
         web.post('/stripe_root_url/customers/{stripe_customer_id}/sources', stripe_post_customer_sources),
         web.post('/stripe_root_url/customers', stripe_post_customers),
         web.post('/stripe_root_url/charges', stripe_post_charges),
+
+        web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
     ])
     server = await create_server(app)
     app.update(

@@ -7,6 +7,7 @@ import random
 import uuid
 from datetime import datetime
 from functools import partial
+from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
 
@@ -15,6 +16,7 @@ import pytest
 from aiohttp.test_utils import teardown_test_loop
 from aioredis import create_redis
 from buildpg import MultipleValues, Values, asyncpg
+from PIL import Image, ImageDraw
 
 from shared.db import create_demo_data as _create_demo_data
 from shared.db import prepare_database
@@ -37,6 +39,8 @@ settings_args = dict(
     REDISCLOUD_URL='redis://localhost:6379/6',
     bcrypt_work_factor=6,
     stripe_idempotency_extra=str(uuid.uuid4()),
+    s3_bucket='testingbucket.example.com',
+    s3_domain='https://testingbucket.example.com',
     aws_access_key='testing_access_key',
     aws_secret_key='testing_secret_key',
     ticket_ttl=15,
@@ -69,6 +73,7 @@ replaced_url_fields = (
     'google_siw_url',
     'facebook_siw_url',
     'stripe_root_url',
+    'aws_endpoint_url',
 )
 
 
@@ -370,3 +375,11 @@ def _fix_signed_fb_request(settings):
         return sig[:-1] + '.' + raw_data.decode()
 
     return f
+
+
+def create_image(width=2000, height=1200):
+    stream = BytesIO()
+    image = Image.new('RGB', (width, height), (50, 100, 150))
+    ImageDraw.Draw(image).line((0, 0) + image.size, fill=128)
+    image.save(stream, format='JPEG', optimize=True)
+    return stream.getvalue()

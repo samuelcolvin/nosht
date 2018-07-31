@@ -139,8 +139,8 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        'stripe_root_url/customers',
-        'stripe_root_url/charges',
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
         (
             'email_send_endpoint',
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.com>"',

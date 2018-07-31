@@ -4,6 +4,7 @@ import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactst
 import {format_event_start, format_event_duration, format_datetime, format_money} from '../utils'
 import {Dash, Detail, RenderList, RenderDetails} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
+import {ModalDropzoneForm} from '../forms/Drop'
 
 export class EventsList extends RenderList {
   constructor (props) {
@@ -188,6 +189,13 @@ export class EventsDetails extends RenderDetails {
                  update={this.update}
                  action={`/events/${this.id}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
+      <ModalDropzoneForm {...this.props}
+                         key="4"
+                         parent_uri={this.uri}
+                         regex={/set-image\/$/}
+                         update={this.update}
+                         title="Upload Background Image"
+                         action={`/categories/${this.id}/add-image/`}/>,
     ]
   }
 }

@@ -42,7 +42,8 @@ class DropzoneForm extends React.Component {
     xhr.upload.onprogress = e => {
       if (e.lengthComputable) {
         this.setState({[key]: {
-          progress: e.loaded / e.total * 100,
+          // 90 not 100 so progress only completes when the request finishs
+          progress: e.loaded / e.total * 90,
           file,
         }})
       }
@@ -51,7 +52,7 @@ class DropzoneForm extends React.Component {
     this.uploads.push(xhr)
   }
 
-  onDrop (accepted_files, refused_files) {
+  onDropMultiple (accepted_files, refused_files) {
     const extra_state = {already_uploaded: false}
     for (let file of accepted_files) {
       const k = file_key(file)
@@ -61,6 +62,20 @@ class DropzoneForm extends React.Component {
         extra_state[k] = {file}
         this.upload_file(k, file)
       }
+    }
+    for (let file of refused_files) {
+      extra_state[file_key(file)] = {file, icon: failed_icon, message: 'Not a valid image'}
+    }
+    this.setState(extra_state)
+  }
+
+  onDropSingle (accepted_files, refused_files) {
+    const extra_state = {}
+    console.log('ondrop', accepted_files, refused_files)
+    for (let file of accepted_files) {
+      extra_state.file = {file}
+      this.upload_file('file', file)
+      break
     }
     for (let file of refused_files) {
       extra_state[file_key(file)] = {file, icon: failed_icon, message: 'Not a valid image'}
@@ -78,11 +93,14 @@ class DropzoneForm extends React.Component {
     return [
       <ModalBody key="1">
         <Dropzone className="dropzone"
-                  onDrop={this.onDrop.bind(this)}
+                  onDrop={this.props.multiple ? this.onDropMultiple.bind(this): this.onDropSingle.bind(this)}
                   accept={['image/jpeg', 'image/png']}
-                  maxSize={10 * 1000 * 1000}
-                  style={{}}>
-          <p>Drop files here, or click to select files to upload.</p>
+                  maxSize={10 * 1000 * 1000}>
+          {
+            this.props.multiple ?
+            <p>Drop images here, or click to select images to upload.</p> :
+            <p>Drop an image here, or click to select an image to upload.</p>
+          }
           <div className="previews">
             {Object.values(this.state).filter(item => item.file).map((item, i) => (
               <div key={i} className="file-preview">

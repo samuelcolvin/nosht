@@ -120,6 +120,7 @@ export class CategoriesDetails extends RenderDetails {
                  action={`/categories/${this.id}/`}
                  fields={CAT_FIELDS}/>,
       <ModalDropzoneForm {...this.props}
+                         multiple={true}
                          key="3"
                          parent_uri={this.uri}
                          regex={/add-image\/$/}

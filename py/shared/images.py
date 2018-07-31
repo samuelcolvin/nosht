@@ -3,7 +3,6 @@ import logging
 import random
 import re
 import string
-from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
 from typing import Set
@@ -18,8 +17,7 @@ LARGE_SIZE = 3840, 1000
 SMALL_SIZE = 1920, 500
 
 
-@contextmanager
-def check_size_save(image_data: bytes):
+def check_image_size(image_data: bytes):
     try:
         img = Image.open(BytesIO(image_data))
     except OSError:
@@ -30,12 +28,14 @@ def check_size_save(image_data: bytes):
 
 
 def create_s3_session(settings: Settings):
-    auth = dict(
+    session = aiobotocore.get_session()
+    return session.create_client(
+        's3',
+        region_name='eu-west-1',
         aws_access_key_id=settings.aws_access_key,
         aws_secret_access_key=settings.aws_secret_key,
+        endpoint_url=settings.aws_endpoint_url,
     )
-    session = aiobotocore.get_session()
-    return session.create_client('s3', region_name='eu-west-1', **auth)
 
 
 async def list_images(path: Path, settings: Settings) -> Set[str]:

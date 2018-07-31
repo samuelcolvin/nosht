@@ -1,6 +1,7 @@
+from aiohttp import FormData
 from pytest_toolbox.comparison import RegexStr
 
-from .conftest import Factory
+from .conftest import Factory, create_image
 
 
 async def test_cat_event_list(cli, url, db_conn, factory: Factory):
@@ -142,3 +143,147 @@ async def test_edit_not_dict(cli, url, factory: Factory, login):
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {'message': 'data not a dictionary'}
+
+
+async def test_cats_browse(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+
+    r = await cli.get(url('category-browse'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    # debug(data)
+    assert data == {
+        'items': [
+            {
+                'id': factory.category_id,
+                'name': 'Supper Clubs',
+                'live': True,
+                'description': None,
+            },
+        ],
+        'count': 1,
+    }
+
+
+async def test_cats_retrieve(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+
+    r = await cli.get(url('category-retrieve', pk=factory.category_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'id': factory.category_id,
+        'name': 'Supper Clubs',
+        'live': True,
+        'description': None,
+        'sort_index': None,
+        'event_content': None,
+        'host_advice': None,
+        'image': 'https://www.example.com/co.png',
+    }
+
+
+async def test_upload_image(cli, url, factory: Factory, login, dummy_server):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+    data = FormData()
+    data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('categories-add-image', cat_id=factory.category_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 200, await r.text()
+    # debug(dummy_server.app['log'])
+    assert sorted(dummy_server.app['log'][1:]) == [
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/testing/supper-clubs/option/\w+/main.jpg'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/testing/supper-clubs/option/\w+/thumb.jpg'),
+    ]
+
+
+async def test_upload_image_invalid(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+    data = FormData()
+    data.add_field('image', b'xxx', filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('categories-add-image', cat_id=factory.category_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'invalid image',
+    }
+
+
+async def test_upload_image_too_small(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+    data = FormData()
+    data.add_field('image', create_image(200, 100), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('categories-add-image', cat_id=factory.category_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'image too small: 200x100<1920x500',
+    }
+
+
+async def test_list_images(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+    r = await cli.get(url('categories-images', cat_id=factory.category_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'images': [
+            'https://testingbucket.example.com/co-slug/cat-slug/option/randomkey1',
+            'https://testingbucket.example.com/co-slug/cat-slug/option/randomkey2',
+        ],
+    }
+
+
+async def test_delete_image(cli, url, factory: Factory, login, dummy_server):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+    r = await cli.json_post(
+        url('categories-delete-image', cat_id=factory.category_id),
+        data={'image': 'whatever'},
+    )
+    assert r.status == 200, await r.text()
+    # debug(dummy_server.app['log'])
+    assert sorted(dummy_server.app['log'][1:]) == [
+        'DELETE aws_endpoint_url/testingbucket.example.com/whatever/main.jpg',
+        'DELETE aws_endpoint_url/testingbucket.example.com/whatever/thumb.jpg',
+    ]

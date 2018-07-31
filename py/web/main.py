@@ -79,7 +79,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
         web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
         web.post('/categories/{cat_id:\d+}/set-default/', category_default_image, name='categories-set-default'),
-        web.post('/categories/{cat_id:\d+}/delete/', category_delete_image, name='categories-delete'),
+        web.post('/categories/{cat_id:\d+}/delete/', category_delete_image, name='categories-delete-image'),
         *CategoryBread.routes('/categories/'),
         web.get('/cat/{category}/', category_public, name='category'),
 

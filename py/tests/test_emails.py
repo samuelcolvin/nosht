@@ -80,8 +80,8 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     await email_actor.send_event_conf(paid_action_id)
 
     assert dummy_server.app['log'] == [
-        'stripe_root_url/customers',
-        'stripe_root_url/charges',
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
         ('email_send_endpoint', 'Subject: "The Event Name Ticket Confirmation", '
                                 'To: "Frank Spencer <testing@scolvin.com>"'),
     ]
@@ -111,8 +111,8 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
     await email_actor.send_event_conf(paid_action_id)
 
     assert dummy_server.app['log'] == [
-        'stripe_root_url/customers',
-        'stripe_root_url/charges',
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
         ('email_send_endpoint', 'Subject: "The Event Name Ticket Confirmation", '
                                 'To: "Frank Spencer <testing@scolvin.com>"'),
     ]

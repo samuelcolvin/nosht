@@ -4,12 +4,13 @@ from decimal import Decimal
 from typing import Any, Type, TypeVar
 from uuid import UUID
 
-from aiohttp.web import Response
+from aiohttp.web import HTTPRequestEntityTooLarge, Response
 from aiohttp.web_exceptions import HTTPClientError
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError
 from pydantic.json import pydantic_encoder
 
+from shared.images import check_image_size
 from shared.utils import encrypt_json as _encrypt_json
 
 JSON_CONTENT_TYPE = 'application/json'
@@ -156,3 +157,20 @@ def split_name(raw_name):
         return None, raw_name
     else:
         return [n.strip(' ') or None for n in raw_name.split(' ', 1)]
+
+
+async def request_image(request):
+    try:
+        p = await request.post()
+    except ValueError:
+        raise HTTPRequestEntityTooLarge
+    try:
+        image = p['image']
+    except KeyError:
+        raise JsonErrors.HTTPBadRequest(message='image missing')
+    content = image.file.read()
+    try:
+        check_image_size(content)
+    except ValueError as e:
+        raise JsonErrors.HTTPBadRequest(message=str(e))
+    return content

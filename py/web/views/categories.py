@@ -1,16 +1,15 @@
 from pathlib import Path
 
-from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
 from buildpg import V
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Where
 from pydantic import BaseModel
 
-from shared.images import check_size_save, delete_image, list_images, resize_upload
+from shared.images import delete_image, list_images, resize_upload
 from shared.utils import slugify
 from web.auth import check_session, is_admin
 from web.bread import Bread
-from web.utils import JsonErrors, json_response, parse_request, raw_json_response
+from web.utils import JsonErrors, json_response, parse_request, raw_json_response, request_image
 
 CATEGORY_PUBLIC_SQL = """
 SELECT json_build_object('events', events)
@@ -58,23 +57,9 @@ async def _get_cat_img_path(request):
 
 @is_admin
 async def category_add_image(request):
-    try:
-        p = await request.post()
-    except ValueError:
-        raise HTTPRequestEntityTooLarge
-    try:
-        image = p['image']
-    except KeyError:
-        raise JsonErrors.HTTPBadRequest(message='image missing')
-    content = image.file.read()
-    try:
-        check_size_save(content)
-    except ValueError as e:
-        raise JsonErrors.HTTPBadRequest(message=str(e))
-
+    content = await request_image(request)
     upload_path = await _get_cat_img_path(request)
     await resize_upload(content, upload_path, request.app['settings'])
-
     return json_response(status='success')
 
 
