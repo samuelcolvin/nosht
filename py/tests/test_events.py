@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 
+from aiohttp import FormData
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
 from web.utils import decrypt_json, encrypt_json
 
-from .conftest import Factory
+from .conftest import Factory, create_image
 
 
 async def test_event_public(cli, url, factory: Factory, db_conn):
@@ -585,3 +586,111 @@ async def test_cancel_reservation(cli, url, db_conn, factory: Factory):
 
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
     assert 0 == await db_conn.fetchval('SELECT tickets_taken FROM events')
+
+
+async def test_image_existing(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
+                            data={'image': 'https://testingbucket.example.com/testing.png'})
+    assert r.status == 200, await r.text()
+    assert 'https://testingbucket.example.com/testing.png' == await db_conn.fetchval('SELECT image FROM events')
+
+    assert len(dummy_server.app['log']) == 1
+
+
+async def test_image_existing_bad(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
+                            data={'image': 'https://foobar.example.com/testing.png'})
+    assert r.status == 400, await r.text()
+    assert None is await db_conn.fetchval('SELECT image FROM events')
+
+    assert len(dummy_server.app['log']) == 1
+
+
+async def test_image_existing_wrong_host(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    user_id = await factory.create_user(email='admin@example.com')
+    await factory.create_event(host_user_id=user_id)
+    await login()
+    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
+                            data={'image': 'https://testingbucket.example.com/testing.png'})
+    assert r.status == 403, await r.text()
+    assert None is await db_conn.fetchval('SELECT image FROM events')
+    data = await r.json()
+    assert data == {'message': 'you may not edit this event'}
+
+    assert len(dummy_server.app['log']) == 1
+
+
+async def test_image_existing_wrong_id(cli, url, factory: Factory, login, dummy_server):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    r = await cli.json_post(url('event-set-image-existing', id=1),
+                            data={'image': 'https://testingbucket.example.com/testing.png'})
+    assert r.status == 404, await r.text()
+    assert len(dummy_server.app['log']) == 1
+
+
+async def test_image_existing_delete(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(image='https://testingbucket.example.com/foobar.png')
+    await login()
+
+    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
+                            data={'image': 'https://testingbucket.example.com/testing.png'})
+    assert r.status == 200, await r.text()
+    assert 'https://testingbucket.example.com/testing.png' == await db_conn.fetchval('SELECT image FROM events')
+
+    assert len(dummy_server.app['log']) == 3
+    assert set(dummy_server.app['log'][1:]) == {
+        'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/main.jpg',
+        'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/thumb.jpg'
+    }
+
+
+async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(image='https://testingbucket.example.com/foobar.png')
+    await login()
+
+    data = FormData()
+    data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('event-set-image-new', id=factory.event_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 200, await r.text()
+
+    img_path = await db_conn.fetchval('SELECT image FROM events')
+    assert img_path == RegexStr(r'https://testingbucket.example.com/testing/supper-clubs/the-event-name/\w+')
+
+    # debug(dummy_server.app['log'])
+    assert len(dummy_server.app['log']) == 5
+
+    log = sorted(dummy_server.app['log'][1:])
+    assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/main.jpg'
+    assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/thumb.jpg'
+    assert log[2] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/testing/supper-clubs/'
+                              r'the-event-name/\w+?/main.jpg')
+    assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/testing/supper-clubs/'
+                              r'the-event-name/\w+?/thumb.jpg')

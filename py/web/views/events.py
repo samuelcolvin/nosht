@@ -285,10 +285,7 @@ async def set_event_image_new(request):
     await _delete_existing_image(request)
 
     event_id = int(request.match_info['id'])
-    try:
-        co_slug, cat_slug, event_slug = await request['conn'].fetchrow(SLUGS_SQL, request['company_id'], event_id)
-    except TypeError:
-        raise JsonErrors.HTTPNotFound(message='event not found')
+    co_slug, cat_slug, event_slug = await request['conn'].fetchrow(SLUGS_SQL, request['company_id'], event_id)
 
     upload_path = Path(co_slug) / cat_slug / event_slug
 
@@ -300,6 +297,8 @@ async def set_event_image_new(request):
 @is_admin_or_host
 async def set_event_image_existing(request):
     m = await parse_request(request, ImageModel)
+    if not m.image.startswith(request.app['settings'].s3_domain):
+        raise JsonErrors.HTTPBadRequest(message='image not allowed')
 
     await _delete_existing_image(request)
 
