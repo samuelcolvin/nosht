@@ -4,8 +4,8 @@ import hmac
 import json
 import logging
 import re
-import secrets
 from functools import wraps
+from secrets import compare_digest
 from time import time
 from urllib.parse import urlencode
 
@@ -157,7 +157,7 @@ async def facebook_get_details(m: FacebookSiwModel, app):
 
     settings: Settings = app['settings']
     expected_sig = hmac.new(settings.facebook_siw_app_secret, data, hashlib.sha256).digest()
-    if not secrets.compare_digest(padded_urlsafe_b64decode(sig), expected_sig):
+    if not compare_digest(padded_urlsafe_b64decode(sig), expected_sig):
         raise JsonErrors.HTTPBadRequest(message='"signedRequest" not correctly signed')
 
     signed_data = json.loads(padded_urlsafe_b64decode(data).decode())

@@ -60,7 +60,7 @@ class Event extends React.Component {
             </p>
           </Col>
           <Col md="3" className="text-right">
-            {event.host_id === this.props.user.id &&
+            {this.props.user && (this.props.user.role === 'admin' || this.props.user.id === event.host_id) &&
               <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
                 Edit Event
               </Button>

@@ -21,7 +21,7 @@ from .views.auth import (authenticate_token, guest_signup, host_signup, login, l
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public)
 from .views.events import (BuyTickets, CancelReservedTickets, EventBread, ReserveTickets, SetEventStatus, booking_info,
-                           event_categories, event_public, event_tickets)
+                           event_categories, event_public, event_tickets, set_event_image_existing, set_event_image_new)
 from .views.static import static_handler
 from .views.users import UserBread
 
@@ -86,6 +86,8 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.get('/events/categories/', event_categories, name='event-categories'),
         *EventBread.routes('/events/'),
         web.post('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
+        web.post('/events/{id:\d+}/set-image/new/', set_event_image_new, name='event-set-image-new'),
+        web.post('/events/{id:\d+}/set-image/existing/', set_event_image_existing, name='event-set-image-existing'),
         web.get('/events/{id:\d+}/booking-info/', booking_info, name='event-booking-info'),
         web.get('/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
         web.post('/events/{id:\d+}/reserve/', ReserveTickets.view(), name='event-reserve-tickets'),

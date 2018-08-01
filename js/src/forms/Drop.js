@@ -1,5 +1,5 @@
 import React from 'react'
-import {Button, ModalBody, ModalFooter, Progress} from 'reactstrap'
+import {Button, Progress} from 'reactstrap'
 import Dropzone from 'react-dropzone'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {error_response} from '../utils'
@@ -9,7 +9,7 @@ const file_key = f => `${f.name}-${f.size}`
 const failed_icon = 'minus-circle'
 
 
-class DropzoneForm extends React.Component {
+export class DropzoneForm extends React.Component {
   constructor () {
     super()
     this.state = {}
@@ -91,7 +91,7 @@ class DropzoneForm extends React.Component {
 
   render () {
     return [
-      <ModalBody key="1">
+      <div key="1" className={this.props.form_body_class}>
         <Dropzone className="dropzone"
                   onDrop={this.props.multiple ? this.onDropMultiple.bind(this): this.onDropSingle.bind(this)}
                   accept={['image/jpeg', 'image/png']}
@@ -101,6 +101,7 @@ class DropzoneForm extends React.Component {
             <p>Drop images here, or click to select images to upload.</p> :
             <p>Drop an image here, or click to select an image to upload.</p>
           }
+          <p className="small">Images must be at least 1920px x 500px.</p>
           <div className="previews">
             {Object.values(this.state).filter(item => item.file).map((item, i) => (
               <div key={i} className="file-preview">
@@ -121,12 +122,12 @@ class DropzoneForm extends React.Component {
             File already uploaded.
           </small>
         )}
-      </ModalBody>,
-      <ModalFooter key="2">
+      </div>,
+      <div key="2" className={this.props.form_footer_class || 'text-right'}>
         <Button type="button" color="secondary" onClick={() => this.props.finished()}>
           {this.props.close || 'Close'}
         </Button>
-      </ModalFooter>
+      </div>
     ]
   }
 }

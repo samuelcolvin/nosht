@@ -135,14 +135,14 @@ export default class Signup extends React.Component {
                 <Input field={email_field}
                       value={this.state.email}
                       set_value={v => this.setState({email: v})}/>
-                <button type="submit" id="submit-button" className="display-none">submit</button>
+                <button type="submit" id="submit-button" className="d-none">submit</button>
               </form>
+              {this.state.error && <FormFeedback className="d-block">{this.state.error}</FormFeedback>}
             </Collapse>
             <Button onClick={this.email_button.bind(this)} color="primary" className="width-100p my-1">
               <FontAwesomeIcon icon="at" className="mr-2"/>
               Signup with Email
             </Button>
-            {this.state.error && <FormFeedback className="display-block">{this.state.error}</FormFeedback>}
           </Col>
         </Row>
       </div>

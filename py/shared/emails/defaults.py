@@ -121,7 +121,7 @@ You need to confirm your email address before you can publish events.
 {{ centered_button(Confirm Email | {{ confirm_email_link }}) }}
 {{/confirm_email_link}}
 {{^confirm_email_link}}
-You can create and publish events whenever you wish.
+You can now create and publish events whenever you wish.
 
 {{ centered_button(Create & Publish Events | {{ my_events_link }}) }}
 {{/confirm_email_link}}

@@ -7,16 +7,16 @@ from pydantic import BaseModel
 
 from shared.images import delete_image, list_images, resize_upload
 from shared.utils import slugify
-from web.auth import check_session, is_admin
+from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread
-from web.utils import JsonErrors, json_response, parse_request, raw_json_response, request_image
+from web.utils import ImageModel, JsonErrors, json_response, parse_request, raw_json_response, request_image
 
 CATEGORY_PUBLIC_SQL = """
 SELECT json_build_object('events', events)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS events FROM (
-    SELECT e.id, e.name, c.slug as cat_slug, e.slug, e.image, e.short_description, e.location_name, e.start_ts,
-      EXTRACT(epoch FROM e.duration)::int AS duration
+    SELECT e.id, e.name, c.slug as cat_slug, e.slug, coalesce(e.image, c.image) AS image, e.short_description,
+      e.location_name, e.start_ts, EXTRACT(epoch FROM e.duration)::int AS duration
     FROM events AS e
     JOIN categories as c on e.category = c.id
     WHERE c.company=$1 AND c.slug=$2 AND status='published' AND public=TRUE AND e.start_ts > now()
@@ -39,7 +39,7 @@ async def category_public(request):
 CAT_IMAGE_SQL = """
 SELECT co.slug, cat.slug
 FROM categories AS cat
-JOIN companies co on cat.company = co.id
+JOIN companies co ON cat.company = co.id
 WHERE co.id=$1 AND cat.id=$2
 """
 
@@ -63,20 +63,16 @@ async def category_add_image(request):
     return json_response(status='success')
 
 
-@is_admin
+@is_admin_or_host
 async def category_images(request):
     path = await _get_cat_img_path(request)
     images = await list_images(path, request.app['settings'])
     return json_response(images=sorted(images))
 
 
-class ImageActionModel(BaseModel):
-    image: str
-
-
 @is_admin
 async def category_default_image(request):
-    m = await parse_request(request, ImageActionModel)
+    m = await parse_request(request, ImageModel)
 
     path = await _get_cat_img_path(request)
     images = await list_images(path, request.app['settings'])
@@ -89,7 +85,7 @@ async def category_default_image(request):
 
 @is_admin
 async def category_delete_image(request):
-    m = await parse_request(request, ImageActionModel)
+    m = await parse_request(request, ImageModel)
 
     # _get_cat_img_path is required to check the category is on the right company
     await _get_cat_img_path(request)

@@ -27,7 +27,7 @@ async def test_root(cli, url, factory: Factory):
                 'name': 'The Event Name',
                 'cat_slug': 'supper-clubs',
                 'slug': 'the-event-name',
-                'image': None,
+                'image': 'https://www.example.com/co.png',
                 'short_description': RegexStr('.*'),
                 'location_name': 'Testing Location',
                 'start_ts': '2020-01-28T19:00:00',

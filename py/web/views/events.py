@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
-from secrets import token_hex
+from pathlib import Path
 from textwrap import shorten
 from time import time
 from typing import List, Optional
@@ -12,12 +12,14 @@ from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, condecimal, constr, validator
 
-from shared.utils import slugify
+from shared.images import delete_image, resize_upload
+from shared.utils import pseudo_random_str, slugify
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import Reservation, StripePayModel, stripe_pay
-from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, to_json_if
+from web.utils import (ImageModel, JsonErrors, decrypt_json, encrypt_json, json_response, parse_request,
+                       raw_json_response, request_image, to_json_if)
 
 logger = logging.getLogger('nosht.events')
 
@@ -26,7 +28,7 @@ SELECT json_build_object('event', row_to_json(event))
 FROM (
   SELECT e.id,
          e.name,
-         e.image,
+         coalesce(e.image, c.image) AS image,
          e.short_description,
          e.long_description,
          c.event_content AS category_content,
@@ -131,7 +133,9 @@ class EventBread(Bread):
     retrieve_fields = browse_fields + (
         'e.slug',
         V('cat.slug').as_('cat_slug'),
+        V('cat.id').as_('cat_id'),
         'e.public',
+        'e.image',
         'e.status',
         'e.ticket_limit',
         'e.price',
@@ -206,7 +210,7 @@ class EventBread(Bread):
         pk = await super().add_execute(slug=slug, **data)
         while pk is None:
             # event with this slug already exists
-            pk = await super().add_execute(slug=slug + '-' + token_hex(2), **data)
+            pk = await super().add_execute(slug=slug + '-' + pseudo_random_str(4), **data)
         return pk
 
 
@@ -238,6 +242,69 @@ async def event_tickets(request):
 
     json_str = await request['conn'].fetchval(event_ticket_sql, event_id, request['company_id'])
     return raw_json_response(json_str)
+
+
+GET_IMAGE_SQL = """
+SELECT e.host, e.image
+FROM events as e
+JOIN categories AS cat ON e.category = cat.id
+JOIN companies co ON cat.company = co.id
+WHERE co.id=$1 AND e.id=$2
+"""
+
+
+async def _delete_existing_image(request):
+    event_id = int(request.match_info['id'])
+
+    try:
+        host_id, image = await request['conn'].fetchrow(GET_IMAGE_SQL, request['company_id'], event_id)
+    except TypeError:
+        raise JsonErrors.HTTPNotFound(message='event not found')
+
+    if request['session']['role'] != 'admin' and host_id != request['session']['user_id']:
+        raise JsonErrors.HTTPForbidden(message='you may not edit this event')
+
+    # delete the image from S3 if it's set and isn't a category image option
+    if image and '/option/' not in image:
+        await delete_image(image, request.app['settings'])
+
+
+SLUGS_SQL = """
+SELECT co.slug, cat.slug, e.slug
+FROM events AS e
+JOIN categories AS cat ON e.category = cat.id
+JOIN companies co ON cat.company = co.id
+WHERE co.id=$1 AND e.id=$2
+"""
+
+
+@is_admin_or_host
+async def set_event_image_new(request):
+    content = await request_image(request)
+
+    await _delete_existing_image(request)
+
+    event_id = int(request.match_info['id'])
+    try:
+        co_slug, cat_slug, event_slug = await request['conn'].fetchrow(SLUGS_SQL, request['company_id'], event_id)
+    except TypeError:
+        raise JsonErrors.HTTPNotFound(message='event not found')
+
+    upload_path = Path(co_slug) / cat_slug / event_slug
+
+    image_url = await resize_upload(content, upload_path, request.app['settings'])
+    await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', image_url, event_id)
+    return json_response(status='success')
+
+
+@is_admin_or_host
+async def set_event_image_existing(request):
+    m = await parse_request(request, ImageModel)
+
+    await _delete_existing_image(request)
+
+    await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', m.image, int(request.match_info['id']))
+    return json_response(status='success')
 
 
 class StatusChoices(Enum):

@@ -293,3 +293,17 @@ $waiting-time: 1s;
     transform: scale(1);
   }
 }
+
+.select-image {
+  transition: all 200ms ease;
+  img {
+    transition: filter 200ms ease;
+    filter: grayscale(50%) contrast(80%);
+  }
+  &:hover {
+    background: darken($primary, 10%) !important;
+    img {
+      filter: grayscale(0) contrast(100%);
+    }
+  }
+}

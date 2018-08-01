@@ -1,8 +1,6 @@
 import asyncio
 import logging
-import random
 import re
-import string
 from io import BytesIO
 from pathlib import Path
 from typing import Set
@@ -11,10 +9,16 @@ import aiobotocore
 from PIL import Image
 
 from .settings import Settings
+from .utils import pseudo_random_str
 
 logger = logging.getLogger('nosht.images')
 LARGE_SIZE = 3840, 1000
 SMALL_SIZE = 1920, 500
+STRIP_DOMAIN = re.compile('^https?://.+?/')
+
+
+def strip_domain(url):
+    return STRIP_DOMAIN.sub('', url)
 
 
 def check_image_size(image_data: bytes):
@@ -31,7 +35,7 @@ def create_s3_session(settings: Settings):
     session = aiobotocore.get_session()
     return session.create_client(
         's3',
-        region_name='eu-west-1',
+        region_name=settings.aws_region,
         aws_access_key_id=settings.aws_access_key,
         aws_secret_access_key=settings.aws_secret_key,
         endpoint_url=settings.aws_endpoint_url,
@@ -51,7 +55,7 @@ async def list_images(path: Path, settings: Settings) -> Set[str]:
 
 
 async def delete_image(image: str, settings: Settings):
-    path = Path(re.sub('^https?://.*?/', '', image))
+    path = Path(strip_domain(image))
     async with create_s3_session(settings) as s3:
         await asyncio.gather(
             s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'main.jpg')),
@@ -60,8 +64,7 @@ async def delete_image(image: str, settings: Settings):
 
 
 async def _upload(upload_path: Path, main_img: bytes, thumb_img: bytes, settings: Settings) -> str:
-    r = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
-    upload_path = upload_path / r
+    upload_path = upload_path / pseudo_random_str()
 
     async with create_s3_session(settings) as s3:
         logger.info('uploading to %s', upload_path)

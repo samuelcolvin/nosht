@@ -136,6 +136,7 @@ async def host_middleware(request, handler):
 
 FORM_PATHS = (
     re.compile(r'/api/categories/\d+/add-image/'),
+    re.compile(r'/api/events/\d+/set-image/new/'),
 )
 CROSS_ORIGIN_URLS = {
     '/api/login/',

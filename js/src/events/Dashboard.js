@@ -4,7 +4,7 @@ import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactst
 import {format_event_start, format_event_duration, format_datetime, format_money} from '../utils'
 import {Dash, Detail, RenderList, RenderDetails} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
-import {ModalDropzoneForm} from '../forms/Drop'
+import ModalSetImage from './SetImage'
 
 export class EventsList extends RenderList {
   constructor (props) {
@@ -133,6 +133,7 @@ export class EventsDetails extends RenderDetails {
       location_lat: null,
       location_lng: null,
       long_description: null,
+      image: null,
     }
     this.uri = `/dashboard/events/${this.id}/`
   }
@@ -151,11 +152,16 @@ export class EventsDetails extends RenderDetails {
         tickets: r.tickets,
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
+          {name: 'Set Image', link: this.uri + 'set-image/'},
           this.props.user.role === 'admin' && {name: 'Set Status', link: this.uri + 'set-status/'},
-          {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'}
+          {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'},
         ]
       }
     )
+    this.props.setRootState({
+      page_title: this.state.item.name,
+      background: this.state.item.image,
+    })
   }
 
   extra () {
@@ -189,13 +195,13 @@ export class EventsDetails extends RenderDetails {
                  update={this.update}
                  action={`/events/${this.id}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
-      <ModalDropzoneForm {...this.props}
-                         key="4"
-                         parent_uri={this.uri}
-                         regex={/set-image\/$/}
-                         update={this.update}
-                         title="Upload Background Image"
-                         action={`/categories/${this.id}/add-image/`}/>,
+      <ModalSetImage {...this.props}
+                     key="4"
+                     event={item}
+                     parent_uri={this.uri}
+                     regex={/set-image\/$/}
+                     update={this.update}
+                     title="Upload Background Image"/>,
     ]
   }
 }

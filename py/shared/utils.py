@@ -1,7 +1,9 @@
 import hashlib
 import hmac
 import json
+import random
 import re
+import string
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -107,3 +109,7 @@ def encrypt_json(data, *, auth_fernet) -> str:
 
 def password_reset_link(user_id, *, auth_fernet):
     return '/set-password/?sig=' + encrypt_json(user_id, auth_fernet=auth_fernet)
+
+
+def pseudo_random_str(length=10):
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))

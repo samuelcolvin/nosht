@@ -17,6 +17,10 @@ JSON_CONTENT_TYPE = 'application/json'
 HEADER_CROSS_ORIGIN = {'Access-Control-Allow-Origin': 'null'}
 
 
+class ImageModel(BaseModel):
+    image: str
+
+
 def isoformat(o):
     return o.isoformat()
 

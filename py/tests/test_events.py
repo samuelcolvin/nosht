@@ -33,7 +33,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
         'event': {
             'id': factory.event_id,
             'name': 'The Event Name',
-            'image': None,
+            'image': 'https://www.example.com/co.png',
             'short_description': RegexStr('.*'),
             'long_description': RegexStr('.*'),
             'category_content': None,
@@ -177,7 +177,7 @@ async def test_create_event_duplicate_slug(cli, url, db_conn, factory: Factory, 
     assert 2 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     slug1, slug2 = [r[0] for r in await db_conn.fetch('SELECT slug FROM events ORDER BY id')]
     assert slug1 == 'foobar'
-    assert slug2 == RegexStr(r'foobar\-[a-f0-9]{4}')
+    assert slug2 == RegexStr(r'foobar\-[A-Za-z0-9]{4}')
 
 
 async def test_create_event_host(cli, url, db_conn, factory: Factory, login):
