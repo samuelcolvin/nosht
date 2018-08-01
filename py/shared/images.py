@@ -46,7 +46,7 @@ async def list_images(path: Path, settings: Settings) -> Set[str]:
     files = set()
     async with create_s3_session(settings) as s3:
         paginator = s3.get_paginator('list_objects_v2')
-        async for result in paginator.paginate(Bucket=settings.s3_bucket, Prefix=str(path)):
+        async for result in paginator.paginate(Bucket=settings.s3_bucket, Prefix=str(settings.s3_prefix / path)):
             for c in result.get('Contents', []):
                 p = re.sub(r'/(?:main|thumb)\.jpg$', '', c['Key'])
                 url = f'{settings.s3_domain}/{p}'
@@ -64,7 +64,7 @@ async def delete_image(image: str, settings: Settings):
 
 
 async def _upload(upload_path: Path, main_img: bytes, thumb_img: bytes, settings: Settings) -> str:
-    upload_path = upload_path / pseudo_random_str()
+    upload_path = settings.s3_prefix / upload_path / pseudo_random_str()
 
     async with create_s3_session(settings) as s3:
         logger.info('uploading to %s', upload_path)

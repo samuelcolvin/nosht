@@ -682,7 +682,7 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
     assert r.status == 200, await r.text()
 
     img_path = await db_conn.fetchval('SELECT image FROM events')
-    assert img_path == RegexStr(r'https://testingbucket.example.com/testing/supper-clubs/the-event-name/\w+')
+    assert img_path == RegexStr(r'https://testingbucket.example.com/tests/testing/supper-clubs/the-event-name/\w+')
 
     # debug(dummy_server.app['log'])
     assert len(dummy_server.app['log']) == 5
@@ -690,7 +690,7 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
     log = sorted(dummy_server.app['log'][1:])
     assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/main.jpg'
     assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/thumb.jpg'
-    assert log[2] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/testing/supper-clubs/'
+    assert log[2] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/'
                               r'the-event-name/\w+?/main.jpg')
-    assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/testing/supper-clubs/'
+    assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/'
                               r'the-event-name/\w+?/thumb.jpg')

@@ -207,8 +207,8 @@ async def test_upload_image(cli, url, factory: Factory, login, dummy_server):
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/testing/supper-clubs/option/\w+/main.jpg'),
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/testing/supper-clubs/option/\w+/thumb.jpg'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/option/\w+/main.jpg'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/option/\w+/thumb.jpg'),
     ]
 
 
@@ -279,11 +279,11 @@ async def test_delete_image(cli, url, factory: Factory, login, dummy_server):
     await login()
     r = await cli.json_post(
         url('categories-delete-image', cat_id=factory.category_id),
-        data={'image': 'whatever'},
+        data={'image': 'https://example.com/tests/testing/supper-clubs/option/whatever'},
     )
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        'DELETE aws_endpoint_url/testingbucket.example.com/whatever/main.jpg',
-        'DELETE aws_endpoint_url/testingbucket.example.com/whatever/thumb.jpg',
+        'DELETE aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/option/whatever/main.jpg',
+        'DELETE aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/option/whatever/thumb.jpg',
     ]

@@ -46,6 +46,7 @@ settings_args = dict(
     ticket_ttl=15,
     facebook_siw_app_secret='testing',
     print_emails=False,
+    s3_prefix='tests',
 )
 
 

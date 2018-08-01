@@ -5,7 +5,7 @@ from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Where
 from pydantic import BaseModel
 
-from shared.images import delete_image, list_images, resize_upload
+from shared.images import delete_image, list_images, resize_upload, strip_domain
 from shared.utils import slugify
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread
@@ -88,7 +88,10 @@ async def category_delete_image(request):
     m = await parse_request(request, ImageModel)
 
     # _get_cat_img_path is required to check the category is on the right company
-    await _get_cat_img_path(request)
+    path = request.app['settings'].s3_prefix / await _get_cat_img_path(request)
+
+    if not strip_domain(m.image).startswith(str(path)):
+        raise JsonErrors.HTTPBadRequest(message='image may not be deleted')
 
     await delete_image(m.image, request.app['settings'])
     return json_response(status='success')
