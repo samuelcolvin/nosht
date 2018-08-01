@@ -2,9 +2,10 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime, format_money} from '../utils'
-import {Dash, Detail, RenderList, RenderDetails} from '../general/Dashboard'
+import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
-import ModalSetImage from './SetImage'
+import SetImage from './SetImage'
+import TicketTypes from './TicketTypes'
 
 export class EventsList extends RenderList {
   constructor (props) {
@@ -129,11 +130,15 @@ export class EventsDetails extends RenderDetails {
       },
       currency: null,
       slug: null,
+      cat_id: null,
       cat_slug: null,
       location_lat: null,
       location_lng: null,
       long_description: null,
-      image: null,
+      image: {
+        render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>,
+        index: 1
+      },
     }
     this.uri = `/dashboard/events/${this.id}/`
   }
@@ -153,6 +158,7 @@ export class EventsDetails extends RenderDetails {
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
           {name: 'Set Image', link: this.uri + 'set-image/'},
+          this.props.user.role === 'admin' && {name: 'Custom Ticket Types', link: this.uri + 'ticket-types/'},
           this.props.user.role === 'admin' && {name: 'Set Status', link: this.uri + 'set-status/'},
           {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'},
         ]
@@ -195,13 +201,19 @@ export class EventsDetails extends RenderDetails {
                  update={this.update}
                  action={`/events/${this.id}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
-      <ModalSetImage {...this.props}
-                     key="4"
-                     event={item}
-                     parent_uri={this.uri}
-                     regex={/set-image\/$/}
-                     update={this.update}
-                     title="Upload Background Image"/>,
+      <SetImage {...this.props}
+                key="4"
+                event={item}
+                parent_uri={this.uri}
+                regex={/set-image\/$/}
+                update={this.update}
+                title="Upload Background Image"/>,
+      <TicketTypes {...this.props}
+                   key="6"
+                   event={item}
+                   regex={/ticket-types\/$/}
+                   update={this.update}
+                   title="Customise Ticket Types"/>,
     ]
   }
 }

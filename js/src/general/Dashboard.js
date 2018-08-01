@@ -11,7 +11,7 @@ export const render_bool = v => (
 
 const Buttons = ({buttons}) => (
   buttons && <div className="text-right mb-2">
-    <ButtonGroup>
+    <ButtonGroup className="btn-divider">
       {buttons.filter(b => b).map(b => (
         <Button key={b.name} tag={Link} to={b.link} disabled={b.disabled || false}>{b.name}</Button>
       ))}
@@ -93,6 +93,7 @@ export class RenderItem extends React.Component {
     }
   }
 }
+
 
 export class RenderList extends RenderItem {
   constructor (props) {
@@ -176,7 +177,12 @@ export class RenderDetails extends RenderItem {
       return <Loading/>
     }
     const ignored = ['id', '_response_status']
-    const keys = Object.keys(this.state.item).filter(k => !ignored.includes(k)).filter(k => this.formats[k] !== null)
+    const keys = (
+      Object.keys(this.state.item)
+      .filter(k => !ignored.includes(k))
+      .filter(k => this.formats[k] !== null)
+      .sort((a, b) => (this.formats[a] || {}).index || 0 - (this.formats[b] || {}).index || 0)
+    )
     return [
       <Buttons key={1} buttons={this.state.buttons}/>,
       <div key={2} className="mb-4">

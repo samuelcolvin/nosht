@@ -161,7 +161,7 @@ const TicketForm = props => {
         {state.reservation_error &&
           <FormFeedback className="text-center display-block">{state.reservation_error}</FormFeedback>}
 
-        <div className="guests-info">
+        <div className="multiple-items">
           {[...Array(state.ticket_count).keys()].map(i => (
             <TicketInfo key={i} index={i} state={state} set_ticket_state={props.set_ticket_state}
                         user={props.user} event={props.event}/>

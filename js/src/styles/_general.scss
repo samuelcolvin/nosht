@@ -44,3 +44,17 @@ label {
 .width-100p {
   width: 100%;
 }
+
+.btn-divider {
+  .btn {
+    border-left: 1px solid #777;
+    margin-left: 0px !important;
+  }
+  .btn:first-child {
+    border-left: none;
+  }
+}
+
+.border-bottom-2 {
+  border-bottom: 2px solid $border-color;
+}
