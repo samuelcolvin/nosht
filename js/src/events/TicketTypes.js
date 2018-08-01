@@ -22,8 +22,7 @@ const TicketType = ({index, ticket_type, update_ticket, type_count}) => {
   const price_field = {
     name: `type_${index}_price`,
     title: 'Ticket Price',
-    required: true,
-    help_text: 'Price guests are charged for tickets of this type.',
+    help_text: 'Leave blank if tickets of this type are free.',
     type: 'number', step: 0.01, min: 1, max: 1000,
   }
   const slots_field = {
@@ -62,32 +61,27 @@ const TicketType = ({index, ticket_type, update_ticket, type_count}) => {
 class TicketTypes extends React.Component {
   constructor (props) {
     super(props)
+    console.log(props)
     this.state = {
-      types: [
-        {
-          name: 'Standard',
-          price: 123,
-          slots_used: 0,
-        }
-      ]
+      ticket_types: this.props.ticket_types  // TODO continue from here
     }
   }
 
   add_ticket_type () {
-    const types = this.state.types.slice()
-    types.push({})
-    this.setState({types})
+    const ticket_types = this.state.ticket_types.slice()
+    ticket_types.push({})
+    this.setState({ticket_types})
   }
 
   update_ticket (index, key, value) {
-    const types = this.state.types.slice()
+    const ticket_types = this.state.ticket_types.slice()
     if (!key && !value) {
       // means delete
-      types.splice(index, 1)
+      ticket_types.splice(index, 1)
     } else {
-      types[index][key] = value
+      ticket_types[index][key] = value
     }
-    this.setState({types})
+    this.setState({ticket_types})
   }
 
   async submit (e) {
@@ -99,8 +93,8 @@ class TicketTypes extends React.Component {
       <BootstrapForm onSubmit={(this.submit.bind(this))} className="highlight-required">
         <ModalBody key="1">
           <div>
-            {this.state.types.map((t, i) => (
-              <TicketType key={i} index={i} ticket_type={t} type_count={this.state.types.length}
+            {this.state.ticket_types.map((t, i) => (
+              <TicketType key={i} index={i} ticket_type={t} type_count={this.state.ticket_types.length}
                           update_ticket={this.update_ticket.bind(this)}/>
             ))}
           </div>

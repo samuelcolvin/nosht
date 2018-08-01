@@ -315,6 +315,7 @@ async def test_booking_info(cli, url, factory: Factory, login):
     assert data == {
         'tickets_remaining': None,
         'existing_tickets': 0,
+        'ticket_types': [{'id': 18, 'name': 'Standard', 'price': None}],
     }
 
 
@@ -331,6 +332,7 @@ async def test_booking_info_limited(cli, url, factory: Factory, login):
     assert data == {
         'tickets_remaining': 8,
         'existing_tickets': 0,
+        'ticket_types': [{'id': 19, 'name': 'Standard', 'price': None}],
     }
 
 

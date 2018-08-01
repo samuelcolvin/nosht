@@ -58,3 +58,9 @@ label {
 .border-bottom-2 {
   border-bottom: 2px solid $border-color;
 }
+
+.hide-help-text {
+  .form-text {
+    display: none;
+  }
+}

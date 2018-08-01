@@ -102,7 +102,7 @@ class Tickets extends React.Component {
                   {t.extra && t.extra.extra_info.length > 30 ?
                     <small>{t.extra.extra_info}</small>
                     :
-                    <span>{t.extra.extra_info}</span>
+                    <span>{t.extra && t.extra.extra_info}</span>
                   }
                 </td>
               </tr>
@@ -147,14 +147,18 @@ export class EventsDetails extends RenderDetails {
     super.got_data(data)
     let r
     try {
-      r = await this.requests.get(`/events/${this.id}/tickets/`)
+      r = await Promise.all([
+        this.requests.get(`/events/${this.id}/tickets/`),
+        this.requests.get(`/events/${this.id}/ticket-types/`),
+      ])
     } catch (error) {
       this.props.setRootState({error})
       return
     }
     this.setState(
       {
-        tickets: r.tickets,
+        tickets: r[0].tickets,
+        ticket_types: r[1].ticket_types,
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
           {name: 'Set Image', link: this.uri + 'set-image/'},
@@ -208,12 +212,15 @@ export class EventsDetails extends RenderDetails {
                 regex={/set-image\/$/}
                 update={this.update}
                 title="Upload Background Image"/>,
-      <TicketTypes {...this.props}
-                   key="6"
-                   event={item}
-                   regex={/ticket-types\/$/}
-                   update={this.update}
-                   title="Customise Ticket Types"/>,
+      this.state.ticket_types ?
+        <TicketTypes {...this.props}
+                     key="6"
+                     event={item}
+                     ticket_types={this.state.ticket_types}
+                     regex={/ticket-types\/$/}
+                     update={this.update}
+                     title="Customise Ticket Types"/>
+        : null,
     ]
   }
 }

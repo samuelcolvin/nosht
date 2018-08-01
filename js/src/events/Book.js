@@ -14,6 +14,7 @@ class BookWrapper extends React.Component {
       booking_info: null,
       reservation: null,
       billing_name: null,
+      ticket_type: null
     }
   }
 
@@ -62,11 +63,20 @@ class BookWrapper extends React.Component {
       tickets[0].email === this.props.user.email ?
       `${tickets[0].first_name || ''} ${tickets[0].last_name || ''}`.trim() : ''
     })
+    let ticket_type = this.state.booking_info.ticket_types[0].id
+    if (this.state.booking_info.ticket_types.length > 1) {
+      if (this.state.ticket_type) {
+        ticket_type = this.state.ticket_type
+      } else {
+        this.props.setState({reservation_error: 'ticket_type not set'})
+        return
+      }
+    }
 
     let r
     try {
       r = await this.props.requests.post(`events/${this.props.event.id}/reserve/`,
-          {tickets}, {expected_statuses: [200, 470]})
+          {tickets, ticket_type}, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})
       return

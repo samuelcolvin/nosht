@@ -145,7 +145,7 @@ class StripeForm_ extends React.Component {
       )
     } else {
       return (
-        <div style={{height: form_height}}>
+        <div style={{height: form_height}} className="hide-help-text">
           <Input field={name_field}
                  value={this.state.name}
                  error={this.state.name_error}

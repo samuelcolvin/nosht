@@ -148,7 +148,6 @@ class EventBread(Bread):
         'e.image',
         'e.status',
         'e.ticket_limit',
-        'e.price',
         V('co.currency').as_('currency'),
         'e.location_name',
         'e.location_lat',
@@ -230,7 +229,24 @@ class EventBread(Bread):
         return pk
 
 
-event_ticket_sql = """
+async def _check_event_host(request):
+    event_id = int(request.match_info['id'])
+    if request['session']['role'] == 'host':
+        host_id = await request['conn'].fetchval(
+            """
+            SELECT host
+            FROM events AS e
+            JOIN categories AS cat ON e.category = cat.id
+            WHERE e.id=$1 AND cat.company=$2
+            """, event_id, request['company_id'])
+        if not host_id:
+            raise JsonErrors.HTTPNotFound(message='event not found')
+        if host_id != request['session']['user_id']:
+            raise JsonErrors.HTTPForbidden(message='use is not the host of this event')
+    return event_id
+
+
+event_tickets_sql = """
 SELECT json_build_object('tickets', tickets)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS tickets FROM (
@@ -238,10 +254,10 @@ FROM (
       full_name(u.first_name, u.last_name, u.email) AS user_name, a.ts AS bought_at,
       ub.id as buyer_id, full_name(ub.first_name, ub.last_name, u.email) AS buyer_name
     FROM tickets AS t
-    LEFT JOIN users u on t.user_id = u.id
-    JOIN actions a on t.paid_action = a.id
-    JOIN users ub on a.user_id = ub.id
-    WHERE t.event=$1 AND a.company=$2 AND t.status='paid'
+    LEFT JOIN users u ON t.user_id = u.id
+    JOIN actions a ON t.paid_action = a.id
+    JOIN users ub ON a.user_id = ub.id
+    WHERE t.event=$1 AND t.status='paid'
     ORDER BY a.ts
   ) AS t
 ) AS tickets
@@ -250,13 +266,28 @@ FROM (
 
 @is_admin_or_host
 async def event_tickets(request):
-    event_id = int(request.match_info['id'])
-    if request['session']['role'] == 'host':
-        host_id = await request['conn'].fetchval('SELECT host FROM events WHERE id=$1', event_id)
-        if host_id != request['session']['user_id']:
-            raise JsonErrors.HTTPForbidden(message='use is not the host of this event')
+    event_id = await _check_event_host(request)
+    json_str = await request['conn'].fetchval(event_tickets_sql, event_id)
+    return raw_json_response(json_str)
 
-    json_str = await request['conn'].fetchval(event_ticket_sql, event_id, request['company_id'])
+
+event_ticket_types_sql = """
+SELECT json_build_object('ticket_types', tickets)
+FROM (
+  SELECT array_to_json(array_agg(row_to_json(t))) AS tickets FROM (
+    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active
+    FROM ticket_types AS tt
+    WHERE tt.event=$1
+    ORDER BY tt.id
+  ) AS t
+) AS tickets
+"""
+
+
+@is_admin_or_host
+async def event_ticket_types(request):
+    event_id = await _check_event_host(request)
+    json_str = await request['conn'].fetchval(event_ticket_types_sql, event_id)
     return raw_json_response(json_str)
 
 
@@ -370,9 +401,11 @@ async def booking_info(request):
         event_id,
         request['session']['user_id']
     )
+    ticket_types = await conn.fetch('SELECT id, name, price::float FROM ticket_types WHERE event=$1', event_id)
     return json_response(
         tickets_remaining=tickets_remaining if (tickets_remaining and tickets_remaining < 10) else None,
         existing_tickets=existing_tickets or 0,
+        ticket_types=[dict(tt) for tt in ticket_types],
     )
 
 

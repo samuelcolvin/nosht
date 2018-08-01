@@ -117,6 +117,7 @@ const TicketForm = props => {
   const state = props.state
   const remaining = state.booking_info ? state.booking_info.tickets_remaining : null
   const existing_tickets = state.booking_info ? state.booking_info.existing_tickets : null
+  const ticket_types = state.booking_info ? state.booking_info.ticket_types : []
   if (remaining !== null && remaining < 1) {
     return (
       <div>
@@ -142,6 +143,11 @@ const TicketForm = props => {
           </div>
           <User {...props}/>
         </Row>
+        {ticket_types.length > 1 &&
+          <div>
+            TODO: {JSON.stringify(ticket_types)}
+          </div>
+        }
 
         <div className="text-center font-weight-bold">
           Ticket Quantity
