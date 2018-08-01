@@ -18,9 +18,10 @@ CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT, ttl INT) RETURN
     DELETE FROM tickets
     WHERE status='reserved' AND event=event_id AND now() - created_ts > (ttl || ' seconds')::interval;
 
-    SELECT coalesce(COUNT(*), 0) INTO tickets_taken_
+    SELECT coalesce(SUM(tt.slots_used), 0) INTO tickets_taken_
     FROM tickets
-    WHERE event=event_id AND status != 'cancelled';
+    JOIN ticket_types AS tt ON tickets.ticket_type=tt.id
+    WHERE tickets.event=event_id AND status != 'cancelled';
 
     UPDATE events SET tickets_taken=tickets_taken_ WHERE id=event_id;
 

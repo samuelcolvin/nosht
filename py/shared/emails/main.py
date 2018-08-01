@@ -22,10 +22,11 @@ class EmailActor(BaseEmailActor):
                   full_name(u.first_name, u.last_name, u.email) AS user_name,
                   e.slug, cat.slug as cat_slug, e.name, e.short_description,
                   e.location_name, e.location_lat, e.location_lng,
-                  e.start_ts, e.duration, e.price, cat.company, co.currency, a.extra
+                  e.start_ts, e.duration, tt.price, cat.company, co.currency, a.extra
                 FROM tickets AS t
                 JOIN actions AS a ON t.paid_action = a.id
                 JOIN users AS u ON t.user_id = u.id
+                JOIN ticket_types AS tt ON t.ticket_type = tt.id
                 JOIN events AS e ON t.event = e.id
                 JOIN categories AS cat ON e.category = cat.id
                 JOIN companies co on cat.company = co.id

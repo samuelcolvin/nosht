@@ -24,7 +24,10 @@ from web.utils import (ImageModel, JsonErrors, decrypt_json, encrypt_json, json_
 logger = logging.getLogger('nosht.events')
 
 event_sql = """
-SELECT json_build_object('event', row_to_json(event))
+SELECT json_build_object(
+  'event', row_to_json(event),
+  'ticket_types', ticket_types
+)
 FROM (
   SELECT e.id,
          e.name,
@@ -37,7 +40,6 @@ FROM (
            'lat', e.location_lat,
            'lng', e.location_lng
          ) AS location,
-         e.price,
          e.start_ts,
          EXTRACT(epoch FROM e.duration)::int AS duration,
          CASE
@@ -56,7 +58,15 @@ FROM (
   JOIN companies AS co ON c.company = co.id
   JOIN users AS h ON e.host = h.id
   WHERE c.company=$1 AND c.slug=$2 AND e.slug=$3 AND e.status='published'
-) AS event;
+) AS event,
+(
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS ticket_types FROM (
+    SELECT tt.name, tt.price
+    FROM ticket_types AS tt
+    JOIN events AS e ON tt.event = e.id
+    WHERE e.slug=$3
+  ) AS t
+) AS ticket_types;
 """
 
 
@@ -207,10 +217,16 @@ class EventBread(Bread):
     """
 
     async def add_execute(self, *, slug, **data):
-        pk = await super().add_execute(slug=slug, **data)
-        while pk is None:
-            # event with this slug already exists
-            pk = await super().add_execute(slug=slug + '-' + pseudo_random_str(4), **data)
+        price = data.pop('price', None)
+        async with self.conn.transaction():
+            pk = await super().add_execute(slug=slug, **data)
+            while pk is None:
+                # event with this slug already exists
+                pk = await super().add_execute(slug=slug + '-' + pseudo_random_str(4), **data)
+            await self.conn.execute_b(
+                'INSERT INTO ticket_types (:values__names) VALUES :values',
+                values=Values(event=pk, name='Standard', price=price)
+            )
         return pk
 
 
@@ -371,6 +387,7 @@ class TicketModel(BaseModel):
 class ReserveTickets(UpdateView):
     class Model(BaseModel):
         tickets: List[TicketModel]
+        ticket_type: int
 
         @validator('tickets', whole=True)
         def check_ticket_count(cls, v):
@@ -386,17 +403,24 @@ class ReserveTickets(UpdateView):
         ticket_count = len(m.tickets)
         user_id = self.session['user_id']
 
-        status, event_price, event_name = await self.conn.fetchrow(
+        status, event_name = await self.conn.fetchrow(
             """
-            SELECT e.status, e.price, e.name
+            SELECT e.status, e.name
             FROM events AS e
             JOIN categories c on e.category = c.id
             WHERE c.company=$1 AND e.id=$2
             """,
             self.request['company_id'], event_id
         )
+
         if status != 'published':
             raise JsonErrors.HTTPBadRequest(message='Event not published')
+
+        r = await self.conn.fetchrow('SELECT price FROM ticket_types WHERE event=$1 AND id=$2',
+                                     event_id, m.ticket_type)
+        if not r:
+            raise JsonErrors.HTTPBadRequest(message='Ticket type not found')
+        price, *_ = r
 
         if self.settings.ticket_reservation_precheck:  # should only be false during CheckViolationError tests
             tickets_remaining = await self.conn.fetchval(
@@ -424,12 +448,13 @@ class ReserveTickets(UpdateView):
                 await self.conn.execute_b(
                     """
                     WITH v (email, first_name, last_name, extra) AS (VALUES :values)
-                    INSERT INTO tickets (event, reserve_action, user_id, first_name, last_name, extra)
-                    SELECT :event, :reserve_action, u.id, v.first_name, v.last_name, v.extra FROM v
+                    INSERT INTO tickets (event, reserve_action, ticket_type, user_id, first_name, last_name, extra)
+                    SELECT :event, :reserve_action, :ticket_type, u.id, v.first_name, v.last_name, v.extra FROM v
                     LEFT JOIN users AS u ON v.email=u.email AND u.company=:company_id
                     """,
                     event=event_id,
                     reserve_action=action_id,
+                    ticket_type=m.ticket_type,
                     company_id=self.request['company_id'],
                     values=MultipleValues(*ticket_values),
                 )
@@ -439,7 +464,7 @@ class ReserveTickets(UpdateView):
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
 
         # TODO needs to work when the event is free
-        price_cent = int(event_price * ticket_count * 100)
+        price_cent = int(price * ticket_count * 100)
         res = Reservation(
             user_id=user_id,
             action_id=action_id,
@@ -451,7 +476,7 @@ class ReserveTickets(UpdateView):
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
             'ticket_count': ticket_count,
-            'item_price_cent': int(event_price * 100),
+            'item_price_cent': int(price * 100),
             'total_price_cent': price_cent,
             'timeout': int(time()) + self.settings.ticket_ttl,
         }

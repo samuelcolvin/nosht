@@ -240,13 +240,18 @@ CATS = [
                 'name': "Frank's Great Supper",
                 'start_ts': datetime(2020, 1, 28, 19, 0),
                 'duration': timedelta(hours=2),
-                'price': 30,
                 'location_name': '31 Testing Road, London',
                 'location_lat': 51.479415,
                 'location_lng': -0.132098,
                 'ticket_limit': 40,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
                 'host_email': 'frank@example.com',
+                'ticket_types': [
+                    {
+                        'name': 'Standard',
+                        'price': 30,
+                    }
+                ]
             },
             {
                 'status': 'published',
@@ -254,13 +259,19 @@ CATS = [
                 'name': "Jane's Great Supper",
                 'start_ts': datetime(2020, 2, 10, 18, 0),
                 'duration': timedelta(hours=3),
-                'price': 25,
                 'location_name': '253 Brixton Road, London',
                 'location_lat': 51.514412,
                 'location_lng': -0.073994,
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/YEcz6kUlsc',
                 'host_email': 'jane@example.com',
+                'ticket_types': [
+                    {
+                        'name': 'Standard',
+                        'price': 25,
+                        'slots_used': 5,
+                    }
+                ]
             }
         ]
     },
@@ -279,11 +290,17 @@ CATS = [
                 'name': 'Loud Singing',
                 'start_ts': datetime(2020, 2, 15),
                 'duration': None,
-                'price': 25,
                 'location_name': 'Big Church, London',
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
                 'host_email': 'frank@example.com',
+                'ticket_types': [
+                    {
+                        'name': 'Standard',
+                        'price': None,
+                        'slots_used': 5,
+                    }
+                ]
             },
             {
                 'status': 'published',
@@ -291,11 +308,16 @@ CATS = [
                 'name': 'Quiet Singing',
                 'start_ts': datetime(2020, 2, 20),
                 'duration': None,
-                'price': 25,
                 'location_name': 'Small Church, London',
                 'ticket_limit': None,
                 'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
                 'host_email': 'frank@example.com',
+                'ticket_types': [
+                    {
+                        'name': 'Standard',
+                        'price': None,
+                    }
+                ]
             },
         ]
     }
@@ -360,15 +382,20 @@ async def create_demo_data(conn, settings, **kwargs):
     INSERT INTO categories (:values__names) VALUES :values RETURNING id
     """, values=Values(company=company_id, slug=slugify(cat['name']), **cat))
 
-        await conn.executemany_b("""
-INSERT INTO events (:values__names)
-VALUES :values""", [
-            Values(
-                category=cat_id,
-                host=user_lookup[e.pop('host_email')],
-                slug=slugify(e['name']),
-                short_description=shorten(lorem.paragraph(), width=random.randint(100, 140), placeholder='...'),
-                long_description=EVENT_LONG_DESCRIPTION,
-                **e)
-            for e in events
-        ])
+        for event in events:
+            ticket_types = event.pop('ticket_types', [])
+            event_id = await conn.fetchval_b(
+                'INSERT INTO events (:values__names) VALUES :values RETURNING id',
+                values=Values(
+                    category=cat_id,
+                    host=user_lookup[event.pop('host_email')],
+                    slug=slugify(event['name']),
+                    short_description=shorten(lorem.paragraph(), width=random.randint(100, 140), placeholder='...'),
+                    long_description=EVENT_LONG_DESCRIPTION,
+                    **event
+                )
+            )
+            await conn.executemany_b(
+                'INSERT INTO ticket_types (:values__names) VALUES :values',
+                [Values(event=event_id, **tt) for tt in ticket_types]
+            )

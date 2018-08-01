@@ -31,6 +31,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
     data = await r.json()
     # debug(data)
     assert data == {
+        'ticket_types': [{'name': 'Standard', 'price': None}],
         'event': {
             'id': factory.event_id,
             'name': 'The Event Name',
@@ -43,7 +44,6 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
                 'lat': 51.5,
                 'lng': -0.5,
             },
-            'price': None,
             'start_ts': '2020-01-28T19:00:00',
             'duration': None,
             'tickets_available': None,
@@ -55,6 +55,13 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'ticket_extra_title': None,
         },
     }
+
+
+async def test_event_wrong_slug(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+
+    r = await cli.get(url('event-get', category='foobar', event='snap'))
+    assert r.status == 404, await r.text()
 
 
 async def test_event_categories(cli, url, factory: Factory, login):
@@ -99,14 +106,16 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
         long_description='I love to party'
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
     r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 201, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     data = await r.json()
     event = dict(await db_conn.fetchrow('SELECT * FROM events'))
+    event_id = event.pop('id')
     assert data == {
         'status': 'ok',
-        'pk': event.pop('id'),
+        'pk': event_id,
     }
     assert event == {
         'category': factory.category_id,
@@ -123,10 +132,18 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
         'location_name': 'London',
         'location_lat': 50.0,
         'location_lng': 0.0,
-        'price': None,
         'ticket_limit': None,
         'tickets_taken': 0,
         'image': None,
+    }
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
+    tt = dict(await db_conn.fetchrow('SELECT event, name, price, slots_used, active FROM ticket_types'))
+    assert tt == {
+        'event': event_id,
+        'name': 'Standard',
+        'price': None,
+        'slots_used': 1,
+        'active': True,
     }
 
 
@@ -339,7 +356,8 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
                 'email': 'other.person@example.com',
                 'extra_info': 'I love to party'
             },
-        ]
+        ],
+        'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
@@ -426,7 +444,8 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
             {
                 't': True,
             },
-        ]
+        ],
+        'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
@@ -505,7 +524,8 @@ async def test_reserve_tickets_none_left(cli, url, factory: Factory, login):
         'tickets': [
             {'t': True, 'email': 'foo1@example.com'},
             {'t': True, 'email': 'foo2@example.com'},
-        ]
+        ],
+        'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 470, await r.text()
@@ -528,7 +548,8 @@ async def test_reserve_tickets_none_left_no_precheck(cli, url, factory: Factory,
         'tickets': [
             {'t': True, 'email': 'foo1@example.com'},
             {'t': True, 'email': 'foo2@example.com'},
-        ]
+        ],
+        'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 400, await r.text()

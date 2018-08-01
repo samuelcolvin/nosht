@@ -112,7 +112,6 @@ CREATE TABLE events (
   location_lat FLOAT,
   location_lng FLOAT,
 
-  price NUMERIC(7, 2) CONSTRAINT price_gte_1 CHECK (price >= 1),
   ticket_limit INT CONSTRAINT ticket_limit_gt_0 CHECK (ticket_limit > 0),
   tickets_taken INT NOT NULL DEFAULT 0,  -- sold and reserved
   image VARCHAR(255),
@@ -141,6 +140,7 @@ CREATE TYPE TICKET_STATUS AS ENUM ('reserved', 'paid', 'cancelled');
 CREATE TABLE tickets (
   id SERIAL PRIMARY KEY,
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
+  ticket_type INT NOT NULL REFERENCES ticket_types ON DELETE CASCADE,
   user_id INT REFERENCES users ON DELETE CASCADE,
   -- separate from the user's name to avoid confusing updates of the user's name
   first_name VARCHAR(255),

@@ -141,6 +141,7 @@ class Factory:
         self.category_id = None
         self.user_id = None
         self.event_id = None
+        self.ticket_type_id = None
 
     async def create_company(self,
                              name='Testing',
@@ -217,6 +218,7 @@ class Factory:
                            start_ts=datetime(2020, 1, 28, 19, 0),
                            short_description=None,
                            long_description=None,
+                           price=None,
                            **kwargs):
         long_description = long_description or lorem.paragraph()
         event_id = await self.conn.fetchval_b(
@@ -236,6 +238,15 @@ class Factory:
             )
         )
         self.event_id = self.event_id or event_id
+        ticket_type_id = await self.conn.fetchval_b(
+            'INSERT INTO ticket_types (:values__names) VALUES :values RETURNING id',
+            values=Values(
+                event=event_id,
+                price=price,
+                name='Standard',
+            )
+        )
+        self.ticket_type_id = self.ticket_type_id or ticket_type_id
         return event_id
 
     async def create_reservation(self, user_id=None, *extra_user_ids):
@@ -253,6 +264,7 @@ class Factory:
                 event=self.event_id,
                 user_id=user_id,
                 reserve_action=action_id,
+                ticket_type=self.ticket_type_id,
             )
         ]
         for extra_user_id in extra_user_ids:
@@ -261,6 +273,7 @@ class Factory:
                     event=self.event_id,
                     user_id=extra_user_id,
                     reserve_action=action_id,
+                    ticket_type=self.ticket_type_id,
                 )
             )
         await self.conn.execute_b(
