@@ -197,3 +197,4 @@ def clean_markdown(md):
     text = md
     for regex, p in _simplify:
         text = regex.sub(p, text)
+    return text

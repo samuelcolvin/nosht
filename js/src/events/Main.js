@@ -7,6 +7,7 @@ import PromptUpdate from '../general/PromptUpdate'
 import Markdown from '../general/Markdown'
 import Map from '../general/Map'
 import When from '../general/When'
+import {format_money_free, unique} from '../utils'
 import BookEvent from './Book'
 
 class Event extends React.Component {
@@ -21,12 +22,13 @@ class Event extends React.Component {
   }
 
   async get_data () {
-    let event
+    let event, ticket_types
     const params = this.props.match.params
     this.props.setRootState({active_page: params.category})
     try {
       const data = await this.props.requests.get(`events/${params.category}/${params.event}/`)
       event = data.event
+      ticket_types = data.ticket_types
     } catch (error) {
       if (error.status === 404) {
         this.setState({event: 404})
@@ -40,7 +42,7 @@ class Event extends React.Component {
       background: event.image,
       extra_menu: [{name: 'Book Now', to: this.uri + 'book/'}],
     })
-    this.setState({event})
+    this.setState({event, ticket_types})
   }
 
   render () {
@@ -74,23 +76,34 @@ class Event extends React.Component {
           </Col>
         </Row>
 
-        <div className="text-muted mb-1">
-          <span>
-            <FontAwesomeIcon icon={['far', 'clock']} className="mr-1" />
+        <Row className="text-muted mb-1 h5">
+          <Col md="auto">
+            <FontAwesomeIcon icon={['far', 'clock']} className="mx-1 text-success" />
             <When event={event} />
-          </span>
-          <span className="ml-4">
-            <FontAwesomeIcon icon={'user'} className="mr-1" />
+          </Col>
+
+          <Col md="auto">
+            <FontAwesomeIcon icon="pound-sign" className="mx-1 text-success" />
+              {this.state.ticket_types.map(tt => tt.price).filter(unique).map((p, i) => (
+                <span key={i}>
+                  {i > 0 && <span className="px-1">/</span>}
+                  {format_money_free(event.currency, p)}
+                </span>
+              ))}
+          </Col>
+
+          <Col md="auto">
+            <FontAwesomeIcon icon={'user'} className="mx-1 text-success" />
             hosted by {event.host_name}
-          </span>
+          </Col>
 
           {event.location.name &&
-            <span className="ml-4">
-              <FontAwesomeIcon icon={['fas', 'map-marker']} className="mr-1" />
+            <Col md="auto">
+              <FontAwesomeIcon icon={['fas', 'map-marker']} className="mx-1 text-success" />
               at {event.location.name}
-            </span>
+            </Col>
           }
-        </div>
+        </Row>
 
         <Map geolocation={event.location}/>
 

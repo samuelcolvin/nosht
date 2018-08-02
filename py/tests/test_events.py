@@ -105,7 +105,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
             'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'),
             'dur': 7200,
         },
-        long_description='I love to party'
+        long_description='# title\nI love to **party**'
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
@@ -128,8 +128,8 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
         'highlight': False,
         'start_ts': datetime(2020, 2, 1, 19, 0),
         'duration': timedelta(seconds=7200),
-        'short_description': 'I love to party',
-        'long_description': 'I love to party',
+        'short_description': 'title I love to party',
+        'long_description': '# title\nI love to **party**',
         'public': True,
         'location_name': 'London',
         'location_lat': 50.0,
