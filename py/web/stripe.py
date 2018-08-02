@@ -21,33 +21,25 @@ class Reservation(BaseModel):
     user_id: int
     action_id: int
     event_id: int
-    price_cent: int
+    price_cent: Optional[int]
     ticket_count: int
     event_name: str
 
 
-class StripePayModel(BaseModel):
-    stripe_token: str
-    stripe_client_ip: str
-    stripe_card_ref: str
+class BookingModel(BaseModel):
     booking_token: bytes
 
 
-async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int], app, conn: BuildPgConnection) -> int:
-    ticket_ttl = app['settings'].ticket_ttl
-    res = Reservation(**decrypt_json(app, m.booking_token, ttl=ticket_ttl - 10))
+class StripePayModel(BookingModel):
+    stripe_token: str
+    stripe_client_ip: str
+    stripe_card_ref: str
+
+
+async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection) -> Reservation:
+    res = Reservation(**decrypt_json(app, m.booking_token, ttl=app['settings'].ticket_ttl - 10))
     assert user_id in {None, res.user_id}, "user ids don't match"
 
-    user_name, user_email, user_role, stripe_customer_id, stripe_secret_key, currency = await conn.fetchrow(
-        """
-        SELECT
-          first_name || ' ' || last_name AS name, email, role, stripe_customer_id, stripe_secret_key, currency
-        FROM users AS u
-        JOIN companies c on u.company = c.id
-        WHERE u.id=$1 AND c.id=$2
-        """,
-        res.user_id, company_id
-    )
     reserved_tickets = await conn.fetchval(
         """
         SELECT COUNT(*)
@@ -60,6 +52,43 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
         # reservation could have already been used or event id could be wrong
         logger.warning('res ticket count %d, db reserved tickets %d', res.ticket_count, reserved_tickets)
         raise JsonErrors.HTTPBadRequest(message='invalid reservation')
+
+    return res
+
+
+async def book_free(m: BookingModel, company_id: int, user_id: Optional[int], app, conn: BuildPgConnection) -> int:
+    res = await get_reservation(m, user_id, app, conn)
+    if res.price_cent is not None:
+        raise JsonErrors.HTTPBadRequest(message='booking not free')
+
+    async with conn.transaction():
+        confirm_action_id = await conn.fetchval_b(
+            'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+            values=Values(company=company_id, user_id=res.user_id, type=ActionTypes.book_free_tickets.value)
+        )
+        await conn.execute(
+            "UPDATE tickets SET status='paid', paid_action=$1 WHERE reserve_action=$2",
+            confirm_action_id, res.action_id,
+        )
+        await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
+
+    return confirm_action_id
+
+
+async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int], app, conn: BuildPgConnection) -> int:
+    res = await get_reservation(m, user_id, app, conn)
+    if res.price_cent is None or res.price_cent < 100:
+        raise JsonErrors.HTTPBadRequest(message='booking price cent < 100')
+
+    user_name, user_email, user_role, stripe_customer_id, stripe_secret_key, currency = await conn.fetchrow(
+        """
+        SELECT first_name || ' ' || last_name AS name, email, role, stripe_customer_id, stripe_secret_key, currency
+        FROM users AS u
+        JOIN companies c on u.company = c.id
+        WHERE u.id=$1 AND c.id=$2
+        """,
+        res.user_id, company_id
+    )
 
     source_id = None
     new_customer, new_card = True, True
@@ -102,7 +131,7 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
         source_id = customer['sources']['data'][0]['id']
 
     async with conn.transaction():
-        # make the tickets paid in DB then, then create charge in stripe, then finish transaction
+        # mark the tickets paid in DB, then create charge in stripe, then finish transaction
         paid_action_id = await conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
             values=Values(company=company_id, user_id=res.user_id, type=ActionTypes.buy_tickets.value)
@@ -111,7 +140,7 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
             "UPDATE tickets SET status='paid', paid_action=$1 WHERE reserve_action=$2",
             paid_action_id, res.action_id,
         )
-        await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, ticket_ttl)
+        await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
 
         charge = await stripe_post(
             'charges',

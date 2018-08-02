@@ -21,7 +21,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(ticket_limit=10)
+    await factory.create_event(ticket_limit=10, price=10)
 
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
@@ -86,7 +86,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(ticket_limit=10)
+    await factory.create_event(ticket_limit=10, price=10)
 
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
@@ -128,14 +128,14 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
 
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
-    m = StripePayModel(
+    data = dict(
         stripe_token='tok_visa',
         stripe_client_ip='0.0.0.0',
         stripe_card_ref='4242-32-01',
         booking_token=encrypt_json(app, res.dict()),
     )
 
-    r = await cli.json_post(url('event-buy-tickets'), data=m.json())
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
@@ -146,3 +146,64 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.com>"',
         ),
     ]
+
+
+async def test_pay_no_price(cli, url, factory: Factory):
+    await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=None)
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+    data = dict(
+        stripe_token='tok_visa',
+        stripe_client_ip='0.0.0.0',
+        stripe_card_ref='4242-32-01',
+        booking_token=encrypt_json(app, res.dict()),
+    )
+
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'booking price cent < 100',
+    }
+
+
+async def test_book_free(cli, url, dummy_server, factory: Factory):
+    await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=None)
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    r = await cli.json_post(url('event-book-tickets'), data={'booking_token': encrypt_json(app, res.dict())})
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.com>"',
+        ),
+    ]
+
+
+async def test_book_free_with_price(cli, url, dummy_server, factory: Factory):
+    await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    r = await cli.json_post(url('event-book-tickets'), data={'booking_token': encrypt_json(app, res.dict())})
+    assert r.status == 400, await r.text()
+
+    data = await r.json()
+    assert data == {
+        'message': 'booking not free',
+    }

@@ -50,6 +50,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'password-reset',
   'reserve-tickets',
   'buy-tickets',
+  'book-free-tickets',
   'cancel-reserved-tickets',
   'edit-event',
   'edit-other',

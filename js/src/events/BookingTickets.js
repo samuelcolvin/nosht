@@ -11,9 +11,10 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {format_money, user_full_name} from '../utils'
+import {format_money_free, user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
+import {PricingList} from './BookingStripe'
 
 
 export class User extends React.Component {
@@ -131,6 +132,18 @@ const TicketForm = props => {
   }
   const max_tickets = Math.min(10, remaining || 10)
   const change_count = props.change_ticket_count
+
+  const ticket_price = ticket_types.length && (
+    props.state.ticket_type ?
+      ticket_types.find(tt => tt.id === props.state.ticket_type).price :
+      ticket_types[0].price
+  )
+  const items = [
+    {name: 'Tickets', value: state.ticket_count},
+    {name: 'Ticket Price', value: format_money_free(props.event.currency, ticket_price)},
+    {name: 'Total Price', value: format_money_free(props.event.currency, state.ticket_count * ticket_price)},
+  ]
+
   return (
     <BootstrapForm onSubmit={props.reserve}>
       <ModalBody>
@@ -160,7 +173,7 @@ const TicketForm = props => {
                         onClick={() => props.set_ticket_type(tt.id)}>
                     <CardTitle className="text-center">{tt.name}</CardTitle>
                     <CardText className="text-center">
-                      {tt.price ? format_money(props.event.currency, tt.price) : 'Free'}
+                      {format_money_free(props.event.currency, tt.price)}
                     </CardText>
                   </Card>
                 </Col>
@@ -187,6 +200,13 @@ const TicketForm = props => {
         <div className="text-muted text-center small">
           Select the number of tickets you would like to purchase.
         </div>
+
+        <Row className="mt-1 mb-2">
+          <Col md={{size: 8, offset: 2}}>
+            <PricingList className="mb-2" items={items}/>
+          </Col>
+        </Row>
+
         {state.reservation_error &&
           <FormFeedback className="text-center d-block">{state.reservation_error}</FormFeedback>}
 

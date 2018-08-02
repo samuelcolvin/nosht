@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
-import {format_event_start, format_event_duration, format_datetime, format_money} from '../utils'
+import {format_event_start, format_event_duration, format_datetime, format_money_free} from '../utils'
 import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, render_bool} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
@@ -58,7 +58,7 @@ const TicketTypeTable = ({ticket_types, currency}) => (
         {ticket_types.map(tt => (
           <tr key={tt.id}>
             <td>{tt.name}</td>
-            <td>{tt.price ? format_money(currency, tt.price) : 'Free'}</td>
+            <td>{format_money_free(currency, tt.price)}</td>
             <td>{tt.slots_used}</td>
             <td>{render_bool(tt.active)}</td>
           </tr>
@@ -152,9 +152,6 @@ export class EventsDetails extends RenderDetails {
       },
       duration: {
         render: format_event_duration
-      },
-      price: {
-        render: (v, item) => v && format_money(item.currency, v)
       },
       currency: null,
       slug: null,

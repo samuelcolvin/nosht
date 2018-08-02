@@ -17,7 +17,7 @@ from shared.utils import pseudo_random_str, slugify
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
-from web.stripe import Reservation, StripePayModel, stripe_pay
+from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 from web.utils import (ImageModel, JsonErrors, decrypt_json, encrypt_json, json_response, parse_request,
                        raw_json_response, request_image, to_json_if)
 
@@ -294,69 +294,67 @@ async def event_ticket_types(request):
     return raw_json_response(json_str)
 
 
-class TicketTypesModel(BaseModel):
-    class TicketType(BaseModel):
-        name: str
-        id: int = None
-        slots_used: conint(ge=1)
-        active: bool
-        price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+class SetTicketTypes(UpdateView):
+    class Model(BaseModel):
+        class TicketType(BaseModel):
+            name: str
+            id: int = None
+            slots_used: conint(ge=1)
+            active: bool
+            price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
 
-    ticket_types: List[TicketType]
+        ticket_types: List[TicketType]
 
-    @validator('ticket_types', whole=True)
-    def check_ticket_types(cls, v):
-        if sum(tt.active for tt in v) < 1:
-            raise ValueError('at least 1 ticket type must be active')
-        return v
+        @validator('ticket_types', whole=True)
+        def check_ticket_types(cls, v):
+            if sum(tt.active for tt in v) < 1:
+                raise ValueError('at least 1 ticket type must be active')
+            return v
 
+    async def check_permissions(self):
+        await check_session(self.request, 'admin', 'host')
 
-@is_admin_or_host
-async def set_event_ticket_types(request):
-    event_id = await _check_event_host(request)
-    m = await parse_request(request, TicketTypesModel)
-    conn: BuildPgConnection = request['conn']
-    existing = [tt for tt in m.ticket_types if tt.id]
-    deleted_with_tickets = await conn.fetchval(
-        """
-        SELECT 1
-        FROM ticket_types AS tt
-        JOIN tickets AS t ON tt.id = t.ticket_type
-        WHERE tt.event=$1 AND NOT (tt.id=ANY($2))
-        GROUP BY tt.id
-        """, event_id, [tt.id for tt in existing]
-    )
-    if deleted_with_tickets:
-        raise JsonErrors.HTTPBadRequest(message='ticket types deleted which have ticket associated with them')
-
-    async with conn.transaction():
-        await conn.fetchval(
+    async def execute(self, m: Model):
+        event_id = await _check_event_host(self.request)
+        existing = [tt for tt in m.ticket_types if tt.id]
+        deleted_with_tickets = await self.conn.fetchval(
             """
-            DELETE FROM ticket_types
-            WHERE ticket_types.event=$1 AND NOT (ticket_types.id=ANY($2))
+            SELECT 1
+            FROM ticket_types AS tt
+            JOIN tickets AS t ON tt.id = t.ticket_type
+            WHERE tt.event=$1 AND NOT (tt.id=ANY($2))
+            GROUP BY tt.id
             """, event_id, [tt.id for tt in existing]
         )
+        if deleted_with_tickets:
+            raise JsonErrors.HTTPBadRequest(message='ticket types deleted which have ticket associated with them')
 
-        for tt in existing:
-            v = await conn.execute_b(
-                'UPDATE ticket_types SET :values WHERE id=:id AND event=:event',
-                values=SetValues(**tt.dict(exclude={'id'})),
-                id=tt.id,
-                event=event_id,
-            )
-            if v != 'UPDATE 1':
-                raise JsonErrors.HTTPBadRequest(message='wrong ticket updated')
-
-        new = [tt for tt in m.ticket_types if not tt.id]
-        if new:
-            await conn.execute_b(
+        async with self.conn.transaction():
+            await self.conn.fetchval(
                 """
-                INSERT INTO ticket_types (:values__names) VALUES :values
-                """,
-                values=MultipleValues(*(Values(event=event_id, **tt.dict(exclude={'id'})) for tt in new))
+                DELETE FROM ticket_types
+                WHERE ticket_types.event=$1 AND NOT (ticket_types.id=ANY($2))
+                """, event_id, [tt.id for tt in existing]
             )
 
-    return json_response(status='ok')
+            for tt in existing:
+                v = await self.conn.execute_b(
+                    'UPDATE ticket_types SET :values WHERE id=:id AND event=:event',
+                    values=SetValues(**tt.dict(exclude={'id'})),
+                    id=tt.id,
+                    event=event_id,
+                )
+                if v != 'UPDATE 1':
+                    raise JsonErrors.HTTPBadRequest(message='wrong ticket updated')
+
+            new = [tt for tt in m.ticket_types if not tt.id]
+            if new:
+                await self.conn.execute_b(
+                    """
+                    INSERT INTO ticket_types (:values__names) VALUES :values
+                    """,
+                    values=MultipleValues(*(Values(event=event_id, **tt.dict(exclude={'id'})) for tt in new))
+                )
 
 
 GET_IMAGE_SQL = """
@@ -567,8 +565,7 @@ class ReserveTickets(UpdateView):
             logger.warning('CheckViolationError: %s', e)
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
 
-        # TODO needs to work when the event is free
-        price_cent = int(price * ticket_count * 100)
+        price_cent = price and int(price * ticket_count * 100)
         res = Reservation(
             user_id=user_id,
             action_id=action_id,
@@ -580,7 +577,7 @@ class ReserveTickets(UpdateView):
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
             'ticket_count': ticket_count,
-            'item_price_cent': int(price * 100),
+            'item_price_cent': price and int(price * 100),
             'total_price_cent': price_cent,
             'timeout': int(time()) + self.settings.ticket_ttl,
         }
@@ -623,4 +620,13 @@ class BuyTickets(UpdateView):
     async def execute(self, m: StripePayModel):
         paid_action_id = await stripe_pay(m, self.request['company_id'], self.session.get('user_id'),
                                           self.app, self.conn)
+        await self.app['email_actor'].send_event_conf(paid_action_id)
+
+
+class BookFreeTickets(UpdateView):
+    Model = BookingModel
+
+    async def execute(self, m: BookingModel):
+        paid_action_id = await book_free(m, self.request['company_id'], self.session.get('user_id'),
+                                         self.app, self.conn)
         await self.app['email_actor'].send_event_conf(paid_action_id)

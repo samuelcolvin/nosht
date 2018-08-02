@@ -11,7 +11,7 @@ import {
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ModalFooter} from '../general/Modal'
-import {format_money, load_script} from '../utils'
+import {format_money_free, load_script} from '../utils'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import {Waiting} from '../general/Errors'
@@ -22,6 +22,17 @@ const stripe_styles = {
     color: '#dc3545'
   }
 }
+
+export const PricingList = ({items, className}) => (
+  <div className={className}>
+    {items.map((item, i) => (
+      <div key={i} className={`d-flex justify-content-between ${item.className || ''}`}>
+        <div>{item.name}:</div>
+        <div className="font-weight-bold">{item.value}</div>
+      </div>
+    ))}
+  </div>
+)
 
 const name_field = {
   name: 'billing_name',
@@ -56,8 +67,10 @@ class StripeForm_ extends React.Component {
       postcode: null,
     }
     this.update_timer = this.update_timer.bind(this)
-    this.as_price = p => format_money(this.props.event.currency, p/100)
+    this.as_price = p => format_money_free(this.props.event.currency, p && p/100)
     this.render_form = this.render_form.bind(this)
+    this.take_payment = this.take_payment.bind(this)
+    this.book_free = this.book_free.bind(this)
   }
 
   update_timer () {
@@ -92,8 +105,16 @@ class StripeForm_ extends React.Component {
     }
   }
 
-  async take_payment (e) {
+  submit (e) {
     e.preventDefault()
+    if (this.props.reservation.item_price_cent) {
+      this.take_payment()
+    } else {
+      this.book_free()
+    }
+  }
+
+  async take_payment () {
     const required = ['card_complete', 'name', 'address', 'city', 'postcode']
     if (this.state.submitting || !required.every(f => this.state[f])) {
       required.filter(f => !this.state[f]).map(f => this.setState({[`${f}_error`]: 'Required'}))
@@ -111,7 +132,7 @@ class StripeForm_ extends React.Component {
       this.setState({submitted: true})
 
       const token = payload.token
-      await this.props.requests.post(`events/buy/`, {
+      await this.props.requests.post('events/buy/', {
         stripe_token: token.id,
         stripe_client_ip: token.client_ip,
         stripe_card_ref: `${token.card.last4}-${token.card.exp_year}-${token.card.exp_month}`,
@@ -122,6 +143,20 @@ class StripeForm_ extends React.Component {
       return
     }
     this.props.set_message({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
+    this.props.finished()
+  }
+
+  async book_free () {
+    this.setState({submitting: true, submitted: true})
+
+    try {
+      await this.props.requests.post('events/book-free/', {booking_token: this.props.reservation.booking_token})
+    } catch (error) {
+      this.props.setRootState({error})
+      return
+    }
+
+    this.props.set_message({icon: ['fas', 'check-circle'], message: 'Booking successful, check your email'})
     this.props.finished()
   }
 
@@ -136,6 +171,8 @@ class StripeForm_ extends React.Component {
     const form_height = 300
     if (expired) {
       return <h4 className="has-error">Rervation expired</h4>
+    } else if (!this.props.reservation.item_price_cent) {
+      return null
     } else if (this.state.submitted) {
       return (
         <div style={{height: form_height}} className="vertical-center">
@@ -206,19 +243,12 @@ class StripeForm_ extends React.Component {
       items.splice(0, 1)
     }
     return (
-      <BootstrapForm className="pad-less" onSubmit={this.take_payment.bind(this)}>
+      <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
         <ModalBody>
           <User {...this.props}/>
           <Row className="justify-content-center">
             <Col md="8">
-              <div className="mb-2">
-                {items.map((item, i) => (
-                  <div key={i} className={`d-flex justify-content-between ${item.className || ''}`}>
-                    <div>{item.name}:</div>
-                    <div className="font-weight-bold">{item.value}</div>
-                  </div>
-                ))}
-              </div>
+              <PricingList className="mb-2" items={items}/>
               <hr/>
 
               {this.render_form(expired)}
@@ -226,8 +256,8 @@ class StripeForm_ extends React.Component {
           </Row>
         </ModalBody>
         <ModalFooter finished={this.props.finished}
-                     label="Take Payment"
-                     disabled={expired || this.state.submitting || !this.state.card_complete}/>
+                     label={res.item_price_cent ? 'Buy Now' : 'Confirm'}
+                     disabled={expired || this.state.submitting || (res.item_price_cent && !this.state.card_complete)}/>
       </BootstrapForm>
     )
   }

@@ -288,7 +288,7 @@ class Factory:
             user_id=user_id,
             action_id=action_id,
             event_id=self.event_id,
-            price_cent=10_00,
+            price_cent=price and int(price * 100),
             ticket_count=1,
             event_name='Foobar',
         )

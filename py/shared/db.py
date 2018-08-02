@@ -26,6 +26,7 @@ class ActionTypes(str, Enum):
     password_reset = 'password-reset'
     reserve_tickets = 'reserve-tickets'
     buy_tickets = 'buy-tickets'
+    book_free_tickets = 'book-free-tickets'
     cancel_reserved_tickets = 'cancel-reserved-tickets'
     edit_event = 'edit-event'
     edit_other = 'edit-other'

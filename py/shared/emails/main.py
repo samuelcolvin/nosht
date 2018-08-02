@@ -48,7 +48,7 @@ class EmailActor(BaseEmailActor):
             'event_start': data['start_ts'] if duration else data['start_ts'].date(),
             'event_duration': duration or 'All day',
             'event_location': data['location_name'],
-            'ticket_price': display_cash(data['price'], data['currency']),
+            'ticket_price': display_cash(data['price'], data['currency']) if data['price'] else 'Free',
             'buyer_name': data['user_name']
         }
         lat, lng = data['location_lat'], data['location_lng']
@@ -63,7 +63,7 @@ class EmailActor(BaseEmailActor):
             **ctx,
             'ticket_count': ticket_count,
             'ticket_count_plural': ticket_count > 1,
-            'total_price': display_cash(data['price'] * ticket_count, data['currency']),
+            'total_price': display_cash(data['price'] * ticket_count, data['currency']) if data['price'] else 'Free',
         }
         if data['extra']:
             action_extra = json.loads(data['extra'])

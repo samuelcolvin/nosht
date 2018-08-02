@@ -567,7 +567,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event()
+    await factory.create_event(price=10)
 
     user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.com')
 

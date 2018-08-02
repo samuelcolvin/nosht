@@ -48,7 +48,7 @@ export default class Map extends React.Component {
       if (this.props.click_handler) {
         window.google.maps.event.addListener(this.map, 'click', this.props.click_handler)
       }
-    } else {
+    } else if (this.marker) {
       this.marker.setPosition(loc)
       this.marker.setTitle(loc.name)
       const bounds = this.map.getBounds()
