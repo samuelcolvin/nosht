@@ -401,7 +401,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     ]
     users = [dict(r) for r in await db_conn.fetch(
         """
-        SELECT event, user_id, first_name, last_name, reserve_action, paid_action, status, extra
+        SELECT event, user_id, first_name, last_name, reserve_action, booked_action, status, extra
         FROM tickets
         ORDER BY user_id
         """
@@ -413,7 +413,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
             'first_name': 'Ticket',
             'last_name': 'Buyer',
             'reserve_action': reserve_action_id,
-            'paid_action': None,
+            'booked_action': None,
             'status': 'reserved',
             'extra': None,
         },
@@ -423,7 +423,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
             'first_name': 'Other',
             'last_name': 'Person',
             'reserve_action': reserve_action_id,
-            'paid_action': None,
+            'booked_action': None,
             'status': 'reserved',
             'extra': '{"extra_info": "I love to party"}',
         },
@@ -473,7 +473,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
     ]
     users = [dict(r) for r in await db_conn.fetch(
         """
-        SELECT event, user_id, first_name, last_name, reserve_action, paid_action, status, extra
+        SELECT event, user_id, first_name, last_name, reserve_action, booked_action, status, extra
         FROM tickets
         ORDER BY user_id
         """
@@ -486,7 +486,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
             'first_name': 'TT',
             'last_name': 'BB',
             'reserve_action': reserve_action_id,
-            'paid_action': None,
+            'booked_action': None,
             'status': 'reserved',
             'extra': None,
         },
@@ -496,7 +496,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
             'first_name': None,
             'last_name': None,
             'reserve_action': reserve_action_id,
-            'paid_action': None,
+            'booked_action': None,
             'status': 'reserved',
             'extra': None,
         },
@@ -870,5 +870,4 @@ async def test_invalid_ticket_updates(get_input, response_contains, cli, url, fa
 
     r = await cli.json_post(url('update-event-ticket-types', id=event_id), data={'ticket_types': ticket_types})
     assert r.status == 400, await r.text()
-    debug(await r.text())
     assert response_contains in await r.text()

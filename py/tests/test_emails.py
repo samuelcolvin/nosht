@@ -75,9 +75,9 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     await factory.create_event(price=10, location_name='The Location', location_lat=51.5, location_lng=-0.2)
 
     res = await factory.create_reservation()
-    paid_action_id = await factory.buy_tickets(res)
+    booked_action_id = await factory.buy_tickets(res)
 
-    await email_actor.send_event_conf(paid_action_id)
+    await email_actor.send_event_conf(booked_action_id)
 
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
@@ -106,9 +106,9 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
                                location_lat=51.5, location_lng=-0.2, duration=timedelta(hours=1.5))
 
     res = await factory.create_reservation()
-    paid_action_id = await factory.buy_tickets(res)
+    booked_action_id = await factory.buy_tickets(res)
 
-    await email_actor.send_event_conf(paid_action_id)
+    await email_actor.send_event_conf(booked_action_id)
 
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',

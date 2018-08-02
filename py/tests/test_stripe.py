@@ -54,12 +54,12 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     )
     assert (ticket_limit, tickets_taken) == (10, 1)
 
-    paid_action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='buy-tickets'")
+    booked_action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='buy-tickets'")
 
-    assert paid_action['company'] == factory.company_id
-    assert paid_action['user_id'] == factory.user_id
-    assert paid_action['ts'] == CloseToNow(delta=10)
-    extra = json.loads(paid_action['extra'])
+    assert booked_action['company'] == factory.company_id
+    assert booked_action['user_id'] == factory.user_id
+    assert booked_action['ts'] == CloseToNow(delta=10)
+    extra = json.loads(booked_action['extra'])
     assert extra == {
         'new_card': True,
         'new_customer': True,
@@ -75,7 +75,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     assert charge['metadata'] == {
         'event': str(factory.event_id),
         'tickets_bought': '1',
-        'paid_action': str(paid_action['id']),
+        'booked_action': str(booked_action['id']),
         'reserve_action': str(res.action_id),
     }
     assert charge['source']['last4'] == '4242'

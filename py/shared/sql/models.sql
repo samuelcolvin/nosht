@@ -137,7 +137,7 @@ CREATE TABLE ticket_types (
 );
 
 
-CREATE TYPE TICKET_STATUS AS ENUM ('reserved', 'paid', 'cancelled');
+CREATE TYPE TICKET_STATUS AS ENUM ('reserved', 'booked', 'cancelled');
 CREATE TABLE tickets (
   id SERIAL PRIMARY KEY,
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
@@ -148,7 +148,7 @@ CREATE TABLE tickets (
   last_name VARCHAR(255),
   price NUMERIC(7, 2),  -- in case ticket prices change
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
-  paid_action INT REFERENCES actions ON DELETE CASCADE,
+  booked_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   extra JSONB

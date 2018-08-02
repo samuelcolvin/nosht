@@ -44,7 +44,7 @@ async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection
         """
         SELECT COUNT(*)
         FROM tickets
-        WHERE event=$1 AND reserve_action=$2 AND status='reserved' AND paid_action IS NULL
+        WHERE event=$1 AND reserve_action=$2 AND status='reserved' AND booked_action IS NULL
         """,
         res.event_id, res.action_id,
     )
@@ -67,7 +67,7 @@ async def book_free(m: BookingModel, company_id: int, user_id: Optional[int], ap
             values=Values(company=company_id, user_id=res.user_id, type=ActionTypes.book_free_tickets.value)
         )
         await conn.execute(
-            "UPDATE tickets SET status='paid', paid_action=$1 WHERE reserve_action=$2",
+            "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
             confirm_action_id, res.action_id,
         )
         await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
@@ -132,13 +132,13 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
 
     async with conn.transaction():
         # mark the tickets paid in DB, then create charge in stripe, then finish transaction
-        paid_action_id = await conn.fetchval_b(
+        booked_action_id = await conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
             values=Values(company=company_id, user_id=res.user_id, type=ActionTypes.buy_tickets.value)
         )
         await conn.execute(
-            "UPDATE tickets SET status='paid', paid_action=$1 WHERE reserve_action=$2",
-            paid_action_id, res.action_id,
+            "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
+            booked_action_id, res.action_id,
         )
         await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
 
@@ -153,7 +153,7 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
             metadata={
                 'event': res.event_id,
                 'tickets_bought': res.ticket_count,
-                'paid_action': paid_action_id,
+                'booked_action': booked_action_id,
                 'reserve_action': res.action_id,
             }
         )
@@ -166,11 +166,11 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
             'card_last4': charge['source']['last4'],
             'card_expiry': f"{charge['source']['exp_month']}/{charge['source']['exp_year'] - 2000}",
         }),
-        paid_action_id,
+        booked_action_id,
     )
     if new_customer:
         await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, res.user_id)
-    return paid_action_id
+    return booked_action_id
 
 
 def _card_ref(c):

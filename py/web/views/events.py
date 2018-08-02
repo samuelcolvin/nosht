@@ -255,10 +255,10 @@ FROM (
       ub.id as buyer_id, full_name(ub.first_name, ub.last_name, u.email) AS buyer_name
     FROM tickets AS t
     LEFT JOIN users u ON t.user_id = u.id
-    JOIN actions a ON t.paid_action = a.id
+    JOIN actions a ON t.booked_action = a.id
     JOIN users ub ON a.user_id = ub.id
     JOIN ticket_types tt ON t.ticket_type = tt.id
-    WHERE t.event=$1 AND t.status='paid'
+    WHERE t.event=$1 AND t.status='booked'
     ORDER BY a.ts
   ) AS t
 ) AS tickets
@@ -462,7 +462,7 @@ async def booking_info(request):
         SELECT COUNT(*)
         FROM tickets
         JOIN actions AS a ON tickets.reserve_action = a.id
-        WHERE event=$1 AND a.user_id=$2 AND status='paid'
+        WHERE event=$1 AND a.user_id=$2 AND status='booked'
         """,
         event_id,
         request['session']['user_id']
@@ -618,15 +618,15 @@ class BuyTickets(UpdateView):
     Model = StripePayModel
 
     async def execute(self, m: StripePayModel):
-        paid_action_id = await stripe_pay(m, self.request['company_id'], self.session.get('user_id'),
-                                          self.app, self.conn)
-        await self.app['email_actor'].send_event_conf(paid_action_id)
+        booked_action_id = await stripe_pay(m, self.request['company_id'], self.session.get('user_id'),
+                                            self.app, self.conn)
+        await self.app['email_actor'].send_event_conf(booked_action_id)
 
 
 class BookFreeTickets(UpdateView):
     Model = BookingModel
 
     async def execute(self, m: BookingModel):
-        paid_action_id = await book_free(m, self.request['company_id'], self.session.get('user_id'),
-                                         self.app, self.conn)
-        await self.app['email_actor'].send_event_conf(paid_action_id)
+        booked_action_id = await book_free(m, self.request['company_id'], self.session.get('user_id'),
+                                           self.app, self.conn)
+        await self.app['email_actor'].send_event_conf(booked_action_id)

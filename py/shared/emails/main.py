@@ -14,7 +14,7 @@ logger = logging.getLogger('nosht.email.main')
 
 class EmailActor(BaseEmailActor):
     @concurrent
-    async def send_event_conf(self, paid_action_id: int):
+    async def send_event_conf(self, booked_action_id: int):
         async with self.pg.acquire() as conn:
             data = await conn.fetchrow(
                 """
@@ -24,19 +24,19 @@ class EmailActor(BaseEmailActor):
                   e.location_name, e.location_lat, e.location_lng,
                   e.start_ts, e.duration, tt.price, cat.company, co.currency, a.extra
                 FROM tickets AS t
-                JOIN actions AS a ON t.paid_action = a.id
+                JOIN actions AS a ON t.booked_action = a.id
                 JOIN users AS u ON t.user_id = u.id
                 JOIN ticket_types AS tt ON t.ticket_type = tt.id
                 JOIN events AS e ON t.event = e.id
                 JOIN categories AS cat ON e.category = cat.id
                 JOIN companies co on cat.company = co.id
-                WHERE t.paid_action=$1
+                WHERE t.booked_action=$1
                 LIMIT 1
                 """,
-                paid_action_id
+                booked_action_id
             )
             buyer_user_id = data['user_id']
-            r = await conn.fetch('SELECT user_id FROM tickets WHERE paid_action=$1', paid_action_id)
+            r = await conn.fetch('SELECT user_id FROM tickets WHERE booked_action=$1', booked_action_id)
             other_user_ids = {r_[0] for r_ in r}
             other_user_ids.remove(buyer_user_id)
 
