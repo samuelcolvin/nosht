@@ -140,11 +140,12 @@ CREATE TYPE TICKET_STATUS AS ENUM ('reserved', 'paid', 'cancelled');
 CREATE TABLE tickets (
   id SERIAL PRIMARY KEY,
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
-  ticket_type INT NOT NULL REFERENCES ticket_types ON DELETE CASCADE,
+  ticket_type INT NOT NULL REFERENCES ticket_types ON DELETE RESTRICT,
   user_id INT REFERENCES users ON DELETE CASCADE,
   -- separate from the user's name to avoid confusing updates of the user's name
   first_name VARCHAR(255),
   last_name VARCHAR(255),
+  -- price NUMERIC(7, 2) NOT NULL,  -- in case ticket prices change
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   paid_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',

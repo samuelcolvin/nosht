@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 
+import pytest
 from aiohttp import FormData
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
@@ -315,7 +317,7 @@ async def test_booking_info(cli, url, factory: Factory, login):
     assert data == {
         'tickets_remaining': None,
         'existing_tickets': 0,
-        'ticket_types': [{'id': 18, 'name': 'Standard', 'price': None}],
+        'ticket_types': [{'id': AnyInt(), 'name': 'Standard', 'price': None}],
     }
 
 
@@ -332,7 +334,7 @@ async def test_booking_info_limited(cli, url, factory: Factory, login):
     assert data == {
         'tickets_remaining': 8,
         'existing_tickets': 0,
-        'ticket_types': [{'id': 19, 'name': 'Standard', 'price': None}],
+        'ticket_types': [{'id': AnyInt(), 'name': 'Standard', 'price': None}],
     }
 
 
@@ -717,3 +719,155 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
                               r'the-event-name/\w+?/main.jpg')
     assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/'
                               r'the-event-name/\w+?/thumb.jpg')
+
+
+async def test_add_ticket_type(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
+    r = await cli.get(url('event-ticket-types', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    ticket_types = data['ticket_types']
+    assert len(ticket_types) == 1
+    ticket_types.append({
+        'name': 'Foobar',
+        'price': 123.5,
+        'slots_used': 2,
+        'active': False,
+    })
+
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
+    assert r.status == 200, await r.text()
+
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    assert ticket_types == [
+        {
+            'id': AnyInt(),
+            'event': factory.event_id,
+            'name': 'Standard',
+            'price': None,
+            'slots_used': 1,
+            'active': True,
+        },
+        {
+            'id': AnyInt(),
+            'event': factory.event_id,
+            'name': 'Foobar',
+            'price': Decimal('123.50'),
+            'slots_used': 2,
+            'active': False,
+        },
+    ]
+
+
+async def test_delete_ticket_type(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    tt_id = await db_conn.fetchval('SELECT id FROM ticket_types')
+    data = {'ticket_types': [{'name': 'xxx', 'price': 12.3, 'slots_used': 50, 'active': True}]}
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    assert ticket_types == [
+        {
+            'id': AnyInt(),
+            'event': factory.event_id,
+            'name': 'xxx',
+            'price': Decimal('12.30'),
+            'slots_used': 50,
+            'active': True,
+        },
+    ]
+    assert ticket_types[0]['id'] != tt_id
+
+
+async def test_delete_wrong_ticket_type(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await factory.create_reservation()
+    await login()
+
+    data = {'ticket_types': [{'name': 'xxx', 'price': 12.3, 'slots_used': 50, 'active': True}]}
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'ticket types deleted which have ticket associated with them',
+    }
+
+
+async def test_edit_ticket_type(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    tt_id = await db_conn.fetchval('SELECT id FROM ticket_types')
+    data = {
+        'ticket_types': [
+            {
+                'id': tt_id,
+                'name': 'xxx',
+                'price': 12.3,
+                'slots_used': 50,
+                'active': True,
+            }
+        ]
+    }
+
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    assert ticket_types == [
+        {
+            'id': tt_id,
+            'event': factory.event_id,
+            'name': 'xxx',
+            'price': Decimal('12.30'),
+            'slots_used': 50,
+            'active': True,
+        },
+    ]
+
+
+@pytest.mark.parametrize('get_input,response_contains', [
+    (
+        lambda event_id, tt_id: (event_id, [{'id': tt_id, 'name': 'foobar'}]),
+        '"msg": "field required"'
+    ),
+    (
+        lambda event_id, tt_id: (event_id + 1, [{'id': tt_id, 'name': 'x', 'slots_used': 1, 'active': True}]),
+        '"message": "wrong ticket updated"'
+    ),
+    (
+        lambda event_id, tt_id: (event_id + 1, [{'id': tt_id, 'name': 'x', 'slots_used': 1, 'active': False}]),
+        '"msg": "at least 1 ticket type must be active"'
+    ),
+])
+async def test_invalid_ticket_updates(get_input, response_contains, cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    tt_id = await db_conn.fetchval('SELECT id FROM ticket_types')
+    event_id, ticket_types = get_input(factory.event_id, tt_id)
+
+    r = await cli.json_post(url('update-event-ticket-types', id=event_id), data={'ticket_types': ticket_types})
+    assert r.status == 400, await r.text()
+    debug(await r.text())
+    assert response_contains in await r.text()

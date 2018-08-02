@@ -7,10 +7,10 @@ from time import time
 from typing import List, Optional
 
 from asyncpg import CheckViolationError
-from buildpg import MultipleValues, V, Values, funcs
+from buildpg import MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, EmailStr, condecimal, constr, validator
+from pydantic import BaseModel, EmailStr, condecimal, conint, constr, validator
 
 from shared.images import delete_image, resize_upload
 from shared.utils import pseudo_random_str, slugify
@@ -275,9 +275,11 @@ event_ticket_types_sql = """
 SELECT json_build_object('ticket_types', tickets)
 FROM (
   SELECT array_to_json(array_agg(row_to_json(t))) AS tickets FROM (
-    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active
+    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active, COUNT(t.id) > 0 AS has_tickets
     FROM ticket_types AS tt
+    LEFT JOIN tickets AS t ON tt.id = t.ticket_type
     WHERE tt.event=$1
+    GROUP BY tt.id
     ORDER BY tt.id
   ) AS t
 ) AS tickets
@@ -289,6 +291,71 @@ async def event_ticket_types(request):
     event_id = await _check_event_host(request)
     json_str = await request['conn'].fetchval(event_ticket_types_sql, event_id)
     return raw_json_response(json_str)
+
+
+class TicketTypesModel(BaseModel):
+    class TicketType(BaseModel):
+        name: str
+        id: int = None
+        slots_used: conint(ge=1)
+        active: bool
+        price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+
+    ticket_types: List[TicketType]
+
+    @validator('ticket_types', whole=True)
+    def check_ticket_types(cls, v):
+        if sum(tt.active for tt in v) < 1:
+            raise ValueError('at least 1 ticket type must be active')
+        return v
+
+
+@is_admin_or_host
+async def set_event_ticket_types(request):
+    event_id = await _check_event_host(request)
+    m = await parse_request(request, TicketTypesModel)
+    conn: BuildPgConnection = request['conn']
+    existing = [tt for tt in m.ticket_types if tt.id]
+    deleted_with_tickets = await conn.fetchval(
+        """
+        SELECT 1
+        FROM ticket_types AS tt
+        JOIN tickets AS t ON tt.id = t.ticket_type
+        WHERE tt.event=$1 AND NOT (tt.id=ANY($2))
+        GROUP BY tt.id
+        """, event_id, [tt.id for tt in existing]
+    )
+    if deleted_with_tickets:
+        raise JsonErrors.HTTPBadRequest(message='ticket types deleted which have ticket associated with them')
+
+    async with conn.transaction():
+        await conn.fetchval(
+            """
+            DELETE FROM ticket_types
+            WHERE ticket_types.event=$1 AND NOT (ticket_types.id=ANY($2))
+            """, event_id, [tt.id for tt in existing]
+        )
+
+        for tt in existing:
+            v = await conn.execute_b(
+                'UPDATE ticket_types SET :values WHERE id=:id AND event=:event',
+                values=SetValues(**tt.dict(exclude={'id'})),
+                id=tt.id,
+                event=event_id,
+            )
+            if v != 'UPDATE 1':
+                raise JsonErrors.HTTPBadRequest(message='wrong ticket updated')
+
+        new = [tt for tt in m.ticket_types if not tt.id]
+        if new:
+            await conn.execute_b(
+                """
+                INSERT INTO ticket_types (:values__names) VALUES :values
+                """,
+                values=MultipleValues(*(Values(event=event_id, **tt.dict(exclude={'id'})) for tt in new))
+            )
+
+    return json_response(status='ok')
 
 
 GET_IMAGE_SQL = """

@@ -100,11 +100,13 @@ const Select = ({className, field, disabled, value, onChange}) => (
 )
 
 const IntegerInput = props => (
-  <GeneralInput {...props} custom_type="number" step="1" min={props.field.min} max={props.field.max}/>
+  <GeneralInput {...props} custom_type="number" step="1" min={props.field.min} max={props.field.max}
+                onChange={v => props.onChange(v ? parseInt(v) : null)}/>
 )
 
 const NumberInput = props => (
-  <GeneralInput {...props} custom_type="number" step={props.field.step} min={props.field.min} max={props.field.max}/>
+  <GeneralInput {...props} custom_type="number" step={props.field.step} min={props.field.min} max={props.field.max}
+                onChange={v => props.onChange(v ? parseFloat(v) : null)}/>
 )
 
 const DURATIONS = [
@@ -282,7 +284,7 @@ class GeoLocation extends React.Component {
           }
         </div>
         <Map geolocation={loc} onDrag={this.onDrag.bind(this)}/>
-        {error && <FormFeedback className="display-block">{error}</FormFeedback>}
+        {error && <FormFeedback className="d-block">{error}</FormFeedback>}
         <HelpText field={field}/>
       </FormGroup>
     )
@@ -301,7 +303,7 @@ const INPUT_LOOKUP = {
 const Input = props => {
   const InputComp = INPUT_LOOKUP[props.field.type] || GeneralInput
   props.field.title = props.field.title || as_title(props.field.name)
-  const value = props.value || props.field.default
+  const value = [null, undefined].includes(props.value) ? props.field.default : props.value
   return <InputComp field={props.field}
                     error={props.error}
                     value={value}

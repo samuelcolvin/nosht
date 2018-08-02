@@ -228,7 +228,7 @@ CATS = [
     {
         'name': 'Supper Clubs',
         'description': 'Eat, drink & discuss middle aged, middle class things like house prices and consumerist guilt',
-        'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+        'image': 'https://nosht.scolvin.com/cat/mountains/options/0DRztZurMo',
         'ticket_extra_title': 'Dietary Requirements & Extra Information',
         'ticket_extra_help_text': 'This is the help text for this field, tell us about your nut allergy',
         'sort_index': 1,
@@ -244,7 +244,7 @@ CATS = [
                 'location_lat': 51.479415,
                 'location_lng': -0.132098,
                 'ticket_limit': 40,
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G',
                 'host_email': 'frank@example.com',
                 'ticket_types': [
                     {
@@ -292,7 +292,7 @@ CATS = [
                 'duration': None,
                 'location_name': 'Big Church, London',
                 'ticket_limit': None,
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/p6UsCdOnGG',
                 'host_email': 'frank@example.com',
                 'ticket_types': [
                     {
@@ -310,7 +310,7 @@ CATS = [
                 'duration': None,
                 'location_name': 'Small Church, London',
                 'ticket_limit': None,
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/YEcz6kUlsc',
                 'host_email': 'frank@example.com',
                 'ticket_types': [
                     {

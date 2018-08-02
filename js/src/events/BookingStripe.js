@@ -178,7 +178,7 @@ class StripeForm_ extends React.Component {
                           style={stripe_styles}/>
             {
               this.state.card_error &&
-              <FormFeedback className="display-block">
+              <FormFeedback className="d-block">
                 <FontAwesomeIcon icon="times" className="mr-1"/>
                 {this.state.card_error}
               </FormFeedback>

@@ -14,7 +14,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
                 'id': await db_conn.fetchval("SELECT id FROM categories WHERE slug='supper-clubs'"),
                 'name': 'Supper Clubs',
                 'slug': 'supper-clubs',
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/0DRztZurMo',
                 'description': (
                     'Eat, drink & discuss middle aged,'
                     ' middle class things like house prices and consumerist guilt'
@@ -34,7 +34,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
                 'name': "Frank's Great Supper",
                 'cat_slug': 'supper-clubs',
                 'slug': 'franks-great-supper',
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/yQt1XLAPDm',
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G',
                 'short_description': RegexStr('.*'),
                 'location_name': '31 Testing Road, London',
                 'start_ts': '2020-01-28T19:00:00',
@@ -56,7 +56,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
                 'name': 'Loud Singing',
                 'cat_slug': 'singing-events',
                 'slug': 'loud-singing',
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/g3I6RDoZtE',
+                'image': 'https://nosht.scolvin.com/cat/mountains/options/p6UsCdOnGG',
                 'short_description': RegexStr('.*'),
                 'location_name': 'Big Church, London',
                 'start_ts': '2020-02-15T00:00:00',
