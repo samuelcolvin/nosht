@@ -276,6 +276,7 @@ class GeoLocation extends React.Component {
             <Button onClick={this.search}>Search</Button>
           </InputGroupAddon>
         </InputGroup>
+        <HelpText field={field}/>
         <div style={{height: 20}}>
           {this.state.marker_moved &&
             <Button onClick={this.update_address.bind(this)} color="link" className="small-link">
@@ -285,7 +286,6 @@ class GeoLocation extends React.Component {
         </div>
         <Map geolocation={loc} onDrag={this.onDrag.bind(this)}/>
         {error && <FormFeedback className="d-block">{error}</FormFeedback>}
-        <HelpText field={field}/>
       </FormGroup>
     )
   }

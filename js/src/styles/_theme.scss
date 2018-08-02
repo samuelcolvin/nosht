@@ -130,7 +130,14 @@ main.container {
 
 textarea {
   height: 120px;
+  &[name="long_description"] {
+    height: 300px;
+  }
+  &[name="short_description"] {
+    height: 65px;
+  }
 }
+
 
 .highlight-required {
   .form-group label.required {

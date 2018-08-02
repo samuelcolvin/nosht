@@ -19,7 +19,7 @@ from web.auth import check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 from web.utils import (ImageModel, JsonErrors, decrypt_json, encrypt_json, json_response, parse_request,
-                       raw_json_response, request_image, to_json_if)
+                       raw_json_response, request_image, to_json_if, clean_markdown)
 
 logger = logging.getLogger('nosht.events')
 
@@ -122,6 +122,7 @@ class EventBread(Bread):
         ticket_limit: int = None
         price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
         long_description: str
+        short_description: str = None
 
     browse_enabled = True
     retrieve_enabled = True
@@ -152,6 +153,7 @@ class EventBread(Bread):
         'e.location_name',
         'e.location_lat',
         'e.location_lng',
+        'e.short_description',
         'e.long_description',
     )
 
@@ -189,13 +191,14 @@ class EventBread(Bread):
                 location_lng=loc['lng'],
             )
 
-        long_desc = data.get('long_description')
-        if long_desc is not None:
-            data['short_description'] = shorten(long_desc, width=140, placeholder='…')
         return data
 
     async def prepare_add_data(self, data):
         data = self.prepare(data)
+        long_desc = data.get('long_description')
+        if long_desc is not None:
+            data['short_description'] = shorten(clean_markdown(long_desc), width=140, placeholder='…')
+
         session = self.request['session']
         data.update(
             slug=slugify(data['name']),

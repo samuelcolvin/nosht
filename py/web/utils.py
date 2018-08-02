@@ -1,5 +1,6 @@
 import datetime
 import json
+import re
 from decimal import Decimal
 from typing import Any, Type, TypeVar
 from uuid import UUID
@@ -178,3 +179,21 @@ async def request_image(request):
     except ValueError as e:
         raise JsonErrors.HTTPBadRequest(message=str(e))
     return content
+
+
+_simplify = [
+    (re.compile(r'\<.*?\>', flags=re.S), ''),
+    (re.compile(r'\{\{.*?\}\}'), ''),
+    (re.compile(r'_(\S.*?\S)_'), r'\1'),
+    (re.compile(r'\[(.+?)\]\(.*?\)'), r'\1'),
+    (re.compile(r'\*\*'), ''),
+    (re.compile(r'^#+ ', flags=re.M), ''),
+    (re.compile(r'`'), ''),
+    (re.compile(r'\n+'), ' '),
+]
+
+
+def clean_markdown(md):
+    text = md
+    for regex, p in _simplify:
+        text = regex.sub(p, text)

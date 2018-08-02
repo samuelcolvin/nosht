@@ -6,6 +6,7 @@ import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, render_bool} fr
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
 import TicketTypes from './TicketTypes'
+import {EVENT_FIELDS} from './Create'
 
 export class EventsList extends RenderList {
   constructor (props) {
@@ -25,15 +26,6 @@ export class EventsList extends RenderList {
   }
 }
 
-const EVENT_FIELDS = [
-  {name: 'name', required: true},
-  {name: 'public', title: 'Public Event', type: 'bool'},
-  {name: 'date', title: 'Event Start', type: 'datetime', required: true},
-  {name: 'location', type: 'geolocation', help_text: 'Drag the marker to set the exact event location.'},
-  {name: 'ticket_limit', type: 'integer'},
-  {name: 'price', type: 'number', step: 0.01, min: 1, max: 1000},
-  {name: 'long_description', title: 'Description', type: 'textarea', required: true},
-]
 const EVENT_STATUS_FIELDS = [
   {name: 'status', required: true, type: 'select', choices: [
     {value: 'pending'},
@@ -206,6 +198,7 @@ export class EventsDetails extends RenderDetails {
     const item = Object.assign({}, this.state.item)
     item.location = {name: item.location_name, lat: item.location_lat, lng: item.location_lng}
     item.date = {dt: item.start_ts, dur: item.duration}
+    const event_fields = EVENT_FIELDS.filter(f => !['category', 'price'].includes(f.name))
     return [
       this.state.ticket_types ?
         <TicketTypeTable key="ttt" currency={item.currency} ticket_types={this.state.ticket_types}/>
@@ -221,7 +214,7 @@ export class EventsDetails extends RenderDetails {
                  initial={item}
                  update={this.update}
                  action={`/events/${this.id}/`}
-                 fields={EVENT_FIELDS}/>,
+                 fields={event_fields}/>,
       <ModalForm {...this.props}
                  key="set-status"
                  title="Set Event Status"

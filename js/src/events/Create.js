@@ -3,6 +3,69 @@ import {Row, Col} from 'reactstrap'
 import {Form} from '../forms/Form'
 import Markdown from '../general/Markdown'
 
+export const EVENT_FIELDS = [
+  {
+    name: 'name',
+    required: true,
+    help_text: 'Public name of the event, keep this short and appealing.',
+  },
+  {
+    name: 'short_description',
+    title: 'Short Description',
+    type: 'textarea',
+    required: true,
+    max_length: 140,
+    help_text: 'Short summary of the event, maximum 140 characters.'
+  },
+  {
+    name: 'category',
+    type: 'select',
+    choices: [],
+    required: true,
+    help_text: 'The type of event you want to host.',
+  },
+  {
+    name: 'public',
+    title: 'Public Event',
+    type: 'bool',
+    help_text: 'Whether or not this event will be visible to anyone on the site and in public search results. ' +
+                'If not public people will need a link to view this event.',
+  },
+  {
+    name: 'date',
+    title: 'Event Start',
+    type: 'datetime',
+    required: true,
+    help_text: 'Let guests know when the event will start and how long it will go on for, you can add more ' +
+                'details about exact timings in the description below.',
+  },
+  {
+    name: 'location',
+    type: 'geolocation',
+    help_text: 'Drag the marker to set the exact event location.',
+  },
+  {
+    name: 'ticket_limit',
+    type: 'integer',
+    help_text: 'Maximum number of tickets available for the event.',
+  },
+  {
+    name: 'price',
+    type: 'number',
+    step: 0.01, min: 1, max: 1000,
+    help_text: "Price of standard tickets for the event. Leave blank if tickets are free. You can add more " +
+                "ticket types onces you've created the event.",
+  },
+  {
+    name: 'long_description',
+    title: 'Long Description',
+    type: 'textarea',
+    required: true,
+    help_text: 'Detailed description of the event.',
+    max_length: 5000,
+  },
+]
+
 export default class CreateEvent extends React.Component {
   constructor (props) {
     super(props)
@@ -26,16 +89,11 @@ export default class CreateEvent extends React.Component {
 
   fields () {
     const c = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
-    return [
-      {name: 'name', required: true},
-      {name: 'public', title: 'Public Event', type: 'bool'},
-      {name: 'category', type: 'select', choices: c, required: true},
-      {name: 'date', title: 'Event Start', type: 'datetime', required: true},
-      {name: 'location', type: 'geolocation', help_text: 'Drag the marker to set the exact event location.'},
-      {name: 'ticket_limit', type: 'integer'},
-      {name: 'price', type: 'number', step: 0.01, min: 1, max: 1000},
-      {name: 'long_description', title: 'Description', type: 'textarea', required: true},
-    ]
+    return (
+      EVENT_FIELDS
+      .filter(f => f.name !== 'short_description')
+      .map(f => f.name === 'category' ? Object.assign({}, f, {choices: c}) : f)
+    )
   }
 
   finished (r) {
