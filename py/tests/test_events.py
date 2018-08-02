@@ -87,7 +87,7 @@ async def test_event_categories(cli, url, factory: Factory, login):
     }
 
 
-async def test_create_event(cli, url, db_conn, factory: Factory, login):
+async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_server):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
@@ -147,6 +147,19 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login):
         'slots_used': 1,
         'active': True,
     }
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    # debug(email)
+    assert email['Subject'] == 'Update: Event Created'
+    assert email['part:text/plain'] == (
+        'Testing update:\n'
+        '\n'
+        'Event "foobar" (Supper Clubs) created by "Frank Spencer" (admin), click the link below to view the event.\n'
+        '\n'
+        '<div class="button">\n'
+        '  <a href="https://127.0.0.1/supper-clubs/foobar/"><span>View Event</span></a>\n'
+        '</div>\n\n'
+    )
 
 
 async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login):

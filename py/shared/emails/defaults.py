@@ -128,12 +128,16 @@ You can now create and publish events whenever you wish.
 """
     },
     Triggers.admin_notification: {
-        'subject': '{{{ company_name }}} notification',
+        'subject': 'Update: {{{ summary }}}',
         'title': '',
-        'body': """
-```
-{{{ __print_debug_context__ }}}
-```
+        'body': """\
+{{ company_name }} update:
+
+{{{ details }}}
+
+{{#action_link}}
+{{ centered_button({{ action_label }} | {{ action_link }}) }}
+{{/action_link}}
 """
     },
 }

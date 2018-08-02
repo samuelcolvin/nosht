@@ -25,13 +25,13 @@ async def test_send_email(email_actor: EmailActor, factory: Factory, dummy_serve
     await factory.create_company()
     await factory.create_user(email='testing@scolvin.com')
     ctx = {
-        'foo': 'bar',
+        'summary': 'testing',
     }
     await email_actor.send_emails(factory.company_id, Triggers.admin_notification,
                                   [UserEmail(id=factory.user_id, ctx=ctx)])
 
     assert dummy_server.app['log'] == [
-        ('email_send_endpoint', 'Subject: "Testing notification", '
+        ('email_send_endpoint', 'Subject: "Update: testing", '
                                 'To: "Frank Spencer <testing@scolvin.com>"'),
     ]
 

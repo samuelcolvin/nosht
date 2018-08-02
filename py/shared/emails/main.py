@@ -90,3 +90,34 @@ class EmailActor(BaseEmailActor):
             ctx['confirm_email_link'] = password_reset_link(user_id, auth_fernet=self.auth_fernet)
 
         await self.send_emails.direct(company_id, Triggers.account_created, [UserEmail(id=user_id, ctx=ctx)])
+
+    @concurrent
+    async def send_event_created_note(self, action_id: int):
+        async with self.pg.acquire() as conn:
+            company_id, host_name, host_role, event_name, cat_name, link = await conn.fetchrow(
+                """
+                SELECT actions.company, full_name(u.first_name, u.last_name, u.email), u.role,
+                 e.name, cat.name, '/' || cat.slug || '/' || e.slug || '/'
+                FROM actions
+                JOIN users AS u ON actions.user_id = u.id
+                JOIN events AS e ON (extra->>'event_id')::int = e.id
+                JOIN categories AS cat ON e.category = cat.id
+                WHERE actions.id=$1
+                """,
+                action_id
+            )
+
+            ctx = dict(
+                summary='Event Created',
+                details=(
+                    f'Event "{event_name}" ({cat_name}) created by "{host_name}" ({host_role}), '
+                    f'click the link below to view the event.'
+                ),
+                action_label='View Event',
+                action_link=link,
+            )
+            users = [
+                UserEmail(id=r['id'], ctx=ctx) for r in
+                await conn.fetch("SELECT id FROM users WHERE role='admin' AND company=$1", company_id)
+            ]
+        await self.send_emails.direct(company_id, Triggers.admin_notification, users)
