@@ -2,7 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime, format_money} from '../utils'
-import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail} from '../general/Dashboard'
+import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, render_bool} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
 import TicketTypes from './TicketTypes'
@@ -41,6 +41,32 @@ const EVENT_STATUS_FIELDS = [
     {value: 'suspended'},
   ]},
 ]
+
+const TicketTypeTable = ({ticket_types, currency}) => (
+  <div>
+    <h4>Ticket Types</h4>
+    <Table striped>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Group Size</th>
+          <th>Active</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ticket_types.map(tt => (
+          <tr key={tt.id}>
+            <td>{tt.name}</td>
+            <td>{tt.price ? format_money(currency, tt.price) : 'Free'}</td>
+            <td>{tt.slots_used}</td>
+            <td>{render_bool(tt.active)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  </div>
+)
 
 class Tickets extends React.Component {
   constructor (props) {
@@ -87,7 +113,8 @@ class Tickets extends React.Component {
               <th>#</th>
               <th>Guest</th>
               <th>Buyer</th>
-              <th>Bought at</th>
+              <th>Bought At</th>
+              <th>Type</th>
               <th>Extra Info</th>
             </tr>
           </thead>
@@ -98,6 +125,7 @@ class Tickets extends React.Component {
                 <td>{t.user_name || <Dash/>}</td>
                 <td>{t.buyer_name}</td>
                 <td>{format_datetime(t.bought_at)}</td>
+                <td>{t.ticket_type}</td>
                 <td className="text-right">
                   {t.extra && t.extra.extra_info.length > 30 ?
                     <small>{t.extra.extra_info}</small>
@@ -182,11 +210,14 @@ export class EventsDetails extends RenderDetails {
     item.location = {name: item.location_name, lat: item.location_lat, lng: item.location_lng}
     item.date = {dt: item.start_ts, dur: item.duration}
     return [
-      <Tickets key="1" tickets={this.state.tickets}/>,
+      this.state.ticket_types ?
+        <TicketTypeTable key="ttt" currency={item.currency} ticket_types={this.state.ticket_types}/>
+        : null,
+      <Tickets key="tickets" tickets={this.state.tickets}/>,
       <ModalForm {...this.props}
+                 key="edit"
                  title="Edit Event"
                  request_method="put"
-                 key="2"
                  parent_uri={this.uri}
                  mode="edit"
                  success_msg='Event updated'
@@ -195,7 +226,7 @@ export class EventsDetails extends RenderDetails {
                  action={`/events/${this.id}/`}
                  fields={EVENT_FIELDS}/>,
       <ModalForm {...this.props}
-                 key="3"
+                 key="set-status"
                  title="Set Event Status"
                  parent_uri={this.uri}
                  regex={/set-status\/$/}
@@ -206,7 +237,7 @@ export class EventsDetails extends RenderDetails {
                  action={`/events/${this.id}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
       <SetImage {...this.props}
-                key="4"
+                key="set-image"
                 event={item}
                 parent_uri={this.uri}
                 regex={/set-image\/$/}
@@ -214,7 +245,7 @@ export class EventsDetails extends RenderDetails {
                 title="Upload Background Image"/>,
       this.state.ticket_types ?
         <TicketTypes {...this.props}
-                     key="6"
+                     key="edit-ticket-types"
                      event={item}
                      ticket_types={this.state.ticket_types}
                      regex={/ticket-types\/$/}

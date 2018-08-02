@@ -64,7 +64,7 @@ FROM (
     SELECT tt.name, tt.price
     FROM ticket_types AS tt
     JOIN events AS e ON tt.event = e.id
-    WHERE e.slug=$3
+    WHERE e.slug=$3 AND tt.active=TRUE
   ) AS t
 ) AS ticket_types;
 """
@@ -251,12 +251,13 @@ SELECT json_build_object('tickets', tickets)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS tickets FROM (
     SELECT t.id as ticket_id, t.extra, u.id AS user_id,
-      full_name(u.first_name, u.last_name, u.email) AS user_name, a.ts AS bought_at,
+      full_name(u.first_name, u.last_name, u.email) AS user_name, a.ts AS bought_at, tt.name AS ticket_type,
       ub.id as buyer_id, full_name(ub.first_name, ub.last_name, u.email) AS buyer_name
     FROM tickets AS t
     LEFT JOIN users u ON t.user_id = u.id
     JOIN actions a ON t.paid_action = a.id
     JOIN users ub ON a.user_id = ub.id
+    JOIN ticket_types tt ON t.ticket_type = tt.id
     WHERE t.event=$1 AND t.status='paid'
     ORDER BY a.ts
   ) AS t

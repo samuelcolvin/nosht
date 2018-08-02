@@ -31,7 +31,7 @@ export default class Map extends React.Component {
     }
     const loc = this.props.geolocation
     await load_script_callback(GOOGLE_MAPS_JS)
-    if (el.childElementCount === 0) {
+    if (el.childElementCount === 0 && window.google) {
       this.map = new window.google.maps.Map(el, {
         center: loc,
         zoom: loc.zoom || 14,

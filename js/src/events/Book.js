@@ -39,6 +39,10 @@ class BookWrapper extends React.Component {
     this.setState({[key]: t})
   }
 
+  set_ticket_type (ticket_type) {
+    this.setState({ticket_type})
+  }
+
   change_ticket_count (change) {
     this.setState({ticket_count: this.state.ticket_count + change})
   }
@@ -68,7 +72,7 @@ class BookWrapper extends React.Component {
       if (this.state.ticket_type) {
         ticket_type = this.state.ticket_type
       } else {
-        this.props.setState({reservation_error: 'ticket_type not set'})
+        this.setState({reservation_error: 'No ticket type selected'})
         return
       }
     }
@@ -104,6 +108,7 @@ class BookWrapper extends React.Component {
           {...this.props}
           state={this.state}
           set_ticket_state={this.set_ticket_state.bind(this)}
+          set_ticket_type={this.set_ticket_type.bind(this)}
           reserve={this.reserve.bind(this)}
           change_ticket_count={this.change_ticket_count.bind(this)}/>
     } else {

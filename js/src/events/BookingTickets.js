@@ -2,13 +2,16 @@ import React from 'react'
 import {
   Button,
   Col,
+  Card,
+  CardTitle,
+  CardText,
   Form as BootstrapForm,
   FormFeedback,
   ModalBody,
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {user_full_name} from '../utils'
+import {format_money, user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
 
@@ -144,8 +147,28 @@ const TicketForm = props => {
           <User {...props}/>
         </Row>
         {ticket_types.length > 1 &&
-          <div>
-            TODO: {JSON.stringify(ticket_types)}
+          <div className="py-2">
+            <div className="text-center font-weight-bold">
+              Ticket Type
+            </div>
+            <Row className="d-flex justify-content-center my-1">
+              {ticket_types.map(tt => (
+
+                <Col key={tt.id} md="4" className="mb-3">
+                  <Card body inverse color={props.state.ticket_type === tt.id ? 'primary': 'info'}
+                        className={props.state.ticket_type === tt.id ? '': 'cursor-pointer select-image'}
+                        onClick={() => props.set_ticket_type(tt.id)}>
+                    <CardTitle className="text-center">{tt.name}</CardTitle>
+                    <CardText className="text-center">
+                      {tt.price ? format_money(props.event.currency, tt.price) : 'Free'}
+                    </CardText>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+            <div className="text-muted text-center small">
+              Select which type of ticket you wish to purchase.
+            </div>
           </div>
         }
 
@@ -174,7 +197,7 @@ const TicketForm = props => {
           ))}
         </div>
       </ModalBody>
-      <ModalFooter finished={props.finished}/>
+      <ModalFooter finished={props.finished} disabled={ticket_types.length > 1 && !props.state.ticket_type}/>
     </BootstrapForm>
   )
 }
