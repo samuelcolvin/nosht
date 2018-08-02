@@ -145,7 +145,7 @@ CREATE TABLE tickets (
   -- separate from the user's name to avoid confusing updates of the user's name
   first_name VARCHAR(255),
   last_name VARCHAR(255),
-  -- price NUMERIC(7, 2) NOT NULL,  -- in case ticket prices change
+  price NUMERIC(7, 2),  -- in case ticket prices change
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   paid_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',

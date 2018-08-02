@@ -549,13 +549,16 @@ class ReserveTickets(UpdateView):
                 await self.conn.execute_b(
                     """
                     WITH v (email, first_name, last_name, extra) AS (VALUES :values)
-                    INSERT INTO tickets (event, reserve_action, ticket_type, user_id, first_name, last_name, extra)
-                    SELECT :event, :reserve_action, :ticket_type, u.id, v.first_name, v.last_name, v.extra FROM v
+                    INSERT INTO tickets (event, reserve_action, ticket_type, price, user_id,
+                      first_name, last_name, extra)
+                    SELECT :event, :reserve_action, :ticket_type, :price, u.id,
+                      v.first_name, v.last_name, v.extra FROM v
                     LEFT JOIN users AS u ON v.email=u.email AND u.company=:company_id
                     """,
                     event=event_id,
                     reserve_action=action_id,
                     ticket_type=m.ticket_type,
+                    price=price,
                     company_id=self.request['company_id'],
                     values=MultipleValues(*ticket_values),
                 )

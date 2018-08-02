@@ -583,6 +583,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
         'tickets': [
             {
                 'ticket_id': await db_conn.fetchval('SELECT id from tickets'),
+                'ticket_type': 'Standard',
                 'extra': None,
                 'user_id': user2_id,
                 'user_name': 'guest guest',

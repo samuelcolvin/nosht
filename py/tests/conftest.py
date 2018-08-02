@@ -259,12 +259,14 @@ class Factory:
                 type='reserve-tickets'
             )
         )
+        price = await self.conn.fetchval('SELECT price FROM ticket_types WHERE id=$1', self.ticket_type_id)
         ticket_values = [
             Values(
                 event=self.event_id,
                 user_id=user_id,
                 reserve_action=action_id,
                 ticket_type=self.ticket_type_id,
+                price=price,
             )
         ]
         for extra_user_id in extra_user_ids:
@@ -274,6 +276,7 @@ class Factory:
                     user_id=extra_user_id,
                     reserve_action=action_id,
                     ticket_type=self.ticket_type_id,
+                    price=price,
                 )
             )
         await self.conn.execute_b(
