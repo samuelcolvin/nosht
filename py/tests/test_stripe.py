@@ -143,7 +143,7 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
         'POST stripe_root_url/charges',
         (
             'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.com>"',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
         ),
     ]
 
@@ -186,7 +186,7 @@ async def test_book_free(cli, url, dummy_server, factory: Factory):
     assert dummy_server.app['log'] == [
         (
             'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.com>"',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
         ),
     ]
 

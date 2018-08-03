@@ -218,6 +218,10 @@ class BaseEmailActor(Actor):
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
         e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
 
+        if user_email.endswith('example.com'):
+            logger.info('email not sent "%s" to "%s" because it ends "example.com"', subject, user_email)
+            return
+
         send_method = self.aws_send if self.send_via_aws else self.print_email
         msg_id = await send_method(e_from=e_from, to=[user_email], email_msg=e_msg)
 

@@ -20,7 +20,7 @@ async def test_login_successful(cli, url, factory: Factory):
     assert len(cli.session.cookie_jar) == 0
 
     data = dict(
-        email='frank@example.com',
+        email='frank@example.org',
         password='testing',
         grecaptcha_token='__ok__',
     )
@@ -37,10 +37,10 @@ async def test_login_successful(cli, url, factory: Factory):
 
 
 @pytest.mark.parametrize('post_data', [
-    dict(email='not-frank@example.com', password='testing', grecaptcha_token='__ok__'),
-    dict(email='frank@example.com', password='testing1', grecaptcha_token='__ok__'),
-    dict(email='not-frank@example.com', password='testing1', grecaptcha_token='__ok__'),
-    dict(email='frank@example.com', password='_dummy_password_', grecaptcha_token='__ok__'),
+    dict(email='not-frank@example.org', password='testing', grecaptcha_token='__ok__'),
+    dict(email='frank@example.org', password='testing1', grecaptcha_token='__ok__'),
+    dict(email='not-frank@example.org', password='testing1', grecaptcha_token='__ok__'),
+    dict(email='frank@example.org', password='_dummy_password_', grecaptcha_token='__ok__'),
 ])
 async def test_login_unsuccessful(post_data, cli, url, factory: Factory):
     await factory.create_company()
@@ -63,7 +63,7 @@ async def test_login_unsuccessful(post_data, cli, url, factory: Factory):
 
 async def test_login_with(cli, url, factory: Factory, signed_fb_request):
     await factory.create_company()
-    await factory.create_user(email='facebook-auth@example.com')
+    await factory.create_user(email='facebook-auth@example.org')
 
     data = {
         'signedRequest': signed_fb_request({'user_id': '123456'}),
@@ -99,7 +99,7 @@ async def test_login_with_missing(cli, url, factory: Factory, signed_fb_request)
     data = await r.json()
     assert data == {
         'status': 'invalid',
-        'message': 'User with email address "facebook-auth@example.com" not found',
+        'message': 'User with email address "facebook-auth@example.org" not found',
     }
 
     assert len(cli.session.cookie_jar) == 0
@@ -179,7 +179,7 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
     mock_jwt_decode = mocker.patch('web.auth.google_jwt.decode', return_value={
         'iss': 'accounts.google.com',
         'email_verified': True,
-        'email': 'google-auth@EXAMPLE.com',
+        'email': 'google-auth@EXAMPLE.org',
         'given_name': 'Foo',
         'family_name': 'Bar',
     })
@@ -195,7 +195,7 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
             'id': user_id,
             'first_name': 'Foo',
             'last_name': 'Bar',
-            'email': 'google-auth@example.com',
+            'email': 'google-auth@example.org',
             'role': 'host',
         },
     }
@@ -208,7 +208,7 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
         'GET google_siw_url',
         (
             'email_send_endpoint',
-            'Subject: "Testing Account Created", To: "Foo Bar <google-auth@example.com>"',
+            'Subject: "Testing Account Created", To: "Foo Bar <google-auth@example.org>"',
         ),
     ]
     email = dummy_server.app['emails'][0]['part:text/plain']
@@ -236,7 +236,7 @@ async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_
             'id': user_id,
             'first_name': None,
             'last_name': 'Book',
-            'email': 'facebook-auth@example.com',
+            'email': 'facebook-auth@example.org',
             'role': 'host',
         },
     }
@@ -299,7 +299,7 @@ async def test_guest_signup_google(cli, url, factory: Factory, db_conn, mocker):
     mock_jwt_decode = mocker.patch('web.auth.google_jwt.decode', return_value={
         'iss': 'accounts.google.com',
         'email_verified': True,
-        'email': 'google-auth@EXAMPLE.com',
+        'email': 'google-auth@example.org',
         'given_name': 'Foo',
         'family_name': 'Bar',
     })
@@ -311,7 +311,7 @@ async def test_guest_signup_google(cli, url, factory: Factory, db_conn, mocker):
             'id': await db_conn.fetchval('SELECT id FROM users'),
             'first_name': 'Foo',
             'last_name': 'Bar',
-            'email': 'google-auth@example.com',
+            'email': 'google-auth@example.org',
             'role': 'guest',
         },
     }
@@ -320,7 +320,7 @@ async def test_guest_signup_google(cli, url, factory: Factory, db_conn, mocker):
     assert user == {
         'first_name': 'Foo',
         'last_name': 'Bar',
-        'email': 'google-auth@example.com',
+        'email': 'google-auth@example.org',
         'role': 'guest',
         'status': 'active',
         'company': factory.company_id,

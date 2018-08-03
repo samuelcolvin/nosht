@@ -17,7 +17,7 @@ async def test_root(cli, url, factory: Factory):
                 'id': factory.category_id,
                 'name': 'Supper Clubs',
                 'slug': 'supper-clubs',
-                'image': 'https://www.example.com/co.png',
+                'image': 'https://www.example.org/co.png',
                 'description': None,
             },
         ],
@@ -27,7 +27,7 @@ async def test_root(cli, url, factory: Factory):
                 'name': 'The Event Name',
                 'cat_slug': 'supper-clubs',
                 'slug': 'the-event-name',
-                'image': 'https://www.example.com/co.png',
+                'image': 'https://www.example.org/co.png',
                 'short_description': RegexStr('.*'),
                 'location_name': 'Testing Location',
                 'start_ts': '2020-01-28T19:00:00',
@@ -37,7 +37,7 @@ async def test_root(cli, url, factory: Factory):
         'company': {
             'id': factory.company_id,
             'name': 'Testing',
-            'image': 'https://www.example.com/co.png',
+            'image': 'https://www.example.org/co.png',
         },
         'user': None,
     }

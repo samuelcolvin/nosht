@@ -37,7 +37,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
         'event': {
             'id': factory.event_id,
             'name': 'The Event Name',
-            'image': 'https://www.example.com/co.png',
+            'image': 'https://www.example.org/co.png',
             'short_description': RegexStr('.*'),
             'long_description': RegexStr('.*'),
             'category_content': None,
@@ -354,9 +354,9 @@ async def test_booking_info_limited(cli, url, factory: Factory, login):
 async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user(first_name=None, last_name=None, email='ticket.buyer@example.com')
+    await factory.create_user(first_name=None, last_name=None, email='ticket.buyer@example.org')
     await factory.create_event(status='published', price=10)
-    await login(email='ticket.buyer@example.com')
+    await login(email='ticket.buyer@example.org')
 
     data = {
         'tickets': [
@@ -364,13 +364,13 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
                 't': True,
                 'first_name': 'Ticket',
                 'last_name': 'Buyer',
-                'email': 'ticket.buyer@example.com',
+                'email': 'ticket.buyer@example.org',
             },
             {
                 't': True,
                 'first_name': 'Other',
                 'last_name': 'Person',
-                'email': 'other.person@example.com',
+                'email': 'other.person@example.org',
                 'extra_info': 'I love to party'
             },
         ],
@@ -402,13 +402,13 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         {
             'first_name': None,
             'last_name': None,
-            'email': 'ticket.buyer@example.com',
+            'email': 'ticket.buyer@example.org',
             'role': 'admin',
         },
         {
             'first_name': None,
             'last_name': None,
-            'email': 'other.person@example.com',
+            'email': 'other.person@example.org',
             'role': 'guest',
         },
     ]
@@ -432,7 +432,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         },
         {
             'event': factory.event_id,
-            'user_id': await db_conn.fetchval('SELECT id FROM users WHERE email=$1', 'other.person@example.com'),
+            'user_id': await db_conn.fetchval('SELECT id FROM users WHERE email=$1', 'other.person@example.org'),
             'first_name': 'Other',
             'last_name': 'Person',
             'reserve_action': reserve_action_id,
@@ -446,9 +446,9 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
 async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user(first_name='T', last_name='B', email='ticket.buyer@example.com')
+    await factory.create_user(first_name='T', last_name='B', email='ticket.buyer@example.org')
     await factory.create_event(status='published', price=10)
-    await login(email='ticket.buyer@example.com')
+    await login(email='ticket.buyer@example.org')
 
     data = {
         'tickets': [
@@ -456,7 +456,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
                 't': True,
                 'first_name': 'TT',
                 'last_name': 'BB',
-                'email': 'ticket.buyer@example.com',
+                'email': 'ticket.buyer@example.org',
             },
             {
                 't': True,
@@ -480,7 +480,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
         {
             'first_name': 'T',
             'last_name': 'B',
-            'email': 'ticket.buyer@example.com',
+            'email': 'ticket.buyer@example.org',
             'role': 'admin',
         },
     ]
@@ -519,9 +519,9 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
 async def test_reserve_0_tickets(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.com')
+    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.org')
     await factory.create_event(status='published', price=10)
-    await login(email='ticket.buyer@example.com')
+    await login(email='ticket.buyer@example.org')
 
     data = {
         'tickets': []
@@ -533,14 +533,14 @@ async def test_reserve_0_tickets(cli, url, factory: Factory, login):
 async def test_reserve_tickets_none_left(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.com')
+    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.org')
     await factory.create_event(status='published', price=10, ticket_limit=1)
-    await login(email='ticket.buyer@example.com')
+    await login(email='ticket.buyer@example.org')
 
     data = {
         'tickets': [
-            {'t': True, 'email': 'foo1@example.com'},
-            {'t': True, 'email': 'foo2@example.com'},
+            {'t': True, 'email': 'foo1@example.org'},
+            {'t': True, 'email': 'foo2@example.org'},
         ],
         'ticket_type': factory.ticket_type_id,
     }
@@ -557,14 +557,14 @@ async def test_reserve_tickets_none_left_no_precheck(cli, url, factory: Factory,
     settings.ticket_reservation_precheck = False
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.com')
+    await factory.create_user(first_name='Ticket', last_name=None, email='ticket.buyer@example.org')
     await factory.create_event(status='published', price=10, ticket_limit=1)
-    await login(email='ticket.buyer@example.com')
+    await login(email='ticket.buyer@example.org')
 
     data = {
         'tickets': [
-            {'t': True, 'email': 'foo1@example.com'},
-            {'t': True, 'email': 'foo2@example.com'},
+            {'t': True, 'email': 'foo1@example.org'},
+            {'t': True, 'email': 'foo2@example.org'},
         ],
         'ticket_type': factory.ticket_type_id,
     }
@@ -582,7 +582,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     await factory.create_user()
     await factory.create_event(price=10)
 
-    user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.com')
+    user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.org')
 
     res = await factory.create_reservation(user2_id)
     await factory.buy_tickets(res, user2_id)
@@ -634,9 +634,9 @@ async def test_image_existing(cli, url, factory: Factory, db_conn, login, dummy_
     await factory.create_event()
     await login()
     r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://testingbucket.example.com/testing.png'})
+                            data={'image': 'https://testingbucket.example.org/testing.png'})
     assert r.status == 200, await r.text()
-    assert 'https://testingbucket.example.com/testing.png' == await db_conn.fetchval('SELECT image FROM events')
+    assert 'https://testingbucket.example.org/testing.png' == await db_conn.fetchval('SELECT image FROM events')
 
     assert len(dummy_server.app['log']) == 1
 
@@ -648,7 +648,7 @@ async def test_image_existing_bad(cli, url, factory: Factory, db_conn, login, du
     await factory.create_event()
     await login()
     r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://foobar.example.com/testing.png'})
+                            data={'image': 'https://foobar.example.org/testing.png'})
     assert r.status == 400, await r.text()
     assert None is await db_conn.fetchval('SELECT image FROM events')
 
@@ -659,11 +659,11 @@ async def test_image_existing_wrong_host(cli, url, factory: Factory, db_conn, lo
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(role='host')
-    user_id = await factory.create_user(email='admin@example.com')
+    user_id = await factory.create_user(email='admin@example.org')
     await factory.create_event(host_user_id=user_id)
     await login()
     r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://testingbucket.example.com/testing.png'})
+                            data={'image': 'https://testingbucket.example.org/testing.png'})
     assert r.status == 403, await r.text()
     assert None is await db_conn.fetchval('SELECT image FROM events')
     data = await r.json()
@@ -677,7 +677,7 @@ async def test_image_existing_wrong_id(cli, url, factory: Factory, login, dummy_
     await factory.create_user()
     await login()
     r = await cli.json_post(url('event-set-image-existing', id=1),
-                            data={'image': 'https://testingbucket.example.com/testing.png'})
+                            data={'image': 'https://testingbucket.example.org/testing.png'})
     assert r.status == 404, await r.text()
     assert len(dummy_server.app['log']) == 1
 
@@ -686,18 +686,18 @@ async def test_image_existing_delete(cli, url, factory: Factory, db_conn, login,
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(image='https://testingbucket.example.com/foobar.png')
+    await factory.create_event(image='https://testingbucket.example.org/foobar.png')
     await login()
 
     r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://testingbucket.example.com/testing.png'})
+                            data={'image': 'https://testingbucket.example.org/testing.png'})
     assert r.status == 200, await r.text()
-    assert 'https://testingbucket.example.com/testing.png' == await db_conn.fetchval('SELECT image FROM events')
+    assert 'https://testingbucket.example.org/testing.png' == await db_conn.fetchval('SELECT image FROM events')
 
     assert len(dummy_server.app['log']) == 3
     assert set(dummy_server.app['log'][1:]) == {
-        'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/main.jpg',
-        'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/thumb.jpg'
+        'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/main.jpg',
+        'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/thumb.jpg'
     }
 
 
@@ -705,7 +705,7 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(image='https://testingbucket.example.com/foobar.png')
+    await factory.create_event(image='https://testingbucket.example.org/foobar.png')
     await login()
 
     data = FormData()
@@ -721,17 +721,17 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
     assert r.status == 200, await r.text()
 
     img_path = await db_conn.fetchval('SELECT image FROM events')
-    assert img_path == RegexStr(r'https://testingbucket.example.com/tests/testing/supper-clubs/the-event-name/\w+')
+    assert img_path == RegexStr(r'https://testingbucket.example.org/tests/testing/supper-clubs/the-event-name/\w+')
 
     # debug(dummy_server.app['log'])
     assert len(dummy_server.app['log']) == 5
 
     log = sorted(dummy_server.app['log'][1:])
-    assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/main.jpg'
-    assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.com/foobar.png/thumb.jpg'
-    assert log[2] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/'
+    assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/main.jpg'
+    assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/thumb.jpg'
+    assert log[2] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
                               r'the-event-name/\w+?/main.jpg')
-    assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/'
+    assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
                               r'the-event-name/\w+?/thumb.jpg')
 
 

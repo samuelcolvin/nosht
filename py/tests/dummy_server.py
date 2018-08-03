@@ -39,7 +39,7 @@ async def google_siw(request):
 async def facebook_siw(request):
     return json_response({
         'id': '123456',
-        'email': 'facebook-auth@EXAMPLE.com',
+        'email': 'facebook-auth@example.org',
         'first_name': None,
         'last_name': 'Book',
     })
@@ -81,7 +81,7 @@ async def stripe_post_charges(request):
 s3_response = """\
 <?xml version="1.0" ?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-    <Name>testingbucket.example.com</Name>
+    <Name>testingbucket.example.org</Name>
     <Prefix>co-slug/cat-slug/option</Prefix>
     <KeyCount>14</KeyCount>
     <MaxKeys>1000</MaxKeys>

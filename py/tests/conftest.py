@@ -39,8 +39,8 @@ settings_args = dict(
     REDISCLOUD_URL='redis://localhost:6379/6',
     bcrypt_work_factor=6,
     stripe_idempotency_extra=str(uuid.uuid4()),
-    s3_bucket='testingbucket.example.com',
-    s3_domain='https://testingbucket.example.com',
+    s3_bucket='testingbucket.example.org',
+    s3_domain='https://testingbucket.example.org',
     aws_access_key='testing_access_key',
     aws_secret_key='testing_secret_key',
     ticket_ttl=15,
@@ -146,7 +146,7 @@ class Factory:
     async def create_company(self,
                              name='Testing',
                              slug=None,
-                             image='https://www.example.com/co.png',
+                             image='https://www.example.org/co.png',
                              domain='127.0.0.1',
                              stripe_public_key='stripe_key_xxx',
                              stripe_secret_key='stripe_secret_xxx',
@@ -171,7 +171,7 @@ class Factory:
                           password='testing',
                           first_name='Frank',
                           last_name='Spencer',
-                          email='frank@example.com',
+                          email='frank@example.org',
                           role='admin',
                           status='active',
                           **kwargs):
@@ -195,7 +195,7 @@ class Factory:
                          company_id=None,
                          name='Supper Clubs',
                          slug=None,
-                         image='https://www.example.com/co.png',
+                         image='https://www.example.org/co.png',
                          **kwargs):
         cat_id = await self.conn.fetchval_b(
             'INSERT INTO categories (:values__names) VALUES :values RETURNING id',
@@ -310,7 +310,7 @@ async def factory(db_conn, cli):
 
 @pytest.fixture
 def login(cli, url):
-    async def f(email='frank@example.com', password='testing'):
+    async def f(email='frank@example.org', password='testing'):
         data = dict(email=email, password=password, grecaptcha_token='__ok__')
         r = await cli.json_post(url('login'), data=data, origin_null=True)
         assert r.status == 200, await r.text()

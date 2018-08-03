@@ -21,7 +21,7 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'name': 'The Event Name',
                 'cat_slug': 'supper-clubs',
                 'slug': 'the-event-name',
-                'image': 'https://www.example.com/co.png',
+                'image': 'https://www.example.org/co.png',
                 'short_description': RegexStr('.*'),
                 'location_name': None,
                 'start_ts': '2020-01-28T19:00:00',
@@ -185,7 +185,7 @@ async def test_cats_retrieve(cli, url, factory: Factory, login):
         'sort_index': None,
         'event_content': None,
         'host_advice': None,
-        'image': 'https://www.example.com/co.png',
+        'image': 'https://www.example.org/co.png',
     }
 
 
@@ -207,8 +207,8 @@ async def test_upload_image(cli, url, factory: Factory, login, dummy_server):
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/option/\w+/main.jpg'),
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/option/\w+/thumb.jpg'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/\w+/main.jpg'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/\w+/thumb.jpg'),
     ]
 
 
@@ -266,8 +266,8 @@ async def test_list_images(cli, url, factory: Factory, login):
     data = await r.json()
     assert data == {
         'images': [
-            'https://testingbucket.example.com/co-slug/cat-slug/option/randomkey1',
-            'https://testingbucket.example.com/co-slug/cat-slug/option/randomkey2',
+            'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1',
+            'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey2',
         ],
     }
 
@@ -279,11 +279,11 @@ async def test_delete_image(cli, url, factory: Factory, login, dummy_server):
     await login()
     r = await cli.json_post(
         url('categories-delete-image', cat_id=factory.category_id),
-        data={'image': 'https://example.com/tests/testing/supper-clubs/option/whatever'},
+        data={'image': 'https://example.org/tests/testing/supper-clubs/option/whatever'},
     )
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        'DELETE aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/option/whatever/main.jpg',
-        'DELETE aws_endpoint_url/testingbucket.example.com/tests/testing/supper-clubs/option/whatever/thumb.jpg',
+        'DELETE aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/whatever/main.jpg',
+        'DELETE aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/whatever/thumb.jpg',
     ]
