@@ -11,7 +11,7 @@ import {
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ModalFooter} from '../general/Modal'
-import {format_money_free, load_script} from '../utils'
+import {format_money_free, load_script, window_property} from '../utils'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import {Waiting} from '../general/Errors'
@@ -272,7 +272,8 @@ export default class Stripe extends React.Component {
 
   async componentDidMount () {
     await load_script('https://js.stripe.com/v3/')
-    this.setState({stripe: window.Stripe(this.props.event.stripe_key)})
+    const stripe = await window_property('Stripe')
+    this.setState({stripe: stripe(this.props.event.stripe_key)})
   }
 
   render () {

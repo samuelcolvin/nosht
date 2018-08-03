@@ -1,20 +1,8 @@
 import React from 'react'
-import {load_script} from '../utils'
+import {load_script, window_property} from '../utils'
 
 const GOOGLE_MAPS_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY
 const GOOGLE_MAPS_JS = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}`
-
-
-export const get_google = url => {
-  return new Promise(resolve => {
-    const clear_interval = setInterval(() => {
-      if (window.google) {
-        clearInterval(clear_interval)
-        resolve(window.google)
-      }
-    }, 50)
-  })
-}
 
 export default class Map extends React.Component {
   constructor (props) {
@@ -38,7 +26,7 @@ export default class Map extends React.Component {
     }
     const loc = this.props.geolocation
     await load_script(GOOGLE_MAPS_JS)
-    const google = await get_google()
+    const google = await window_property('google')
     if (el.childElementCount === 0) {
       this.map = new google.maps.Map(el, {
         center: loc,

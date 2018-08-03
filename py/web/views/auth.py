@@ -246,6 +246,7 @@ async def host_signup(request):
         if status == 'suspended':
             raise JsonErrors.HTTP470(message='user suspended')
 
+    user_status = 'active' if signin_method in {'facebook', 'google'} else 'pending'
     user_id, user_email = await request['conn'].fetchrow_b(
         """
         INSERT INTO users (:values__names) VALUES :values
@@ -255,14 +256,15 @@ async def host_signup(request):
         values=Values(
             company=company_id,
             role='host',
-            status='active' if signin_method in {'facebook', 'google'} else 'pending',
+            status=user_status,
             email=details['email'].lower(),
             first_name=details.get('first_name'),
             last_name=details.get('last_name'),
         )
     )
     session = await new_session(request)
-    session.update({'user_id': user_id, 'email': user_email, 'role': 'host', 'last_active': int(time())})
+    session.update({'user_id': user_id, 'email': user_email, 'role': 'host',
+                    'last_active': int(time()), 'status': user_status})
 
     await record_action(request, user_id, ActionTypes.host_signup,
                         existing_user=bool(existing_role), signin_method=signin_method, grecaptcha_score=score)

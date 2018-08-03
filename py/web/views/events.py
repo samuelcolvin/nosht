@@ -437,18 +437,24 @@ class SetEventStatus(UpdateView):
         status: StatusChoices
 
     async def check_permissions(self):
-        await check_session(self.request, 'admin')
-        v = await self.conn.fetchval_b(
+        await check_session(self.request, 'admin', 'host')
+        host_id, user_status = await self.conn.fetchrow_b(
             """
-            SELECT 1 FROM events AS e
+            SELECT e.host, u.status FROM events AS e
             JOIN categories AS c on e.category = c.id
+            JOIN users AS u on e.host = u.id
             WHERE e.id=:id AND c.company=:company
             """,
             id=int(self.request.match_info['id']),
             company=self.request['company_id']
         )
-        if not v:
+        if not host_id:
             raise JsonErrors.HTTPNotFound(message='Event not found')
+        if self.session['role'] != 'admin':
+            if host_id != self.session['user_id']:
+                raise JsonErrors.HTTPForbidden(message='You do not have permissions to edit this event')
+            if user_status != 'active':
+                raise JsonErrors.HTTPForbidden(message='Host not active')
 
     async def execute(self, m: Model):
         await self.conn.execute_b(

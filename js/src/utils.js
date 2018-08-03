@@ -9,7 +9,7 @@ const currency_lookup = {
 }
 
 export const format_money = (currency, money) => (
-  currency_lookup[currency] + money.toFixed(2)
+  currency_lookup[currency] + (money || 0).toFixed(2)
 )
 
 export const format_money_free = (currency, money) => (
@@ -50,6 +50,28 @@ export const load_script_callback = url => {
       window[callback_name] = () => resolve()
       _add_script(url, reject)
     }
+  })
+}
+
+export const window_property = prop_name => {
+  return new Promise((resolve, reject) => {
+    const prop = window[prop_name]
+    if (prop) {
+      resolve(prop)
+      return
+    }
+    const clear_interval = setInterval(() => {
+      const prop = window[prop_name]
+      if (prop) {
+        clearInterval(clear_interval)
+        resolve(prop)
+      }
+    }, 50)
+
+    setTimeout(() => {
+      clearInterval(clear_interval)
+      reject(`timeout getting window.${prop_name}`)
+    }, 5000)
   })
 }
 

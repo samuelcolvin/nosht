@@ -29,9 +29,7 @@ const Label = ({field, children}) => (
 )
 
 const HelpText = ({field}) => (
-  field.help_text ?
-    <FormText>{field.help_text} {field.required && <span>(required)</span>}</FormText> :
-    field.required ? <FormText>(required)</FormText> : null
+  field.help_text ? <FormText>{field.help_text} {field.required && <span>(required)</span>}</FormText> : null
 )
 
 const placeholder = field => {

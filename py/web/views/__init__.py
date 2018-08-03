@@ -37,7 +37,7 @@ FROM (
     )
     ELSE (
       SELECT row_to_json(t) AS user_data FROM (
-        SELECT id, first_name, last_name, email, role
+        SELECT id, first_name, last_name, email, role, status
         FROM users
         WHERE id=$2
       ) AS t

@@ -160,6 +160,7 @@ export class RenderDetails extends RenderItem {
       buttons: []
     }
     this.id = this.props.match.params.id
+    this.pre = this.pre.bind(this)
   }
 
   get_uri () {
@@ -173,6 +174,8 @@ export class RenderDetails extends RenderItem {
     })
   }
 
+  pre () {}
+
   render () {
     if (!this.state.item) {
       return <Loading/>
@@ -182,9 +185,11 @@ export class RenderDetails extends RenderItem {
       .filter(k => !['id', '_response_status', 'name'].includes(k) && this.formats[k] !== null)
       .sort((a, b) => ((this.formats[a] || {}).index || 0) - ((this.formats[b] || {}).index || 0))
     )
+    const pre = this.pre()
     return [
       <Buttons key="b" buttons={this.state.buttons}/>,
       this.state.item.name && <h1 key="t">{this.state.item.name}</h1>,
+      pre ? <div key="p">{pre}</div> : null,
       <div key="d" className="mb-4">
         {keys.map(key => (
           <Detail key={key} name={this.render_key(key)}>{this.render_value(this.state.item, key)}</Detail>

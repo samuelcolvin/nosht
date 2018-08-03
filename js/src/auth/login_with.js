@@ -1,9 +1,10 @@
-import {load_script} from '../utils'
+import {load_script, window_property} from '../utils'
 
 export async function setup_siw () {
   await load_script('https://apis.google.com/js/platform.js')
-  window.gapi.load('auth2', () => {
-    window.gauth = window.gapi.auth2.init({
+  const gapi = await window_property('gapi')
+  gapi.load('auth2', () => {
+    window.gauth = gapi.auth2.init({
       client_id: process.env.REACT_APP_GOOGLE_SIW_CLIENT_KEY,
       scope: 'profile email',
     })
@@ -19,9 +20,10 @@ export async function setup_siw () {
   }
 }
 
-export function facebook_login (setRootState) {
-  return new Promise(resolve => {
-    window.FB.login(r => {
+export async function facebook_login (setRootState) {
+  const fb = await window_property('FB')
+  const p = new Promise(resolve => {
+    fb.login(r => {
       if (r.status === 'connected') {
         resolve(r.authResponse)
       } else if (r.status === undefined) {
@@ -34,11 +36,13 @@ export function facebook_login (setRootState) {
       }
     }, {scope: 'email'})
   })
+  return await p
 }
 
 export async function google_login (setRootState) {
+  const gauth = await window_property('gauth')
   try {
-    await window.gauth.signIn()
+    await gauth.signIn()
   }  catch (error) {
     if (error.error === 'popup_closed_by_user') {
       return
@@ -48,5 +52,5 @@ export async function google_login (setRootState) {
       return
     }
   }
-  return {id_token: window.gauth.currentUser.get().getAuthResponse().id_token}
+  return {id_token: gauth.currentUser.get().getAuthResponse().id_token}
 }

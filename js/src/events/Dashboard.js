@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table, Progress as BsProgress} from 'reactstrap'
-import {format_event_start, format_event_duration, format_datetime, format_money_free} from '../utils'
+import {Alert, Button, Modal, ModalHeader, ModalBody, ModalFooter, Table, Progress as BsProgress} from 'reactstrap'
+import {format_event_start, format_event_duration, format_datetime, format_money_free, format_money} from '../utils'
 import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render_bool} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
@@ -41,22 +41,27 @@ const Progress = ({event, tickets, ticket_types}) => {
   return (
     <div className="mb-5">
       <h4>Progress</h4>
-      {tickets_booked && event.ticket_limit ?
-        <div>
-          <div className="text-center mb-1">
-            <span className="very-large">
-              {format_money_free(event.currency, tickets.reduce((sum, t) => sum + t.price, 0))}
-            </span>
-            &nbsp; collected so far
-          </div>
-          <div className="text-center mb-1">
-            <span className="very-large">{tickets_booked}</span> tickets booked of {event.ticket_limit}
-          </div>
-          <BsProgress value={tickets_booked / event.ticket_limit * 100}/>
+      <div>
+        <div className="text-center mb-1">
+          <span className="very-large">
+            {format_money(event.currency, tickets && tickets.reduce((sum, t) => sum + t.price, 0))}
+          </span>
+          &nbsp; collected so far
         </div>
-        :
-        tickets_booked && <div className="text-center font-weight-bold">{tickets_booked}</div>
-      }
+        {tickets_booked && event.ticket_limit ?
+          <div>
+            <div className="text-center mb-1">
+              <span className="very-large">{tickets_booked}</span> tickets booked of {event.ticket_limit}
+            </div>
+            <BsProgress value={tickets_booked / event.ticket_limit * 100}/>
+          </div>
+          :
+          tickets_booked !== null && (
+            <div className="text-center mb-1">
+              <span className="very-large">{tickets_booked}</span> tickets booked
+            </div>
+          )}
+      </div>
     </div>
   )
 }
@@ -218,8 +223,8 @@ export class EventsDetails extends RenderDetails {
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
           {name: 'Set Image', link: this.uri + 'set-image/'},
-          this.props.user.role === 'admin' && {name: 'Custom Ticket Types', link: this.uri + 'ticket-types/'},
-          this.props.user.role === 'admin' && {name: 'Set Status', link: this.uri + 'set-status/'},
+          {name: 'Custom Ticket Types', link: this.uri + 'ticket-types/'},
+          this.props.user.status === 'active' && {name: 'Set Status', link: this.uri + 'set-status/'},
           {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'},
         ]
       }
@@ -230,20 +235,55 @@ export class EventsDetails extends RenderDetails {
     })
   }
 
+  pre () {
+    const event = this.state.item
+    if (!event) {
+      return
+    }
+    const start = new Date(event.start_ts)
+    const now = new Date()
+    if (event.status === 'published' && start > now) {
+      return (
+        <Alert color="primary">
+          Event upcoming, share the following link for guests to book tickets:
+          <code className="d-block text-dark font-weight-bold mt-1">
+            {window.location.origin}/{event.cat_slug}/{event.slug}/
+          </code>
+        </Alert>
+      )
+    }
+    const u = this.props.user
+    if (event.status === 'pending' && start > now) {
+      if (u.role === 'host' && u.status !== 'active') {
+        return (
+          <Alert color="danger">
+            Event pending until you confirm your email address.
+          </Alert>
+        )
+      } else {
+        return (
+          <Alert color="primary">
+            Event not yet published.
+          </Alert>
+        )
+      }
+    }
+  }
+
   extra () {
     if (!this.state.item) {
       return
     }
-    const item = Object.assign({}, this.state.item)
-    item.location = {name: item.location_name, lat: item.location_lat, lng: item.location_lng}
-    item.date = {dt: item.start_ts, dur: item.duration}
+    const event = Object.assign({}, this.state.item)
+    event.location = {name: event.location_name, lat: event.location_lat, lng: event.location_lng}
+    event.date = {dt: event.start_ts, dur: event.duration}
     const event_fields = EVENT_FIELDS.filter(f => !['category', 'price'].includes(f.name))
     return [
-      <Progress key="progress" event={item} ticket_types={this.state.ticket_types} tickets={this.state.tickets}/>,
+      <Progress key="progress" event={event} ticket_types={this.state.ticket_types} tickets={this.state.tickets}/>,
       this.state.ticket_types ?
-        <TicketTypeTable key="ttt" currency={item.currency} ticket_types={this.state.ticket_types}/>
+        <TicketTypeTable key="ttt" currency={event.currency} ticket_types={this.state.ticket_types}/>
         : null,
-      <Tickets key="tickets" tickets={this.state.tickets} event={item}/>,
+      <Tickets key="tickets" tickets={this.state.tickets} event={event}/>,
       <ModalForm {...this.props}
                  key="edit"
                  title="Edit Event"
@@ -251,7 +291,7 @@ export class EventsDetails extends RenderDetails {
                  parent_uri={this.uri}
                  mode="edit"
                  success_msg='Event updated'
-                 initial={item}
+                 initial={event}
                  update={this.update}
                  action={`/events/${this.id}/`}
                  fields={event_fields}/>,
@@ -262,13 +302,13 @@ export class EventsDetails extends RenderDetails {
                  regex={/set-status\/$/}
                  mode="edit"
                  success_msg='Event updated'
-                 initial={{status: item.status}}
+                 initial={{status: event.status}}
                  update={this.update}
                  action={`/events/${this.id}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
       <SetImage {...this.props}
                 key="set-image"
-                event={item}
+                event={event}
                 parent_uri={this.uri}
                 regex={/set-image\/$/}
                 update={this.update}
@@ -276,7 +316,7 @@ export class EventsDetails extends RenderDetails {
       this.state.ticket_types ?
         <TicketTypes {...this.props}
                      key="edit-ticket-types"
-                     event={item}
+                     event={event}
                      ticket_types={this.state.ticket_types}
                      regex={/ticket-types\/$/}
                      update={this.update}

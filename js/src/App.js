@@ -1,7 +1,7 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 
-import {get, post, put, sleep, load_script_callback} from './utils'
+import {get, post, put, sleep, load_script_callback, window_property} from './utils'
 import {Error, NotFound, Loading} from './general/Errors'
 import Navbar from './general/Navbar'
 import Footer from './general/Footer'
@@ -125,11 +125,12 @@ class _App extends React.Component {
       this.setState({error: err})
     }
     await load_script_callback('https://www.google.com/recaptcha/api.js?onload=<callback-function>&render=onload')
-    window.grecaptcha.render({
+    const grecaptcha = await window_property('grecaptcha')
+    grecaptcha.render({
       sitekey: process.env.REACT_APP_RECAPTCHA_KEY,
       badge: 'bottomleft',
     })
-    window.grecaptcha.ready(() => {
+    grecaptcha.ready(() => {
       this.setState({grecaptcha_ready: true})
     })
   }
