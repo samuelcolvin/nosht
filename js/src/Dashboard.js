@@ -38,7 +38,7 @@ export default class Settings extends React.Component {
       {name: 'events', title: 'My Events', list_comp: EventsList, details_comp: EventsDetails},
       {name: 'account', title: 'Account', list_comp: null, details_comp: null},
     ]
-    if (this.props.user.role === 'admin') {
+    if (this.props.user && this.props.user.role === 'admin') {
       pages = [
         {name: 'events', list_comp: EventsList, details_comp: EventsDetails},
         {name: 'categories', list_comp: CategoriesList, details_comp: CategoriesDetails},

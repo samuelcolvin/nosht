@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from shared.settings import Settings
 from shared.utils import RequestError
+from web.auth import GrecaptchaModel
 
 from .actions import ActionTypes
 from .utils import JsonErrors, decrypt_json
@@ -26,7 +27,7 @@ class Reservation(BaseModel):
     event_name: str
 
 
-class BookingModel(BaseModel):
+class BookingModel(GrecaptchaModel):
     booking_token: bytes
 
 

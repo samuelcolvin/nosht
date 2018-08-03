@@ -11,7 +11,7 @@ import {
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ModalFooter} from '../general/Modal'
-import {format_money_free, load_script, window_property} from '../utils'
+import {format_money_free, load_script, grecaptcha_execute, window_property} from '../utils'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import {Waiting} from '../general/Errors'
@@ -107,6 +107,7 @@ class StripeForm_ extends React.Component {
 
   submit (e) {
     e.preventDefault()
+    this.setState({submitting: true})
     if (this.props.reservation.item_price_cent) {
       this.take_payment()
     } else {
@@ -118,25 +119,28 @@ class StripeForm_ extends React.Component {
     const required = ['card_complete', 'name', 'address', 'city', 'postcode']
     if (this.state.submitting || !required.every(f => this.state[f])) {
       required.filter(f => !this.state[f]).map(f => this.setState({[`${f}_error`]: 'Required'}))
+      this.setState({submitting: false})
       return
     }
-    this.setState({submitting: true})
 
     try {
-      const payload = await this.props.stripe.createToken({
-        name: this.state.name,
-        address_line1: this.state.address,
-        address_city: this.state.city,
-        address_zip: this.state.postcode,
-      })
+      const [{token}, grecaptcha_token] = await Promise.all([
+        this.props.stripe.createToken({
+          name: this.state.name,
+          address_line1: this.state.address,
+          address_city: this.state.city,
+          address_zip: this.state.postcode,
+        }),
+        grecaptcha_execute('stripe_pay'),
+      ])
       this.setState({submitted: true})
 
-      const token = payload.token
       await this.props.requests.post('events/buy/', {
         stripe_token: token.id,
         stripe_client_ip: token.client_ip,
         stripe_card_ref: `${token.card.last4}-${token.card.exp_year}-${token.card.exp_month}`,
         booking_token: this.props.reservation.booking_token,
+        grecaptcha_token
       })
     } catch (error) {
       this.props.setRootState({error})
@@ -147,10 +151,12 @@ class StripeForm_ extends React.Component {
   }
 
   async book_free () {
-    this.setState({submitting: true, submitted: true})
+    this.setState({submitted: true})
+    const grecaptcha_token = await grecaptcha_execute('book_free')
 
     try {
-      await this.props.requests.post('events/book-free/', {booking_token: this.props.reservation.booking_token})
+      await this.props.requests.post('events/book-free/',
+          {booking_token: this.props.reservation.booking_token, grecaptcha_token})
     } catch (error) {
       this.props.setRootState({error})
       return

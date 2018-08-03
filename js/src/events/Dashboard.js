@@ -46,21 +46,22 @@ const Progress = ({event, tickets, ticket_types}) => {
           <span className="very-large">
             {format_money(event.currency, tickets && tickets.reduce((sum, t) => sum + t.price, 0))}
           </span>
-          &nbsp; collected so far
+          &nbsp;collected so far
         </div>
-        {tickets_booked && event.ticket_limit ?
+        {tickets_booked !== null &&
+          event.ticket_limit ?
           <div>
             <div className="text-center mb-1">
-              <span className="very-large">{tickets_booked}</span> tickets booked of {event.ticket_limit}
+              <span className="very-large">{tickets_booked}</span>
+              &nbsp;ticket{tickets_booked === 1 ? '' : 's'} booked of {event.ticket_limit}
             </div>
             <BsProgress value={tickets_booked / event.ticket_limit * 100}/>
           </div>
           :
-          tickets_booked !== null && (
-            <div className="text-center mb-1">
-              <span className="very-large">{tickets_booked}</span> tickets booked
-            </div>
-          )}
+          <div className="text-center mb-1">
+            <span className="very-large">{tickets_booked}</span> tickets booked
+          </div>
+        }
       </div>
     </div>
   )
@@ -188,6 +189,7 @@ export class EventsDetails extends RenderDetails {
       slug: null,
       cat_id: null,
       cat_slug: null,
+      ticket_limit: null,
       long_description: null,
       image: {
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>,

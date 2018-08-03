@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, condecimal, conint, constr, validator
 from shared.images import delete_image, resize_upload
 from shared.utils import pseudo_random_str, slugify
 from web.actions import ActionTypes, record_action, record_action_id
-from web.auth import check_session, is_admin_or_host, is_auth
+from web.auth import check_session, is_admin_or_host, is_auth, check_grecaptcha
 from web.bread import Bread, UpdateView
 from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 from web.utils import (ImageModel, JsonErrors, clean_markdown, decrypt_json, encrypt_json, json_response, parse_request,
@@ -633,6 +633,7 @@ class BuyTickets(UpdateView):
     async def execute(self, m: StripePayModel):
         booked_action_id = await stripe_pay(m, self.request['company_id'], self.session.get('user_id'),
                                             self.app, self.conn)
+        await check_grecaptcha(m, self.request)
         await self.app['email_actor'].send_event_conf(booked_action_id)
 
 
@@ -642,4 +643,5 @@ class BookFreeTickets(UpdateView):
     async def execute(self, m: BookingModel):
         booked_action_id = await book_free(m, self.request['company_id'], self.session.get('user_id'),
                                            self.app, self.conn)
+        await check_grecaptcha(m, self.request)
         await self.app['email_actor'].send_event_conf(booked_action_id)
