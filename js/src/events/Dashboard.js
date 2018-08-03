@@ -1,8 +1,8 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
+import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table, Progress as BsProgress} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime, format_money_free} from '../utils'
-import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, render_bool} from '../general/Dashboard'
+import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render_bool} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
 import TicketTypes from './TicketTypes'
@@ -34,8 +34,35 @@ const EVENT_STATUS_FIELDS = [
   ]},
 ]
 
+const Progress = ({event, tickets, ticket_types}) => {
+  const tickets_booked = tickets && (
+    tickets.reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
+  )
+  return (
+    <div className="mb-5">
+      <h4>Progress</h4>
+      {tickets_booked && event.ticket_limit ?
+        <div>
+          <div className="text-center mb-1">
+            <span className="very-large">
+              {format_money_free(event.currency, tickets.reduce((sum, t) => sum + t.price, 0))}
+            </span>
+            &nbsp; collected so far
+          </div>
+          <div className="text-center mb-1">
+            <span className="very-large">{tickets_booked}</span> tickets booked of {event.ticket_limit}
+          </div>
+          <BsProgress value={tickets_booked / event.ticket_limit * 100}/>
+        </div>
+        :
+        tickets_booked && <div className="text-center font-weight-bold">{tickets_booked}</div>
+      }
+    </div>
+  )
+}
+
 const TicketTypeTable = ({ticket_types, currency}) => (
-  <div>
+  <div className="mb-5">
     <h4>Ticket Types</h4>
     <Table striped>
       <thead>
@@ -68,7 +95,12 @@ class Tickets extends React.Component {
 
   render () {
     if (!this.props.tickets || !this.props.tickets.length) {
-      return <small>No Tickets bought for this event</small>
+      return (
+        <div>
+          <h4>Tickets</h4>
+          <small>No Tickets bought for this event</small>
+        </div>
+      )
     }
     const close = () => this.setState({selected: null})
     const selected = this.state.selected || {}
@@ -92,6 +124,8 @@ class Tickets extends React.Component {
               }
             </Detail>
             <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
+            <Detail name="Price">{format_money_free(this.props.event.currency, selected.price)}</Detail>
+            <Detail name="Ticket Type">{selected.ticket_type_name}</Detail>
             <Detail name="Extra Info">{selected.extra && selected.extra.extra_info}</Detail>
           </ModalBody>
           <ModalFooter>
@@ -117,7 +151,7 @@ class Tickets extends React.Component {
                 <td>{t.user_name || <Dash/>}</td>
                 <td>{t.buyer_name}</td>
                 <td>{format_datetime(t.bought_at)}</td>
-                <td>{t.ticket_type}</td>
+                <td>{t.ticket_type_name}</td>
                 <td className="text-right">
                   {t.extra && t.extra.extra_info.length > 30 ?
                     <small>{t.extra.extra_info}</small>
@@ -149,12 +183,17 @@ export class EventsDetails extends RenderDetails {
       slug: null,
       cat_id: null,
       cat_slug: null,
-      location_lat: null,
-      location_lng: null,
       long_description: null,
       image: {
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>,
         index: 1
+      },
+      location_lng: null,
+      location_name: null,
+      location_lat: {
+        render: (v, item) => <MiniMap lat={v} lng={item.location_lng}m name={item.location_name}/>,
+        title: 'Location',
+        index: 2,
       },
     }
     this.uri = `/dashboard/events/${this.id}/`
@@ -200,10 +239,11 @@ export class EventsDetails extends RenderDetails {
     item.date = {dt: item.start_ts, dur: item.duration}
     const event_fields = EVENT_FIELDS.filter(f => !['category', 'price'].includes(f.name))
     return [
+      <Progress key="progress" event={item} ticket_types={this.state.ticket_types} tickets={this.state.tickets}/>,
       this.state.ticket_types ?
         <TicketTypeTable key="ttt" currency={item.currency} ticket_types={this.state.ticket_types}/>
         : null,
-      <Tickets key="tickets" tickets={this.state.tickets}/>,
+      <Tickets key="tickets" tickets={this.state.tickets} event={item}/>,
       <ModalForm {...this.props}
                  key="edit"
                  title="Edit Event"

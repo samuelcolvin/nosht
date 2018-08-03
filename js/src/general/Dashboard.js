@@ -4,6 +4,7 @@ import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ButtonGroup, Button} from 'reactstrap'
 import {as_title} from '../utils'
 import {Loading} from './Errors'
+import Map from './Map'
 
 export const render_bool = v => (
   <FontAwesomeIcon icon={v ? 'check' : 'times'} />
@@ -176,21 +177,20 @@ export class RenderDetails extends RenderItem {
     if (!this.state.item) {
       return <Loading/>
     }
-    const ignored = ['id', '_response_status']
     const keys = (
       Object.keys(this.state.item)
-      .filter(k => !ignored.includes(k))
-      .filter(k => this.formats[k] !== null)
-      .sort((a, b) => (this.formats[a] || {}).index || 0 - (this.formats[b] || {}).index || 0)
+      .filter(k => !['id', '_response_status', 'name'].includes(k) && this.formats[k] !== null)
+      .sort((a, b) => ((this.formats[a] || {}).index || 0) - ((this.formats[b] || {}).index || 0))
     )
     return [
-      <Buttons key={1} buttons={this.state.buttons}/>,
-      <div key={2} className="mb-4">
-        {keys.map((key, i) => (
+      <Buttons key="b" buttons={this.state.buttons}/>,
+      this.state.item.name && <h1 key="t">{this.state.item.name}</h1>,
+      <div key="d" className="mb-4">
+        {keys.map(key => (
           <Detail key={key} name={this.render_key(key)}>{this.render_value(this.state.item, key)}</Detail>
         ))}
       </div>,
-      <div key={3}>
+      <div key="e">
         {this.extra()}
       </div>,
     ]
@@ -199,4 +199,11 @@ export class RenderDetails extends RenderItem {
 
 export const ImageThumbnail = ({image, alt}) => (
   image ? <img src={image + '/thumb.jpg'} alt={alt} className="img-thumbnail"/> : <span>&mdash;</span>
+)
+
+export const MiniMap = ({lat, lng, name}) => (
+  <div>
+    {name}
+    <Map geolocation={{lat, lng, name}} height={200} width={400} className="rounded"/>
+  </div>
 )

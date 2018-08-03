@@ -1,14 +1,26 @@
 import React from 'react'
-import {load_script_callback} from '../utils'
+import {load_script} from '../utils'
 
 const GOOGLE_MAPS_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY
-const GOOGLE_MAPS_JS = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=<callback-function>`
-const MAP_ID = 'googe-maps'
+const GOOGLE_MAPS_JS = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}`
+
+
+export const get_google = url => {
+  return new Promise(resolve => {
+    const clear_interval = setInterval(() => {
+      if (window.google) {
+        clearInterval(clear_interval)
+        resolve(window.google)
+      }
+    }, 50)
+  })
+}
 
 export default class Map extends React.Component {
   constructor (props) {
     super(props)
     this.update_map = this.update_map.bind(this)
+    this.el_id = 'googe-maps-' + Math.random().toString(36).substring(2, 10)
   }
 
   async componentDidMount () {
@@ -19,34 +31,30 @@ export default class Map extends React.Component {
     this.update_map()
   }
 
-  update_map () {
-    clearInterval(window._map_update)
-    window._map_update = setTimeout(this.update_map_direct.bind(this), 100)
-  }
-
-  async update_map_direct () {
-    const el = document.getElementById(MAP_ID)
+  async update_map () {
+    const el = document.getElementById(this.el_id)
     if (!el) {
       return
     }
     const loc = this.props.geolocation
-    await load_script_callback(GOOGLE_MAPS_JS)
-    if (el.childElementCount === 0 && window.google) {
-      this.map = new window.google.maps.Map(el, {
+    await load_script(GOOGLE_MAPS_JS)
+    const google = await get_google()
+    if (el.childElementCount === 0) {
+      this.map = new google.maps.Map(el, {
         center: loc,
         zoom: loc.zoom || 14,
         fullscreenControl: false,
       })
-      this.marker = new window.google.maps.Marker({
+      this.marker = new google.maps.Marker({
         position: loc,
         title: loc.name,
         map: this.map,
         draggable: Boolean(this.props.onDrag),
       })
       this.marker.addListener('dragend', this.props.onDrag)
-      window.gmaps_geocoder = new window.google.maps.Geocoder()
+      window.gmaps_geocoder = new google.maps.Geocoder()
       if (this.props.click_handler) {
-        window.google.maps.event.addListener(this.map, 'click', this.props.click_handler)
+        google.maps.event.addListener(this.map, 'click', this.props.click_handler)
       }
     } else if (this.marker) {
       this.marker.setPosition(loc)
@@ -61,9 +69,10 @@ export default class Map extends React.Component {
   render () {
     const loc = this.props.geolocation || {}
     if (Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
-      return <div id={MAP_ID} className="mt-2" style={{height: this.props.height || 300}}/>
+      return <div id={this.el_id} className={this.props.className || 'mt-2'}
+                  style={{height: this.props.height || 300, width: this.props.width}}/>
     } else {
-      return <div/>
+      return null
     }
   }
 }

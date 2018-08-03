@@ -257,7 +257,8 @@ SELECT json_build_object('tickets', tickets)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS tickets FROM (
     SELECT t.id as ticket_id, t.extra, u.id AS user_id,
-      full_name(u.first_name, u.last_name, u.email) AS user_name, a.ts AS bought_at, tt.name AS ticket_type,
+      full_name(u.first_name, u.last_name, u.email) AS user_name, a.ts AS bought_at, t.price,
+      tt.name AS ticket_type_name, tt.id AS ticket_type_id,
       ub.id as buyer_id, full_name(ub.first_name, ub.last_name, u.email) AS buyer_name
     FROM tickets AS t
     LEFT JOIN users u ON t.user_id = u.id
