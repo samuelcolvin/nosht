@@ -40,7 +40,7 @@ def mk_password(password: str, settings: Settings) -> str:
 
 
 class RequestError(RuntimeError):
-    def __init__(self, status, url, *, info=None):
+    def __init__(self, status, url, *, info: str=None):
         self.status = status
         self.url = url
         self.info = info
@@ -100,20 +100,6 @@ def format_duration(td: timedelta):
         return f'{hours:0.0f} hours'
     else:
         return f'{hours:0.0f} hours {minutes:0.0f} mins'
-
-
-def iso_timedelta(dt: timedelta):
-    """
-    ISO 8601 encoding
-    """
-    dt = dt or timedelta(days=1)
-    seconds = dt.total_seconds()
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    days, hours = divmod(hours, 24)
-    days, hours, minutes = map(int, (days, hours, minutes))
-    seconds = round(seconds, 6)
-    return f'P{days}DT{hours}H{minutes}M{seconds:0.0f}S'
 
 
 def encrypt_json(data, *, auth_fernet) -> str:
