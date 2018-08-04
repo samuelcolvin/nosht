@@ -184,7 +184,10 @@ class BaseEmailActor(Actor):
                          global_ctx: Dict[str, Any]):
         base_url = global_ctx['base_url']
 
-        full_name = '{first_name} {last_name}'.format(**user).strip(' ')
+        full_name = '{first_name} {last_name}'.format(
+            first_name=user['first_name'] or '',
+            last_name=user['last_name'] or '',
+        ).strip(' ')
         user_email = user['email']
         extra_ctx = dict(
             first_name=user['first_name'] or user['last_name'] or user['email'],
@@ -205,7 +208,7 @@ class BaseEmailActor(Actor):
             ctx['__print_debug_context__'] = json.dumps(ctx, indent=2)
 
         body = apply_macros(body)
-        raw_body = chevron.render(body, data=ctx)
+        raw_body = re.sub('\n{3,}', '\n\n', chevron.render(body, data=ctx)).strip('\n')
         e_msg.set_content(raw_body, cte='quoted-printable')
 
         ctx.update(

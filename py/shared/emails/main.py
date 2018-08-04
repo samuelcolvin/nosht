@@ -82,10 +82,17 @@ class EmailActor(BaseEmailActor):
             )
 
     @concurrent
-    async def send_account_created(self, user_id: int):
+    async def send_account_created(self, user_id: int, created_by_admin=False):
         async with self.pg.acquire() as conn:
-            company_id, status = await conn.fetchrow('SELECT company, status FROM users WHERE id=$1', user_id)
-        ctx = dict(my_events_link='/my-events/')
+            company_id, status, role = await conn.fetchrow(
+                'SELECT company, status, role FROM users WHERE id=$1',
+                user_id
+            )
+        ctx = dict(
+            events_link='/dashboard/events/',
+            created_by_admin=created_by_admin,
+            is_admin=role == 'admin',
+        )
         if status == 'pending':
             ctx['confirm_email_link'] = password_reset_link(user_id, auth_fernet=self.auth_fernet)
 

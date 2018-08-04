@@ -113,17 +113,23 @@ Email password_reset
         'body': """
 Hi {{ first_name }},
 
-Thanks for signing up for an account with {{ company_name }}.
+{{#created_by_admin}}An account has been created for you with {{ company_name }}.{{/created_by_admin}}
+{{^created_by_admin}}Thanks for signing up for an account with {{ company_name }}.{{/created_by_admin}}
 
 {{#confirm_email_link}}
-You need to confirm your email address before you can publish events.
+{{#is_admin}}
+You've been created as an administrator.
+
+You need to confirm your email address before you can administer the system.
+{{/is_admin}}
+{{^is_admin}}You need to confirm your email address before you can publish events.{{/is_admin}}
 
 {{ centered_button(Confirm Email | {{ confirm_email_link }}) }}
 {{/confirm_email_link}}
 {{^confirm_email_link}}
 You can now create and publish events whenever you wish.
 
-{{ centered_button(Create & Publish Events | {{ my_events_link }}) }}
+{{ centered_button(Create & Publish Events | {{ events_link }}) }}
 {{/confirm_email_link}}
 """
     },

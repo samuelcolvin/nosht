@@ -9,11 +9,10 @@ async def test_company_details(cli, url, login, factory: Factory):
     await factory.create_user()
     await login()
 
-    r = await cli.get(url('company-retrieve', pk=0))
+    r = await cli.get(url('company-retrieve', pk=factory.company_id))
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'id': factory.company_id,
         'name': 'Testing',
         'slug': 'testing',
         'domain': '127.0.0.1',
@@ -34,6 +33,16 @@ async def test_company_list(cli, login, factory: Factory):
 
     r = await cli.get('/api/companies/')
     assert r.status == 404, await r.text()
+
+
+async def test_company_edit(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    r = await cli.json_put(url('company-edit', pk=factory.company_id), data={'name': 'New Name'})
+    assert r.status == 200, await r.text()
+    assert 'New Name' == await db_conn.fetchval('SELECT name FROM companies')
 
 
 async def test_upload_image(cli, url, factory: Factory, login, db_conn, dummy_server):

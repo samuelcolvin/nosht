@@ -115,7 +115,7 @@ WHERE c.domain=$1 AND users.id=$2
 
 
 @middleware
-async def host_middleware(request, handler):
+async def user_middleware(request, handler):
     conn = request['conn']
     request['session'] = await get_session(request)
     user_id = request['session'].get('user_id')
@@ -134,7 +134,7 @@ async def host_middleware(request, handler):
     return await handler(request)
 
 
-FORM_PATHS = (
+UPLOAD_PATHS = (
     re.compile(r'/api/companies/upload/(?:image|logo)/'),
     re.compile(r'/api/categories/\d+/add-image/'),
     re.compile(r'/api/events/\d+/set-image/new/'),
@@ -150,7 +150,7 @@ def csrf_checks(request):
     content-type, origin and referrer checks for CSRF
     """
     ct = request.headers.get('Content-Type')
-    if any(p.fullmatch(request.path) for p in FORM_PATHS):
+    if any(p.fullmatch(request.path) for p in UPLOAD_PATHS):
         yield ct.startswith('multipart/form-data; boundary')
     else:
         yield ct == JSON_CONTENT_TYPE

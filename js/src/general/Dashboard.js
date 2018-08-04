@@ -32,7 +32,7 @@ export const Detail = ({name, wide, edit_link, children}) => (
       </Button>}
     </div>
     <div className="value">
-      {children || <Dash/>}
+      {(typeof children === 'boolean' ? render_bool(children) : children) || <Dash/>}
     </div>
   </div>
 )
@@ -91,8 +91,6 @@ export class RenderItem extends React.Component {
     const v = item[key]
     if (fmt && fmt.render) {
       return fmt.render(v, item)
-    } else if (typeof v === 'boolean') {
-      return render_bool(v)
     } else {
       return v
     }

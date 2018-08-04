@@ -198,3 +198,12 @@ def clean_markdown(md):
     for regex, p in _simplify:
         text = regex.sub(p, text)
     return text
+
+
+def get_offset(request, paginate_by=100):
+    try:
+        p = int(request.query.get('page'))
+    except (ValueError, TypeError):
+        return 0
+    else:
+        return (p - 1) * paginate_by

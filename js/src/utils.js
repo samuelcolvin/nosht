@@ -212,7 +212,7 @@ export const chunk_array = (array, size) => {
   return results
 }
 
-export const as_title = s => s.replace(/(_|\b)\w/g, l => l.toUpperCase().replace('_', ' '))
+export const as_title = s => s.replace(/(_|\b)\w/g, l => l.toUpperCase().replace('_', ' ')).replace('-', ' ')
 
 export const get_component_name = WrappedComponent => (
   WrappedComponent.displayName || WrappedComponent.name || 'Component'

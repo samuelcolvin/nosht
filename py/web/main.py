@@ -15,7 +15,7 @@ from shared.logs import setup_logging
 from shared.settings import Settings
 from shared.utils import mk_password
 
-from .middleware import csrf_middleware, error_middleware, host_middleware, pg_middleware
+from .middleware import csrf_middleware, error_middleware, pg_middleware, user_middleware
 from .views import index
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout, set_password,
                          unsubscribe)
@@ -26,7 +26,7 @@ from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, E
                            SetEventStatus, SetTicketTypes, booking_info, event_categories, event_public,
                            event_ticket_types, event_tickets, set_event_image_existing, set_event_image_new)
 from .views.static import static_handler
-from .views.users import UserBread
+from .views.users import UserBread, user_actions
 
 logger = logging.getLogger('nosht.web')
 
@@ -65,7 +65,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
     app = web.Application(middlewares=(
         session_middleware(EncryptedCookieStorage(settings.auth_key, cookie_name='nosht')),
         pg_middleware,
-        host_middleware,
+        user_middleware,
         csrf_middleware,
     ))
 
@@ -81,14 +81,6 @@ def create_app(*, settings: Settings=None, logging_client=None):
     app.add_routes([
         web.get('/', index, name='index'),
 
-        *CompanyBread.routes('/companies/'),
-        web.post('/companies/upload/{field:(image|logo)}/', company_upload, name='company-upload'),
-
-        web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
-        web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
-        web.post('/categories/{cat_id:\d+}/set-default/', category_default_image, name='categories-set-default'),
-        web.post('/categories/{cat_id:\d+}/delete/', category_delete_image, name='categories-delete-image'),
-        *CategoryBread.routes('/categories/'),
         web.get('/cat/{category}/', category_public, name='category'),
 
         web.get('/events/categories/', event_categories, name='event-categories'),
@@ -116,7 +108,17 @@ def create_app(*, settings: Settings=None, logging_client=None):
 
         web.get('/unsubscribe/{id:\d+}/', unsubscribe, name='unsubscribe'),
 
+        *CompanyBread.routes('/companies/'),
+        web.post('/companies/upload/{field:(image|logo)}/', company_upload, name='company-upload'),
+
+        web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
+        web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
+        web.post('/categories/{cat_id:\d+}/set-default/', category_default_image, name='categories-set-default'),
+        web.post('/categories/{cat_id:\d+}/delete/', category_delete_image, name='categories-delete-image'),
+        *CategoryBread.routes('/categories/'),
+
         *UserBread.routes('/users/'),
+        web.get('/users/{id:\d+}/actions/', user_actions, name='user-actions'),
     ])
 
     wrapper_app = web.Application(

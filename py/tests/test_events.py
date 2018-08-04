@@ -158,7 +158,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         '\n'
         '<div class="button">\n'
         '  <a href="https://127.0.0.1/supper-clubs/foobar/"><span>View Event</span></a>\n'
-        '</div>\n\n'
+        '</div>\n'
     )
 
 

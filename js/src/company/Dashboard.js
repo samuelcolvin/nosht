@@ -16,7 +16,11 @@ const CO_FIELDS = [
     choices: Object.keys(currency_lookup).map(c => ({value: c, display_name: c.toUpperCase()})),
     help_text: 'WARNING: changing currency will cause all previous payments to display with the wrong currency',
   },
-  {name: 'email_from'},
+  {
+    name: 'email_from',
+    help_text: 'Address email emails come from, either a simple email address "mynam@example.com", ' +
+               'or "My Name <myname@example.com>" is permitted.',
+  },
   {name: 'email_template', type: 'textarea'},
 ]
 
@@ -27,6 +31,7 @@ export default class CompanyDetails extends RenderDetails {
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
     ]
+    this.id = this.props.company.company.id
     this.formats = {
       image: {
         wide: true,
@@ -42,7 +47,7 @@ export default class CompanyDetails extends RenderDetails {
   }
 
   get_uri () {
-    return '/companies/0/'
+    return `/companies/${this.id}/`
   }
 
   extra () {
@@ -56,7 +61,7 @@ export default class CompanyDetails extends RenderDetails {
                  success_msg="Company Updated"
                  initial={this.state.item}
                  update={this.update}
-                 action={`/companies/${this.state.item.id}/`}
+                 action={`/companies/${this.id}/`}
                  fields={CO_FIELDS}/>,
       <ModalDropzoneForm {...this.props}
                          key="2"

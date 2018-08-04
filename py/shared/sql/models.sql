@@ -29,7 +29,6 @@ CREATE TABLE users (
   last_name VARCHAR(255),
   email VARCHAR(255),
   phone_number VARCHAR(63),
-  image VARCHAR(255),
   password_hash VARCHAR(63),
   stripe_customer_id VARCHAR(31),
   receive_emails BOOLEAN DEFAULT TRUE,
@@ -40,6 +39,8 @@ CREATE UNIQUE INDEX user_email ON users USING btree (company, email);
 CREATE INDEX user_role ON users USING btree (role);
 CREATE INDEX user_status ON users USING btree (status);
 CREATE INDEX user_company ON users USING btree (company);
+CREATE INDEX user_created_ts ON users USING btree (created_ts);
+CREATE INDEX user_active_ts ON users USING btree (active_ts);
 
 
 CREATE TYPE ACTION_TYPES AS ENUM (

@@ -57,6 +57,7 @@ const Routes = ({app}) => (
                    user={app.state.user}
                    set_message={app.set_message}
                    requests={app.requests}
+                   company={app.state.company}
                    {...props}/>
       )} />
 

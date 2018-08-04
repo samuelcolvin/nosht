@@ -1,14 +1,13 @@
 from pathlib import Path
 
 from buildpg import V
-from buildpg.clauses import Where
-from pydantic import BaseModel
+from pydantic import BaseModel, NameEmail
 
 from shared.images import LOGO_SIZE, delete_image, resize_upload, upload_logo
 from shared.utils import Currencies
 from web.auth import check_session, is_admin
 from web.bread import Bread
-from web.utils import json_response, request_image
+from web.utils import JsonErrors, json_response, request_image
 
 
 class CompanyBread(Bread):
@@ -18,7 +17,7 @@ class CompanyBread(Bread):
         stripe_public_key: str
         stripe_secret_key: str
         currency: Currencies
-        email_from: str = None
+        email_from: NameEmail = None
         email_template: str = None
 
     retrieve_enabled = True
@@ -28,7 +27,6 @@ class CompanyBread(Bread):
     table = 'companies'
 
     retrieve_fields = (
-        'id',
         'name',
         'slug',
         'domain',
@@ -43,9 +41,13 @@ class CompanyBread(Bread):
 
     async def check_permissions(self, method):
         await check_session(self.request, 'admin')
+        if int(self.request.match_info['pk']) != self.request['company_id']:
+            raise JsonErrors.HTTPBadRequest(message='wrong company')
 
-    def where_pk(self, pk) -> Where:
-        return Where(V('id') == self.request['company_id'])
+    async def prepare_edit_data(self, data):
+        if 'email_from' in data:
+            data['email_from'] = str(data['email_from'])
+        return data
 
 
 @is_admin
