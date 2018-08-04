@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     s3_bucket: str = None
     s3_prefix: Path = ''
     s3_domain: str = None
+    s3_demo_image_url = 'https://nosht-demo.s3-eu-west-1.amazonaws.com/'
     aws_region: str = 'eu-west-1'
     # set here so they can be overridden during tests
     aws_ses_host = 'email.{region}.amazonaws.com'

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from pathlib import Path
 
@@ -45,10 +46,12 @@ async def startup(app: web.Application):
 
 
 async def cleanup(app: web.Application):
-    await app['email_actor'].close()
-    await app['pg'].close()
-    await app['http_client'].close()
-    await app['stripe_client'].close()
+    await asyncio.gather(
+        app['email_actor'].close(),
+        app['pg'].close(),
+        app['http_client'].close(),
+        app['stripe_client'].close(),
+    )
     logging_client = app['logging_client']
     transport = logging_client and logging_client.remote.get_transport()
     transport and await transport.close()

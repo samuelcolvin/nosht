@@ -4,13 +4,16 @@ import os
 import random
 from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
 from textwrap import shorten
 
+import aiohttp
 import lorem
 from async_timeout import timeout
 from buildpg import Values, asyncpg
 
 from .emails.defaults import Triggers
+from .images import resize_upload
 from .settings import Settings
 from .utils import mk_password, slugify
 
@@ -226,11 +229,42 @@ USERS = [
     },
 ]
 
+IMAGES = [
+    '0KPVDbDZFU/main.jpg',
+    '0PYuY1448h/main.jpg',
+    '8MkUuIAlTC/main.jpg',
+    '8TeTuuJ2Eo/main.jpg',
+    '9temf5JuFg/main.jpg',
+    'EVmwCc1E3j/main.jpg',
+    'H0aDotyQ10/main.jpg',
+    'H2tpkxGYFB/main.jpg',
+    'LODboU025Q/main.jpg',
+    'a3Am9F1TwZ/main.jpg',
+    'bHxDxtbBx6/main.jpg',
+    'bIh18JppSg/main.jpg',
+    'hTIw27nQBu/main.jpg',
+    'hvo3lwnW8O/main.jpg',
+    'jcOl33tWAW/main.jpg',
+    'qCLMsyr437/main.jpg',
+    'tutva5VL4W/main.jpg',
+    'u0Mnok4eTF/main.jpg',
+    'vCKpy2SW85/main.jpg',
+]
+
+
+async def create_image(upload_path, client, settings):
+    url = settings.s3_demo_image_url + random.choice(IMAGES)
+    async with client.get(url) as r:
+        assert r.status == 200, r.status
+        content = await r.read()
+
+    return await resize_upload(content, upload_path, settings)
+
+
 CATS = [
     {
         'name': 'Supper Clubs',
         'description': 'Eat, drink & discuss middle aged, middle class things like house prices and consumerist guilt',
-        'image': 'https://nosht.scolvin.com/cat/mountains/options/0DRztZurMo',
         'ticket_extra_title': 'Dietary Requirements & Extra Information',
         'ticket_extra_help_text': 'This is the help text for this field, tell us about your nut allergy',
         'sort_index': 1,
@@ -246,7 +280,6 @@ CATS = [
                 'location_lat': 51.479415,
                 'location_lng': -0.132098,
                 'ticket_limit': 40,
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G',
                 'host_email': 'frank@example.com',
                 'ticket_types': [
                     {
@@ -265,7 +298,6 @@ CATS = [
                 'location_lat': 51.514412,
                 'location_lng': -0.073994,
                 'ticket_limit': None,
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/YEcz6kUlsc',
                 'host_email': 'jane@example.com',
                 'ticket_types': [
                     {
@@ -281,7 +313,6 @@ CATS = [
 
         'name': 'Singing Events',
         'description': 'Sing loudly and badly in the company of other people too polite to comment',
-        'image': 'https://nosht.scolvin.com/cat/mountains/options/zwaxBXpsyu',
         'ticket_extra_title': 'Extra Information',
         'ticket_extra_help_text': 'This is the help text for this field',
         'sort_index': 2,
@@ -294,7 +325,6 @@ CATS = [
                 'duration': None,
                 'location_name': 'Big Church, London',
                 'ticket_limit': None,
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/p6UsCdOnGG',
                 'host_email': 'frank@example.com',
                 'ticket_types': [
                     {
@@ -312,7 +342,6 @@ CATS = [
                 'duration': None,
                 'location_name': 'Small Church, London',
                 'ticket_limit': None,
-                'image': 'https://nosht.scolvin.com/cat/mountains/options/YEcz6kUlsc',
                 'host_email': 'frank@example.com',
                 'ticket_types': [
                     {
@@ -359,45 +388,55 @@ async def create_demo_data(conn, settings, **kwargs):
     """
     Create some demo data for manual testing.
     """
-    company_id = await conn.fetchval_b(
-        'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
-        values=Values(
-            name='Testing Company',
-            slug='testing-co',
-            image='https://nosht.scolvin.com/cat/mountains/options/3WsQ7fKy0G',
-            domain=kwargs.get('company_domain', os.getenv('NEW_COMPANY_DOMAIN', 'localhost')),
-            # from "Scolvin Testing" testing account
-            stripe_public_key='pk_test_efpfygU2qxGIwgcjn5T5DTTI',
-            stripe_secret_key='sk_test_GLQSaid6wFrYZp44d3dcTl8f'
+    async with aiohttp.ClientSession() as client:
+        co_slug = 'testing-co'
+        company_id = await conn.fetchval_b(
+            'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
+            values=Values(
+                name='Testing Company',
+                slug=co_slug,
+                image=await create_image(Path(co_slug) / 'co', client, settings),
+                domain=kwargs.get('company_domain', os.getenv('NEW_COMPANY_DOMAIN', 'localhost')),
+                # from "Scolvin Testing" testing account
+                stripe_public_key='pk_test_efpfygU2qxGIwgcjn5T5DTTI',
+                stripe_secret_key='sk_test_GLQSaid6wFrYZp44d3dcTl8f'
+            )
         )
-    )
 
-    user_lookup = {}
-    for user in USERS:
-        user_lookup[user['email']] = await conn.fetchval_b("""
-        INSERT INTO users (:values__names) VALUES :values RETURNING id
-        """, values=Values(company=company_id, password_hash=mk_password(user.pop('password'), settings), **user))
+        user_lookup = {}
+        for user in USERS:
+            user_lookup[user['email']] = await conn.fetchval_b("""
+            INSERT INTO users (:values__names) VALUES :values RETURNING id
+            """, values=Values(company=company_id, password_hash=mk_password(user.pop('password'), settings), **user))
 
-    for cat in CATS:
-        events = cat.pop('events')
-        cat_id = await conn.fetchval_b("""
-    INSERT INTO categories (:values__names) VALUES :values RETURNING id
-    """, values=Values(company=company_id, slug=slugify(cat['name']), **cat))
+        for cat in CATS:
+            events = cat.pop('events')
+            cat_slug = slugify(cat['name'])
+            cat_id = await conn.fetchval_b("""
+        INSERT INTO categories (:values__names) VALUES :values RETURNING id
+        """, values=Values(
+                company=company_id,
+                slug=cat_slug,
+                image=await create_image(Path(co_slug) / cat_slug / 'option', client, settings),
+                **cat,
+            ))
 
-        for event in events:
-            ticket_types = event.pop('ticket_types', [])
-            event_id = await conn.fetchval_b(
-                'INSERT INTO events (:values__names) VALUES :values RETURNING id',
-                values=Values(
-                    category=cat_id,
-                    host=user_lookup[event.pop('host_email')],
-                    slug=slugify(event['name']),
-                    short_description=shorten(lorem.paragraph(), width=random.randint(100, 140), placeholder='...'),
-                    long_description=EVENT_LONG_DESCRIPTION,
-                    **event
+            for event in events:
+                ticket_types = event.pop('ticket_types', [])
+                event_slug = slugify(event['name'])
+                event_id = await conn.fetchval_b(
+                    'INSERT INTO events (:values__names) VALUES :values RETURNING id',
+                    values=Values(
+                        category=cat_id,
+                        host=user_lookup[event.pop('host_email')],
+                        slug=event_slug,
+                        image=await create_image(Path(co_slug) / cat_slug / event_slug, client, settings),
+                        short_description=shorten(lorem.paragraph(), width=random.randint(100, 140), placeholder='...'),
+                        long_description=EVENT_LONG_DESCRIPTION,
+                        **event
+                    )
                 )
-            )
-            await conn.executemany_b(
-                'INSERT INTO ticket_types (:values__names) VALUES :values',
-                [Values(event=event_id, **tt) for tt in ticket_types]
-            )
+                await conn.executemany_b(
+                    'INSERT INTO ticket_types (:values__names) VALUES :values',
+                    [Values(event=event_id, **tt) for tt in ticket_types]
+                )

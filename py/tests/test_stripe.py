@@ -133,12 +133,14 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
         stripe_client_ip='0.0.0.0',
         stripe_card_ref='4242-32-01',
         booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
     )
 
     r = await cli.json_post(url('event-buy-tickets'), data=data)
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
         (
@@ -161,6 +163,7 @@ async def test_pay_no_price(cli, url, factory: Factory):
         stripe_client_ip='0.0.0.0',
         stripe_card_ref='4242-32-01',
         booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
     )
 
     r = await cli.json_post(url('event-buy-tickets'), data=data)
@@ -180,10 +183,15 @@ async def test_book_free(cli, url, dummy_server, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    r = await cli.json_post(url('event-book-tickets'), data={'booking_token': encrypt_json(app, res.dict())})
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
         (
             'email_send_endpoint',
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
@@ -200,7 +208,11 @@ async def test_book_free_with_price(cli, url, dummy_server, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    r = await cli.json_post(url('event-book-tickets'), data={'booking_token': encrypt_json(app, res.dict())})
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 400, await r.text()
 
     data = await r.json()

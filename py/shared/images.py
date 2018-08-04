@@ -88,7 +88,10 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: bytes, settings
 
 
 async def resize_upload(image_data: bytes, upload_path: Path, settings: Settings) -> str:
-    img = Image.open(BytesIO(image_data))
+    try:
+        img = Image.open(BytesIO(image_data))
+    except OSError:
+        raise ValueError('invalid image')
 
     for width, height in (LARGE_SIZE, SMALL_SIZE):
         if img.width >= width and img.height >= height:

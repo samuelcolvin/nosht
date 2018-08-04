@@ -1,9 +1,11 @@
 import base64
 from email import message_from_bytes
+from io import BytesIO
 
 from aiohttp import web
 from aiohttp.web_middlewares import middleware
 from aiohttp.web_response import Response, json_response
+from PIL import Image, ImageDraw
 
 
 async def aws_ses(request):
@@ -126,6 +128,15 @@ async def aws_endpoint(request):
         return Response(text='')
 
 
+async def s3_demo_image(request):
+    width, height = 2000, 1200
+    stream = BytesIO()
+    image = Image.new('RGB', (width, height), (50, 100, 150))
+    ImageDraw.Draw(image).line((0, 0) + image.size, fill=128)
+    image.save(stream, format='JPEG', optimize=True)
+    return Response(body=stream.getvalue())
+
+
 @middleware
 async def log_middleware(request, handler):
     request.app['log'].append(request.method + ' ' + request.path.strip('/'))
@@ -146,6 +157,7 @@ async def create_dummy_server(loop, create_server):
         web.post('/stripe_root_url/charges', stripe_post_charges),
 
         web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
+        web.get('/s3_demo_image_url/{image:.*}', s3_demo_image),
     ])
     server = await create_server(app)
     app.update(

@@ -75,6 +75,7 @@ replaced_url_fields = (
     'facebook_siw_url',
     'stripe_root_url',
     'aws_endpoint_url',
+    's3_demo_image_url',
 )
 
 
@@ -299,6 +300,7 @@ class Factory:
             stripe_client_ip='0.0.0.0',
             stripe_card_ref='4242-32-01',
             booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
+            grecaptcha_token='__ok__',
         )
         return await stripe_pay(m, self.company_id, user_id or self.user_id, self.app, self.conn)
 
