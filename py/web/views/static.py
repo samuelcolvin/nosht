@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from aiohttp.web import Response
-from aiohttp.web_exceptions import HTTPForbidden, HTTPNotFound
+from aiohttp.web_exceptions import HTTPNotFound
 from aiohttp.web_fileresponse import FileResponse
 
 from web.utils import request_root
@@ -20,25 +20,25 @@ async def static_handler(request):
 
     try:
         filename = Path(request_path)
-        if filename.anchor:
+        if filename.anchor:  # pragma: no cover
+            # windows only I think, but keep it just in case
             # request_path is an absolute name like
             # /static/\\machine_name\c$ or /static/D:\path
             # where the static dir is totally different
             raise HTTPNotFound()
         filepath = directory.joinpath(filename).resolve()
         filepath.relative_to(directory)
-    except HTTPForbidden:
-        raise
     except Exception as exc:
         # perm error or other kind!
         logger.warning('error resolving path %r', request_path, exc_info=True)
         raise HTTPNotFound() from exc
 
-    if request_path.startswith('iframes/') and request_path.endswith('.html'):
+    is_file = filepath.is_file()
+    if request_path.startswith('iframes/') and request_path.endswith('.html') and is_file:
         new_root = request_root(request)
         content = filepath.read_text().replace('http://localhost:3000', new_root)
         return Response(text=content, content_type='text/html')
-    elif filepath.is_file():
+    elif is_file:
         return FileResponse(filepath)
     else:
         return FileResponse(directory / 'index.html')

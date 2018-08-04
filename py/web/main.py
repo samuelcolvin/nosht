@@ -118,7 +118,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         *CategoryBread.routes('/categories/'),
 
         *UserBread.routes('/users/'),
-        web.get('/users/{id:\d+}/actions/', user_actions, name='user-actions'),
+        web.get('/users/{pk:\d+}/actions/', user_actions, name='user-actions'),
     ])
 
     wrapper_app = web.Application(
@@ -129,8 +129,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         settings=settings,
         main_app=app,
     )
-    this_dir = Path(__file__).parent
-    static_dir = (this_dir / '../../js/build').resolve()
+    static_dir = settings.custom_static_dir or (Path(__file__).parent / '../../js/build').resolve()
     assert static_dir.exists(), f'js static directory "{static_dir}" does not exists'
     logger.debug('serving static files "%s"', static_dir)
     wrapper_app['static_dir'] = static_dir

@@ -1,4 +1,4 @@
-from pytest_toolbox.comparison import CloseToNow
+from pytest_toolbox.comparison import CloseToNow, RegexStr
 
 from .conftest import Factory
 
@@ -45,6 +45,30 @@ async def test_user_details(cli, url, login, factory: Factory):
         'receive_emails': True,
         'first_name': 'Frank',
         'last_name': 'Spencer',
+    }
+
+
+async def test_user_actions(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    r = await cli.get(url('user-actions', pk=factory.user_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'tickets': [
+            {
+                'id': await db_conn.fetchval('SELECT id FROM actions'),
+                'ts': CloseToNow(),
+                'type': 'login',
+                'extra': {
+                    'ip': '127.0.0.1',
+                    'ua': RegexStr('Python.*'),
+                    'url': RegexStr('http://127.0.0.1:\d+/api/auth-token/'),
+                },
+            },
+        ],
     }
 
 

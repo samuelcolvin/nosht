@@ -80,7 +80,7 @@ replaced_url_fields = (
 
 
 @pytest.fixture(name='settings')
-def _fix_settings(dummy_server, request):
+def _fix_settings(dummy_server, request, tmpdir):
     # alter stripe_root_url if the real_stripe_test decorator is applied
     real_stripe = any('REAL_STRIPE_TESTS' in m.kwargs.get('reason', '') for m in request.keywords.get('pytestmark', []))
     fields = set(replaced_url_fields)
@@ -88,6 +88,7 @@ def _fix_settings(dummy_server, request):
         fields.remove('stripe_root_url')
     server_name = dummy_server.app['server_name']
     return Settings(
+        custom_static_dir=str(tmpdir),
         **{f: f'{server_name}/{f}/' for f in fields},
         **settings_args
     )
@@ -402,3 +403,11 @@ def create_image(width=2000, height=1200):
     ImageDraw.Draw(image).line((0, 0) + image.size, fill=128)
     image.save(stream, format='JPEG', optimize=True)
     return stream.getvalue()
+
+
+@pytest.fixture(name='setup_static')
+def _setup_static(tmpdir):
+    tmpdir.join('index.html').write('this is index.html')
+    tmpdir.join('test.js').write('this is test.js')
+    tmpdir.join('iframes').mkdir()
+    tmpdir.join('iframes').join('login.html').write('this is iframes/login.html')

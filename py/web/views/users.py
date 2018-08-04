@@ -104,7 +104,7 @@ async def user_actions(request):
           ) AS t
         ) AS tickets
         """,
-        int(request.match_info['id']),
+        int(request.match_info['pk']),
         request['company_id'],
         get_offset(request),
     )
