@@ -1,5 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
+import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Alert, Button, Modal, ModalHeader, ModalBody, ModalFooter, Table, Progress as BsProgress} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime, format_money_free, format_money} from '../utils'
 import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render_bool} from '../general/Dashboard'
@@ -67,9 +68,15 @@ const Progress = ({event, tickets, ticket_types}) => {
   )
 }
 
-const TicketTypeTable = ({ticket_types, currency}) => (
+const TicketTypeTable = ({ticket_types, currency, uri}) => (
   <div className="mb-5">
-    <h4>Ticket Types</h4>
+    <h4>
+      Ticket Types
+      <Button tag={Link} to={uri + 'ticket-types/'} size="sm" className="ml-2">
+        <FontAwesomeIcon icon="pen" className="mr-1"/>
+        Edit
+      </Button>
+    </h4>
     <Table striped>
       <thead>
         <tr>
@@ -192,15 +199,17 @@ export class EventsDetails extends RenderDetails {
       ticket_limit: null,
       long_description: null,
       image: {
+        wide: true,
+        edit_link: this.uri + 'set-image/',
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>,
-        index: 1
       },
       location_lng: null,
       location_name: null,
       location_lat: {
         render: (v, item) => <MiniMap lat={v} lng={item.location_lng}m name={item.location_name}/>,
         title: 'Location',
-        index: 2,
+        wide: true,
+        index: 1,
       },
     }
     this.uri = `/dashboard/events/${this.id}/`
@@ -224,8 +233,6 @@ export class EventsDetails extends RenderDetails {
         ticket_types: r[1].ticket_types,
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
-          {name: 'Set Image', link: this.uri + 'set-image/'},
-          {name: 'Custom Ticket Types', link: this.uri + 'ticket-types/'},
           this.props.user.status === 'active' && {name: 'Set Status', link: this.uri + 'set-status/'},
           {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'},
         ]
@@ -283,7 +290,7 @@ export class EventsDetails extends RenderDetails {
     return [
       <Progress key="progress" event={event} ticket_types={this.state.ticket_types} tickets={this.state.tickets}/>,
       this.state.ticket_types ?
-        <TicketTypeTable key="ttt" currency={event.currency} ticket_types={this.state.ticket_types}/>
+        <TicketTypeTable key="ttt" currency={event.currency} ticket_types={this.state.ticket_types} uri={this.uri}/>
         : null,
       <Tickets key="tickets" tickets={this.state.tickets} event={event}/>,
       <ModalForm {...this.props}

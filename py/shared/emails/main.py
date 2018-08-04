@@ -5,7 +5,7 @@ from typing import Optional
 
 from arq import concurrent
 
-from ..utils import display_cash, password_reset_link, static_map_link
+from ..utils import display_cash_free, password_reset_link, static_map_link
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail
 
@@ -48,7 +48,7 @@ class EmailActor(BaseEmailActor):
             'event_start': data['start_ts'] if duration else data['start_ts'].date(),
             'event_duration': duration or 'All day',
             'event_location': data['location_name'],
-            'ticket_price': display_cash(data['price'], data['currency']) if data['price'] else 'Free',
+            'ticket_price': display_cash_free(data['price'], data['currency']),
             'buyer_name': data['user_name']
         }
         lat, lng = data['location_lat'], data['location_lng']
@@ -63,7 +63,7 @@ class EmailActor(BaseEmailActor):
             **ctx,
             'ticket_count': ticket_count,
             'ticket_count_plural': ticket_count > 1,
-            'total_price': display_cash(data['price'] * ticket_count, data['currency']) if data['price'] else 'Free',
+            'total_price': display_cash_free(data['price'] and data['price'] * ticket_count, data['currency']),
         }
         if data['extra']:
             action_extra = json.loads(data['extra'])

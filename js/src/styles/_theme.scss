@@ -126,6 +126,14 @@ main.container {
     color: #888;
     min-width: 200px;
   }
+  &.wide {
+    margin-top: 0.5rem;
+    display: block;
+    .key {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+  }
 }
 
 textarea {

@@ -7,7 +7,7 @@ import {Loading} from './Errors'
 import Map from './Map'
 
 export const render_bool = v => (
-  <FontAwesomeIcon icon={v ? 'check' : 'times'} />
+  <FontAwesomeIcon icon={v ? 'check' : 'times'}/>
 )
 
 const Buttons = ({buttons}) => (
@@ -22,10 +22,14 @@ const Buttons = ({buttons}) => (
 
 export const Dash = () => <span>&mdash;</span>
 
-export const Detail = ({name, children}) => (
-  <div className="item-detail">
+export const Detail = ({name, wide, edit_link, children}) => (
+  <div className={`item-detail${wide ? ' wide' : ''}`}>
     <div className="key">
       {name}
+      {edit_link && <Button tag={Link} to={edit_link} size="sm" className="ml-2">
+        <FontAwesomeIcon icon="pen" className="mr-1"/>
+        Edit {name}
+      </Button>}
     </div>
     <div className="value">
       {children || <Dash/>}
@@ -183,6 +187,7 @@ export class RenderDetails extends RenderItem {
     const keys = (
       Object.keys(this.state.item)
       .filter(k => !['id', '_response_status', 'name'].includes(k) && this.formats[k] !== null)
+      .sort((a, b) => ((this.formats[a] || {}).wide || 0) - ((this.formats[b] || {}).wide || 0))
       .sort((a, b) => ((this.formats[a] || {}).index || 0) - ((this.formats[b] || {}).index || 0))
     )
     const pre = this.pre()
@@ -192,7 +197,12 @@ export class RenderDetails extends RenderItem {
       pre ? <div key="p">{pre}</div> : null,
       <div key="d" className="mb-4">
         {keys.map(key => (
-          <Detail key={key} name={this.render_key(key)}>{this.render_value(this.state.item, key)}</Detail>
+          <Detail key={key}
+                  name={this.render_key(key)}
+                  wide={Boolean((this.formats[key] || {}).wide)}
+                  edit_link={(this.formats[key] || {}).edit_link}>
+            {this.render_value(this.state.item, key)}
+          </Detail>
         ))}
       </div>,
       <div key="e">
@@ -202,8 +212,11 @@ export class RenderDetails extends RenderItem {
   }
 }
 
-export const ImageThumbnail = ({image, alt}) => (
-  image ? <img src={image + '/thumb.jpg'} alt={alt} className="img-thumbnail"/> : <span>&mdash;</span>
+export const ImageThumbnail = ({image, alt, image_type}) => (
+  image ?
+    <img src={image + `/${image_type || 'thumb'}.jpg`} alt={alt} className="img-thumbnail"/>
+    :
+    <span>&mdash;</span>
 )
 
 export const MiniMap = ({lat, lng, name}) => (

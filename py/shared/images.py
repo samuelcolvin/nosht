@@ -3,7 +3,7 @@ import logging
 import re
 from io import BytesIO
 from pathlib import Path
-from typing import Set
+from typing import Optional, Set
 
 import aiobotocore
 from PIL import Image
@@ -14,6 +14,7 @@ from .utils import pseudo_random_str
 logger = logging.getLogger('nosht.images')
 LARGE_SIZE = 3840, 1000
 SMALL_SIZE = 1920, 500
+LOGO_SIZE = 256, 256
 STRIP_DOMAIN = re.compile('^https?://.+?/')
 
 
@@ -21,12 +22,12 @@ def strip_domain(url):
     return STRIP_DOMAIN.sub('', url)
 
 
-def check_image_size(image_data: bytes):
+def check_image_size(image_data: bytes, *, expected_size):
     try:
         img = Image.open(BytesIO(image_data))
     except OSError:
         raise ValueError('invalid image')
-    width, height = SMALL_SIZE
+    width, height = expected_size or SMALL_SIZE
     if img.width < width or img.height < height:
         raise ValueError(f'image too small: {img.width}x{img.height}<{SMALL_SIZE[0]}x{SMALL_SIZE[1]}')
 
@@ -63,12 +64,12 @@ async def delete_image(image: str, settings: Settings):
         )
 
 
-async def _upload(upload_path: Path, main_img: bytes, thumb_img: bytes, settings: Settings) -> str:
+async def _upload(upload_path: Path, main_img: bytes, thumb_img: Optional[bytes], settings: Settings) -> str:
     upload_path = settings.s3_prefix / upload_path / pseudo_random_str()
 
     async with create_s3_session(settings) as s3:
         logger.info('uploading to %s', upload_path)
-        await asyncio.gather(
+        coros = [
             s3.put_object(
                 Bucket=settings.s3_bucket,
                 Key=str(upload_path / 'main.jpg'),
@@ -76,14 +77,16 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: bytes, settings
                 ContentType='image/jpeg',
                 ACL='public-read',
             ),
-            s3.put_object(
+        ]
+        if thumb_img:
+            coros.append(s3.put_object(
                 Bucket=settings.s3_bucket,
                 Key=str(upload_path / 'thumb.jpg'),
                 Body=thumb_img,
                 ContentType='image/jpeg',
                 ACL='public-read'
-            ),
-        )
+            ))
+        await asyncio.gather(*coros)
     return f'{settings.s3_domain}/{upload_path}'
 
 
@@ -120,3 +123,27 @@ async def resize_upload(image_data: bytes, upload_path: Path, settings: Settings
     thumb.save(thumb_stream, 'JPEG', optimize=True, quality=95)
 
     return await _upload(upload_path, main_stream.getvalue(), thumb_stream.getvalue(), settings)
+
+
+async def upload_logo(image_data: bytes, upload_path: Path, settings: Settings) -> str:
+    try:
+        img = Image.open(BytesIO(image_data))
+    except OSError:
+        raise ValueError('invalid image')
+
+    width, height = LOGO_SIZE
+    if img.width < width or img.height < height:
+        raise ValueError(f'image too small: {img.size}')
+
+    aspect_ratio = img.width / img.height
+    if aspect_ratio > 1:
+        # wide image
+        resize_to = int(round(height * aspect_ratio)), height
+    else:
+        # tall image
+        resize_to = width, int(round(width / aspect_ratio))
+
+    img = img.resize(resize_to, Image.ANTIALIAS)
+    stream = BytesIO()
+    img.save(stream, 'JPEG', optimize=True, quality=95)
+    return await _upload(upload_path, stream.getvalue(), None, settings)

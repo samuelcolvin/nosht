@@ -395,7 +395,7 @@ async def create_demo_data(conn, settings, **kwargs):
             values=Values(
                 name='Testing Company',
                 slug=co_slug,
-                image=await create_image(Path(co_slug) / 'co', client, settings),
+                image=await create_image(Path(co_slug) / 'co' / 'image', client, settings),
                 domain=kwargs.get('company_domain', os.getenv('NEW_COMPANY_DOMAIN', 'localhost')),
                 # from "Scolvin Testing" testing account
                 stripe_public_key='pk_test_efpfygU2qxGIwgcjn5T5DTTI',

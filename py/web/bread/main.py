@@ -117,6 +117,8 @@ class BaseBread:
             return Var(self.pk_field)
 
     def where_pk(self, pk) -> Where:
+        if pk < 1:
+            raise JsonErrors.HTTPBadRequest(message='request pk must be greater than 0')
         where = self.where()
         is_pk = self.pk_ref() == pk
         if where:

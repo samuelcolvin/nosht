@@ -101,7 +101,7 @@ export class DropzoneForm extends React.Component {
             <p>Drop images here, or click to select images to upload.</p> :
             <p>Drop an image here, or click to select an image to upload.</p>
           }
-          <p className="small">Images must be at least 1920px x 500px.</p>
+          <p className="small">{this.props.help_text || 'Images must be at least 1920px x 500px.'}</p>
           <div className="previews">
             {Object.values(this.state).filter(item => item.file).map((item, i) => (
               <div key={i} className="file-preview">

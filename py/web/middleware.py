@@ -135,6 +135,7 @@ async def host_middleware(request, handler):
 
 
 FORM_PATHS = (
+    re.compile(r'/api/companies/upload/(?:image|logo)/'),
     re.compile(r'/api/categories/\d+/add-image/'),
     re.compile(r'/api/events/\d+/set-image/new/'),
 )

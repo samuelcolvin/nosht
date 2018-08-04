@@ -2,7 +2,7 @@ import format from 'date-fns/format'
 
 export const unique = (value, index, array) => array.indexOf(value) === index
 
-const currency_lookup = {
+export const currency_lookup = {
   gbp: '£',
   usd: '$',
   eur: '€',

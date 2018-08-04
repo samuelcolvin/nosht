@@ -71,6 +71,7 @@ export class CategoriesDetails extends RenderDetails {
     ]
     this.formats = {
       image: {
+        wide: true,
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
       },
       suggested_images: null
@@ -114,7 +115,7 @@ export class CategoriesDetails extends RenderDetails {
                  key="2"
                  parent_uri={this.uri}
                  mode="edit"
-                success_msg="Category Updated"
+                 success_msg="Category Updated"
                  initial={this.state.item}
                  update={this.update}
                  action={`/categories/${this.id}/`}

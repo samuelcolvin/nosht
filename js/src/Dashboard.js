@@ -6,10 +6,11 @@ import {as_title} from './utils'
 import {EventsList, EventsDetails} from './events/Dashboard'
 import {UsersList, UsersDetails} from './users/Dashboard'
 import {CategoriesList, CategoriesDetails} from './cats/Dashboard'
+import CompanyDetails from './company/Dashboard'
 
 const list_uri = page => `/dashboard/${page.name}/`
 const list_match_uri = page => `/dashboard/${page.name}/(add/)?`
-const details_uri = page => `/dashboard/${page.name}/:id/`
+const details_uri = page => page.details_uri || `/dashboard/${page.name}/:id/`
 
 const MenuItem = ({page, location}) => {
   const uri = list_uri(page)
@@ -19,20 +20,7 @@ const MenuItem = ({page, location}) => {
   </Link>
 }
 
-const RenderComp = ({page, route_props, parent, comp_name}) => {
-  const Comp = page[comp_name]
-  if (Comp) {
-    return <Comp {...parent.props} {...route_props} page={page}/>
-  }
-  return <div>TODO {page.name}</div>
-}
-
 export default class Settings extends React.Component {
-  constructor (props) {
-    super(props)
-    this.state = {finished: false}
-  }
-
   render () {
     let pages = [
       {name: 'events', title: 'My Events', list_comp: EventsList, details_comp: EventsDetails},
@@ -43,7 +31,7 @@ export default class Settings extends React.Component {
         {name: 'events', list_comp: EventsList, details_comp: EventsDetails},
         {name: 'categories', list_comp: CategoriesList, details_comp: CategoriesDetails},
         {name: 'users', list_comp: UsersList, details_comp: UsersDetails},
-        {name: 'company', list_comp: null, details_comp: null},
+        {name: 'company', list_comp: null, details_comp: CompanyDetails, details_uri: '/dashboard/company/'},
         {name: 'export', list_comp: null, details_comp: null},
       ]
     }
@@ -58,15 +46,17 @@ export default class Settings extends React.Component {
         </Col>
         <Col md="9">
           <Switch>
-            {pages.map(p => (
-              <Route key={p.name} exact path={list_match_uri(p)} render={props => (
-                <RenderComp page={p} route_props={props} parent={this} comp_name="list_comp"/>
-              )} />
+            {pages.filter(p => p.list_comp).map(p => (
+              <Route key={p.name} exact path={list_match_uri(p)} render={props => {
+                const Comp = p.list_comp
+                return <Comp {...this.props} {...props} page={p}/>
+              }} />
             ))}
-            {pages.map(p => (
-              <Route key={p.name + '-details'} path={details_uri(p)} render={props => (
-                <RenderComp page={p} route_props={props} parent={this} comp_name="details_comp"/>
-              )} />
+            {pages.filter(p => p.details_comp).map(p => (
+              <Route key={p.name + '-details'} path={details_uri(p)} render={props => {
+                const Comp = p.details_comp
+                return <Comp {...this.props} {...props} page={p}/>
+              }} />
             ))}
 
             <Route component={NotFound} />

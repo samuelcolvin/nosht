@@ -164,7 +164,7 @@ def split_name(raw_name):
         return [n.strip(' ') or None for n in raw_name.split(' ', 1)]
 
 
-async def request_image(request):
+async def request_image(request, *, expected_size=None):
     try:
         p = await request.post()
     except ValueError:
@@ -175,7 +175,7 @@ async def request_image(request):
         raise JsonErrors.HTTPBadRequest(message='image missing')
     content = image.file.read()
     try:
-        check_image_size(content)
+        check_image_size(content, expected_size=expected_size)
     except ValueError as e:
         raise JsonErrors.HTTPBadRequest(message=str(e))
     return content

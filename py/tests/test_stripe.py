@@ -31,6 +31,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
         stripe_client_ip='0.0.0.0',
         stripe_card_ref='4242-32-01',
         booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
     )
     await db_conn.execute('SELECT check_tickets_remaining($1, 10)', res.event_id)
     customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
@@ -101,6 +102,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
         stripe_client_ip='0.0.0.0',
         stripe_card_ref='{last4}-{exp_year}-{exp_month}'.format(**customer['sources']['data'][0]),
         booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
     )
 
     await stripe_pay(m, factory.company_id, factory.user_id, app, db_conn)

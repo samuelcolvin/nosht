@@ -5,6 +5,7 @@ import random
 import re
 import string
 from datetime import timedelta
+from enum import Enum
 from urllib.parse import urlencode
 
 import bcrypt
@@ -12,10 +13,18 @@ import bcrypt
 from .settings import Settings
 
 URI_NOT_ALLOWED = re.compile(r'[^a-zA-Z0-9_\-/.]')
+
+
+class Currencies(str, Enum):
+    gbp = 'gbp'
+    usd = 'usd'
+    eur = 'eur'
+
+
 CURRENCY_LOOKUP = {
-    'gbp': '£',
-    'usd': '$',
-    'eur': '€',
+    Currencies.gbp: '£',
+    Currencies.usd: '$',
+    Currencies.eur: '€',
 }
 
 
@@ -51,6 +60,10 @@ def unsubscribe_sig(user_id, settings: Settings):
 def display_cash(amount, currency):
     symbol = CURRENCY_LOOKUP[currency]
     return f'{symbol}{amount:0,.2f}'
+
+
+def display_cash_free(amount, currency):
+    return display_cash(amount, currency) if amount else 'Free'
 
 
 def static_map_link(lat, lng, *, settings: Settings, size=(500, 300), zoom=13):
