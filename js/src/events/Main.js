@@ -25,7 +25,7 @@ class Event extends React.Component {
   async get_data () {
     let event, ticket_types
     const params = this.props.match.params
-    this.props.setRootState({active_page: params.category})
+    this.props.ctx.setRootState({active_page: params.category})
     try {
       const data = await requests.get(`events/${params.category}/${params.event}/`)
       event = data.event
@@ -34,11 +34,11 @@ class Event extends React.Component {
       if (error.status === 404) {
         this.setState({event: 404})
       } else {
-        this.props.setRootState({error})
+        this.props.ctx.setRootState({error})
       }
       return
     }
-    this.props.setRootState({
+    this.props.ctx.setRootState({
       page_title: event.name,
       background: event.image,
       extra_menu: [{name: 'Book Now', to: this.uri + 'book/'}],
@@ -63,7 +63,7 @@ class Event extends React.Component {
             </p>
           </Col>
           <Col md="3" className="text-right">
-            {this.props.user && (this.props.user.role === 'admin' || this.props.user.id === event.host_id) &&
+            {this.props.ctx.user && (this.props.ctx.user.role === 'admin' || this.props.ctx.user.id === event.host_id) &&
               <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
                 Edit Event
               </Button>

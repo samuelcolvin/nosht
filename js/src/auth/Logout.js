@@ -1,10 +1,10 @@
 import React from 'react'
 import {Redirect} from 'react-router'
+import WithContext from '../context'
 import {Loading} from '../general/Errors'
 import requests from '../requests'
 
-
-export default class Logout extends React.Component {
+class Logout extends React.Component {
   constructor (props) {
     super(props)
     this.state = {finished: false}
@@ -14,12 +14,12 @@ export default class Logout extends React.Component {
     try {
       await requests.post('logout/')
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
-    this.props.setRootState({user: null})
+    this.props.ctx.setRootState({user: null})
     this.setState({finished: true})
-    this.props.set_message({icon: 'user', message: 'Logged out successfully'})
+    this.props.ctx.set_message({icon: 'user', message: 'Logged out successfully'})
   }
 
   render () {
@@ -31,3 +31,4 @@ export default class Logout extends React.Component {
     )
   }
 }
+export default WithContext(Logout)

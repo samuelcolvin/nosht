@@ -19,7 +19,7 @@ class Category extends React.Component {
     if (!cat) {
       return
     }
-    this.props.setRootState({
+    this.props.ctx.setRootState({
       page_title: cat.name,
       background: cat.image,
       extra_menu: null,
@@ -29,12 +29,12 @@ class Category extends React.Component {
       const data = await requests.get(`cat/${this.props.match.params.category}/`)
       this.setState({events: data.events})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
     }
   }
 
   cat_info () {
-    return this.props.company.categories.find(c => c.slug === this.props.match.params.category)
+    return this.props.ctx.company.categories.find(c => c.slug === this.props.match.params.category)
   }
 
   render () {

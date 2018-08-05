@@ -2,6 +2,7 @@ import React from 'react'
 import {Route, Switch, Link} from 'react-router-dom'
 import {Row, Col} from 'reactstrap'
 import {NotFound} from './general/Errors'
+import WithContext from './context'
 import {as_title} from './utils'
 import {EventsList, EventsDetails} from './events/Dashboard'
 import {UsersList, UsersDetails} from './users/Dashboard'
@@ -20,13 +21,13 @@ const MenuItem = ({page, location}) => {
   </Link>
 }
 
-export default class Settings extends React.Component {
+class Dashboard extends React.Component {
   render () {
     let pages = [
       {name: 'events', title: 'My Events', list_comp: EventsList, details_comp: EventsDetails},
       {name: 'account', title: 'Account', list_comp: null, details_comp: null},
     ]
-    if (this.props.user && this.props.user.role === 'admin') {
+    if (this.props.ctx.user && this.props.ctx.user.role === 'admin') {
       pages = [
         {name: 'events', list_comp: EventsList, details_comp: EventsDetails},
         {name: 'categories', list_comp: CategoriesList, details_comp: CategoriesDetails},
@@ -49,13 +50,13 @@ export default class Settings extends React.Component {
             {pages.filter(p => p.list_comp).map(p => (
               <Route key={p.name} exact path={list_match_uri(p)} render={props => {
                 const Comp = p.list_comp
-                return <Comp {...this.props} {...props} page={p}/>
+                return <Comp ctx={this.props.ctx} {...props} page={p}/>
               }} />
             ))}
             {pages.filter(p => p.details_comp).map(p => (
               <Route key={p.name + '-details'} path={details_uri(p)} render={props => {
                 const Comp = p.details_comp
-                return <Comp {...this.props} {...props} page={p}/>
+                return <Comp ctx={this.props.ctx} {...props} page={p}/>
               }} />
             ))}
 
@@ -67,3 +68,4 @@ export default class Settings extends React.Component {
     )
   }
 }
+export default WithContext(Dashboard)

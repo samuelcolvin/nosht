@@ -10,13 +10,14 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import WithContext from '../context'
 import requests from '../requests'
 import {grecaptcha_execute} from '../utils'
 import {setup_siw, facebook_login, google_login} from '../auth/login_with'
 import {ModalFooter} from '../general/Modal'
 
 
-export default class BookingLogin extends React.Component {
+class BookingLogin extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -33,7 +34,7 @@ export default class BookingLogin extends React.Component {
 
   async google_auth () {
     this.setState({siw_error: null})
-    const auth_data = await google_login(this.props.setRootState)
+    const auth_data = await google_login(this.props.ctx.setRootState)
     if (auth_data) {
       await this.auth('google', auth_data)
     }
@@ -41,7 +42,7 @@ export default class BookingLogin extends React.Component {
 
   async facebook_auth () {
     this.setState({siw_error: null})
-    const auth_data = await facebook_login(this.props.setRootState)
+    const auth_data = await facebook_login(this.props.ctx.setRootState)
     if (auth_data) {
       await this.auth('facebook', auth_data)
     }
@@ -62,13 +63,13 @@ export default class BookingLogin extends React.Component {
     try {
       data = await requests.post(`/signup/guest/${site}/`, login_data, {expected_statuses: status || 200})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     if (data._response_status !== 200) {
       return data.message
     } else {
-      this.props.setRootState({user: data.user})
+      this.props.ctx.setRootState({user: data.user})
       this.props.clear_reservation()
     }
   }
@@ -115,3 +116,4 @@ export default class BookingLogin extends React.Component {
     ]
   }
 }
+export default WithContext(BookingLogin)

@@ -11,6 +11,7 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import WithContext from '../context'
 import requests from '../requests'
 import {format_money_free, user_full_name} from '../utils'
 import Input from '../forms/Input'
@@ -23,10 +24,10 @@ export class User extends React.Component {
     try {
       await requests.post('logout/')
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
-    this.props.setRootState({user: null})
+    this.props.ctx.setRootState({user: null})
   }
 
   render () {
@@ -37,7 +38,7 @@ export class User extends React.Component {
         </small>
         &nbsp;
         <small className="text-dark">
-          {user_full_name(this.props.user)}
+          {user_full_name(this.props.ctx.user)}
         </small>
         <Button onClick={this.logout.bind(this)} color="link" size="sm" className="pl-1 pr-0">
           (Logout)
@@ -214,7 +215,7 @@ const TicketForm = props => {
         <div className="multiple-items">
           {[...Array(state.ticket_count).keys()].map(i => (
             <TicketInfo key={i} index={i} state={state} set_ticket_state={props.set_ticket_state}
-                        user={props.user} event={props.event}/>
+                        user={props.ctx.user} event={props.event}/>
           ))}
         </div>
       </ModalBody>
@@ -222,4 +223,4 @@ const TicketForm = props => {
     </BootstrapForm>
   )
 }
-export default TicketForm
+export default WithContext(TicketForm)

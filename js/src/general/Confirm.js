@@ -7,9 +7,10 @@ import {
   ModalHeader,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import WithContext from '../context'
 import requests from '../requests'
 
-export class ButtonConfirm extends React.Component {
+export class ButtonConfirm_ extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -27,7 +28,7 @@ export class ButtonConfirm extends React.Component {
     try {
       data = await requests.post(this.props.action, this.props.data || null)
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.setState({open: false, enabled: true})
@@ -62,3 +63,4 @@ export class ButtonConfirm extends React.Component {
     ]
   }
 }
+export const ButtonConfirm = WithContext(ButtonConfirm_)

@@ -225,7 +225,7 @@ export class EventsDetails extends RenderDetails {
         requests.get(`/events/${this.id}/ticket-types/`),
       ])
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.setState(
@@ -234,12 +234,12 @@ export class EventsDetails extends RenderDetails {
         ticket_types: r[1].ticket_types,
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
-          this.props.user.status === 'active' && {name: 'Set Status', link: this.uri + 'set-status/'},
+          this.props.ctx.user.status === 'active' && {name: 'Set Status', link: this.uri + 'set-status/'},
           {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'},
         ]
       }
     )
-    this.props.setRootState({
+    this.props.ctx.setRootState({
       page_title: this.state.item.name,
       background: this.state.item.image,
     })
@@ -262,7 +262,7 @@ export class EventsDetails extends RenderDetails {
         </Alert>
       )
     }
-    const u = this.props.user
+    const u = this.props.ctx.user
     if (event.status === 'pending' && start > now) {
       if (u.role === 'host' && u.status !== 'active') {
         return (
@@ -294,8 +294,7 @@ export class EventsDetails extends RenderDetails {
         <TicketTypeTable key="ttt" currency={event.currency} ticket_types={this.state.ticket_types} uri={this.uri}/>
         : null,
       <Tickets key="tickets" tickets={this.state.tickets} event={event}/>,
-      <ModalForm {...this.props}
-                 key="edit"
+      <ModalForm key="edit"
                  title="Edit Event"
                  parent_uri={this.uri}
                  mode="edit"
@@ -304,8 +303,7 @@ export class EventsDetails extends RenderDetails {
                  update={this.update}
                  action={`/events/${this.id}/`}
                  fields={event_fields}/>,
-      <ModalForm {...this.props}
-                 key="set-status"
+      <ModalForm key="set-status"
                  title="Set Event Status"
                  parent_uri={this.uri}
                  regex={/set-status\/$/}
@@ -315,16 +313,14 @@ export class EventsDetails extends RenderDetails {
                  update={this.update}
                  action={`/events/${this.id}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
-      <SetImage {...this.props}
-                key="set-image"
+      <SetImage key="set-image"
                 event={event}
                 parent_uri={this.uri}
                 regex={/set-image\/$/}
                 update={this.update}
                 title="Upload Background Image"/>,
       this.state.ticket_types ?
-        <TicketTypes {...this.props}
-                     key="edit-ticket-types"
+        <TicketTypes key="edit-ticket-types"
                      event={event}
                      ticket_types={this.state.ticket_types}
                      regex={/ticket-types\/$/}

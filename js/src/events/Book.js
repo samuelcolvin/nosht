@@ -20,7 +20,7 @@ class BookWrapper extends React.Component {
   }
 
   async componentDidUpdate () {
-    if (this.state.got_booking_info || !this.props.user) {
+    if (this.state.got_booking_info || !this.props.ctx.user) {
       return
     }
     this.setState({got_booking_info: true})
@@ -28,7 +28,7 @@ class BookWrapper extends React.Component {
     try {
       r = await requests.get(`events/${this.props.event.id}/booking-info/`)
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     delete r._response_status
@@ -60,12 +60,12 @@ class BookWrapper extends React.Component {
         extra_info: t.extra_info || null,
       }))
 
-    tickets[0].first_name = tickets[0].first_name || this.props.user.first_name
-    tickets[0].last_name = tickets[0].last_name || this.props.user.last_name
-    tickets[0].email = tickets[0].email || this.props.user.email
+    tickets[0].first_name = tickets[0].first_name || this.props.ctx.user.first_name
+    tickets[0].last_name = tickets[0].last_name || this.props.ctx.user.last_name
+    tickets[0].email = tickets[0].email || this.props.ctx.user.email
 
     this.setState({billing_name:
-      tickets[0].email === this.props.user.email ?
+      tickets[0].email === this.props.ctx.user.email ?
       `${tickets[0].first_name || ''} ${tickets[0].last_name || ''}`.trim() : ''
     })
     let ticket_type = this.state.booking_info.ticket_types[0].id
@@ -83,7 +83,7 @@ class BookWrapper extends React.Component {
       r = await requests.post(`events/${this.props.event.id}/reserve/`,
           {tickets, ticket_type}, {expected_statuses: [200, 470]})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     if (r._response_status === 470) {
@@ -99,21 +99,24 @@ class BookWrapper extends React.Component {
   }
 
   render () {
-    if (!this.props.user) {
+    if (!this.props.ctx.user) {
       return <BookingLogin
-          {...this.props}
           clear_reservation={() => this.setState({reservation: null})}
           finished={this.props.finished}/>
     } else if (!this.state.reservation) {
       return <BookingTickets
-          {...this.props}
+          event={this.props.event}
+          finished={this.props.finished}
           state={this.state}
           set_ticket_state={this.set_ticket_state.bind(this)}
           set_ticket_type={this.set_ticket_type.bind(this)}
           reserve={this.reserve.bind(this)}
           change_ticket_count={this.change_ticket_count.bind(this)}/>
     } else {
-      return <BookingStripe {...this.props}
+      return <BookingStripe
+          event={this.props.event}
+          finished={this.props.finished}
+          register_toggle_handler={this.props.register_toggle_handler}
           reservation={this.state.reservation}
           billing_name={this.state.billing_name}/>
     }

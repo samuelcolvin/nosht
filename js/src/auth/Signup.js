@@ -8,6 +8,7 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import WithContext from '../context'
 import requests from '../requests'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import Input from '../forms/Input'
@@ -23,7 +24,7 @@ const email_field = {
   required: true,
 }
 
-export default class Signup extends React.Component {
+class Signup extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -39,7 +40,7 @@ export default class Signup extends React.Component {
 
   async google_auth () {
     this.setState({error: null})
-    const auth_data = await google_login(this.props.setRootState)
+    const auth_data = await google_login(this.props.ctx.setRootState)
     if (auth_data) {
       await this.auth('google', auth_data)
     }
@@ -47,7 +48,7 @@ export default class Signup extends React.Component {
 
   async facebook_auth () {
     this.setState({error: null})
-    const auth_data = await facebook_login(this.props.setRootState)
+    const auth_data = await facebook_login(this.props.ctx.setRootState)
     if (auth_data) {
       await this.auth('facebook', auth_data)
     }
@@ -75,18 +76,18 @@ export default class Signup extends React.Component {
     try {
       data = await requests.post(`/signup/host/${site}/`, post_data, {expected_statuses: [200, 470]})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     if (data._response_status === 470 && data.status === 'existing-user') {
       this.props.history.push('/login/')
-      this.props.set_message({icon: 'user', message: 'User already exists - please login.'})
+      this.props.ctx.set_message({icon: 'user', message: 'User already exists - please login.'})
     } else if (data._response_status === 470) {
       this.setState({error: data.message})
     } else {
-      this.props.setRootState({user: data.user})
+      this.props.ctx.setRootState({user: data.user})
       this.props.history.replace('/dashboard/events/')
-      this.props.set_message({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
+      this.props.ctx.set_message({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
     }
   }
 
@@ -150,3 +151,4 @@ export default class Signup extends React.Component {
     )
   }
 }
+export default WithContext(Signup)

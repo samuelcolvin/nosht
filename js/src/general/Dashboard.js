@@ -54,7 +54,7 @@ export class RenderItem extends React.Component {
   }
 
   componentDidMount () {
-    this.props.setRootState({
+    this.props.ctx.setRootState({
       page_title: as_title(this.props.page.name),
     })
     this.update()
@@ -66,7 +66,7 @@ export class RenderItem extends React.Component {
     try {
       data = await requests.get(uri)
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.got_data(data)
@@ -171,7 +171,7 @@ export class RenderDetails extends RenderItem {
 
   async got_data (data) {
     this.setState({item: data})
-    this.props.setRootState({
+    this.props.ctx.setRootState({
       page_title: data.name || as_title(this.props.page.name),
     })
   }

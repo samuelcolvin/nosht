@@ -87,7 +87,7 @@ export class CategoriesDetails extends RenderDetails {
     try {
       r = await requests.get(`/categories/${this.id}/images/`)
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.setState({item: Object.assign({}, this.state.item, {suggested_images: r.images})})
@@ -97,7 +97,7 @@ export class CategoriesDetails extends RenderDetails {
     try {
       await requests.post(`/categories/${this.id}/${action}/`, {image})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.update()
@@ -105,13 +105,11 @@ export class CategoriesDetails extends RenderDetails {
 
   extra () {
     return [
-      <ImageList
-        key="1"
-        image_action={this.image_action.bind(this)}
-        default_image={this.state.item.image}
-        suggested_images={this.state.item.suggested_images}/>,
-      <ModalForm {...this.props}
-                 title="Edit Category"
+      <ImageList key="1"
+                 image_action={this.image_action.bind(this)}
+                 default_image={this.state.item.image}
+                 suggested_images={this.state.item.suggested_images}/>,
+      <ModalForm title="Edit Category"
                  key="2"
                  parent_uri={this.uri}
                  mode="edit"
@@ -120,8 +118,7 @@ export class CategoriesDetails extends RenderDetails {
                  update={this.update}
                  action={`/categories/${this.id}/`}
                  fields={CAT_FIELDS}/>,
-      <ModalDropzoneForm {...this.props}
-                         multiple={true}
+      <ModalDropzoneForm multiple={true}
                          key="3"
                          parent_uri={this.uri}
                          regex={/add-image\/$/}

@@ -2,10 +2,11 @@ import React from 'react'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import requests from '../requests'
+import WithContext from '../context'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
-export default class Login extends React.Component {
+class Login extends React.Component {
   constructor (props) {
     super(props)
     this.state = {redirect_to: null, error: null}
@@ -26,7 +27,7 @@ export default class Login extends React.Component {
 
     const data = JSON.parse(event.data)
     if (data.status !== 'success') {
-      this.props.setRootState({error: data})
+      this.props.ctx.setRootState({error: data})
       return
     }
     await this.authenticate(data)
@@ -36,17 +37,17 @@ export default class Login extends React.Component {
     try {
       await requests.post('auth-token/', {token: data.auth_token})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
-    this.props.setRootState({user: data.user})
+    this.props.ctx.setRootState({user: data.user})
     this.props.history.replace('/dashboard/events/')
-    this.props.set_message({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
+    this.props.ctx.set_message({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
   }
 
   async componentDidMount () {
     window.addEventListener('message', this.on_message)
-    this.props.setRootState({user: null})
+    this.props.ctx.setRootState({user: null})
     await setup_siw()
   }
 
@@ -60,7 +61,7 @@ export default class Login extends React.Component {
     try {
       data = await requests.post(`/login/${site}/`, login_data, {expected_statuses: [200, 470]})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     if (data._response_status === 470) {
@@ -72,7 +73,7 @@ export default class Login extends React.Component {
 
   async google_auth () {
     this.setState({error: null})
-    const auth_data = await google_login(this.props.setRootState)
+    const auth_data = await google_login(this.props.ctx.setRootState)
     if (!auth_data) {
       return
     }
@@ -82,7 +83,7 @@ export default class Login extends React.Component {
   async facebook_auth () {
     this.setState({error: null})
 
-    const auth_data = await facebook_login(this.props.setRootState)
+    const auth_data = await facebook_login(this.props.ctx.setRootState)
     if (!auth_data) {
       return
     }
@@ -125,3 +126,5 @@ export default class Login extends React.Component {
     ]
   }
 }
+
+export default WithContext(Login)

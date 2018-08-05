@@ -55,8 +55,7 @@ export class UsersList extends RenderList {
       FIELDS
       .map(f => f.name === 'role_type' ? Object.assign({}, f, {choices: ADD_ROLE_CHOICES}) : f)
     )
-    return <ModalForm {...this.props}
-                      title="Create User"
+    return <ModalForm title="Create User"
                       parent_uri={this.uri}
                       success_msg="User Created"
                       mode="add"
@@ -145,7 +144,6 @@ export class UsersDetails extends RenderDetails {
               <ButtonConfirm action={`/users/${this.id}/switch-status/`}
                              modal_title="Switch Status"
                              btn_text={`Mark as ${as_title(new_status)}`}
-                             setRootState={this.props.setRootState}
                              done={this.update}
                              btn_size="sm"
                              className="ml-2">
@@ -177,7 +175,7 @@ export class UsersDetails extends RenderDetails {
     try {
       r = await requests.get(`/users/${this.id}/actions/`)
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.setState({actions: r.tickets})
@@ -186,12 +184,11 @@ export class UsersDetails extends RenderDetails {
   extra () {
     return [
       <Actions key="a" actions={this.state.actions}/>,
-      <ModalForm {...this.props}
-                 key="edit"
+      <ModalForm key="edit"
                  title="Edit User"
                  parent_uri={this.uri}
                  mode="edit"
-                 success_msg='User updated'
+                 success_msg="User updated"
                  initial={this.state.item}
                  update={this.update}
                  action={`/users/${this.id}/`}

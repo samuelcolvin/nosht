@@ -82,7 +82,7 @@ export default class CreateEvent extends React.Component {
     try {
       data = await requests.get('/events/categories/')
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.setState({categories: data.categories})
@@ -110,7 +110,6 @@ export default class CreateEvent extends React.Component {
           <h1>Create Event</h1>
           <Form fields={this.fields()}
                 action="/events/add/"
-                setRootState={this.props.setRootState}
                 onChange={d => this.setState({form_data: d})}
                 finished={this.finished.bind(this)}/>
         </Col>

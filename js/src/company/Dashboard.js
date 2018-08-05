@@ -31,7 +31,7 @@ export default class CompanyDetails extends RenderDetails {
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
     ]
-    this.id = this.props.company.company.id
+    this.id = this.props.ctx.company.company.id
     this.formats = {
       image: {
         wide: true,
@@ -52,8 +52,7 @@ export default class CompanyDetails extends RenderDetails {
 
   extra () {
     return [
-      <ModalForm {...this.props}
-                 title="Edit Company"
+      <ModalForm title="Edit Company"
                  key="1"
                  parent_uri={this.uri}
                  mode="edit"
@@ -62,15 +61,13 @@ export default class CompanyDetails extends RenderDetails {
                  update={this.update}
                  action={`/companies/${this.id}/`}
                  fields={CO_FIELDS}/>,
-      <ModalDropzoneForm {...this.props}
-                         key="2"
+      <ModalDropzoneForm key="2"
                          parent_uri={this.uri}
                          regex={/set-image\/$/}
                          update={this.update}
                          title="Upload Background Image"
                          action="/companies/upload/image/"/>,
-      <ModalDropzoneForm {...this.props}
-                         key="3"
+      <ModalDropzoneForm key="3"
                          parent_uri={this.uri}
                          regex={/set-logo\/$/}
                          update={this.update}

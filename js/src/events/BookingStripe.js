@@ -11,6 +11,7 @@ import {
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ModalFooter} from '../general/Modal'
+import WithContext from '../context'
 import requests from '../requests'
 import {format_money_free, load_script, grecaptcha_execute, window_property} from '../utils'
 import Input from '../forms/Input'
@@ -100,7 +101,7 @@ class StripeForm_ extends React.Component {
           booking_token: this.props.reservation.booking_token,
         })
       } catch (error) {
-        this.props.setRootState({error})
+        this.props.ctx.setRootState({error})
       }
     }
   }
@@ -143,10 +144,10 @@ class StripeForm_ extends React.Component {
         grecaptcha_token
       })
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
-    this.props.set_message({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
+    this.props.ctx.set_message({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
     this.props.finished()
   }
 
@@ -158,11 +159,11 @@ class StripeForm_ extends React.Component {
       await requests.post('events/book-free/',
           {booking_token: this.props.reservation.booking_token, grecaptcha_token})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
 
-    this.props.set_message({icon: ['fas', 'check-circle'], message: 'Booking successful, check your email'})
+    this.props.ctx.set_message({icon: ['fas', 'check-circle'], message: 'Booking successful, check your email'})
     this.props.finished()
   }
 
@@ -268,7 +269,7 @@ class StripeForm_ extends React.Component {
     )
   }
 }
-const StripeForm = injectStripe(StripeForm_)
+const StripeForm = injectStripe(WithContext(StripeForm_))
 
 export default class Stripe extends React.Component {
   constructor (props) {

@@ -2,6 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import {Card, CardImg, CardTitle, CardText, CardBody, Row, Col} from 'reactstrap'
 import {chunk_array} from './utils'
+import WithContext from './context'
 import EventCards from './events/Cards'
 
 
@@ -23,9 +24,9 @@ const Category = ({cat}) => {
   )
 }
 
-export default class Index extends React.Component {
+class Index extends React.Component {
   componentDidMount () {
-    this.props.setRootState({
+    this.props.ctx.setRootState({
       page_title: null,
       background: null,
       extra_menu: null,
@@ -34,8 +35,8 @@ export default class Index extends React.Component {
   }
 
   render () {
-    const categories = this.props.company.categories
-    const events = this.props.company.highlight_events
+    const categories = this.props.ctx.company.categories
+    const events = this.props.ctx.company.highlight_events
     return (
       <div className="card-grid">
         <div>
@@ -54,3 +55,4 @@ export default class Index extends React.Component {
     )
   }
 }
+export default WithContext(Index)

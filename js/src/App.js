@@ -15,73 +15,29 @@ import Signup from './auth/Signup'
 import SetPassword from './auth/SetPassword'
 import CreateEvent from './events/Create'
 import Dashboard from './Dashboard'
+import {GlobalContext} from './context'
 
 
-const Routes = ({app}) => (
+const Routes = () => (
     <Switch>
-      <Route exact path="/" render={() => (
-        <Index setRootState={s => app.setState(s)} company={app.state.company}/>
-      )} />
+      <Route exact path="/" component={Index}/>
 
-      <Route exact path="/login/" render={props => (
-        <Login setRootState={s => app.setState(s)}
-               set_message={app.set_message}
-               company={app.state.company}
-               {...props}/>
-      )} />
+      <Route exact path="/login/" component={Login}/>
+      <Route exact path="/logout/" component={Logout}/>
+      <Route exact path="/signup/" component={Signup}/>
+      <Route exact path="/set-password/" component={SetPassword}/>
 
-      <Route exact path="/logout/" render={props => (
-        <Logout setRootState={s => app.setState(s)}
-                set_message={app.set_message}
-                {...props}/>
-      )} />
+      <Route path="/dashboard/" component={Dashboard}/>
+      <Route path="/create/" component={CreateEvent}/>
 
-      <Route exact path="/signup/" render={props => (
-        <Signup setRootState={s => app.setState(s)}
-                set_message={app.set_message}
-                {...props}/>
-      )} />
+      <Route path="/:category/:event/" component={Event}/>
+      <Route exact path="/:category/" component={Category}/>
 
-      <Route exact path="/set-password/" render={props => (
-        <SetPassword setRootState={s => app.setState(s)}
-                     set_message={app.set_message}
-                     {...props}/>
-      )} />
-
-
-      <Route path="/dashboard/" render={props => (
-        <Dashboard setRootState={s => app.setState(s)}
-                   user={app.state.user}
-                   set_message={app.set_message}
-                   company={app.state.company}
-                   {...props}/>
-      )} />
-
-      <Route path="/create/" render={props => (
-        <CreateEvent setRootState={s => app.setState(s)}
-                     set_message={app.set_message}
-                     {...props}/>
-      )} />
-
-      <Route path="/:category/:event/" render={props => (
-        <Event setRootState={s => app.setState(s)}
-               set_message={app.set_message}
-               company={app.state.company}
-               user={app.state.user}
-               {...props}/>
-      )} />
-
-      <Route exact path="/:category/" render={props => (
-        <Category setRootState={s => app.setState(s)}
-                  company={app.state.company}
-                  {...props}/>
-      )} />
-
-      <Route component={NotFound} />
+      <Route component={NotFound}/>
     </Switch>
 )
 
-class _App extends React.Component {
+class App extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -144,23 +100,30 @@ class _App extends React.Component {
   }
 
   render () {
-    return [
-      <Navbar key={1}
-              company={this.state.company}
-              background={this.state.background}
-              extra_menu={this.state.extra_menu}
-              message={this.state.message}
-              active_page={this.state.active_page}/>,
-      <main key={2} className="container">
-        {this.state.error ? <Error error={this.state.error}
-                                   location={this.props.location}
-                                   set_message={this.set_message}/>
-          : this.state.company ? <Routes app={this}/>
-            : <Loading/>}
-      </main>,
-      <Footer key={3} user={this.state.user}/>
-    ]
+    const ctx = {
+      setRootState: s => this.setState(s),
+      set_message: (...args) => this.set_message(...args),
+      company: this.state.company,
+      user: this.state.user,
+    }
+    return (
+      <GlobalContext.Provider value={ctx}>
+        <Navbar company={this.state.company}
+                background={this.state.background}
+                extra_menu={this.state.extra_menu}
+                message={this.state.message}
+                active_page={this.state.active_page}/>
+        <main className="container">
+          {this.state.error ? <Error error={this.state.error}
+                                     location={this.props.location}
+                                     set_message={this.set_message}/>
+            : this.state.company ? <Routes/>
+              : <Loading/>}
+        </main>
+        <Footer user={this.state.user}/>
+      </GlobalContext.Provider>
+    )
   }
 }
 
-export default withRouter(_App)
+export default withRouter(App)

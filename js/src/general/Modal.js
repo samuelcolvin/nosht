@@ -6,6 +6,8 @@ import {
   ModalFooter as BsModalFooter,
   ModalHeader,
 } from 'reactstrap'
+import {withRouter} from 'react-router-dom'
+import WithContext from '../context'
 import {get_component_name} from '../utils'
 
 export const ModalFooter = ({finished, disabled, label}) => (
@@ -68,5 +70,5 @@ export default function AsModal (WrappedComponent) {
     }
   }
   AsModal.displayName = `AsModal(${get_component_name(WrappedComponent)})`
-  return AsModal
+  return WithContext(withRouter(AsModal))
 }

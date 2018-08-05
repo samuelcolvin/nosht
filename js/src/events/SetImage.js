@@ -28,7 +28,7 @@ class SetImage extends React.Component {
     try {
       r = await requests.get(`/categories/${this.props.event.cat_id}/images/`)
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.setState({images: r.images})
@@ -41,7 +41,7 @@ class SetImage extends React.Component {
     try {
       await requests.post(`/events/${this.props.event.id}/set-image/existing/`, {image})
     } catch (error) {
-      this.props.setRootState({error})
+      this.props.ctx.setRootState({error})
       return
     }
     this.props.update()

@@ -1,11 +1,12 @@
 import React from 'react'
+import WithContext from '../context'
 import {Redirect} from 'react-router'
 import Raven from 'raven-js'
 
-export class Error extends React.Component {
+class Error_ extends React.Component {
   componentWillMount () {
     if (this.props.error.status === 401) {
-      this.props.set_message({icon: 'ban', message: this.props.error.user_msg || 'Login Required'})
+      this.props.ctx.set_message({icon: 'ban', message: this.props.error.user_msg || 'Login Required'})
     } else if (this.props.error.status !== 404) {
       console.warn('caught error:', this.props.error)
       Raven.captureMessage(`caught error: ${this.props.error.user_msg}`, {
@@ -34,6 +35,7 @@ export class Error extends React.Component {
     }
   }
 }
+export const Error = WithContext(Error_)
 
 export const NotFound = ({location, url, children}) => (
   <div>
@@ -54,7 +56,7 @@ export const Loading = ({children}) => (
 export const Waiting = () => (
   <div className="wait-circle">
     {[...Array(12).keys()].map(i => (
-      <div key={i} className={`el-${i}`}></div>
+      <div key={i} className={`el-${i}`}/>
     ))}
   </div>
 )
