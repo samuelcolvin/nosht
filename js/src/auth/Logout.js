@@ -1,8 +1,8 @@
 import React from 'react'
 import {Redirect} from 'react-router'
-import WithContext from '../context'
+import WithContext from '../utils/context'
 import {Loading} from '../general/Errors'
-import requests from '../requests'
+import requests from '../utils/requests'
 
 class Logout extends React.Component {
   constructor (props) {

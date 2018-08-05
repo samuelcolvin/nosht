@@ -2,7 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
-import requests from '../requests'
+import requests from '../utils/requests'
 import {format_money_free, unique} from '../utils'
 import {Loading, NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
@@ -79,12 +79,12 @@ class Event extends React.Component {
 
         <Row className="text-muted mb-1 h5">
           <Col md="auto">
-            <FontAwesomeIcon icon={['far', 'clock']} className="mx-1 text-success" />
-            <When event={event} />
+            <FontAwesomeIcon icon={['far', 'clock']} className="mx-1 text-success"/>
+            <When event={event}/>
           </Col>
 
           <Col md="auto">
-            <FontAwesomeIcon icon="pound-sign" className="mx-1 text-success" />
+            <FontAwesomeIcon icon="pound-sign" className="mx-1 text-success"/>
               {this.state.ticket_types.map(tt => tt.price).filter(unique).map((p, i) => (
                 <span key={i}>
                   {i > 0 && <span className="px-1">/</span>}
@@ -94,13 +94,13 @@ class Event extends React.Component {
           </Col>
 
           <Col md="auto">
-            <FontAwesomeIcon icon={'user'} className="mx-1 text-success" />
+            <FontAwesomeIcon icon={'user'} className="mx-1 text-success"/>
             hosted by {event.host_name}
           </Col>
 
           {event.location.name &&
             <Col md="auto">
-              <FontAwesomeIcon icon={['fas', 'map-marker']} className="mx-1 text-success" />
+              <FontAwesomeIcon icon={['fas', 'map-marker']} className="mx-1 text-success"/>
               at {event.location.name}
             </Col>
           }
@@ -110,7 +110,7 @@ class Event extends React.Component {
 
         {event.category_content && (
           <div className="pt-3">
-            <Markdown content={event.category_content} />
+            <Markdown content={event.category_content}/>
           </div>
         )}
         <div className="pt-3">
@@ -122,5 +122,4 @@ class Event extends React.Component {
     )
   }
 }
-
 export default PromptUpdate(Event)

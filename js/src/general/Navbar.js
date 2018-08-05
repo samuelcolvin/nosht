@@ -22,7 +22,7 @@ const ExtraMenu = ({menu, message, show_extra}) => {
         <div>
           {message &&
             <span className="item">
-              {message.icon && <FontAwesomeIcon icon={message.icon} className="mr-2" />}
+              {message.icon && <FontAwesomeIcon icon={message.icon} className="mr-2"/>}
               <span>{message.message || message}</span>
             </span>
           }
@@ -90,7 +90,7 @@ export default class Navbar extends React.Component {
           <NavbarBrand tag={Link} onClick={this.close} to="/">
             {company.name || process.env.REACT_APP_SITE_NAME}
           </NavbarBrand>
-          <NavbarToggler onClick={() => this.setState({is_open: !this.state.is_open})} />
+          <NavbarToggler onClick={() => this.setState({is_open: !this.state.is_open})}/>
           <Collapse isOpen={this.state.is_open} navbar>
             <Nav className="ml-auto" navbar>
               {categories.map((cat, i) => (

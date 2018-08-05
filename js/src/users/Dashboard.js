@@ -1,10 +1,10 @@
 import React from 'react'
 import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
-import requests from '../requests'
+import requests from '../utils/requests'
 import {format_date, format_datetime, as_title} from '../utils'
 import {RenderList, RenderDetails, Detail} from '../general/Dashboard'
+import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
-import {ButtonConfirm} from '../general/Confirm'
 
 const FIELDS = [
   {name: 'first_name'},

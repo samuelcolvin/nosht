@@ -1,5 +1,5 @@
 import React from 'react'
-import requests from '../requests'
+import requests from '../utils/requests'
 import {NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import EventCards from '../events/Cards'

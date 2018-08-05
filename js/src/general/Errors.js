@@ -1,5 +1,5 @@
 import React from 'react'
-import WithContext from '../context'
+import WithContext from '../utils/context'
 import {Redirect} from 'react-router'
 import Raven from 'raven-js'
 

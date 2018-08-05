@@ -1,7 +1,8 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 
-import requests from './requests'
+import {GlobalContext} from './utils/context'
+import requests from './utils/requests'
 import {sleep, load_script_callback, window_property} from './utils'
 import {Error, NotFound, Loading} from './general/Errors'
 import Navbar from './general/Navbar'
@@ -15,7 +16,6 @@ import Signup from './auth/Signup'
 import SetPassword from './auth/SetPassword'
 import CreateEvent from './events/Create'
 import Dashboard from './Dashboard'
-import {GlobalContext} from './context'
 
 
 const Routes = () => (
@@ -126,5 +126,4 @@ class App extends React.Component {
     )
   }
 }
-
 export default withRouter(App)

@@ -2,7 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import {Card, CardImg, CardTitle, CardText, CardBody, Row, Col} from 'reactstrap'
 import {chunk_array} from './utils'
-import WithContext from './context'
+import WithContext from './utils/context'
 import EventCards from './events/Cards'
 
 
@@ -11,7 +11,7 @@ const Category = ({cat}) => {
     <Col md="4" className="box-container">
       <Link className="index-card" to={`/${cat.slug}/`}>
         <Card>
-          <CardImg top width="100%" src={cat.image + '/thumb.jpg'} alt={cat.name} />
+          <CardImg top width="100%" src={cat.image + '/thumb.jpg'} alt={cat.name}/>
           <CardBody>
             <CardTitle>{cat.name}</CardTitle>
             <CardText>

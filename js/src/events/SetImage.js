@@ -9,7 +9,7 @@ import {
   Row,
   Col,
 } from 'reactstrap'
-import requests from '../requests'
+import requests from '../utils/requests'
 import {DropzoneForm} from '../forms/Drop'
 import AsModal from '../general/Modal'
 

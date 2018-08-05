@@ -10,7 +10,7 @@ import {
   Form as BootstrapForm,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import requests from '../requests'
+import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import Input from '../forms/Input'
 

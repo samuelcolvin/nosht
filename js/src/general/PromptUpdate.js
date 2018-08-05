@@ -1,5 +1,6 @@
 import React from 'react'
-import WithContext from '../context'
+import {withRouter} from 'react-router-dom'
+import WithContext from '../utils/context'
 import {get_component_name} from '../utils'
 
 export default function PromptUpdate (WrappedComponent) {
@@ -25,5 +26,5 @@ export default function PromptUpdate (WrappedComponent) {
     }
   }
   PromptUpdate.displayName = `PromptUpdate(${get_component_name(WrappedComponent)})`
-  return WithContext(PromptUpdate)
+  return WithContext(withRouter(PromptUpdate))
 }

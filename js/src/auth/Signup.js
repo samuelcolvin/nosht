@@ -8,8 +8,8 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import WithContext from '../context'
-import requests from '../requests'
+import WithContext from '../utils/context'
+import requests from '../utils/requests'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {setup_siw, facebook_login, google_login} from './login_with'

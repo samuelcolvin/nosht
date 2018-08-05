@@ -10,8 +10,8 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import WithContext from '../context'
-import requests from '../requests'
+import WithContext from '../utils/context'
+import requests from '../utils/requests'
 import {grecaptcha_execute} from '../utils'
 import {setup_siw, facebook_login, google_login} from '../auth/login_with'
 import {ModalFooter} from '../general/Modal'

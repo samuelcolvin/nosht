@@ -9,4 +9,4 @@ if (process.env.NODE_ENV === 'production') {
   // TODO could add release here
   Raven.config(process.env.REACT_APP_SENTRY_DSN).install()
 }
-ReactDOM.render(<Router><App /></Router>, document.getElementById('root'))
+ReactDOM.render(<Router><App/></Router>, document.getElementById('root'))

@@ -1,6 +1,6 @@
 import React from 'react'
 import {Button, ButtonGroup, Form as BootstrapForm} from 'reactstrap'
-import requests from '../requests'
+import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import Input from './Input'
 

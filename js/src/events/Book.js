@@ -1,5 +1,5 @@
 import React from 'react'
-import requests from '../requests'
+import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import BookingLogin from './BookingLogin'
 import BookingTickets from './BookingTickets'

@@ -1,8 +1,8 @@
 import React from 'react'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import requests from '../requests'
-import WithContext from '../context'
+import requests from '../utils/requests'
+import WithContext from '../utils/context'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 

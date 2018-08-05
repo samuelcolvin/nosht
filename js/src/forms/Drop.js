@@ -2,7 +2,7 @@ import React from 'react'
 import {Button, Progress} from 'reactstrap'
 import Dropzone from 'react-dropzone'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {error_response} from '../requests'
+import {error_response} from '../utils/requests'
 import AsModal from '../general/Modal'
 
 const file_key = f => `${f.name}-${f.size}`
@@ -109,9 +109,9 @@ export class DropzoneForm extends React.Component {
                   <img src={item.file.preview} alt={item.file.name} className="img-thumbnail"/>
                 </div>
                 <div>
-                  {item.progress && <Progress value={item.progress} className="mt-1" />}
+                  {item.progress && <Progress value={item.progress} className="mt-1"/>}
                 </div>
-                {item.icon && <FontAwesomeIcon icon={item.icon} className="mt-1" />}
+                {item.icon && <FontAwesomeIcon icon={item.icon} className="mt-1"/>}
                 {item.message && <div className="mt-1">{item.message}</div>}
               </div>
             ))}

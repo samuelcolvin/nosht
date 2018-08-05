@@ -7,7 +7,7 @@ import {
   ModalHeader,
 } from 'reactstrap'
 import {withRouter} from 'react-router-dom'
-import WithContext from '../context'
+import WithContext from '../utils/context'
 import {get_component_name} from '../utils'
 
 export const ModalFooter = ({finished, disabled, label}) => (

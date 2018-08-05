@@ -27,7 +27,7 @@ const Footer = ({user}) => {
           </Col>
           <Col className="text-right footer-menu">
             {user && <div>
-              <FontAwesomeIcon icon="user" className="mr-1" />
+              <FontAwesomeIcon icon="user" className="mr-1"/>
               Logged in as {user_full_name(user)} ({user.role})
             </div>}
             {menu.map((item, i) => (

@@ -11,8 +11,8 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import WithContext from '../context'
-import requests from '../requests'
+import WithContext from '../utils/context'
+import requests from '../utils/requests'
 import {format_money_free, user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'

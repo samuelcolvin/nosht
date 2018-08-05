@@ -1,6 +1,7 @@
 import React from 'react'
 import {Row, Col} from 'reactstrap'
-import requests from '../requests'
+import WithContext from '../utils/context'
+import requests from '../utils/requests'
 import {Form} from '../forms/Form'
 import Markdown from '../general/Markdown'
 
@@ -67,7 +68,7 @@ export const EVENT_FIELDS = [
   },
 ]
 
-export default class CreateEvent extends React.Component {
+class CreateEvent extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -120,3 +121,4 @@ export default class CreateEvent extends React.Component {
     )
   }
 }
+export default WithContext(CreateEvent)

@@ -1,5 +1,5 @@
 import React from 'react'
-import WithContext from '../context'
+import WithContext from '../utils/context'
 import {Row, Col} from 'reactstrap'
 
 class SetPassword extends React.Component {
