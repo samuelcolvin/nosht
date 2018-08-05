@@ -3,6 +3,7 @@ import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactst
 import {format_date, format_datetime, as_title} from '../utils'
 import {RenderList, RenderDetails, Detail} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
+import {ButtonConfirm} from '../general/Confirm'
 
 const FIELDS = [
   {name: 'first_name'},
@@ -43,6 +44,8 @@ export class UsersList extends RenderList {
         title: 'Last Active',
         render: v => format_date(v, true),
       },
+      role_type: {render: as_title},
+      status: {render: as_title},
     }
   }
 
@@ -132,7 +135,27 @@ export class UsersDetails extends RenderDetails {
     this.formats = {
       email: {index: -1},
       role_type: {render: as_title},
-      status: {render: as_title},
+      status: {
+        render: v => {
+          const new_status = v === 'active' ? 'suspended' : 'active'
+          return (
+            <span>
+              {as_title(v)}
+              <ButtonConfirm action={`/users/${this.id}/switch-status/`}
+                             modal_title="Switch Status"
+                             btn_text={`Mark as ${as_title(new_status)}`}
+                             requests={this.props.requests}
+                             setRootState={this.props.setRootState}
+                             done={this.update}
+                             btn_size="sm"
+                             className="ml-2">
+                Are you sure you want to change the user's status from
+                &nbsp;<b>{as_title(v)}</b> to <b>{as_title(new_status)}</b>?
+              </ButtonConfirm>
+            </span>
+          )
+        }
+      },
       created_ts: {
         title: 'Created',
         render: v => format_date(v, true),

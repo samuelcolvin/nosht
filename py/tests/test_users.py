@@ -1,3 +1,4 @@
+import pytest
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
 from .conftest import Factory
@@ -17,6 +18,7 @@ async def test_user_list(cli, url, login, factory: Factory):
                 'id': factory.user_id,
                 'name': 'Frank Spencer',
                 'role_type': 'admin',
+                'status': 'active',
                 'email': 'frank@example.org',
                 'active_ts': CloseToNow(),
             },
@@ -161,3 +163,32 @@ async def test_duplicate_email(cli, url, login, factory: Factory, db_conn):
         ],
     }
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+
+
+@pytest.mark.parametrize('before,after', [
+    ('pending', 'active'),
+    ('active', 'suspended'),
+    ('suspended', 'active'),
+])
+async def test_switch_status(before, after, cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    user_id = await factory.create_user(email='test@example.com', status=before)
+    assert before == await db_conn.fetchval('SELECT status FROM users WHERE id=$1', user_id)
+
+    r = await cli.json_post(url('user-switch-status', pk=user_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {'new_status': after}
+    assert after == await db_conn.fetchval('SELECT status FROM users WHERE id=$1', user_id)
+
+
+async def test_switch_status_not_found(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    r = await cli.json_post(url('user-switch-status', pk=999))
+    assert r.status == 404, await r.text()

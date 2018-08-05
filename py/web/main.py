@@ -26,7 +26,7 @@ from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, E
                            SetEventStatus, SetTicketTypes, booking_info, event_categories, event_public,
                            event_ticket_types, event_tickets, set_event_image_existing, set_event_image_new)
 from .views.static import static_handler
-from .views.users import UserBread, user_actions
+from .views.users import UserBread, switch_user_status, user_actions
 
 logger = logging.getLogger('nosht.web')
 
@@ -119,6 +119,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
 
         *UserBread.routes('/users/'),
         web.get('/users/{pk:\d+}/actions/', user_actions, name='user-actions'),
+        web.post('/users/{pk:\d+}/switch-status/', switch_user_status, name='user-switch-status'),
     ])
 
     wrapper_app = web.Application(

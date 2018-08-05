@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr
 
 from web.auth import check_session, is_admin
 from web.bread import Bread
-from web.utils import JsonErrors, get_offset, raw_json_response
+from web.utils import JsonErrors, get_offset, json_response, raw_json_response
 
 
 class UserRoles(str, Enum):
@@ -36,6 +36,7 @@ class UserBread(Bread):
         'id',
         Func('full_name', V('first_name'), V('last_name'), V('email')).as_('name'),
         V('role').as_('role_type'),
+        'status',
         'email',
         'active_ts',
     )
@@ -111,4 +112,16 @@ async def user_actions(request):
     return raw_json_response(json_str)
 
 
-# TODO allow admins to suspend users.
+@is_admin
+async def switch_user_status(request):
+    user_id = int(request.match_info['pk'])
+    status = await request['conn'].fetchval(
+        'SELECT status FROM users WHERE id=$1 AND company=$2',
+        user_id,
+        request['company_id'],
+    )
+    if not status:
+        raise JsonErrors.HTTPNotFound(message='user not found')
+    new_status = 'suspended' if status == 'active' else 'active'
+    await request['conn'].execute('UPDATE users SET status=$1 WHERE id=$2', new_status, user_id)
+    return json_response(new_status=new_status)
