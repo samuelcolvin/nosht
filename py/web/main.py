@@ -17,8 +17,8 @@ from shared.utils import mk_password
 
 from .middleware import csrf_middleware, error_middleware, pg_middleware, user_middleware
 from .views import index
-from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout, set_password,
-                         unsubscribe)
+from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout,
+                         reset_password_request, set_password, unsubscribe)
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public)
 from .views.company import CompanyBread, company_upload
@@ -101,6 +101,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/login/', login, name='login'),
         web.post('/login/{site:(google|facebook)}/', login_with, name='login-google-facebook'),
         web.post('/auth-token/', authenticate_token, name='auth-token'),
+        web.post('/reset-password/', reset_password_request, name='reset-password-request'),
         web.post('/set-password/', set_password, name='set-password'),
         web.post('/logout/', logout, name='logout'),
         web.post('/signup/guest/{site:(google|facebook|email)}/', guest_signup, name='signup-guest'),
@@ -118,7 +119,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         *CategoryBread.routes('/categories/'),
 
         *UserBread.routes('/users/'),
-        *UserSelfBread.routes('/account/'),
+        *UserSelfBread.routes('/account/', name='account'),
         web.get('/users/{pk:\d+}/actions/', user_actions, name='user-actions'),
         web.get('/users/{pk:\d+}/tickets/', user_tickets, name='user-tickets'),
         web.post('/users/{pk:\d+}/switch-status/', switch_user_status, name='user-switch-status'),

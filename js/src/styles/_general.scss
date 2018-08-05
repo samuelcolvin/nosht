@@ -68,3 +68,9 @@ label {
     display: none;
   }
 }
+
+.hide-form-label {
+  .form-group > label {
+    display: none;
+  }
+}

@@ -102,7 +102,11 @@ Email event_host_update
         'subject': '{{{ company_name }}} Password Reset',
         'title': '',
         'body': """
-Email password_reset
+Hi {{ first_name }},
+
+Please use the link below to reset your password for {{ company_name }}.
+
+{{ centered_button(Reset Your Password | {{ reset_link }}) }}
 """
     },
     Triggers.account_created: {

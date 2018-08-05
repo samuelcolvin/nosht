@@ -231,7 +231,7 @@ class BaseEmailActor(Actor):
         logger.debug('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
 
     @concurrent
-    async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail]):
+    async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail], *, force_send=False):
         trigger = Triggers(trigger)
 
         dft = EMAIL_DEFAULTS[trigger]
@@ -260,14 +260,17 @@ class BaseEmailActor(Actor):
                 title = r['title'] or title
                 body = r['body'] or body
 
-            user_data = await conn.fetch(
-                """
-                SELECT id, first_name, last_name, email
-                FROM users
-                WHERE company=$1 AND status!='suspended' AND receive_emails=TRUE AND email IS NOT NULL AND id=ANY($2)
-                """,
-                company_id, [u[0] for u in users_emails]
-            )
+            sql = """
+            SELECT id, first_name, last_name, email
+            FROM users
+            WHERE
+              company=$1 AND
+              email IS NOT NULL AND
+              id=ANY($2) AND
+              status!='suspended'
+            """
+            sql += '' if force_send else 'AND receive_emails=TRUE'
+            user_data = await conn.fetch(sql, company_id, [u[0] for u in users_emails])
 
         global_ctx = dict(
             company_name=company_name,

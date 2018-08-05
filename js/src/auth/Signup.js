@@ -94,9 +94,10 @@ class Signup extends React.Component {
   render () {
     return (
       <div>
-        <p className="text-center">
+        <div className="text-center mb-4">
+          <h1>Signup</h1>
           To host events please signup for an account, or log in using your existing account.
-        </p>
+        </div>
 
         <Row className="justify-content-center">
           <Col md="4">

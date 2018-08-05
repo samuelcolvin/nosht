@@ -1,6 +1,7 @@
 import React from 'react'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {Link} from 'react-router-dom'
 import requests from '../utils/requests'
 import WithContext from '../utils/context'
 import {grecaptcha_execute, user_full_name} from '../utils'
@@ -9,7 +10,7 @@ import {setup_siw, facebook_login, google_login} from './login_with'
 class Login extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {redirect_to: null, error: null}
+    this.state = {error: null}
     this.on_message = this.on_message.bind(this)
     this.authenticate = this.authenticate.bind(this)
     this.login_with = this.login_with.bind(this)
@@ -92,7 +93,7 @@ class Login extends React.Component {
 
   render () {
     return [
-      <Row key="1" className="justify-content-center mb-2">
+      <Row key="head" className="justify-content-center mb-2">
         <Col md="6">
           <h1 className="text-center">Login</h1>
           <div className="d-flex justify-content-around">
@@ -112,7 +113,7 @@ class Login extends React.Component {
           </Col>
         }
       </Row>,
-      <Row key="2" className="justify-content-center">
+      <Row key="iframe" className="justify-content-center">
         <Col md="4" className="login">
           <iframe
             id="login-iframe"
@@ -122,7 +123,10 @@ class Login extends React.Component {
             sandbox="allow-forms allow-scripts"
             src="/iframes/login.html"/>
         </Col>
-      </Row>
+      </Row>,
+      <div key="reset" className="text-center">
+        <Button tag={Link} to="/password-reset/" color="link" size="sm">Reset Password</Button>
+      </div>,
     ]
   }
 }

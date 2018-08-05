@@ -13,6 +13,7 @@ import Event from './events/Main'
 import Login from './auth/Login'
 import Logout from './auth/Logout'
 import Signup from './auth/Signup'
+import RequestPasswordReset from './auth/RequestPasswordReset'
 import SetPassword from './auth/SetPassword'
 import CreateEvent from './events/Create'
 import Dashboard from './Dashboard'
@@ -26,6 +27,7 @@ const Routes = () => (
       <Route exact path="/logout/" component={Logout}/>
       <Route exact path="/signup/" component={Signup}/>
       <Route exact path="/set-password/" component={SetPassword}/>
+      <Route exact path="/password-reset/" component={RequestPasswordReset}/>
 
       <Route path="/dashboard/" component={Dashboard}/>
       <Route path="/create/" component={CreateEvent}/>

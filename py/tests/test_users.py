@@ -140,7 +140,31 @@ async def test_edit_user(cli, url, login, factory: Factory, db_conn):
     assert 'foo' == await db_conn.fetchval('SELECT first_name FROM users')
 
 
-async def test_duplicate_email(cli, url, login, factory: Factory, db_conn):
+async def test_add_user_wrong_role_type(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    data = {
+        'first_name': 'foo',
+        'email': 'foobar@example.org',
+        'role_type': 'guest',
+    }
+    r = await cli.json_post(url('user-add'), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'role must be either "host" or "admin".'}
+
+
+async def test_edit_user_role(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    r = await cli.json_post(url('user-edit', pk=factory.user_id), data={'role_type': 'guest'})
+    assert r.status == 200, await r.text()
+    assert 'guest' == await db_conn.fetchval('SELECT role FROM users')
+
+
+async def test_duplicate_email(cli, url, login, factory: Factory):
     await factory.create_company()
     await factory.create_user()
     await login()
@@ -191,3 +215,99 @@ async def test_switch_status_not_found(cli, url, factory: Factory, login):
 
     r = await cli.json_post(url('user-switch-status', pk=999))
     assert r.status == 404, await r.text()
+
+
+async def test_account_view(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    r = await cli.get(url('account-retrieve', pk=factory.user_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'name': 'Frank Spencer',
+        'email': 'frank@example.org',
+        'role_type': 'admin',
+        'status': 'active',
+        'phone_number': None,
+        'created_ts': CloseToNow(),
+        'receive_emails': True,
+        'first_name': 'Frank',
+        'last_name': 'Spencer',
+    }
+
+
+async def test_account_edit(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    r = await cli.json_post(url('account-edit', pk=factory.user_id), data={'first_name': 'xxx'})
+    assert r.status == 200, await r.text()
+    assert 'xxx' == await db_conn.fetchval('SELECT first_name FROM users')
+
+
+async def test_account_view_wrong_user(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    user_id2 = await factory.create_user(email='different@example.org')
+
+    r = await cli.get(url('account-retrieve', pk=user_id2))
+    assert r.status == 403, await r.text()
+
+
+async def test_account_edit_wrong_user(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    user_id2 = await factory.create_user(email='different@example.org')
+
+    r = await cli.json_post(url('account-edit', pk=user_id2), data={'first_name': 'xxx'})
+    assert r.status == 403, await r.text()
+
+
+async def test_user_tickets(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=123)
+    await login()
+
+    r = await cli.get(url('user-tickets', pk=factory.user_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {'tickets': []}
+
+    res = await factory.create_reservation(factory.user_id)
+    await factory.buy_tickets(res, factory.user_id)
+
+    r = await cli.get(url('user-tickets', pk=factory.user_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'tickets': [
+            {
+                'event_name': 'The Event Name',
+                'extra': None,
+                'price': 123.0,
+                'event_start': '2020-01-28T19:00:00',
+                'guest_name': 'Frank Spencer',
+                'buyer_name': 'Frank Spencer',
+            },
+        ],
+    }
+
+
+async def test_user_tickets_wrong_user(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event(price=123)
+    await login()
+
+    user_id2 = await factory.create_user(email='different@example.org')
+
+    r = await cli.get(url('user-tickets', pk=user_id2))
+    assert r.status == 403, await r.text()

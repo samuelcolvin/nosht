@@ -394,3 +394,57 @@ async def test_set_password_mismatch(cli, url, factory: Factory):
             },
         ],
     }
+
+
+async def test_password_reset(cli, url, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    pw_before = await db_conn.fetchval('SELECT password_hash FROM users')
+
+    data = dict(
+        email='frank@example.org',
+        grecaptcha_token='__ok__',
+    )
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
+    r = await cli.json_post(url('reset-password-request'), data=data)
+    assert r.status == 200, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
+
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+
+    sig = re.search('\?sig=(.+?)"', email['part:text/plain']).group(1)
+    assert email['part:text/plain'] == (
+        f'Hi Frank,\n'
+        f'\n'
+        f'Please use the link below to reset your password for Testing.\n'
+        f'\n'
+        f'<div class="button">\n'
+        f'  <a href="https://127.0.0.1/set-password/?sig={sig}"><span>Reset Your Password</span></a>\n'
+        f'</div>\n'
+    )
+
+    data = {
+        'password1': 'testing-new-password',
+        'password2': 'testing-new-password',
+        'token': sig,
+    }
+    r = await cli.json_post(url('set-password'), data=data, origin_null=True)
+    assert r.status == 200, await r.text()
+    assert pw_before != await db_conn.fetchval('SELECT password_hash FROM users')
+
+
+async def test_password_reset_wrong(cli, url, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+
+    data = dict(
+        email='foobar@example.org',
+        grecaptcha_token='__ok__',
+    )
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
+    r = await cli.json_post(url('reset-password-request'), data=data)
+    assert r.status == 200, await r.text()
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
+
+    assert len(dummy_server.app['emails']) == 0

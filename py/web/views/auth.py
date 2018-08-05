@@ -7,7 +7,8 @@ from aiohttp_session import new_session
 from buildpg import Values
 from pydantic import BaseModel, EmailStr, constr, validator
 
-from shared.utils import mk_password, unsubscribe_sig
+from shared.emails import Triggers, UserEmail
+from shared.utils import mk_password, password_reset_link, unsubscribe_sig
 from web.auth import (ActionTypes, FacebookSiwModel, GoogleSiwModel, GrecaptchaModel, check_grecaptcha,
                       facebook_get_details, google_get_details, invalidate_session, is_auth, record_action,
                       validate_email)
@@ -93,6 +94,30 @@ async def authenticate_token(request):
 @is_auth
 async def logout(request):
     await invalidate_session(request, 'logout')
+    return json_response(status='success')
+
+
+class PasswordResetModel(GrecaptchaModel):
+    email: EmailStr
+
+
+async def reset_password_request(request):
+    m = await parse_request(request, PasswordResetModel)
+    await check_grecaptcha(m, request)
+
+    user_id = await request['conn'].fetchval(
+        "SELECT id FROM users WHERE email=$1 AND status!='suspended'", m.email
+    )
+
+    if user_id:
+        ctx = dict(reset_link=password_reset_link(user_id, auth_fernet=request.app['auth_fernet']))
+        await request.app['email_actor'].send_emails(
+            request['company_id'],
+            Triggers.password_reset,
+            [UserEmail(id=user_id, ctx=ctx)],
+            force_send=True,
+        )
+        await record_action(request, user_id, ActionTypes.password_reset)
     return json_response(status='success')
 
 

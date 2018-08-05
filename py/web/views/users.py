@@ -67,6 +67,12 @@ class UserBread(Bread):
         )
         return data
 
+    async def prepare_edit_data(self, data):
+        role_type = data.pop('role_type', None)
+        if role_type:
+            data['role'] = role_type
+        return data
+
     async def add_execute(self, **data):
         pk = await super().add_execute(**data)
         await self.app['email_actor'].send_account_created(pk, created_by_admin=True)
