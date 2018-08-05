@@ -23,6 +23,7 @@ from functools import update_wrapper, wraps
 from typing import Generator, List, Tuple, Type
 
 from aiohttp import web
+from asyncpg import UniqueViolationError
 from buildpg import SetValues, Values, Var, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Clauses, From, Join, Limit, OrderBy, Select, Where
@@ -284,8 +285,12 @@ class Bread(ReadBread):
     async def add(self) -> web.Response:
         m = await parse_request(self.request, self.model)
         data = await self.prepare_add_data(m.dict())
-        pk = await self.add_execute(**data)
-        return json_response(status='ok', pk=pk, status_=201)
+        try:
+            pk = await self.add_execute(**data)
+        except UniqueViolationError as e:
+            raise self.conflict_exc(e)
+        else:
+            return json_response(status='ok', pk=pk, status_=201)
 
     async def add_options(self) -> web.Response:
         pass
@@ -310,7 +315,7 @@ class Bread(ReadBread):
     async def prepare_edit_data(self, data):
         return data
 
-    async def edit_execute(self, pk, data):
+    async def edit_execute(self, pk, **data):
         await self.conn.execute_b(
             self.edit_sql,
             table=Var(self.table),
@@ -339,8 +344,12 @@ class Bread(ReadBread):
         if not data:
             raise JsonErrors.HTTPBadRequest(message=f'no data to save')
 
-        await self.edit_execute(pk, data)
-        return json_response(status='ok')
+        try:
+            await self.edit_execute(pk, **data)
+        except UniqueViolationError as e:
+            raise self.conflict_exc(e)
+        else:
+            return json_response(status='ok')
 
     async def edit_options(self) -> web.Response:
         pass
@@ -359,3 +368,16 @@ class Bread(ReadBread):
             # yield web.options(root + '/{pk:\d+}/', cls.view(Method.edit_options), name=f'{name}-edit-options')
         if cls.delete_enabled:
             yield web.delete(root + '/{pk:\d+}/', cls.view(Method.delete), name=f'{name}-delete')
+
+    def conflict_exc(self, exc: UniqueViolationError):
+        columns = re.search('\((.+?)\)', exc.as_dict()['detail']).group(1).split(', ')
+        return JsonErrors.HTTPConflict(
+            message='Conflict',
+            details=[
+                {
+                    'loc': [col],
+                    'msg': f'This value conflicts with an existing "{col}", try something else.',
+                    'type': 'value_error.conflict',
+                } for col in columns if col in self.model.__fields__
+            ]
+        )

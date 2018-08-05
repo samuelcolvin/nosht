@@ -132,6 +132,9 @@ class JsonErrors:
     class HTTPNotFound(_HTTPClientErrorJson):
         status_code = 404
 
+    class HTTPConflict(_HTTPClientErrorJson):
+        status_code = 409
+
     class HTTP470(_HTTPClientErrorJson):
         status_code = 470
 

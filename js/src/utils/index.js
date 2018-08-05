@@ -2,20 +2,6 @@ import format from 'date-fns/format'
 
 export const unique = (value, index, array) => array.indexOf(value) === index
 
-export const currency_lookup = {
-  gbp: '£',
-  usd: '$',
-  eur: '€',
-}
-
-export const format_money = (currency, money) => (
-  currency_lookup[currency] + (money || 0).toFixed(2)
-)
-
-export const format_money_free = (currency, money) => (
-  money ? format_money(currency, money) : 'Free'
-)
-
 export const grecaptcha_execute = action => window.grecaptcha.execute(0, {action})
 
 const _add_script = (url, reject) => {

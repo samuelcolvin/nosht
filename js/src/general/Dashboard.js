@@ -7,9 +7,21 @@ import {as_title} from '../utils'
 import {Loading} from './Errors'
 import Map from './Map'
 
-export const render_bool = v => (
-  <FontAwesomeIcon icon={v ? 'check' : 'times'}/>
-)
+export const render = v => {
+  if (typeof v === 'boolean') {
+    return <FontAwesomeIcon icon={v ? 'check' : 'times'}/>
+  } else if ([null, undefined].includes(v)) {
+    return <Dash/>
+  } else if (typeof v === 'object') {
+    if (Object.keys(v).includes('$$typeof')) {
+      return v
+    } else {
+      return JSON.stringify(v)
+    }
+  } else {
+    return v
+  }
+}
 
 const Buttons = ({buttons}) => (
   buttons && <div className="text-right mb-2">
@@ -33,7 +45,7 @@ export const Detail = ({name, wide, edit_link, children}) => (
       </Button>}
     </div>
     <div className="value">
-      {(typeof children === 'boolean' ? render_bool(children) : children) || <Dash/>}
+      {render(children)}
     </div>
   </div>
 )

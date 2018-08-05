@@ -13,9 +13,10 @@ import {
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {format_money_free, user_full_name} from '../utils'
+import {user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
+import {MoneyFree} from '../general/Money'
 import {PricingList} from './BookingStripe'
 
 
@@ -142,8 +143,8 @@ const TicketForm = props => {
   )
   const items = [
     {name: 'Tickets', value: state.ticket_count},
-    {name: 'Ticket Price', value: format_money_free(props.event.currency, ticket_price)},
-    {name: 'Total Price', value: format_money_free(props.event.currency, state.ticket_count * ticket_price)},
+    {name: 'Ticket Price', value: <MoneyFree>{ticket_price}</MoneyFree>},
+    {name: 'Total Price', value: <MoneyFree>{state.ticket_count * ticket_price}</MoneyFree>},
   ]
 
   return (
@@ -175,7 +176,7 @@ const TicketForm = props => {
                         onClick={() => props.set_ticket_type(tt.id)}>
                     <CardTitle className="text-center">{tt.name}</CardTitle>
                     <CardText className="text-center">
-                      {format_money_free(props.event.currency, tt.price)}
+                      <MoneyFree>{tt.price}</MoneyFree>
                     </CardText>
                   </Card>
                 </Col>

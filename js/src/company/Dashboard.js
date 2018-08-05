@@ -1,5 +1,5 @@
 import React from 'react'
-import {currency_lookup} from '../utils'
+import {currency_lookup} from '../general/Money'
 import {RenderDetails, ImageThumbnail} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'

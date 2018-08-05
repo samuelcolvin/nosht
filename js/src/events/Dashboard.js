@@ -2,9 +2,11 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Alert, Button, Modal, ModalHeader, ModalBody, ModalFooter, Table, Progress as BsProgress} from 'reactstrap'
+import {format_event_start, format_event_duration, format_datetime} from '../utils'
+import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {format_event_start, format_event_duration, format_datetime, format_money_free, format_money} from '../utils'
-import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render_bool} from '../general/Dashboard'
+import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render} from '../general/Dashboard'
+import {MoneyFree, Money} from '../general/Money'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
 import TicketTypes from './TicketTypes'
@@ -36,7 +38,7 @@ const EVENT_STATUS_FIELDS = [
   ]},
 ]
 
-const Progress = ({event, tickets, ticket_types}) => {
+const Progress = WithContext(({event, tickets, ticket_types, ctx}) => {
   const tickets_booked = tickets && (
     tickets.reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
   )
@@ -46,7 +48,7 @@ const Progress = ({event, tickets, ticket_types}) => {
       <div>
         <div className="text-center mb-1">
           <span className="very-large">
-            {format_money(event.currency, tickets && tickets.reduce((sum, t) => sum + t.price, 0))}
+            <Money>{tickets && tickets.reduce((sum, t) => sum + t.price, 0)}</Money>
           </span>
           &nbsp;collected so far
         </div>
@@ -67,9 +69,9 @@ const Progress = ({event, tickets, ticket_types}) => {
       </div>
     </div>
   )
-}
+})
 
-const TicketTypeTable = ({ticket_types, currency, uri}) => (
+const TicketTypeTable = WithContext(({ticket_types, uri, ctx}) => (
   <div className="mb-5">
     <h4>
       Ticket Types
@@ -91,17 +93,17 @@ const TicketTypeTable = ({ticket_types, currency, uri}) => (
         {ticket_types.map(tt => (
           <tr key={tt.id}>
             <td>{tt.name}</td>
-            <td>{format_money_free(currency, tt.price)}</td>
+            <td><MoneyFree>{tt.price}</MoneyFree></td>
             <td>{tt.slots_used}</td>
-            <td>{render_bool(tt.active)}</td>
+            <td>{render(tt.active)}</td>
           </tr>
         ))}
       </tbody>
     </Table>
   </div>
-)
+))
 
-class Tickets extends React.Component {
+class Tickets_ extends React.Component {
   constructor (props) {
     super(props)
     this.state = {selected: null}
@@ -112,7 +114,7 @@ class Tickets extends React.Component {
       return (
         <div>
           <h4>Tickets</h4>
-          <small>No Tickets bought for this event</small>
+          <small>No Tickets bought for this event.</small>
         </div>
       )
     }
@@ -138,7 +140,7 @@ class Tickets extends React.Component {
               }
             </Detail>
             <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
-            <Detail name="Price">{format_money_free(this.props.event.currency, selected.price)}</Detail>
+            <Detail name="Price"><MoneyFree>{selected.price}</MoneyFree></Detail>
             <Detail name="Ticket Type">{selected.ticket_type_name}</Detail>
             <Detail name="Extra Info">{selected.extra && selected.extra.extra_info}</Detail>
           </ModalBody>
@@ -181,6 +183,7 @@ class Tickets extends React.Component {
     )
   }
 }
+const Tickets = WithContext(Tickets_)
 
 export class EventsDetails extends RenderDetails {
   constructor (props) {
@@ -193,7 +196,6 @@ export class EventsDetails extends RenderDetails {
       duration: {
         render: format_event_duration
       },
-      currency: null,
       slug: null,
       cat_id: null,
       cat_slug: null,
@@ -291,7 +293,7 @@ export class EventsDetails extends RenderDetails {
     return [
       <Progress key="progress" event={event} ticket_types={this.state.ticket_types} tickets={this.state.tickets}/>,
       this.state.ticket_types ?
-        <TicketTypeTable key="ttt" currency={event.currency} ticket_types={this.state.ticket_types} uri={this.uri}/>
+        <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}/>
         : null,
       <Tickets key="tickets" tickets={this.state.tickets} event={event}/>,
       <ModalForm key="edit"

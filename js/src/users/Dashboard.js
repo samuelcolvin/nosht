@@ -5,6 +5,7 @@ import {format_date, format_datetime, as_title} from '../utils'
 import {RenderList, RenderDetails, Detail} from '../general/Dashboard'
 import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
+import Tickets from './Tickets'
 
 const FIELDS = [
   {name: 'first_name'},
@@ -173,16 +174,20 @@ export class UsersDetails extends RenderDetails {
     super.got_data(data)
     let r
     try {
-      r = await requests.get(`/users/${this.id}/actions/`)
+      r = await Promise.all([
+        requests.get(`/users/${this.id}/actions/`),
+        requests.get(`/users/${this.id}/tickets/`),
+      ])
     } catch (error) {
       this.props.ctx.setError(error)
       return
     }
-    this.setState({actions: r.tickets})
+    this.setState({actions: r[0].actions, tickets: r[1].tickets})
   }
 
   extra () {
     return [
+      <Tickets key="t" tickets={this.state.tickets}/>,
       <Actions key="a" actions={this.state.actions}/>,
       <ModalForm key="edit"
                  title="Edit User"

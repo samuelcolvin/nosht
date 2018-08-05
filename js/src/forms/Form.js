@@ -25,12 +25,12 @@ export class Form extends React.Component {
     this.setState({disabled: true, errors: {}, form_error: null})
     let r
     try {
-      r = await requests.post(this.props.action, this.state.form_data, {expected_statuses: [200, 201, 400]})
+      r = await requests.post(this.props.action, this.state.form_data, {expected_statuses: [200, 201, 400, 409]})
     } catch (error) {
       this.props.ctx.setError(error)
       return
     }
-    if (r._response_status === 400) {
+    if (r._response_status >= 400) {
       console.warn('form error', r)
       const errors = {}
       for (let e of (r.details || [])) {

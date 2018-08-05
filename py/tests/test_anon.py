@@ -38,6 +38,7 @@ async def test_root(cli, url, factory: Factory):
             'id': factory.company_id,
             'name': 'Testing',
             'image': 'https://www.example.org/co.png',
+            'currency': 'gbp',
         },
         'user': None,
     }

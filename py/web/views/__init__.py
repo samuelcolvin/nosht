@@ -26,7 +26,7 @@ FROM (
   ) AS t
 ) AS highlight_events,
 (
-  SELECT id, name, image
+  SELECT id, name, image, currency
   FROM companies
   WHERE id=$1
 ) AS company,

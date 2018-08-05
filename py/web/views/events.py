@@ -50,7 +50,6 @@ FROM (
          h.id AS host_id,
          h.first_name || ' ' || h.last_name AS host_name,
          co.stripe_public_key AS stripe_key,
-         co.currency as currency,
          c.ticket_extra_title,
          c.ticket_extra_help_text
   FROM events AS e
@@ -149,7 +148,6 @@ class EventBread(Bread):
         'e.image',
         'e.status',
         'e.ticket_limit',
-        V('co.currency').as_('currency'),
         'e.location_name',
         'e.location_lat',
         'e.location_lng',

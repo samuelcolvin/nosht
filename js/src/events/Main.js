@@ -3,12 +3,13 @@ import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
 import requests from '../utils/requests'
-import {format_money_free, unique} from '../utils'
+import {unique} from '../utils'
 import {Loading, NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import Markdown from '../general/Markdown'
 import Map from '../general/Map'
 import When from '../general/When'
+import {MoneyFree} from '../general/Money'
 import BookEvent from './Book'
 
 class Event extends React.Component {
@@ -88,7 +89,7 @@ class Event extends React.Component {
               {this.state.ticket_types.map(tt => tt.price).filter(unique).map((p, i) => (
                 <span key={i}>
                   {i > 0 && <span className="px-1">/</span>}
-                  {format_money_free(event.currency, p)}
+                  <MoneyFree>{p}</MoneyFree>
                 </span>
               ))}
           </Col>

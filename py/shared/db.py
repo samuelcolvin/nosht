@@ -33,6 +33,7 @@ class ActionTypes(str, Enum):
     cancel_reserved_tickets = 'cancel-reserved-tickets'
     create_event = 'create-event'
     edit_event = 'edit-event'
+    edit_profile = 'edit-profile'
     edit_other = 'edit-other'
     unsubscribe = 'unsubscribe'
 

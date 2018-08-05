@@ -59,7 +59,7 @@ async def test_user_actions(cli, url, login, factory: Factory, db_conn):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'tickets': [
+        'actions': [
             {
                 'id': await db_conn.fetchval('SELECT id FROM actions'),
                 'ts': CloseToNow(),
@@ -150,19 +150,18 @@ async def test_duplicate_email(cli, url, login, factory: Factory, db_conn):
         'role_type': 'admin',
     }
     r = await cli.json_post(url('user-add'), data=data)
-    assert r.status == 400, await r.text()
+    assert r.status == 409, await r.text()
     data = await r.json()
     assert data == {
-        'message': 'Invalid Data',
+        'message': 'Conflict',
         'details': [
             {
                 'loc': ['email'],
-                'msg': 'email address already used.',
+                'msg': 'This value conflicts with an existing "email", try something else.',
                 'type': 'value_error.conflict',
             },
         ],
     }
-    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
 
 
 @pytest.mark.parametrize('before,after', [

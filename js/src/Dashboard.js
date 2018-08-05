@@ -6,6 +6,7 @@ import WithContext from './utils/context'
 import {as_title} from './utils'
 import {EventsList, EventsDetails} from './events/Dashboard'
 import {UsersList, UsersDetails} from './users/Dashboard'
+import Account from './users/Account'
 import {CategoriesList, CategoriesDetails} from './cats/Dashboard'
 import CompanyDetails from './company/Dashboard'
 
@@ -25,17 +26,19 @@ class Dashboard extends React.Component {
   render () {
     let pages = [
       {name: 'events', title: 'My Events', list_comp: EventsList, details_comp: EventsDetails},
-      {name: 'account', title: 'Account', list_comp: null, details_comp: null},
     ]
     if (this.props.ctx.user && this.props.ctx.user.role === 'admin') {
       pages = [
         {name: 'events', list_comp: EventsList, details_comp: EventsDetails},
         {name: 'categories', list_comp: CategoriesList, details_comp: CategoriesDetails},
         {name: 'users', list_comp: UsersList, details_comp: UsersDetails},
-        {name: 'company', list_comp: null, details_comp: CompanyDetails, details_uri: '/dashboard/company/'},
+        {name: 'company', details_comp: CompanyDetails, details_uri: '/dashboard/company/'},
         {name: 'export', list_comp: null, details_comp: null},
       ]
     }
+    pages.push(
+      {name: 'account', title: 'Account', details_comp: Account, details_uri: '/dashboard/account/'}
+    )
     return (
       <Row>
         <Col md="3">

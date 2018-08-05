@@ -42,7 +42,7 @@ class CompanyBread(Bread):
     async def check_permissions(self, method):
         await check_session(self.request, 'admin')
         if int(self.request.match_info['pk']) != self.request['company_id']:
-            raise JsonErrors.HTTPBadRequest(message='wrong company')
+            raise JsonErrors.HTTPForbidden(message='wrong company')
 
     async def prepare_edit_data(self, data):
         if 'email_from' in data:

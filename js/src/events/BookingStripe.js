@@ -10,10 +10,11 @@ import {
 } from 'reactstrap'
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {ModalFooter} from '../general/Modal'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {format_money_free, load_script, grecaptcha_execute, window_property} from '../utils'
+import {load_script, grecaptcha_execute, window_property} from '../utils'
+import {ModalFooter} from '../general/Modal'
+import {MoneyFree} from '../general/Money'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import {Waiting} from '../general/Errors'
@@ -69,7 +70,7 @@ class StripeForm_ extends React.Component {
       postcode: null,
     }
     this.update_timer = this.update_timer.bind(this)
-    this.as_price = p => format_money_free(this.props.event.currency, p && p/100)
+    this.as_price = p => <MoneyFree>{p && p/100}</MoneyFree>
     this.render_form = this.render_form.bind(this)
     this.take_payment = this.take_payment.bind(this)
     this.book_free = this.book_free.bind(this)

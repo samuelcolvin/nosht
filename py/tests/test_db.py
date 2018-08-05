@@ -67,6 +67,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
             'id': await db_conn.fetchval('SELECT id FROM companies'),
             'name': 'Testing Company',
             'image': RegexStr('http.*'),
+            'currency': 'gbp',
         },
         'user': None,
     }

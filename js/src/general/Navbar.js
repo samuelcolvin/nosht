@@ -58,7 +58,10 @@ export default class Navbar extends React.Component {
           window.requestAnimationFrame(() => {
             // parallax
             BACK_TOP = Math.round(BACK_TOP_DEFAULT + y_pos / 2) + 'px'
-            document.getElementById('background-image').style.top = BACK_TOP
+            const el = document.getElementById('background-image')
+            if (el) {
+              el.style.top = BACK_TOP
+            }
             this.set_extra(y_pos)
             busy = false
           })
