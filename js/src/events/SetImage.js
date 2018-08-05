@@ -9,6 +9,7 @@ import {
   Row,
   Col,
 } from 'reactstrap'
+import requests from '../requests'
 import {DropzoneForm} from '../forms/Drop'
 import AsModal from '../general/Modal'
 
@@ -25,7 +26,7 @@ class SetImage extends React.Component {
   async componentDidMount () {
     let r
     try {
-      r = await this.props.requests.get(`/categories/${this.props.event.cat_id}/images/`)
+      r = await requests.get(`/categories/${this.props.event.cat_id}/images/`)
     } catch (error) {
       this.props.setRootState({error})
       return
@@ -38,7 +39,7 @@ class SetImage extends React.Component {
       return
     }
     try {
-      await this.props.requests.post(`/events/${this.props.event.id}/set-image/existing/`, {image})
+      await requests.post(`/events/${this.props.event.id}/set-image/existing/`, {image})
     } catch (error) {
       this.props.setRootState({error})
       return

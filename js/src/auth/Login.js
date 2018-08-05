@@ -1,6 +1,7 @@
 import React from 'react'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import requests from '../requests'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
@@ -33,7 +34,7 @@ export default class Login extends React.Component {
 
   async authenticate (data) {
     try {
-      await this.props.requests.post('auth-token/', {token: data.auth_token})
+      await requests.post('auth-token/', {token: data.auth_token})
     } catch (error) {
       this.props.setRootState({error})
       return
@@ -57,7 +58,7 @@ export default class Login extends React.Component {
     login_data.grecaptcha_token = await grecaptcha_execute(`login_with_${site}`)
     let data
     try {
-      data = await this.props.requests.post(`/login/${site}/`, login_data, {expected_statuses: [200, 470]})
+      data = await requests.post(`/login/${site}/`, login_data, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})
       return

@@ -1,4 +1,5 @@
 import React from 'react'
+import requests from '../requests'
 import AsModal from '../general/Modal'
 import BookingLogin from './BookingLogin'
 import BookingTickets from './BookingTickets'
@@ -25,7 +26,7 @@ class BookWrapper extends React.Component {
     this.setState({got_booking_info: true})
     let r
     try {
-      r = await this.props.requests.get(`events/${this.props.event.id}/booking-info/`)
+      r = await requests.get(`events/${this.props.event.id}/booking-info/`)
     } catch (error) {
       this.props.setRootState({error})
       return
@@ -79,7 +80,7 @@ class BookWrapper extends React.Component {
 
     let r
     try {
-      r = await this.props.requests.post(`events/${this.props.event.id}/reserve/`,
+      r = await requests.post(`events/${this.props.event.id}/reserve/`,
           {tickets, ticket_type}, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})

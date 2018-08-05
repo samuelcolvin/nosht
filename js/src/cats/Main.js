@@ -1,4 +1,5 @@
 import React from 'react'
+import requests from '../requests'
 import {NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import EventCards from '../events/Cards'
@@ -25,7 +26,7 @@ class Category extends React.Component {
       active_page: this.props.match.params.category,
     })
     try {
-      const data = await this.props.requests.get(`cat/${this.props.match.params.category}/`)
+      const data = await requests.get(`cat/${this.props.match.params.category}/`)
       this.setState({events: data.events})
     } catch (error) {
       this.props.setRootState({error})

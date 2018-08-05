@@ -8,6 +8,7 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import requests from '../requests'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {setup_siw, facebook_login, google_login} from './login_with'
@@ -72,7 +73,7 @@ export default class Signup extends React.Component {
     post_data.grecaptcha_token = await grecaptcha_execute('host_signup')
     let data
     try {
-      data = await this.props.requests.post(`/signup/host/${site}/`, post_data, {expected_statuses: [200, 470]})
+      data = await requests.post(`/signup/host/${site}/`, post_data, {expected_statuses: [200, 470]})
     } catch (error) {
       this.props.setRootState({error})
       return

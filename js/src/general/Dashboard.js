@@ -2,6 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ButtonGroup, Button} from 'reactstrap'
+import requests from '../requests'
 import {as_title} from '../utils'
 import {Loading} from './Errors'
 import Map from './Map'
@@ -40,7 +41,6 @@ export const Detail = ({name, wide, edit_link, children}) => (
 export class RenderItem extends React.Component {
   constructor (props) {
     super(props)
-    this.requests = this.props.requests
     this.render_key = this.render_key.bind(this)
     this.render_value = this.render_value.bind(this)
     this.update = this.update.bind(this)
@@ -64,7 +64,7 @@ export class RenderItem extends React.Component {
     let data = null
     const uri = this.get_uri()
     try {
-      data = await this.requests.get(uri)
+      data = await requests.get(uri)
     } catch (error) {
       this.props.setRootState({error})
       return

@@ -1,6 +1,7 @@
 import React from 'react'
 import {Redirect} from 'react-router'
 import {Loading} from '../general/Errors'
+import requests from '../requests'
 
 
 export default class Logout extends React.Component {
@@ -11,7 +12,7 @@ export default class Logout extends React.Component {
 
   async componentDidMount () {
     try {
-      await this.props.requests.post('logout/')
+      await requests.post('logout/')
     } catch (error) {
       this.props.setRootState({error})
       return

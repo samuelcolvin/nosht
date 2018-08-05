@@ -2,12 +2,13 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
+import requests from '../requests'
+import {format_money_free, unique} from '../utils'
 import {Loading, NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import Markdown from '../general/Markdown'
 import Map from '../general/Map'
 import When from '../general/When'
-import {format_money_free, unique} from '../utils'
 import BookEvent from './Book'
 
 class Event extends React.Component {
@@ -26,7 +27,7 @@ class Event extends React.Component {
     const params = this.props.match.params
     this.props.setRootState({active_page: params.category})
     try {
-      const data = await this.props.requests.get(`events/${params.category}/${params.event}/`)
+      const data = await requests.get(`events/${params.category}/${params.event}/`)
       event = data.event
       ticket_types = data.ticket_types
     } catch (error) {

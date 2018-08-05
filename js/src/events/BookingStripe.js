@@ -11,6 +11,7 @@ import {
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ModalFooter} from '../general/Modal'
+import requests from '../requests'
 import {format_money_free, load_script, grecaptcha_execute, window_property} from '../utils'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
@@ -95,12 +96,11 @@ class StripeForm_ extends React.Component {
     if (!this.state.submitting && !this.state.cancelled) {
       this.setState({cancelled: true})
       try {
-        await this.props.requests.post(`events/cancel-reservation/`, {
+        await requests.post(`events/cancel-reservation/`, {
           booking_token: this.props.reservation.booking_token,
         })
       } catch (error) {
         this.props.setRootState({error})
-        return
       }
     }
   }
@@ -135,7 +135,7 @@ class StripeForm_ extends React.Component {
       ])
       this.setState({submitted: true})
 
-      await this.props.requests.post('events/buy/', {
+      await requests.post('events/buy/', {
         stripe_token: token.id,
         stripe_client_ip: token.client_ip,
         stripe_card_ref: `${token.card.last4}-${token.card.exp_year}-${token.card.exp_month}`,
@@ -155,7 +155,7 @@ class StripeForm_ extends React.Component {
     const grecaptcha_token = await grecaptcha_execute('book_free')
 
     try {
-      await this.props.requests.post('events/book-free/',
+      await requests.post('events/book-free/',
           {booking_token: this.props.reservation.booking_token, grecaptcha_token})
     } catch (error) {
       this.props.setRootState({error})

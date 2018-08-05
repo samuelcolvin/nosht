@@ -2,6 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {Alert, Button, Modal, ModalHeader, ModalBody, ModalFooter, Table, Progress as BsProgress} from 'reactstrap'
+import requests from '../requests'
 import {format_event_start, format_event_duration, format_datetime, format_money_free, format_money} from '../utils'
 import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render_bool} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
@@ -220,8 +221,8 @@ export class EventsDetails extends RenderDetails {
     let r
     try {
       r = await Promise.all([
-        this.requests.get(`/events/${this.id}/tickets/`),
-        this.requests.get(`/events/${this.id}/ticket-types/`),
+        requests.get(`/events/${this.id}/tickets/`),
+        requests.get(`/events/${this.id}/ticket-types/`),
       ])
     } catch (error) {
       this.props.setRootState({error})

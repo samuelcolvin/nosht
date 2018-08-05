@@ -1,5 +1,6 @@
 import React from 'react'
 import {Row, Col} from 'reactstrap'
+import requests from '../requests'
 import {Form} from '../forms/Form'
 import Markdown from '../general/Markdown'
 
@@ -79,7 +80,7 @@ export default class CreateEvent extends React.Component {
   async componentDidMount () {
     let data
     try {
-      data = await this.props.requests.get('/events/categories/')
+      data = await requests.get('/events/categories/')
     } catch (error) {
       this.props.setRootState({error})
       return
@@ -109,7 +110,6 @@ export default class CreateEvent extends React.Component {
           <h1>Create Event</h1>
           <Form fields={this.fields()}
                 action="/events/add/"
-                requests={this.props.requests}
                 setRootState={this.props.setRootState}
                 onChange={d => this.setState({form_data: d})}
                 finished={this.finished.bind(this)}/>

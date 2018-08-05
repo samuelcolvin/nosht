@@ -11,6 +11,7 @@ import {
   Row,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import requests from '../requests'
 import {format_money_free, user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
@@ -20,7 +21,7 @@ import {PricingList} from './BookingStripe'
 export class User extends React.Component {
   async logout () {
     try {
-      await this.props.requests.post('logout/')
+      await requests.post('logout/')
     } catch (error) {
       this.props.setRootState({error})
       return

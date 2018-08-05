@@ -10,6 +10,7 @@ import {
   Form as BootstrapForm,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import requests from '../requests'
 import AsModal from '../general/Modal'
 import Input from '../forms/Input'
 
@@ -106,7 +107,7 @@ class TicketTypes extends React.Component {
   async submit (e) {
     e.preventDefault()
     try {
-      await this.props.requests.post(`events/${this.props.event.id}/ticket-types/update/`,
+      await requests.post(`events/${this.props.event.id}/ticket-types/update/`,
                                      {ticket_types: this.state.ticket_types})
     } catch (error) {
       this.props.setRootState({error})

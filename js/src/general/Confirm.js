@@ -7,6 +7,7 @@ import {
   ModalHeader,
 } from 'reactstrap'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import requests from '../requests'
 
 export class ButtonConfirm extends React.Component {
   constructor (props) {
@@ -24,7 +25,7 @@ export class ButtonConfirm extends React.Component {
     this.setState({enabled: false})
     let data
     try {
-      data = await this.props.requests.post(this.props.action, this.props.data || null)
+      data = await requests.post(this.props.action, this.props.data || null)
     } catch (error) {
       this.props.setRootState({error})
       return

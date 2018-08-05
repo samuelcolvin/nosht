@@ -1,7 +1,8 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 
-import {get, post, sleep, load_script_callback, window_property} from './utils'
+import requests from './requests'
+import {sleep, load_script_callback, window_property} from './utils'
 import {Error, NotFound, Loading} from './general/Errors'
 import Navbar from './general/Navbar'
 import Footer from './general/Footer'
@@ -24,7 +25,6 @@ const Routes = ({app}) => (
 
       <Route exact path="/login/" render={props => (
         <Login setRootState={s => app.setState(s)}
-               requests={app.requests}
                set_message={app.set_message}
                company={app.state.company}
                {...props}/>
@@ -33,21 +33,18 @@ const Routes = ({app}) => (
       <Route exact path="/logout/" render={props => (
         <Logout setRootState={s => app.setState(s)}
                 set_message={app.set_message}
-                requests={app.requests}
                 {...props}/>
       )} />
 
       <Route exact path="/signup/" render={props => (
         <Signup setRootState={s => app.setState(s)}
                 set_message={app.set_message}
-                requests={app.requests}
                 {...props}/>
       )} />
 
       <Route exact path="/set-password/" render={props => (
         <SetPassword setRootState={s => app.setState(s)}
                      set_message={app.set_message}
-                     requests={app.requests}
                      {...props}/>
       )} />
 
@@ -56,7 +53,6 @@ const Routes = ({app}) => (
         <Dashboard setRootState={s => app.setState(s)}
                    user={app.state.user}
                    set_message={app.set_message}
-                   requests={app.requests}
                    company={app.state.company}
                    {...props}/>
       )} />
@@ -64,14 +60,12 @@ const Routes = ({app}) => (
       <Route path="/create/" render={props => (
         <CreateEvent setRootState={s => app.setState(s)}
                      set_message={app.set_message}
-                     requests={app.requests}
                      {...props}/>
       )} />
 
       <Route path="/:category/:event/" render={props => (
         <Event setRootState={s => app.setState(s)}
                set_message={app.set_message}
-               requests={app.requests}
                company={app.state.company}
                user={app.state.user}
                {...props}/>
@@ -79,7 +73,6 @@ const Routes = ({app}) => (
 
       <Route exact path="/:category/" render={props => (
         <Category setRootState={s => app.setState(s)}
-                  requests={app.requests}
                   company={app.state.company}
                   {...props}/>
       )} />
@@ -102,10 +95,6 @@ class _App extends React.Component {
       message: null,
       grecaptcha_ready: false,
     }
-    this.requests = {
-      get: async (...args) => get(...args),
-      post: async (...args) => post(...args),
-    }
     this.set_message = this.set_message.bind(this)
   }
 
@@ -117,7 +106,7 @@ class _App extends React.Component {
 
   async componentDidMount () {
     try {
-      const company = await this.requests.get('')
+      const company = await requests.get('')
       const user = company.user
       delete company.user
       this.setState({company, user})

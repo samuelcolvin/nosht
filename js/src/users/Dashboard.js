@@ -1,5 +1,6 @@
 import React from 'react'
 import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
+import requests from '../requests'
 import {format_date, format_datetime, as_title} from '../utils'
 import {RenderList, RenderDetails, Detail} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
@@ -144,7 +145,6 @@ export class UsersDetails extends RenderDetails {
               <ButtonConfirm action={`/users/${this.id}/switch-status/`}
                              modal_title="Switch Status"
                              btn_text={`Mark as ${as_title(new_status)}`}
-                             requests={this.props.requests}
                              setRootState={this.props.setRootState}
                              done={this.update}
                              btn_size="sm"
@@ -175,7 +175,7 @@ export class UsersDetails extends RenderDetails {
     super.got_data(data)
     let r
     try {
-      r = await this.requests.get(`/users/${this.id}/actions/`)
+      r = await requests.get(`/users/${this.id}/actions/`)
     } catch (error) {
       this.props.setRootState({error})
       return

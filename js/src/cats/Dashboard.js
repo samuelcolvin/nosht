@@ -1,5 +1,6 @@
 import React from 'react'
 import {Row, Col, ButtonGroup, Button} from 'reactstrap'
+import requests from '../requests'
 import {RenderList, RenderDetails, ImageThumbnail} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'
@@ -84,7 +85,7 @@ export class CategoriesDetails extends RenderDetails {
     await super.got_data(data)
     let r
     try {
-      r = await this.requests.get(`/categories/${this.id}/images/`)
+      r = await requests.get(`/categories/${this.id}/images/`)
     } catch (error) {
       this.props.setRootState({error})
       return
@@ -94,7 +95,7 @@ export class CategoriesDetails extends RenderDetails {
 
   async image_action (action, image) {
     try {
-      await this.requests.post(`/categories/${this.id}/${action}/`, {image})
+      await requests.post(`/categories/${this.id}/${action}/`, {image})
     } catch (error) {
       this.props.setRootState({error})
       return

@@ -2,7 +2,7 @@ import React from 'react'
 import {Button, Progress} from 'reactstrap'
 import Dropzone from 'react-dropzone'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {error_response} from '../utils'
+import {error_response} from '../requests'
 import AsModal from '../general/Modal'
 
 const file_key = f => `${f.name}-${f.size}`

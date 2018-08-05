@@ -1,7 +1,8 @@
 import React from 'react'
 import {Button, ButtonGroup, Form as BootstrapForm} from 'reactstrap'
-import Input from './Input'
+import requests from '../requests'
 import AsModal from '../general/Modal'
+import Input from './Input'
 
 export class Form extends React.Component {
   constructor (props) {
@@ -24,7 +25,7 @@ export class Form extends React.Component {
     this.setState({disabled: true, errors: {}, form_error: null})
     let r
     try {
-      r = await this.props.requests.post(this.props.action, this.state.form_data, {expected_statuses: [200, 201, 400]})
+      r = await requests.post(this.props.action, this.state.form_data, {expected_statuses: [200, 201, 400]})
     } catch (error) {
       this.props.setRootState({error})
       return
