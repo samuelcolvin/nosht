@@ -189,7 +189,6 @@ export class UsersDetails extends RenderDetails {
       <ModalForm {...this.props}
                  key="edit"
                  title="Edit User"
-                 request_method="put"
                  parent_uri={this.uri}
                  mode="edit"
                  success_msg='User updated'

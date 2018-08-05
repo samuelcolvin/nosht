@@ -1,7 +1,7 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 
-import {get, post, put, sleep, load_script_callback, window_property} from './utils'
+import {get, post, sleep, load_script_callback, window_property} from './utils'
 import {Error, NotFound, Loading} from './general/Errors'
 import Navbar from './general/Navbar'
 import Footer from './general/Footer'
@@ -105,7 +105,6 @@ class _App extends React.Component {
     this.requests = {
       get: async (...args) => get(...args),
       post: async (...args) => post(...args),
-      put: async (...args) => put(...args),
     }
     this.set_message = this.set_message.bind(this)
   }

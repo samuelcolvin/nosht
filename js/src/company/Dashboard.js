@@ -54,7 +54,6 @@ export default class CompanyDetails extends RenderDetails {
     return [
       <ModalForm {...this.props}
                  title="Edit Company"
-                 request_method="put"
                  key="1"
                  parent_uri={this.uri}
                  mode="edit"

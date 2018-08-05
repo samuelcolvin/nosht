@@ -4,7 +4,7 @@ views:
 GET /?filter 200,403
 POST /add/ 201,400,403
 GET /{pk}/ 200,403,404
-PUT /{pk}/ 200,400,403,404
+POST /{pk}/ 200,400,403,404
 DELETE /{pk}/ 200,400,403,404
 OPTIONS / 200,403
 
@@ -248,7 +248,7 @@ class ReadBread(BaseBread):
 class Bread(ReadBread):
     """
     POST /add/ 201,400,403
-    PUT /{pk}/ 200,400,403,404
+    POST /{pk}/ 200,400,403,404
     DELETE /{pk}/ 200,400,403,404
     """
     add_enabled = False
@@ -355,7 +355,7 @@ class Bread(ReadBread):
             yield web.post(root + '/add/', cls.view(Method.add), name=f'{name}-add')
             # yield web.options(root + '/add/', cls.view(Method.add_options), name=f'{name}-add-options')
         if cls.edit_enabled:
-            yield web.put(root + '/{pk:\d+}/', cls.view(Method.edit), name=f'{name}-edit')
+            yield web.post(root + '/{pk:\d+}/', cls.view(Method.edit), name=f'{name}-edit')
             # yield web.options(root + '/{pk:\d+}/', cls.view(Method.edit_options), name=f'{name}-edit-options')
         if cls.delete_enabled:
             yield web.delete(root + '/{pk:\d+}/', cls.view(Method.delete), name=f'{name}-delete')

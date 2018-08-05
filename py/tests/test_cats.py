@@ -85,7 +85,7 @@ async def test_edit_cat(cli, url, db_conn, factory: Factory, login):
         description='x',
         sort_index=42,
     )
-    r = await cli.json_put(url('category-edit', pk=factory.category_id), data=data)
+    r = await cli.json_post(url('category-edit', pk=factory.category_id), data=data)
     assert r.status == 200, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
     data = await r.json()
@@ -104,7 +104,7 @@ async def test_edit_invalid(cli, url, factory: Factory, login):
     await login()
 
     data = dict(sort_index='xxx')
-    r = await cli.json_put(url('category-edit', pk=factory.category_id), data=data)
+    r = await cli.json_post(url('category-edit', pk=factory.category_id), data=data)
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {
@@ -127,7 +127,7 @@ async def test_edit_bad_json(cli, url, factory: Factory, login):
     await factory.create_cat()
     await login()
 
-    r = await cli.json_put(url('category-edit', pk=factory.category_id), data='xxx')
+    r = await cli.json_post(url('category-edit', pk=factory.category_id), data='xxx')
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {'message': 'Error decoding JSON'}
@@ -139,7 +139,7 @@ async def test_edit_not_dict(cli, url, factory: Factory, login):
     await factory.create_cat()
     await login()
 
-    r = await cli.json_put(url('category-edit', pk=factory.category_id), data=[1, 2, 3])
+    r = await cli.json_post(url('category-edit', pk=factory.category_id), data=[1, 2, 3])
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {'message': 'data not a dictionary'}

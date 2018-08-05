@@ -6,7 +6,6 @@ import json
 import random
 import uuid
 from datetime import datetime
-from functools import partial
 from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
@@ -355,7 +354,7 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
     app.on_startup.append(post_startup_app)
     cli = await aiohttp_client(app)
 
-    def json_data_request(method, url, *, data=None, headers=None, origin_null=False):
+    def json_post_request(url, *, data=None, headers=None, origin_null=False):
         if data and not isinstance(data, str):
             data = json.dumps(data)
         headers = {
@@ -364,10 +363,9 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
             'Origin': 'null' if origin_null else f'http://127.0.0.1:{cli.server.port}',
             **(headers or {}),
         }
-        return cli.request(method, url, data=data, headers=headers)
+        return cli.post(url, data=data, headers=headers)
 
-    cli.json_post = partial(json_data_request, 'POST')
-    cli.json_put = partial(json_data_request, 'PUT')
+    cli.json_post = json_post_request
     return cli
 
 

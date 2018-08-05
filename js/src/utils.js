@@ -167,12 +167,6 @@ export const post = (path, data, config) => {
   return request('POST', path, config)
 }
 
-export const put = (path, data, config) => {
-  config = config || {}
-  config.send_data = data
-  return request('PUT', path, config)
-}
-
 const DF = 'Do MMM'
 const DFY = 'Do MMM YYYY'
 const DTF = 'Do MMM, h:mma'

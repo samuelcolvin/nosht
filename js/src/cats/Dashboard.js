@@ -111,7 +111,6 @@ export class CategoriesDetails extends RenderDetails {
         suggested_images={this.state.item.suggested_images}/>,
       <ModalForm {...this.props}
                  title="Edit Category"
-                 request_method="put"
                  key="2"
                  parent_uri={this.uri}
                  mode="edit"

@@ -268,7 +268,7 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
             'lng': 1,
         }
     )
-    r = await cli.json_put(url('event-edit', pk=event_id), data=data)
+    r = await cli.json_post(url('event-edit', pk=event_id), data=data)
     assert r.status == 200, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     ticket_limit, location_lat = await db_conn.fetchrow('SELECT ticket_limit, location_lat FROM events')

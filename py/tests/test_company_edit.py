@@ -40,7 +40,7 @@ async def test_company_edit(cli, url, login, factory: Factory, db_conn):
     await factory.create_user()
     await login()
 
-    r = await cli.json_put(url('company-edit', pk=factory.company_id), data={'name': 'New Name'})
+    r = await cli.json_post(url('company-edit', pk=factory.company_id), data={'name': 'New Name'})
     assert r.status == 200, await r.text()
     assert 'New Name' == await db_conn.fetchval('SELECT name FROM companies')
 

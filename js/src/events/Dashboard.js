@@ -296,7 +296,6 @@ export class EventsDetails extends RenderDetails {
       <ModalForm {...this.props}
                  key="edit"
                  title="Edit Event"
-                 request_method="put"
                  parent_uri={this.uri}
                  mode="edit"
                  success_msg='Event updated'
