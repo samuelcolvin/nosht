@@ -15,11 +15,11 @@ class SetPassword extends React.Component {
 
     const data = JSON.parse(event.data)
     if (data.status !== 'success') {
-      this.props.ctx.setRootState({error: data})
+      this.props.ctx.setError(data)
       return
     }
     this.props.history.replace('/login/')
-    this.props.ctx.set_message({icon: 'key', message: 'Password successfully set, please login.'})
+    this.props.ctx.setMessage({icon: 'key', message: 'Password successfully set, please login.'})
   }
 
   async componentDidMount () {

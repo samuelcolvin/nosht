@@ -28,7 +28,7 @@ export class ButtonConfirm_ extends React.Component {
     try {
       data = await requests.post(this.props.action, this.props.data || null)
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.setState({open: false, enabled: true})

@@ -34,7 +34,7 @@ class Event extends React.Component {
       if (error.status === 404) {
         this.setState({event: 404})
       } else {
-        this.props.ctx.setRootState({error})
+        this.props.ctx.setError(error)
       }
       return
     }

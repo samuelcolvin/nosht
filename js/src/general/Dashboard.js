@@ -66,7 +66,7 @@ export class RenderItem extends React.Component {
     try {
       data = await requests.get(uri)
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.got_data(data)

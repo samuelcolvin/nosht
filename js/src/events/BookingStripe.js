@@ -101,7 +101,7 @@ class StripeForm_ extends React.Component {
           booking_token: this.props.reservation.booking_token,
         })
       } catch (error) {
-        this.props.ctx.setRootState({error})
+        this.props.ctx.setError(error)
       }
     }
   }
@@ -144,10 +144,10 @@ class StripeForm_ extends React.Component {
         grecaptcha_token
       })
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
-    this.props.ctx.set_message({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
+    this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
     this.props.finished()
   }
 
@@ -159,11 +159,11 @@ class StripeForm_ extends React.Component {
       await requests.post('events/book-free/',
           {booking_token: this.props.reservation.booking_token, grecaptcha_token})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
 
-    this.props.ctx.set_message({icon: ['fas', 'check-circle'], message: 'Booking successful, check your email'})
+    this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Booking successful, check your email'})
     this.props.finished()
   }
 

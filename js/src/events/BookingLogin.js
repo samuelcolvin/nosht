@@ -34,7 +34,7 @@ class BookingLogin extends React.Component {
 
   async google_auth () {
     this.setState({siw_error: null})
-    const auth_data = await google_login(this.props.ctx.setRootState)
+    const auth_data = await google_login(this.props.ctx.setError)
     if (auth_data) {
       await this.auth('google', auth_data)
     }
@@ -42,7 +42,7 @@ class BookingLogin extends React.Component {
 
   async facebook_auth () {
     this.setState({siw_error: null})
-    const auth_data = await facebook_login(this.props.ctx.setRootState)
+    const auth_data = await facebook_login(this.props.ctx.setError)
     if (auth_data) {
       await this.auth('facebook', auth_data)
     }
@@ -63,7 +63,7 @@ class BookingLogin extends React.Component {
     try {
       data = await requests.post(`/signup/guest/${site}/`, login_data, {expected_statuses: status || 200})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     if (data._response_status !== 200) {

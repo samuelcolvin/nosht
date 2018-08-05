@@ -27,7 +27,7 @@ export class Form extends React.Component {
     try {
       r = await requests.post(this.props.action, this.state.form_data, {expected_statuses: [200, 201, 400]})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     if (r._response_status === 400) {
@@ -39,7 +39,7 @@ export class Form extends React.Component {
       this.setState({disabled: false, errors, form_error: Object.keys(errors).length ? 'Error occurred' : null})
     } else {
       this.props.update && this.props.update()
-      this.props.success_msg && this.props.ctx.set_message(this.props.success_msg)
+      this.props.success_msg && this.props.ctx.setMessage(this.props.success_msg)
       this.props.finished(r)
     }
   }

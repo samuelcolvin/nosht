@@ -110,7 +110,7 @@ class TicketTypes extends React.Component {
       await requests.post(`events/${this.props.event.id}/ticket-types/update/`,
                                      {ticket_types: this.state.ticket_types})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.props.update()

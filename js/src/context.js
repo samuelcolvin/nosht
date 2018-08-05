@@ -3,8 +3,9 @@ import {get_component_name} from './utils'
 
 export const GlobalContext = React.createContext(
   {
-    setRootState: (...args) => console.error('global context not setup for "setRootState"', args),
-    set_message: (...args) => console.error('global context not setup for "set_message"', args),
+    setRootState: s => console.error('global context not setup for "setRootState"', s),
+    setMessage: msg => console.error('global context not setup for "setMessage"', msg),
+    setError: err => console.error('global context not setup for "setError"', err),
     company: {},
     user: {},
   }

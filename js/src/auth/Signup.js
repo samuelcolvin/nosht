@@ -40,7 +40,7 @@ class Signup extends React.Component {
 
   async google_auth () {
     this.setState({error: null})
-    const auth_data = await google_login(this.props.ctx.setRootState)
+    const auth_data = await google_login(this.props.ctx.setError)
     if (auth_data) {
       await this.auth('google', auth_data)
     }
@@ -48,7 +48,7 @@ class Signup extends React.Component {
 
   async facebook_auth () {
     this.setState({error: null})
-    const auth_data = await facebook_login(this.props.ctx.setRootState)
+    const auth_data = await facebook_login(this.props.ctx.setError)
     if (auth_data) {
       await this.auth('facebook', auth_data)
     }
@@ -76,18 +76,18 @@ class Signup extends React.Component {
     try {
       data = await requests.post(`/signup/host/${site}/`, post_data, {expected_statuses: [200, 470]})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     if (data._response_status === 470 && data.status === 'existing-user') {
       this.props.history.push('/login/')
-      this.props.ctx.set_message({icon: 'user', message: 'User already exists - please login.'})
+      this.props.ctx.setMessage({icon: 'user', message: 'User already exists - please login.'})
     } else if (data._response_status === 470) {
       this.setState({error: data.message})
     } else {
       this.props.ctx.setRootState({user: data.user})
       this.props.history.replace('/dashboard/events/')
-      this.props.ctx.set_message({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
+      this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
     }
   }
 

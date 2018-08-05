@@ -20,7 +20,7 @@ export async function setup_siw () {
   }
 }
 
-export async function facebook_login (setRootState) {
+export async function facebook_login (setError) {
   const fb = await window_property('FB')
   const p = new Promise(resolve => {
     fb.login(r => {
@@ -31,7 +31,7 @@ export async function facebook_login (setRootState) {
         resolve()
       } else {
         console.error('facebook auth unexpected response:', r)
-        setRootState({error: 'Error on facebook authentication'})
+        setError('Error on facebook authentication')
         resolve()
       }
     }, {scope: 'email'})
@@ -39,7 +39,7 @@ export async function facebook_login (setRootState) {
   return await p
 }
 
-export async function google_login (setRootState) {
+export async function google_login (setError) {
   const gauth = await window_property('gauth')
   try {
     await gauth.signIn()
@@ -48,7 +48,7 @@ export async function google_login (setRootState) {
       return
     } else {
       console.error('google auth error:', error)
-      setRootState({error: 'Error on google authentication'})
+      setError('Error on google authentication')
       return
     }
   }

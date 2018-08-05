@@ -225,7 +225,7 @@ export class EventsDetails extends RenderDetails {
         requests.get(`/events/${this.id}/ticket-types/`),
       ])
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.setState(

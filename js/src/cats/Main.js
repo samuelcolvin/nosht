@@ -29,7 +29,7 @@ class Category extends React.Component {
       const data = await requests.get(`cat/${this.props.match.params.category}/`)
       this.setState({events: data.events})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
     }
   }
 

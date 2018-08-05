@@ -82,7 +82,7 @@ export default class CreateEvent extends React.Component {
     try {
       data = await requests.get('/events/categories/')
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.setState({categories: data.categories})

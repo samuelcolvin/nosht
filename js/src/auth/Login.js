@@ -27,7 +27,7 @@ class Login extends React.Component {
 
     const data = JSON.parse(event.data)
     if (data.status !== 'success') {
-      this.props.ctx.setRootState({error: data})
+      this.props.ctx.setError(data)
       return
     }
     await this.authenticate(data)
@@ -37,12 +37,12 @@ class Login extends React.Component {
     try {
       await requests.post('auth-token/', {token: data.auth_token})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.props.ctx.setRootState({user: data.user})
     this.props.history.replace('/dashboard/events/')
-    this.props.ctx.set_message({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
+    this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
   }
 
   async componentDidMount () {
@@ -61,7 +61,7 @@ class Login extends React.Component {
     try {
       data = await requests.post(`/login/${site}/`, login_data, {expected_statuses: [200, 470]})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     if (data._response_status === 470) {
@@ -73,7 +73,7 @@ class Login extends React.Component {
 
   async google_auth () {
     this.setState({error: null})
-    const auth_data = await google_login(this.props.ctx.setRootState)
+    const auth_data = await google_login(this.props.ctx.setError)
     if (!auth_data) {
       return
     }
@@ -83,7 +83,7 @@ class Login extends React.Component {
   async facebook_auth () {
     this.setState({error: null})
 
-    const auth_data = await facebook_login(this.props.ctx.setRootState)
+    const auth_data = await facebook_login(this.props.ctx.setError)
     if (!auth_data) {
       return
     }

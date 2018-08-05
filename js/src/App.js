@@ -51,10 +51,10 @@ class App extends React.Component {
       message: null,
       grecaptcha_ready: false,
     }
-    this.set_message = this.set_message.bind(this)
+    this.setMessage = this.setMessage.bind(this)
   }
 
-  async set_message (message, time) {
+  async setMessage (message, time) {
     this.setState({message})
     await sleep(time || 5000)
     this.setState({message: null})
@@ -102,7 +102,8 @@ class App extends React.Component {
   render () {
     const ctx = {
       setRootState: s => this.setState(s),
-      set_message: (...args) => this.set_message(...args),
+      setMessage: (...args) => this.setMessage(...args),
+      setError: error => this.setState({error}),
       company: this.state.company,
       user: this.state.user,
     }
@@ -116,7 +117,7 @@ class App extends React.Component {
         <main className="container">
           {this.state.error ? <Error error={this.state.error}
                                      location={this.props.location}
-                                     set_message={this.set_message}/>
+                                     setMessage={this.setMessage}/>
             : this.state.company ? <Routes/>
               : <Loading/>}
         </main>

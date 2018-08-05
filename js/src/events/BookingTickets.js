@@ -24,7 +24,7 @@ export class User extends React.Component {
     try {
       await requests.post('logout/')
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.props.ctx.setRootState({user: null})

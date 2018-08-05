@@ -6,7 +6,7 @@ import Raven from 'raven-js'
 class Error_ extends React.Component {
   componentWillMount () {
     if (this.props.error.status === 401) {
-      this.props.ctx.set_message({icon: 'ban', message: this.props.error.user_msg || 'Login Required'})
+      this.props.ctx.setMessage({icon: 'ban', message: this.props.error.user_msg || 'Login Required'})
     } else if (this.props.error.status !== 404) {
       console.warn('caught error:', this.props.error)
       Raven.captureMessage(`caught error: ${this.props.error.user_msg}`, {

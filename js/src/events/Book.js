@@ -28,7 +28,7 @@ class BookWrapper extends React.Component {
     try {
       r = await requests.get(`events/${this.props.event.id}/booking-info/`)
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     delete r._response_status
@@ -83,7 +83,7 @@ class BookWrapper extends React.Component {
       r = await requests.post(`events/${this.props.event.id}/reserve/`,
           {tickets, ticket_type}, {expected_statuses: [200, 470]})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     if (r._response_status === 470) {

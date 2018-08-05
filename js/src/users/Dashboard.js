@@ -175,7 +175,7 @@ export class UsersDetails extends RenderDetails {
     try {
       r = await requests.get(`/users/${this.id}/actions/`)
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.setState({actions: r.tickets})

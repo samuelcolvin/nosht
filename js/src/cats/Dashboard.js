@@ -87,7 +87,7 @@ export class CategoriesDetails extends RenderDetails {
     try {
       r = await requests.get(`/categories/${this.id}/images/`)
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.setState({item: Object.assign({}, this.state.item, {suggested_images: r.images})})
@@ -97,7 +97,7 @@ export class CategoriesDetails extends RenderDetails {
     try {
       await requests.post(`/categories/${this.id}/${action}/`, {image})
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.update()

@@ -14,12 +14,12 @@ class Logout extends React.Component {
     try {
       await requests.post('logout/')
     } catch (error) {
-      this.props.ctx.setRootState({error})
+      this.props.ctx.setError(error)
       return
     }
     this.props.ctx.setRootState({user: null})
     this.setState({finished: true})
-    this.props.ctx.set_message({icon: 'user', message: 'Logged out successfully'})
+    this.props.ctx.setMessage({icon: 'user', message: 'Logged out successfully'})
   }
 
   render () {
