@@ -40,9 +40,11 @@ class EmailActor(BaseEmailActor):
                 booked_action_id
             )
             buyer_user_id = data['user_id']
-            r = await conn.fetch('SELECT user_id FROM tickets WHERE booked_action=$1', booked_action_id)
+            r = await conn.fetch('SELECT user_id, id FROM tickets WHERE booked_action=$1', booked_action_id)
             other_user_ids = {r_[0] for r_ in r}
             other_user_ids.remove(buyer_user_id)
+
+            ticket_id_lookup = {u_id: t_id for u_id, t_id in r}
 
         duration: Optional[datetime.timedelta] = data['duration']
         ctx = {
@@ -76,13 +78,13 @@ class EmailActor(BaseEmailActor):
         await self.send_emails.direct(
             data['company'],
             Triggers.ticket_buyer,
-            [UserEmail(id=buyer_user_id, ctx=ctx_buyer)]
+            [UserEmail(id=buyer_user_id, ctx=ctx_buyer, ticket_id=ticket_id_lookup[buyer_user_id])]
         )
         if other_user_ids:
             await self.send_emails.direct(
                 data['company'],
                 Triggers.ticket_other,
-                [UserEmail(id=user_id, ctx=ctx) for user_id in other_user_ids]
+                [UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id_lookup[user_id]) for user_id in other_user_ids]
             )
 
     @concurrent
@@ -173,14 +175,17 @@ class EmailActor(BaseEmailActor):
             # get all users expecting the email for all events
             r = await conn.fetch(
                 """
-                SELECT DISTINCT event, user_id
+                SELECT DISTINCT event, user_id, id AS ticket_id
                 FROM tickets
                 WHERE status='booked' AND event=ANY($1)
                 ORDER BY event
                 """, {e['id'] for e in events}
             )
             # group the users by event
-            users = {event_id: {t['user_id'] for t in g} for event_id, g in groupby(r, itemgetter('event'))}
+            users = {
+                event_id: {(t['user_id'], t['ticket_id']) for t in g}
+                for event_id, g in groupby(r, itemgetter('event'))
+            }
 
         user_emails = 0
         for company_id, g in groupby(events, itemgetter('company_id')):
@@ -207,7 +212,7 @@ class EmailActor(BaseEmailActor):
                         google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
                     )
                 user_ctxs.extend([
-                    UserEmail(id=user_id, ctx=ctx) for user_id in event_users
+                    UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in event_users
                 ])
             user_emails += len(user_ctxs)
             await self.send_emails(company_id, Triggers.event_reminder.value, user_ctxs)

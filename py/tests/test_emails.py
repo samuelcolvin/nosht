@@ -128,6 +128,28 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
     assert '<li>Duration: <strong>1 hour 30 mins</strong></li>' in html
 
 
+async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(first_name=None, last_name=None)
+    await factory.create_event(price=10)
+
+    res = await factory.create_reservation()
+    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET first_name='Cat', last_name='Dig'")
+    booked_action_id = await factory.buy_tickets(res)
+
+    await email_actor.send_event_conf(booked_action_id)
+
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert email['To'] == 'Cat Dig <frank@example.org>'
+    assert email['part:text/plain'].startswith(
+        'Hi Cat,\n'
+        '\n'
+        'Thanks for booking your ticket for **The Event Name**.\n'
+    )
+
+
 async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):
     await factory.create_company()
     await factory.create_user(email='testing@scolvin.com')
@@ -160,7 +182,7 @@ async def test_event_reminder_none(email_actor: EmailActor, factory: Factory):
 async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user()
+    await factory.create_user(first_name=None, last_name=None)
     await factory.create_event(
         start_ts=datetime.now() + timedelta(hours=12),
         price=10,
@@ -172,14 +194,16 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
 
     res = await factory.create_reservation()
     await factory.buy_tickets(res)
+    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET first_name='Cat', last_name='Dig'")
 
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='event-guest-reminder'")
     assert 1 == await email_actor.send_event_reminders.direct()
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
+    assert email['To'] == 'Cat Dig <frank@example.org>'
     text = email['part:text/plain']
     assert text.startswith(
-        f'Hi Frank,\n'
+        f'Hi Cat,\n'
         f'\n'
         f'You\'re booked in to attend **The Event Name**, the event will start in a day\'s time.\n'
         f'\n'

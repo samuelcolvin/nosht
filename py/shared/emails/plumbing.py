@@ -70,6 +70,7 @@ datetime_fmt = '%H:%M %d %b %y'
 class UserEmail(NamedTuple):
     id: int
     ctx: Dict[str, Any] = {}
+    ticket_id: int = None
 
 
 class BaseEmailActor(Actor):
@@ -192,8 +193,8 @@ class BaseEmailActor(Actor):
         ).strip(' ')
         user_email = user['email']
         extra_ctx = dict(
-            first_name=user['first_name'] or user['last_name'] or user['email'],
-            full_name=full_name or user['email'],
+            first_name=user['first_name'] or user['last_name'] or '',
+            full_name=full_name or 'user',
             unsubscribe_link=f'/api/unsubscribe/{user["id"]}/?sig={unsubscribe_sig(user["id"], self.settings)}',
         )
         ctx = clean_ctx({**global_ctx, **extra_ctx, **user_ctx}, base_url)
@@ -274,6 +275,17 @@ class BaseEmailActor(Actor):
             sql += '' if force_send else 'AND receive_emails=TRUE'
             user_data = await conn.fetch(sql, company_id, [u[0] for u in users_emails])
 
+            ticket_name_lookup = {}
+            ticket_ids = [ue[2] for ue in users_emails if ue[2]]
+            if ticket_ids:
+                ticket_name_lookup = {
+                    r['ticket_id']: r for r in
+                    await conn.fetch(
+                        'SELECT id AS ticket_id, first_name, last_name FROM tickets WHERE id=ANY($1)',
+                        ticket_ids
+                    )
+                }
+
         global_ctx = dict(
             company_name=company_name,
             company_logo=company_logo,
@@ -281,9 +293,14 @@ class BaseEmailActor(Actor):
         )
         coros = []
         user_data_lookup = {u['id']: u for u in user_data}
-        for user_id, ctx in users_emails:
+        for user_id, ctx, ticket_id in users_emails:
             user_data_ = user_data_lookup[user_id]
             if user_data_:
+                ticket_data = ticket_name_lookup.get(ticket_id)
+                if ticket_data:
+                    user_data_ = dict(user_data_)
+                    user_data_['first_name'] = user_data_['first_name'] or ticket_data['first_name']
+                    user_data_['last_name'] = user_data_['last_name'] or ticket_data['last_name']
                 coros.append(
                     self.send_email(
                         user=user_data_,
