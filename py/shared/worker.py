@@ -1,10 +1,11 @@
-from arq import BaseWorker
+from arq import BaseWorker, DatetimeJob
 
 from .emails import EmailActor
 from .settings import Settings
 
 
 class Worker(BaseWorker):
+    job_class = DatetimeJob
     shadows = [EmailActor]
 
     def __init__(self, **kwargs):  # pragma: no cover

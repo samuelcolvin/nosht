@@ -251,7 +251,7 @@ class Factory:
         self.ticket_type_id = self.ticket_type_id or ticket_type_id
         return event_id
 
-    async def create_reservation(self, user_id=None, *extra_user_ids):
+    async def create_reservation(self, user_id=None, *extra_user_ids, event_id=None):
         user_id = user_id or self.user_id
         action_id = await self.conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
@@ -262,9 +262,10 @@ class Factory:
             )
         )
         price = await self.conn.fetchval('SELECT price FROM ticket_types WHERE id=$1', self.ticket_type_id)
+        event_id = event_id or self.event_id
         ticket_values = [
             Values(
-                event=self.event_id,
+                event=event_id,
                 user_id=user_id,
                 reserve_action=action_id,
                 ticket_type=self.ticket_type_id,
@@ -274,7 +275,7 @@ class Factory:
         for extra_user_id in extra_user_ids:
             ticket_values.append(
                 Values(
-                    event=self.event_id,
+                    event=event_id,
                     user_id=extra_user_id,
                     reserve_action=action_id,
                     ticket_type=self.ticket_type_id,
@@ -285,13 +286,13 @@ class Factory:
             'INSERT INTO tickets (:values__names) VALUES :values',
             values=MultipleValues(*ticket_values)
         )
-        await self.conn.execute('SELECT check_tickets_remaining($1, $2)', self.event_id, self.settings.ticket_ttl)
+        await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
         return Reservation(
             user_id=user_id,
             action_id=action_id,
-            event_id=self.event_id,
+            event_id=event_id,
             price_cent=price and int(price * 100),
-            ticket_count=1,
+            ticket_count=1 + len(extra_user_ids),
             event_name='Foobar',
         )
 

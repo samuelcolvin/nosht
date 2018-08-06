@@ -48,11 +48,24 @@ async def facebook_siw(request):
 
 
 async def stripe_get_customer_sources(request):
-    return json_response('TODO')
+    return json_response({
+        'object': 'list',
+        'data': [
+            {
+                'last4': '4242',
+                'exp_month': 8,
+                'exp_year': 2019,
+            },
+        ],
+        'has_more': False,
+        'url': '/v1/customers/xxx/sources',
+    })
 
 
 async def stripe_post_customer_sources(request):
-    return json_response('TODO')
+    return json_response({
+        'id': 'src_id_123456',
+    })
 
 
 async def stripe_post_customers(request):

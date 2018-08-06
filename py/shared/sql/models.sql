@@ -43,35 +43,6 @@ CREATE INDEX user_created_ts ON users USING btree (created_ts);
 CREATE INDEX user_active_ts ON users USING btree (active_ts);
 
 
-CREATE TYPE ACTION_TYPES AS ENUM (
-  'login',
-  'guest-signin',
-  'host-signup',
-  'logout',
-  'password-reset',
-  'reserve-tickets',
-  'buy-tickets',
-  'book-free-tickets',
-  'cancel-reserved-tickets',
-  'create-event',
-  'edit-event',
-  'edit-profile',
-  'edit-other',
-  'unsubscribe'
-);
-CREATE TABLE actions (
-  id SERIAL PRIMARY KEY,
-  company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
-  user_id INT NOT NULL REFERENCES users ON DELETE CASCADE,
-  ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  type ACTION_TYPES NOT NULL,
-  extra JSONB
-);
-CREATE INDEX action_compound ON actions USING btree (company, user_id);
-CREATE INDEX action_type ON actions USING btree (type);
-CREATE INDEX action_ts ON actions USING btree (ts);
-
-
 CREATE TYPE EVENT_TYPES AS ENUM ('ticket_sales', 'donation_requests');
 CREATE TABLE categories (
   id SERIAL PRIMARY KEY,
@@ -128,6 +99,39 @@ CREATE INDEX event_public ON events USING btree (public);
 CREATE INDEX event_highlight ON events USING btree (highlight);
 CREATE INDEX event_start_ts ON events USING btree (start_ts);
 CREATE INDEX event_category ON events USING btree (category);
+
+
+CREATE TYPE ACTION_TYPES AS ENUM (
+  'login',
+  'guest-signin',
+  'host-signup',
+  'logout',
+  'password-reset',
+  'reserve-tickets',
+  'buy-tickets',
+  'book-free-tickets',
+  'cancel-reserved-tickets',
+  'create-event',
+  'event-guest-reminder',
+  'edit-event',
+  'edit-profile',
+  'edit-other',
+  'unsubscribe'
+);
+CREATE TABLE actions (
+  id SERIAL PRIMARY KEY,
+  company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
+  user_id INT REFERENCES users ON DELETE CASCADE,
+  event INT REFERENCES events ON DELETE SET NULL,
+  ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  type ACTION_TYPES NOT NULL,
+  extra JSONB
+);
+CREATE INDEX action_compound ON actions USING btree (company, user_id);
+CREATE INDEX action_user ON actions USING btree (user_id);
+CREATE INDEX action_event ON actions USING btree (event);
+CREATE INDEX action_type ON actions USING btree (type);
+CREATE INDEX action_ts ON actions USING btree (ts);
 
 
 CREATE TABLE ticket_types (

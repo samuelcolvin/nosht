@@ -3,7 +3,6 @@ import logging
 import os
 import random
 from datetime import datetime, timedelta
-from enum import Enum
 from pathlib import Path
 from textwrap import shorten
 
@@ -12,6 +11,7 @@ import lorem
 from async_timeout import timeout
 from buildpg import Values, asyncpg
 
+from .actions import ActionTypes
 from .emails.defaults import Triggers
 from .images import resize_upload
 from .settings import Settings
@@ -19,23 +19,6 @@ from .utils import mk_password, slugify
 
 logger = logging.getLogger('nosht.db')
 patches = []
-
-
-class ActionTypes(str, Enum):
-    login = 'login'
-    guest_signin = 'guest-signin'
-    host_signup = 'host-signup'
-    logout = 'logout'
-    password_reset = 'password-reset'
-    reserve_tickets = 'reserve-tickets'
-    buy_tickets = 'buy-tickets'
-    book_free_tickets = 'book-free-tickets'
-    cancel_reserved_tickets = 'cancel-reserved-tickets'
-    create_event = 'create-event'
-    edit_event = 'edit-event'
-    edit_profile = 'edit-profile'
-    edit_other = 'edit-other'
-    unsubscribe = 'unsubscribe'
 
 
 async def lenient_conn(settings: Settings, with_db=True):

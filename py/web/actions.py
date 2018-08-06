@@ -1,6 +1,6 @@
 import json
 
-from shared.db import ActionTypes
+from shared.actions import ActionTypes
 
 from .utils import get_ip
 
@@ -13,16 +13,16 @@ def actions_request_extra(request):
     )
 
 
-async def record_action(request, user_id, action_type: ActionTypes, **extra):
+async def record_action(request, user_id, action_type: ActionTypes, *, event_id=None, **extra):
     extra = json.dumps({**actions_request_extra(request), **extra})
     await request['conn'].execute(
-        'INSERT INTO actions (company, user_id, type, extra) VALUES ($1, $2, $3, $4)',
-        request['company_id'], user_id, action_type.value, extra)
+        'INSERT INTO actions (company, user_id, event, type, extra) VALUES ($1, $2, $3, $4, $5)',
+        request['company_id'], user_id, event_id, action_type.value, extra)
 
 
-async def record_action_id(request, user_id, action_type: ActionTypes, **extra):
+async def record_action_id(request, user_id, action_type: ActionTypes, *, event_id=None, **extra):
     extra = json.dumps({**actions_request_extra(request), **extra})
     return await request['conn'].fetchval(
-        'INSERT INTO actions (company, user_id, type, extra) VALUES ($1, $2, $3, $4) RETURNING id',
-        request['company_id'], user_id, action_type.value, extra
+        'INSERT INTO actions (company, user_id, event, type, extra) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        request['company_id'], user_id, event_id, action_type.value, extra
     )

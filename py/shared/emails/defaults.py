@@ -10,7 +10,6 @@ class Triggers(str, Enum):
     event_update = 'event-update'
     event_reminder = 'event-reminder'
 
-    event_booking = 'event-booking'
     event_host_update = 'event-host-update'
 
     password_reset = 'password-reset'
@@ -33,7 +32,7 @@ Event:
 
 * Start Time: **{{ event_start }}**
 * Duration: **{{ event_duration }}**
-* Location: **{{ event_location }}**
+{{#event_location}}* Location: **{{ event_location }}**{{/event_location}}
 
 {{#static_map}}
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
@@ -78,17 +77,24 @@ Email event_update
 """
     },
     Triggers.event_reminder: {
-        'subject': 'event_reminder',
-        'title': '',
+        'subject': '{{{ event_name }}} Upcoming',
+        'title': '{{ company_name }}',
         'body': """
-Email event_reminder
-"""
-    },
-    Triggers.event_booking: {
-        'subject': 'event_booking',
-        'title': '',
-        'body': """
-Email event_booking
+Hi {{ first_name }},
+
+You're booked in to attend **{{ event_name }}**, the event will start in a day's time.
+
+{{ centered_button(View Event | {{ event_link }}) }}
+
+Event:
+
+* Start Time: **{{ event_start }}**
+* Duration: **{{ event_duration }}**
+{{#event_location}}* Location: **{{ event_location }}**{{/event_location}}
+
+{{#static_map}}
+[![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
+{{/static_map}}
 """
     },
     Triggers.event_host_update: {
@@ -100,7 +106,7 @@ Email event_host_update
     },
     Triggers.password_reset: {
         'subject': '{{{ company_name }}} Password Reset',
-        'title': '',
+        'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},
 

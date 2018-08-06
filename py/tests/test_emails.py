@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from buildpg import Values
@@ -143,3 +143,90 @@ async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_serv
     assert r.status == 307, await r.text()
     assert r.headers['Location'].endswith('/unsubscribe-valid/')
     assert False is await db_conn.fetchval('SELECT receive_emails FROM users where id=$1', factory.user_id)
+
+
+async def test_event_reminder_none(email_actor: EmailActor, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.now() + timedelta(hours=25), price=10)
+
+    res = await factory.create_reservation()
+    await factory.buy_tickets(res)
+
+    assert 0 == await email_actor.send_event_reminders.direct()
+
+
+async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(
+        start_ts=datetime.now() + timedelta(hours=12),
+        price=10,
+        status='published',
+        location_name='Tower Block',
+        location_lat=51.5,
+        location_lng=-0.5,
+    )
+
+    res = await factory.create_reservation()
+    await factory.buy_tickets(res)
+
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='event-guest-reminder'")
+    assert 1 == await email_actor.send_event_reminders.direct()
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    text = email['part:text/plain']
+    assert text.startswith(
+        f'Hi Frank,\n'
+        f'\n'
+        f'You\'re booked in to attend **The Event Name**, the event will start in a day\'s time.\n'
+        f'\n'
+        f'<div class="button">\n'
+        f'  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n'
+        f'</div>\n'
+        f'\n'
+        f'Event:\n'
+        f'\n'
+        f'* Start Time: **{datetime.now() + timedelta(hours=12):%d %b %y}**\n'
+        f'* Duration: **All day**\n'
+        f'* Location: **Tower Block**\n'
+        f'\n'
+    ), text
+    assert 'www.google.com/maps' in text
+    a = await db_conn.fetchrow("SELECT company, user_id, event FROM actions WHERE type='event-guest-reminder'")
+    assert a == (factory.company_id, None, factory.event_id)
+
+
+async def test_event_reminder_many(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    ben = await factory.create_user(first_name='ben', email='ben@example.org')
+    charlie = await factory.create_user(first_name='charlie', email='charlie@example.org')
+
+    e1 = await factory.create_event(start_ts=datetime.now() + timedelta(hours=12), price=10,
+                                    status='published', name='event1')
+    await factory.buy_tickets(await factory.create_reservation(anne, ben, event_id=e1), anne)
+    await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e1), charlie)
+
+    e2 = await factory.create_event(start_ts=datetime.now() + timedelta(hours=12), price=10,
+                                    status='published', name='event2', slug='event2')
+    await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e2), charlie)
+
+    await factory.create_event(start_ts=datetime.now() + timedelta(hours=12), price=10,
+                               status='published', name='event3', slug='event3')
+
+    assert 4 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
+
+    assert 4 == await email_actor.send_event_reminders.direct()
+
+    assert len(dummy_server.app['emails']) == 4
+    assert {(e['To'], e['Subject']) for e in dummy_server.app['emails']} == {
+        ('ben Spencer <ben@example.org>', 'event1 Upcoming'),
+        ('anne Spencer <anne@example.org>', 'event1 Upcoming'),
+        ('charlie Spencer <charlie@example.org>', 'event1 Upcoming'),
+        ('charlie Spencer <charlie@example.org>', 'event2 Upcoming'),
+    }

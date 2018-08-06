@@ -473,7 +473,7 @@ async def booking_info(request):
         SELECT COUNT(*)
         FROM tickets
         JOIN actions AS a ON tickets.reserve_action = a.id
-        WHERE event=$1 AND a.user_id=$2 AND status='booked'
+        WHERE tickets.event=$1 AND a.user_id=$2 AND status='booked'
         """,
         event_id,
         request['session']['user_id']
@@ -544,7 +544,8 @@ class ReserveTickets(UpdateView):
             async with self.conn.transaction():
                 await self.create_users(m.tickets)
 
-                action_id = await record_action_id(self.request, user_id, ActionTypes.reserve_tickets)
+                action_id = await record_action_id(self.request, user_id, ActionTypes.reserve_tickets,
+                                                   event_id=event_id)
                 ticket_values = [
                     Values(
                         email=t.email and t.email.lower(),
@@ -622,7 +623,7 @@ class CancelReservedTickets(UpdateView):
             user_id = await self.conn.fetchval('SELECT user_id FROM actions WHERE id=$1', res.action_id)
             await self.conn.execute('DELETE FROM tickets WHERE reserve_action=$1', res.action_id)
             await self.conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, self.settings.ticket_ttl)
-            await record_action(self.request, user_id, ActionTypes.cancel_reserved_tickets)
+            await record_action(self.request, user_id, ActionTypes.cancel_reserved_tickets, event_id=res.event_id)
 
 
 class BuyTickets(UpdateView):

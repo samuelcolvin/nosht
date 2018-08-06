@@ -18,7 +18,7 @@ from urllib.parse import urlencode
 import chevron
 import sass
 from aiohttp import ClientSession, ClientTimeout
-from arq import Actor, concurrent
+from arq import Actor, DatetimeJob, concurrent
 from buildpg import asyncpg
 from cryptography import fernet
 from misaka import HtmlRenderer, Markdown
@@ -73,6 +73,8 @@ class UserEmail(NamedTuple):
 
 
 class BaseEmailActor(Actor):
+    job_class = DatetimeJob
+
     def __init__(self, *, settings: Settings, http_client=None, pg=None, **kwargs):
         self.redis_settings = settings.redis_settings
         super().__init__(**kwargs)
@@ -277,20 +279,25 @@ class BaseEmailActor(Actor):
             company_logo=company_logo,
             base_url=f'https://{company_domain}',
         )
-        user_ctx_lookup = {u[0]: u[1] for u in users_emails}
-        await asyncio.gather(*[
-            self.send_email(
-                user=u_data,
-                user_ctx=dict(user_ctx_lookup[u_data['id']]),
-                subject=subject,
-                title=title,
-                body=body,
-                template=template,
-                e_from=e_from,
-                global_ctx=global_ctx,
-            )
-            for u_data in user_data
-        ])
+        coros = []
+        user_data_lookup = {u['id']: u for u in user_data}
+        for user_id, ctx in users_emails:
+            user_data_ = user_data_lookup[user_id]
+            if user_data_:
+                coros.append(
+                    self.send_email(
+                        user=user_data_,
+                        user_ctx=ctx,
+                        subject=subject,
+                        title=title,
+                        body=body,
+                        template=template,
+                        e_from=e_from,
+                        global_ctx=global_ctx,
+                    )
+                )
+
+        await asyncio.gather(*coros)
         logger.info('%d emails sent for trigger %s, company %s (%d)',
                     len(user_data), trigger, company_domain, company_id)
 
@@ -323,6 +330,8 @@ def clean_ctx(context, base_url):
             context[key] = base_url + value
         elif isinstance(value, datetime.datetime):
             context[key] = value.strftime(datetime_fmt)
+        elif isinstance(value, datetime.date):
+            context[key] = value.strftime(date_fmt)
         elif isinstance(value, datetime.timedelta):
             context[key] = format_duration(value)
         elif isinstance(value, dict):

@@ -1,13 +1,17 @@
 import datetime
 import json
 import logging
+from itertools import groupby
+from operator import itemgetter
 from typing import Optional
 
-from arq import concurrent
+from arq import concurrent, cron
+from buildpg import MultipleValues, Values
 
+from ..actions import ActionTypes
 from ..utils import display_cash_free, password_reset_link, static_map_link
 from .defaults import Triggers
-from .plumbing import BaseEmailActor, UserEmail
+from .plumbing import BaseEmailActor, UserEmail, date_fmt, datetime_fmt
 
 logger = logging.getLogger('nosht.email.main')
 
@@ -20,7 +24,7 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT t.user_id,
                   full_name(u.first_name, u.last_name, u.email) AS user_name,
-                  e.slug, cat.slug as cat_slug, e.name, e.short_description,
+                  '/' || cat.slug || '/' || e.slug || '/' as event_link, e.name, e.short_description,
                   e.location_name, e.location_lat, e.location_lng,
                   e.start_ts, e.duration, tt.price, cat.company, co.currency, a.extra
                 FROM tickets AS t
@@ -42,14 +46,14 @@ class EmailActor(BaseEmailActor):
 
         duration: Optional[datetime.timedelta] = data['duration']
         ctx = {
-            'event_link': '/{cat_slug}/{slug}/'.format(**data),
+            'event_link': data['event_link'],
             'event_name': data['name'],
             'event_short_description': data['short_description'],
             'event_start': data['start_ts'] if duration else data['start_ts'].date(),
             'event_duration': duration or 'All day',
             'event_location': data['location_name'],
             'ticket_price': display_cash_free(data['price'], data['currency']),
-            'buyer_name': data['user_name']
+            'buyer_name': data['user_name'],
         }
         lat, lng = data['location_lat'], data['location_lng']
         if lat and lng:
@@ -103,13 +107,13 @@ class EmailActor(BaseEmailActor):
         async with self.pg.acquire() as conn:
             company_id, host_name, host_role, event_name, cat_name, link = await conn.fetchrow(
                 """
-                SELECT actions.company, full_name(u.first_name, u.last_name, u.email), u.role,
+                SELECT a.company, full_name(u.first_name, u.last_name, u.email), u.role,
                  e.name, cat.name, '/' || cat.slug || '/' || e.slug || '/'
-                FROM actions
-                JOIN users AS u ON actions.user_id = u.id
-                JOIN events AS e ON (extra->>'event_id')::int = e.id
+                FROM actions AS a
+                JOIN users AS u ON a.user_id = u.id
+                JOIN events AS e ON a.event = e.id
                 JOIN categories AS cat ON e.category = cat.id
-                WHERE actions.id=$1
+                WHERE a.id=$1
                 """,
                 action_id
             )
@@ -128,3 +132,83 @@ class EmailActor(BaseEmailActor):
                 await conn.fetch("SELECT id FROM users WHERE role='admin' AND company=$1", company_id)
             ]
         await self.send_emails.direct(company_id, Triggers.admin_notification, users)
+
+    @cron(minute=30)
+    async def send_event_reminders(self):
+        async with self.pg.acquire() as conn:
+            # get events for which reminders need to be send
+            events = await conn.fetch(
+                """
+                SELECT
+                  e.id, e.name, e.short_description, e.start_ts, e.duration,
+                  e.location_name, e.location_lat, e.location_lng,
+                  cat.company as company_id,
+                  '/' || cat.slug || '/' || e.slug || '/' as event_link
+                FROM events AS e
+                JOIN categories AS cat ON e.category = cat.id
+                WHERE e.status='published' AND
+                      e.start_ts BETWEEN now() AND now() + '24 hours'::interval AND
+                      e.id NOT IN (
+                        SELECT event
+                        FROM actions
+                        WHERE type='event-guest-reminder' AND
+                              ts > now() - '25 hours'::interval
+                      )
+                ORDER BY cat.company
+                """
+            )
+            if len(events) == 0:
+                return 0
+            # create the 'event-guest-reminder' action so the events won't receive multiple reminders
+            await conn.execute_b(
+                'INSERT INTO actions (:values__names) VALUES :values',
+                values=MultipleValues(*[
+                    Values(
+                        company=e['company_id'],
+                        event=e['id'],
+                        type=ActionTypes.event_guest_reminder.value,
+                    ) for e in events
+                ]),
+            )
+            # get all users expecting the email for all events
+            r = await conn.fetch(
+                """
+                SELECT DISTINCT event, user_id
+                FROM tickets
+                WHERE status='booked' AND event=ANY($1)
+                ORDER BY event
+                """, {e['id'] for e in events}
+            )
+            # group the users by event
+            users = {event_id: {t['user_id'] for t in g} for event_id, g in groupby(r, itemgetter('event'))}
+
+        user_emails = 0
+        for company_id, g in groupby(events, itemgetter('company_id')):
+            user_ctxs = []
+            for d in g:
+                event_users = users.get(d['id'])
+                if not event_users:
+                    continue
+                duration = d['duration']
+                ctx = {
+                    'event_link': d['event_link'],
+                    'event_name': d['name'],
+                    'event_short_description': d['short_description'],
+                    'event_start': (
+                        d['start_ts'].strftime(datetime_fmt) if duration else d['start_ts'].strftime(date_fmt)
+                    ),
+                    'event_duration': duration or 'All day',
+                    'event_location': d['location_name'],
+                }
+                lat, lng = d['location_lat'], d['location_lng']
+                if lat and lng:
+                    ctx.update(
+                        static_map=static_map_link(lat, lng, settings=self.settings),
+                        google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
+                    )
+                user_ctxs.extend([
+                    UserEmail(id=user_id, ctx=ctx) for user_id in event_users
+                ])
+            user_emails += len(user_ctxs)
+            await self.send_emails(company_id, Triggers.event_reminder.value, user_ctxs)
+        return user_emails
