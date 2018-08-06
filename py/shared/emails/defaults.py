@@ -70,10 +70,14 @@ Event:
 """
     },
     Triggers.event_update: {
-        'subject': 'event_update',
-        'title': '',
+        'subject': '{{{ subject }}}',
+        'title': '{{ company_name }}',
         'body': """
-Email event_update
+Hi {{ first_name }},
+
+{{{ message }}}
+
+{{ centered_button(View Event | {{ event_link }}) }}
 """
     },
     Triggers.event_reminder: {

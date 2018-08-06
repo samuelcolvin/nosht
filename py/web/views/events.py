@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, condecimal, conint, constr, validator
 from shared.images import delete_image, resize_upload
 from shared.utils import pseudo_random_str, slugify
 from web.actions import ActionTypes, record_action, record_action_id
-from web.auth import check_grecaptcha, check_session, is_admin_or_host, is_auth
+from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 from web.utils import (ImageModel, JsonErrors, clean_markdown, decrypt_json, encrypt_json, json_response, parse_request,
@@ -644,3 +644,33 @@ class BookFreeTickets(UpdateView):
         booked_action_id = await book_free(m, self.request['company_id'], self.session.get('user_id'),
                                            self.app, self.conn)
         await self.app['email_actor'].send_event_conf(booked_action_id)
+
+
+class EventUpdate(UpdateView):
+    class Model(GrecaptchaModel):
+        subject: constr(max_length=200)
+        message: str
+
+    async def check_permissions(self):
+        await check_session(self.request, 'admin', 'host')
+
+    async def execute(self, m: Model):
+        await check_grecaptcha(m, self.request)
+        event_id = int(self.request.match_info['id'])
+        host_id = await self.conn.fetchval(
+            """
+            SELECT host FROM events
+            JOIN categories AS cat ON category = cat.id
+            WHERE events.id=$1 AND cat.company=$2
+            """,
+            event_id, self.request['company_id'],
+        )
+        if host_id is None:
+            raise JsonErrors.HTTPNotFound(message='event not found')
+        user_id = self.session['user_id']
+        if self.session['role'] != 'admin' and host_id != user_id:
+            raise JsonErrors.HTTPForbidden(message='you are not permitted to update this event')
+
+        action_id = await record_action_id(self.request, user_id, ActionTypes.event_update,
+                                           event_id=event_id, **m.dict(include={'subject', 'message'}))
+        await self.app['email_actor'].send_event_update(action_id)

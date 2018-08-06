@@ -254,3 +254,38 @@ async def test_event_reminder_many(email_actor: EmailActor, factory: Factory, du
         ('charlie Spencer <charlie@example.org>', 'event1 Upcoming'),
         ('charlie Spencer <charlie@example.org>', 'event2 Upcoming'),
     }
+
+
+async def test_send_event_update(cli, url, login, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    await login()
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.buy_tickets(await factory.create_reservation(anne), anne)
+
+    data = dict(
+        grecaptcha_token='__ok__',
+        subject='This is a test email & whatever',
+        message='this is the **message**.'
+    )
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    assert len(dummy_server.app['emails']) == 1
+
+    email = dummy_server.app['emails'][0]
+    assert email['Subject'] == 'This is a test email & whatever'
+    assert email['To'] == 'anne Spencer <anne@example.org>'
+    html = email['part:text/html']
+    assert (
+        '<p>Hi anne,</p>\n'
+        '\n'
+        '<p>this is the <strong>message</strong>.</p>\n'
+    ) in html
+
+    assert '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n' in html

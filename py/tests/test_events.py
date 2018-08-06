@@ -885,3 +885,37 @@ async def test_invalid_ticket_updates(get_input, response_contains, cli, url, fa
     r = await cli.json_post(url('update-event-ticket-types', id=event_id), data={'ticket_types': ticket_types})
     assert r.status == 400, await r.text()
     assert response_contains in await r.text()
+
+
+async def test_send_event_update_wrong_user(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    user2 = await factory.create_user(role='host', email='user2@example.org')
+    await factory.create_event(price=10, host_user_id=user2)
+    await login()
+
+    data = dict(
+        grecaptcha_token='__ok__',
+        subject='This is a test email & whatever',
+        message='this is the **message**.'
+    )
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 403, await r.text()
+
+
+async def test_send_event_update_no_event(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        grecaptcha_token='__ok__',
+        subject='This is a test email & whatever',
+        message='this is the **message**.'
+    )
+
+    r = await cli.json_post(url('event-send-update', id=999), data=data)
+    assert r.status == 404, await r.text()

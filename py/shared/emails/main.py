@@ -135,6 +135,38 @@ class EmailActor(BaseEmailActor):
             ]
         await self.send_emails.direct(company_id, Triggers.admin_notification, users)
 
+    @concurrent
+    async def send_event_update(self, action_id):
+        async with self.pg.acquire() as conn:
+            company_id, event_id, sender_name, event_name, subject, message, event_link = await conn.fetchrow(
+                """
+                SELECT a.company, e.id, full_name(u.first_name, u.last_name, u.email), e.name,
+                  a.extra->>'subject', a.extra->>'message', '/' || cat.slug || '/' || e.slug || '/'
+                FROM actions AS a
+                JOIN users AS u ON a.user_id = u.id
+                JOIN events AS e ON a.event = e.id
+                JOIN categories AS cat ON e.category = cat.id
+                WHERE a.id=$1
+                """,
+                action_id
+            )
+            user_tickets = await conn.fetch(
+                """
+                SELECT DISTINCT user_id, id AS ticket_id
+                FROM tickets
+                WHERE status='booked' AND event=$1
+                """, event_id
+            )
+
+        ctx = {
+            'event_link': event_link,
+            'event_name': event_name,
+            'subject': subject,
+            'message': message,
+        }
+        users = [UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in user_tickets]
+        await self.send_emails.direct(company_id, Triggers.event_update, users)
+
     @cron(minute=30)
     async def send_event_reminders(self):
         async with self.pg.acquire() as conn:

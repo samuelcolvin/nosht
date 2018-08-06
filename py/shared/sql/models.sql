@@ -113,6 +113,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'cancel-reserved-tickets',
   'create-event',
   'event-guest-reminder',
+  'event-update',
   'edit-event',
   'edit-profile',
   'edit-other',

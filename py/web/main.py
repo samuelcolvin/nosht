@@ -22,7 +22,7 @@ from .views.auth import (authenticate_token, guest_signup, host_signup, login, l
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public)
 from .views.company import CompanyBread, company_upload
-from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, EventBread, ReserveTickets,
+from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, EventBread, EventUpdate, ReserveTickets,
                            SetEventStatus, SetTicketTypes, booking_info, event_categories, event_public,
                            event_ticket_types, event_tickets, set_event_image_existing, set_event_image_new)
 from .views.static import static_handler
@@ -93,6 +93,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.get('/events/{id:\d+}/ticket-types/', event_ticket_types, name='event-ticket-types'),
         web.post('/events/{id:\d+}/ticket-types/update/', SetTicketTypes.view(), name='update-event-ticket-types'),
         web.post('/events/{id:\d+}/reserve/', ReserveTickets.view(), name='event-reserve-tickets'),
+        web.post('/events/{id:\d+}/send-update/', EventUpdate.view(), name='event-send-update'),
         web.post('/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
         web.post('/events/buy/', BuyTickets.view(), name='event-buy-tickets'),
         web.post('/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
