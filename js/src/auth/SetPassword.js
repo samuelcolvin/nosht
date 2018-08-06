@@ -1,11 +1,13 @@
 import React from 'react'
 import WithContext from '../utils/context'
 import {Row, Col} from 'reactstrap'
+import {authenticate} from './Login'
 
 class SetPassword extends React.Component {
   constructor (props) {
     super(props)
     this.on_message = this.on_message.bind(this)
+    this.authenticate = authenticate.bind(this)
   }
 
   async on_message (event) {
@@ -18,8 +20,7 @@ class SetPassword extends React.Component {
       this.props.ctx.setError(data)
       return
     }
-    this.props.history.replace('/login/')
-    this.props.ctx.setMessage({icon: 'key', message: 'Password successfully set, please login.'})
+    await this.authenticate(data)
   }
 
   async componentDidMount () {

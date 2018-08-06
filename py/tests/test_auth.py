@@ -3,7 +3,7 @@ import re
 
 import pytest
 from cryptography import fernet
-from pytest_toolbox.comparison import AnyInt
+from pytest_toolbox.comparison import AnyInt, RegexStr
 
 from web.utils import encrypt_json
 
@@ -369,6 +369,19 @@ async def test_set_password(cli, url, factory: Factory, db_conn, login):
     }
     r = await cli.json_post(url('set-password'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'status': 'success',
+        'auth_token': RegexStr('.+'),
+        'user': {
+            'id': factory.user_id,
+            'first_name': 'Frank',
+            'last_name': 'Spencer',
+            'email': 'frank@example.org',
+            'role': 'admin',
+            'status': 'active',
+        },
+    }
     pw_after = await db_conn.fetchval('SELECT password_hash FROM users WHERE id=$1', factory.user_id)
     assert pw_after != pw_before
     await login(password='testing-new-password')

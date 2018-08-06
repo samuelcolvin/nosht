@@ -7,12 +7,24 @@ import WithContext from '../utils/context'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
+export async function authenticate (data) {
+  try {
+    await requests.post('auth-token/', {token: data.auth_token})
+  } catch (error) {
+    this.props.ctx.setError(error)
+    return
+  }
+  this.props.ctx.setRootState({user: data.user})
+  this.props.history.replace('/dashboard/events/')
+  this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
+}
+
 class Login extends React.Component {
   constructor (props) {
     super(props)
     this.state = {error: null}
     this.on_message = this.on_message.bind(this)
-    this.authenticate = this.authenticate.bind(this)
+    this.authenticate = authenticate.bind(this)
     this.login_with = this.login_with.bind(this)
   }
 
@@ -32,18 +44,6 @@ class Login extends React.Component {
       return
     }
     await this.authenticate(data)
-  }
-
-  async authenticate (data) {
-    try {
-      await requests.post('auth-token/', {token: data.auth_token})
-    } catch (error) {
-      this.props.ctx.setError(error)
-      return
-    }
-    this.props.ctx.setRootState({user: data.user})
-    this.props.history.replace('/dashboard/events/')
-    this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
   }
 
   async componentDidMount () {

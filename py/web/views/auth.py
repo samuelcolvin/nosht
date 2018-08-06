@@ -29,7 +29,7 @@ WHERE company=$1 AND email=$2 AND status='active' AND role!='guest'
 
 
 def successful_login(user, app, headers_=None):
-    auth_session = {'user_id': user['id'], 'email': user['email'], 'role': user['role'], 'last_active': int(time())}
+    auth_session = {'user_id': user['id'], 'role': user['role'], 'last_active': int(time())}
     auth_token = encrypt_json(app, auth_session)
     return json_response(status='success', auth_token=auth_token, user=user, headers_=headers_)
 
@@ -148,11 +148,13 @@ async def set_password(request):
         raise JsonErrors.HTTP470(message='This password reset link has already been used.',
                                  headers_=HEADER_CROSS_ORIGIN)
 
-    company_id, status = await conn.fetchrow('SELECT company, status FROM users WHERE id=$1', user_id)
-    if company_id != request['company_id']:
+    user = await conn.fetchrow('SELECT id, first_name, last_name, email, role, status, company FROM users WHERE id=$1',
+                               user_id)
+    user = dict(user)
+    if user.pop('company') != request['company_id']:
         # should not happen
         raise JsonErrors.HTTPBadRequest(message='company and user do not match')
-    if status == 'suspended':
+    if user['status'] == 'suspended':
         raise JsonErrors.HTTP470(message='user suspended, password update not allowed.', headers_=HEADER_CROSS_ORIGIN)
 
     pw_hash = mk_password(m.password1, request.app['settings'])
@@ -160,7 +162,7 @@ async def set_password(request):
 
     await conn.execute("UPDATE users SET password_hash=$1, status='active' WHERE id=$2", pw_hash, user_id)
     await record_action(request, user_id, ActionTypes.password_reset, nonce=nonce)
-    return json_response(status='success', headers_=HEADER_CROSS_ORIGIN)
+    return successful_login(user, request.app, HEADER_CROSS_ORIGIN)
 
 
 class EmailModel(GrecaptchaModel):
