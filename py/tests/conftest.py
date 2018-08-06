@@ -46,6 +46,7 @@ settings_args = dict(
     facebook_siw_app_secret='testing',
     print_emails=False,
     s3_prefix='tests',
+    max_request_size=1024**2,
 )
 
 
@@ -354,7 +355,7 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
     app.on_startup.append(post_startup_app)
     cli = await aiohttp_client(app)
 
-    def json_post_request(url, *, data=None, headers=None, origin_null=False):
+    def json_post(url, *, data=None, headers=None, origin_null=False):
         if data and not isinstance(data, str):
             data = json.dumps(data)
         headers = {
@@ -365,7 +366,7 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
         }
         return cli.post(url, data=data, headers=headers)
 
-    cli.json_post = json_post_request
+    cli.json_post = json_post
     return cli
 
 

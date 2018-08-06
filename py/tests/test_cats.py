@@ -212,6 +212,42 @@ async def test_upload_image(cli, url, factory: Factory, login, dummy_server):
     ]
 
 
+async def test_upload_too_large(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+    data = FormData()
+    data.add_field('image', b'x' * (1024**2 + 1), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('categories-add-image', cat_id=factory.category_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 413, await r.text()
+
+
+async def test_upload_no_image(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+    data = FormData()
+    data.add_field('wrong', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('categories-add-image', cat_id=factory.category_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 400, await r.text()
+
+
 async def test_upload_image_invalid(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_user()

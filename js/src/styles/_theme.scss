@@ -119,6 +119,13 @@ main.container {
   }
 }
 
+.password-reset {
+  iframe {
+    width: 100%;
+    height: 300px;
+  }
+}
+
 .item-detail {
   display: flex;
   justify-content: left;

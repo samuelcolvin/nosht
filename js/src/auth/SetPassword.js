@@ -36,7 +36,7 @@ class SetPassword extends React.Component {
           <h1 className="text-center">Set Password</h1>
       </div>,
       <Row key="2" className="justify-content-center">
-        <Col md="4" className="login">
+        <Col md="4" className="password-reset">
           <iframe
             title="Set Password"
             frameBorder="0"

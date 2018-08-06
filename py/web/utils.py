@@ -50,10 +50,6 @@ def pretty_lenient_json(data):
     return json.dumps(data, indent=2, cls=UniversalEncoder) + '\n'
 
 
-def pretty_json(data):
-    return json.dumps(data, indent=2) + '\n'
-
-
 def raw_json_response(json_str, status_=200):
     return Response(
         body=json_str.encode() + b'\n',
@@ -164,7 +160,7 @@ def split_name(raw_name):
         # assume just last_name
         return None, raw_name
     else:
-        return [n.strip(' ') or None for n in raw_name.split(' ', 1)]
+        return tuple(n.strip(' ') or None for n in raw_name.split(' ', 1))
 
 
 async def request_image(request, *, expected_size=None):

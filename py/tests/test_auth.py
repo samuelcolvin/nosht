@@ -36,6 +36,31 @@ async def test_login_successful(cli, url, factory: Factory):
     assert r.status == 200, await r.text()
 
 
+async def test_login_invalid_token(cli, url, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+
+    r = await cli.json_post(url('auth-token'), data={'token': 'foobar'})
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'invalid token',
+    }
+
+
+async def test_login_not_json(cli, url, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+
+    r = await cli.json_post(url('auth-token'), data='xxx')
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'Error decoding JSON',
+        'details': None,
+    }
+
+
 @pytest.mark.parametrize('post_data', [
     dict(email='not-frank@example.org', password='testing', grecaptcha_token='__ok__'),
     dict(email='frank@example.org', password='testing1', grecaptcha_token='__ok__'),

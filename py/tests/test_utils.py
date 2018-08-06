@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 
 import pytest
+from aiohttp.test_utils import make_mocked_request
 
 from shared.utils import RequestError, format_duration
-from web.utils import pretty_lenient_json
+from web.utils import get_ip, pretty_lenient_json, split_name
 
 
 def test_pretty_json():
@@ -13,6 +14,20 @@ def test_pretty_json():
         '  "foo": "1970-01-02T00:00:00"\n'
         '}\n'
     )
+
+
+def test_pretty_json_bytes():
+    a = {'foo': b'xxx'}
+    assert pretty_lenient_json(a) == (
+        '{\n'
+        '  "foo": "xxx"\n'
+        '}\n'
+    )
+
+
+def test_invalid_json():
+    with pytest.raises(TypeError):
+        pretty_lenient_json({1: pytest})
 
 
 @pytest.mark.parametrize('input,output', [
@@ -30,3 +45,17 @@ def test_request_error():
     r = RequestError(500, 'xxx', info='hello')
     assert str(r) == 'response 500 from "xxx":\nhello'
     assert r.extra() == 'hello'
+
+
+@pytest.mark.parametrize('input,first_name,last_name', [
+    ('', None, None),
+    ('Foobar', None, 'Foobar'),
+    ('Foo Bar', 'Foo', 'Bar'),
+])
+def test_split_name(input, first_name, last_name):
+    assert split_name(input) == (first_name, last_name)
+
+
+def test_get_ip():
+    req = make_mocked_request('GET', '/', headers={'X-Forwarded-For': ' 1.2.3.4, 5.6.7.8'})
+    assert get_ip(req) == '1.2.3.4'

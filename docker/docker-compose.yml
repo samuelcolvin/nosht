@@ -41,6 +41,13 @@ services:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/nosht'
       REDISCLOUD_URL: 'redis://redis:6379'
       PORT: 8000
+      APP_AWS_ACCESS_KEY: '${APP_AWS_ACCESS_KEY}'
+      APP_AWS_SECRET_KEY: '${APP_AWS_SECRET_KEY}'
+      APP_S3_BUCKET: '${APP_S3_BUCKET}'
+      APP_S3_DOMAIN: '${APP_S3_DOMAIN}'
+      APP_S3_PREFIX: docker
+      APP_GRECAPTCHA_SECRET: '${APP_GRECAPTCHA_SECRET}'
+      APP_STRIPE_IDEMPOTENCY_EXTRA: docker
     restart: unless-stopped
     ports:
     - 8000:8000
@@ -53,6 +60,13 @@ services:
     environment:
       DATABASE_URL: 'postgres://postgres:docker@postgres:5432/nosht'
       REDISCLOUD_URL: 'redis://redis:6379'
+      APP_AWS_ACCESS_KEY: '${APP_AWS_ACCESS_KEY}'
+      APP_AWS_SECRET_KEY: '${APP_AWS_SECRET_KEY}'
+      APP_S3_BUCKET: '${APP_S3_BUCKET}'
+      APP_S3_DOMAIN: '${APP_S3_DOMAIN}'
+      APP_S3_PREFIX: docker
+      APP_GRECAPTCHA_SECRET: '${APP_GRECAPTCHA_SECRET}'
+      APP_STRIPE_IDEMPOTENCY_EXTRA: docker
     restart: unless-stopped
     depends_on:
     - postgres
