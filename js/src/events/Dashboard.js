@@ -1,12 +1,13 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import FontAwesomeIcon from '@fortawesome/react-fontawesome'
-import {Alert, Button, Modal, ModalHeader, ModalBody, ModalFooter, Table, Progress as BsProgress} from 'reactstrap'
-import {format_event_start, format_event_duration, format_datetime} from '../utils'
+import {Alert, Button, Table, Progress as BsProgress} from 'reactstrap'
+import {format_event_start, format_event_duration, format_datetime, as_title} from '../utils'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render} from '../general/Dashboard'
 import {MoneyFree, Money} from '../general/Money'
+import {InfoModal} from '../general/Modal'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
 import TicketTypes from './TicketTypes'
@@ -36,6 +37,10 @@ const EVENT_STATUS_FIELDS = [
     {value: 'published'},
     {value: 'suspended'},
   ]},
+]
+const EVENT_EMAIL_UPDATE_FIELDS = [
+  {name: 'subject', required: true},
+  {name: 'message', required: true, type: 'textarea'},
 ]
 
 const Progress = WithContext(({event, tickets, ticket_types, ctx}) => {
@@ -112,42 +117,37 @@ class Tickets_ extends React.Component {
   render () {
     if (!this.props.tickets || !this.props.tickets.length) {
       return (
-        <div>
+        <div className="mb-5">
           <h4>Tickets</h4>
           <small>No Tickets bought for this event.</small>
         </div>
       )
     }
-    const close = () => this.setState({selected: null})
     const selected = this.state.selected || {}
     return (
-      <div>
-        <Modal isOpen={!!this.state.selected} toggle={close} size="lg">
-          <ModalHeader toggle={close}>{selected.user_name || <Dash/>}</ModalHeader>
-          <ModalBody>
-            <Detail name="Guest">
-              {selected.user_id ?
-                <Link to={`/dashboard/users/${selected.user_id}/`}>{selected.user_name }</Link>
-                :
-                <span className="text-muted">Guest of "{selected.buyer_name}", no name provided</span>
-              }
-            </Detail>
-            <Detail name="Buyer">
-              {selected.user_id === selected.buyer_id ?
-                <span className="text-muted">this guest</span>
-                :
-                <Link to={`/dashboard/users/${selected.buyer_id}/`}>{selected.buyer_name}</Link>
-              }
-            </Detail>
-            <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
-            <Detail name="Price"><MoneyFree>{selected.price}</MoneyFree></Detail>
-            <Detail name="Ticket Type">{selected.ticket_type_name}</Detail>
-            <Detail name="Extra Info">{selected.extra && selected.extra.extra_info}</Detail>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="secondary" onClick={close}>Close</Button>
-          </ModalFooter>
-        </Modal>
+      <div className="mb-5">
+        <InfoModal isOpen={!!this.state.selected}
+                   title={selected.user_name || <Dash/>}
+                   onClose={() => this.setState({selected: null})}>
+          <Detail name="Guest">
+            {selected.user_id ?
+              <Link to={`/dashboard/users/${selected.user_id}/`}>{selected.user_name }</Link>
+              :
+              <span className="text-muted">Guest of "{selected.buyer_name}", no name provided</span>
+            }
+          </Detail>
+          <Detail name="Buyer">
+            {selected.user_id === selected.buyer_id ?
+              <span className="text-muted">this guest</span>
+              :
+              <Link to={`/dashboard/users/${selected.buyer_id}/`}>{selected.buyer_name}</Link>
+            }
+          </Detail>
+          <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
+          <Detail name="Price"><MoneyFree>{selected.price}</MoneyFree></Detail>
+          <Detail name="Ticket Type">{selected.ticket_type_name}</Detail>
+          <Detail name="Extra Info">{selected.extra && selected.extra.extra_info}</Detail>
+        </InfoModal>
         <h4>Tickets</h4>
         <Table striped>
           <thead>
@@ -185,6 +185,50 @@ class Tickets_ extends React.Component {
 }
 const Tickets = WithContext(Tickets_)
 
+class EventUpdates extends React.Component {
+  constructor (props) {
+    super(props)
+    this.state = {selected: null}
+  }
+
+  render () {
+    if (!this.props.event_updates || !this.props.event_updates.length) {
+      return (
+        <div className="mb-5">
+          <h4>Event Updates</h4>
+          <small>No Updates sent for this event</small>
+        </div>
+      )
+    }
+    return (
+      <div className="mb-5">
+        <InfoModal isOpen={!!this.state.selected}
+                   onClose={() => this.setState({selected: null})}
+                   title="Event Update"
+                   fields={{subject: {}, message: {}}}
+                   object={this.state.selected}/>
+        <h4>Event Updates</h4>
+        <Table striped>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Subject</th>
+            </tr>
+          </thead>
+          <tbody>
+            {this.props.event_updates.map((a, i) => (
+              <tr key={i} onClick={() => this.setState({selected: a})} className="cursor-pointer">
+                <td>{format_datetime(a.ts)}</td>
+                <td>{as_title(a.subject)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
+    )
+  }
+}
+
 export class EventsDetails extends RenderDetails {
   constructor (props) {
     super(props)
@@ -195,6 +239,16 @@ export class EventsDetails extends RenderDetails {
       },
       duration: {
         render: format_event_duration
+      },
+      status: {
+        render: v => (
+          <span>
+            {as_title(v)}
+            {this.props.ctx.user.status === 'active' &&
+              <Button tag={Link} to={this.uri + 'set-status/'} size="sm" className="ml-2">Change Status</Button>
+            }
+          </span>
+        )
       },
       slug: null,
       cat_id: null,
@@ -225,6 +279,7 @@ export class EventsDetails extends RenderDetails {
       r = await Promise.all([
         requests.get(`/events/${this.id}/tickets/`),
         requests.get(`/events/${this.id}/ticket-types/`),
+        requests.get(`/events/${this.id}/updates/list/`),
       ])
     } catch (error) {
       this.props.ctx.setError(error)
@@ -234,9 +289,10 @@ export class EventsDetails extends RenderDetails {
       {
         tickets: r[0].tickets,
         ticket_types: r[1].ticket_types,
+        event_updates: r[2].event_updates,
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
-          this.props.ctx.user.status === 'active' && {name: 'Set Status', link: this.uri + 'set-status/'},
+          data.status === 'published' && {name: 'Send Update', link: this.uri + 'send-update/'},
           {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'},
         ]
       }
@@ -296,6 +352,7 @@ export class EventsDetails extends RenderDetails {
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}/>
         : null,
       <Tickets key="tickets" tickets={this.state.tickets} event={event}/>,
+      <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"
                  parent_uri={this.uri}
@@ -310,11 +367,22 @@ export class EventsDetails extends RenderDetails {
                  parent_uri={this.uri}
                  regex={/set-status\/$/}
                  mode="edit"
-                 success_msg='Event updated'
+                 success_msg='Event Updated'
                  initial={{status: event.status}}
                  update={this.update}
                  action={`/events/${this.id}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
+      <ModalForm key="send-update"
+                 title="Send Event update to Guests"
+                 parent_uri={this.uri}
+                 regex={/send-update\/$/}
+                 mode="edit"
+                 success_msg='Event Update Sent'
+                 initial={{status: event.status}}
+                 update={this.update}
+                 grecaptcha_name="send_event_update"
+                 action={`/events/${this.id}/updates/send/`}
+                 fields={EVENT_EMAIL_UPDATE_FIELDS}/>,
       <SetImage key="set-image"
                 event={event}
                 parent_uri={this.uri}

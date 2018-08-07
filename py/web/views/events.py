@@ -268,15 +268,6 @@ FROM (
   ) AS t
 ) AS tickets
 """
-
-
-@is_admin_or_host
-async def event_tickets(request):
-    event_id = await _check_event_host(request)
-    json_str = await request['conn'].fetchval(event_tickets_sql, event_id)
-    return raw_json_response(json_str)
-
-
 event_ticket_types_sql = """
 SELECT json_build_object('ticket_types', tickets)
 FROM (
@@ -290,12 +281,37 @@ FROM (
   ) AS t
 ) AS tickets
 """
+# TODO could add user here
+event_updates_sent_sql = """
+SELECT json_build_object('event_updates', event_updates)
+FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS event_updates FROM (
+    SELECT ts, extra->>'subject' AS subject, extra->>'message' AS message
+    FROM actions
+    WHERE type='event-update' AND event=$1
+  ) AS t
+) AS event_updates
+"""
+
+
+@is_admin_or_host
+async def event_tickets(request):
+    event_id = await _check_event_host(request)
+    json_str = await request['conn'].fetchval(event_tickets_sql, event_id)
+    return raw_json_response(json_str)
 
 
 @is_admin_or_host
 async def event_ticket_types(request):
     event_id = await _check_event_host(request)
     json_str = await request['conn'].fetchval(event_ticket_types_sql, event_id)
+    return raw_json_response(json_str)
+
+
+@is_admin_or_host
+async def event_updates_sent(request):
+    event_id = await _check_event_host(request)
+    json_str = await request['conn'].fetchval(event_updates_sent_sql, event_id)
     return raw_json_response(json_str)
 
 

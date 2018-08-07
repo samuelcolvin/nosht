@@ -3,12 +3,14 @@ import {
   Button,
   ButtonGroup,
   Modal,
+  ModalBody,
   ModalFooter as BsModalFooter,
   ModalHeader,
 } from 'reactstrap'
 import {withRouter} from 'react-router-dom'
 import WithContext from '../utils/context'
-import {get_component_name} from '../utils'
+import {as_title, get_component_name} from '../utils'
+import {Detail, render} from './Dashboard'
 
 export const ModalFooter = ({finished, disabled, label}) => (
   <BsModalFooter>
@@ -22,6 +24,39 @@ export const ModalFooter = ({finished, disabled, label}) => (
     </ButtonGroup>
   </BsModalFooter>
 )
+const DEFAULT_EXTRA_FIELDS = {
+  ip: {title: 'IP Address'},
+  ua: {title: 'User Agent'},
+}
+
+export const InfoModal = ({onClose, isOpen, title, fields, extra_fields, object, children}) => {
+  const e_fields = Object.assign({}, DEFAULT_EXTRA_FIELDS, extra_fields)
+  return (
+    <Modal isOpen={isOpen} toggle={onClose} size="lg">
+      <ModalHeader toggle={onClose}>{title}</ModalHeader>
+      <ModalBody>
+        {children}
+        {object && (
+          <div>
+            {Object.entries(fields).map(([k, value]) => (
+              <Detail k={k} name={value.title || as_title(k)}>
+                {value.render ? value.render(object[k]) : object[k]}
+              </Detail>
+            ))}
+            {Object.entries(object.extra || []).map(([k, value]) => (
+              <Detail key={`extra_${k}`} name={(e_fields[k] && e_fields[k].title) || as_title(k)}>
+                {(e_fields[k] && e_fields[k].render && e_fields[k].render(value)) || render(value)}
+              </Detail>
+            ))}
+          </div>
+        )}
+      </ModalBody>
+      <BsModalFooter>
+        <Button color="secondary" onClick={onClose}>Close</Button>
+      </BsModalFooter>
+    </Modal>
+  )
+}
 
 export default function AsModal (WrappedComponent) {
   class AsModal extends React.Component {

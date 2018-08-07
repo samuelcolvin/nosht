@@ -1,9 +1,10 @@
 import React from 'react'
-import {Button, Modal, ModalHeader, ModalBody, ModalFooter, Table} from 'reactstrap'
+import {Table} from 'reactstrap'
 import requests from '../utils/requests'
 import {format_date, format_datetime, as_title} from '../utils'
-import {RenderList, RenderDetails, Detail} from '../general/Dashboard'
+import {RenderList, RenderDetails} from '../general/Dashboard'
 import ButtonConfirm from '../general/Confirm'
+import {InfoModal} from '../general/Modal'
 import {ModalForm} from '../forms/Form'
 import Tickets from './Tickets'
 
@@ -80,31 +81,17 @@ class Actions extends React.Component {
         </div>
       )
     }
-    const close = () => this.setState({selected: null})
-    const selected = this.state.selected
-    const titles = {
-      ip: 'IP Address',
-      ua: 'User Agent',
+    const fields = {
+      type: {title: 'Action', render: as_title},
+      ts: {title: 'Time', render: format_datetime},
     }
     return (
       <div>
-        <Modal isOpen={!!this.state.selected} toggle={close} size="lg">
-          <ModalHeader toggle={close}>{selected && selected.type}</ModalHeader>
-          <ModalBody>
-            {selected && (
-              <div>
-                <Detail name="Action">{as_title(selected.type)}</Detail>
-                <Detail name="Time">{format_datetime(selected.ts)}</Detail>
-                {Object.keys(selected.extra).map(k => (
-                  <Detail key={k} name={titles[k] || as_title(k)}>{selected.extra[k]}</Detail>
-                ))}
-              </div>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button color="secondary" onClick={close}>Close</Button>
-          </ModalFooter>
-        </Modal>
+        <InfoModal isOpen={!!this.state.selected}
+                   onClose={() => this.setState({selected: null})}
+                   title={this.state.selected && as_title(this.state.selected.type)}
+                   fields={fields}
+                   object={this.state.selected}/>
         <h4>Actions</h4>
         <Table striped>
           <thead>
