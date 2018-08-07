@@ -29,14 +29,15 @@ testcov: test
 all: testcov lint
 
 .PHONY: build
+build: COMMIT=$(shell git rev-parse HEAD)
 build:
 	@ # this makes sure build will work even if the deploy-settings directory doesn't exist
 	mkdir -p deploy-settings/favicons
 	touch deploy-settings/env.production
 	touch deploy-settings/favicons/favicon-16x16.png
 	docker build . -f docker/Dockerfile.base -t nosht-python-build
-	docker build . -f docker/Dockerfile.web -t nosht-web
-	docker build . -f docker/Dockerfile.worker -t nosht-worker --quiet
+	docker build . -f docker/Dockerfile.web -t nosht-web --build-arg COMMIT=$(COMMIT)
+	docker build . -f docker/Dockerfile.worker -t nosht-worker --quiet --build-arg COMMIT=$(COMMIT)
 
 .PHONY: docker-dev
 docker-dev: build

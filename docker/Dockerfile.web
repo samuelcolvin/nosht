@@ -13,7 +13,8 @@ ADD ./deploy-settings/*.* /home/root/
 ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
 ADD ./deploy-settings/favicons/* /home/root/public/
-RUN yarn build
+ARG COMMIT
+RUN REACT_APP_COMMIT=$COMMIT yarn build
 RUN rm build/service-worker.js
 RUN find build/ -type f | xargs ls -lh
 
@@ -28,6 +29,8 @@ COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/p
 COPY --from=python-build /lib/* /lib/
 COPY --from=python-build /usr/lib/* /usr/lib/
 
+ARG COMMIT
+ENV COMMIT $COMMIT
 ENV PYTHONUNBUFFERED 1
 ENV APP_ON_DOCKER 1
 WORKDIR /home/root/py

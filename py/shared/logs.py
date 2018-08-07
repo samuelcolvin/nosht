@@ -24,7 +24,7 @@ def setup_logging(disable_existing=False):
             transport=AioHttpTransport,
             dsn=raven_dsn,
             release=os.getenv('COMMIT', None),
-            name=os.getenv('IMAGE_NAME', None),
+            name=os.getenv('DYNO', None),
         )
     config = {
         'version': 1,

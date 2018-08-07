@@ -7,6 +7,10 @@ import './styles/main.scss'
 
 if (process.env.NODE_ENV === 'production') {
   // TODO could add release here
-  Raven.config(process.env.REACT_APP_SENTRY_DSN).install()
+  Raven.config(
+    process.env.REACT_APP_SENTRY_DSN, {
+      release: process.env.REACT_APP_COMMIT
+    }
+  ).install()
 }
 ReactDOM.render(<Router><App/></Router>, document.getElementById('root'))
