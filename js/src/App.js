@@ -106,6 +106,7 @@ class App extends React.Component {
       setRootState: s => this.setState(s),
       setMessage: (...args) => this.setMessage(...args),
       setError: error => this.setState({error}),
+      setUser: user => this.setState({user}),
       company: this.state.company,
       user: this.state.user,
     }

@@ -14,7 +14,7 @@ export async function authenticate (data) {
     this.props.ctx.setError(error)
     return
   }
-  this.props.ctx.setRootState({user: data.user})
+  this.props.ctx.setUser(data.user)
   this.props.history.replace('/dashboard/events/')
   this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
 }
@@ -48,7 +48,7 @@ class Login extends React.Component {
 
   async componentDidMount () {
     window.addEventListener('message', this.on_message)
-    this.props.ctx.setRootState({user: null})
+    this.props.ctx.setUser(null)
     await setup_siw()
   }
 

@@ -69,7 +69,7 @@ class BookingLogin extends React.Component {
     if (data._response_status !== 200) {
       return data.message
     } else {
-      this.props.ctx.setRootState({user: data.user})
+      this.props.ctx.setUser(data.user)
       this.props.clear_reservation()
     }
   }

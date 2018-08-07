@@ -70,7 +70,7 @@ async def test_500(cli, caplog):
     assert 'custom 500 error' == await r.text()
     assert len(caplog.records) == 1
     record = caplog.records[0]
-    assert record.data.keys() == {'request', 'response'}
+    assert record.data.keys() == {'request_duration', 'request', 'response'}
     assert record.data['request']['text'] == 'foobar'
     assert record.data['response']['text'] == 'custom 500 error'
     assert record.user == {'ip_address': '127.0.0.1'}
@@ -83,7 +83,7 @@ async def test_not_unicode(cli, caplog):
     assert 'custom 500 error' == await r.text()
     assert len(caplog.records) == 1
     record = caplog.records[0]
-    assert record.data.keys() == {'request', 'response'}
+    assert record.data.keys() == {'request_duration', 'request', 'response'}
     assert record.data['request']['text'] is None
     assert record.user == {'ip_address': '127.0.0.1'}
     assert record.tags == {}
@@ -94,7 +94,7 @@ async def test_499(cli, caplog):
     assert r.status == 499, await r.text()
     assert len(caplog.records) == 1
     record = caplog.records[0]
-    assert record.data.keys() == {'request', 'response'}
+    assert record.data.keys() == {'request_duration', 'request', 'response'}
     assert record.user == {'ip_address': '127.0.0.1'}
     assert record.tags == {}
 
@@ -105,7 +105,7 @@ async def test_value_error(cli, caplog):
     assert '500: Internal Server Error' == await r.text()
     assert len(caplog.records) == 1
     record = caplog.records[0]
-    assert record.data.keys() == {'request', 'response', 'exception_extra'}
+    assert record.data.keys() == {'request_duration', 'request', 'response', 'exception_extra'}
     assert record.data['exception_extra'] is None
     assert record.user == {'ip_address': '127.0.0.1'}
     assert record.tags == {}
@@ -120,10 +120,9 @@ async def test_user(cli, caplog, db_conn):
     assert r.status == 488, await r.text()
     assert len(caplog.records) == 1
     record = caplog.records[0]
-    assert record.data.keys() == {'request', 'response'}
+    assert record.data.keys() == {'request_duration', 'request', 'response'}
     assert record.user == {
         'ip_address': '127.0.0.1',
-        'id': factory.user_id,
         'email': 'frank@example.org',
         'company_name': 'Testing',
         'company_id': factory.company_id,

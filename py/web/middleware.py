@@ -44,10 +44,10 @@ async def log_extra(start, request, response=None, **more):
     with contextlib.suppress(Exception):  # UnicodeDecodeError
         response_text = lenient_json(getattr(response, 'text', None))
     data = dict(
+        request_duration=f'{(time() - start) * 1000:0.2f}ms',
         request=dict(
             url=str(request.rel_url),
             user_agent=request.headers.get('User-Agent'),
-            duration=time() - start,
             method=request.method,
             host=request.host,
             headers=dict(request.headers),
@@ -83,7 +83,7 @@ async def log_extra(start, request, response=None, **more):
                     user_role=user_info['role'],
                     company=user_info['company_id'],
                 )
-                user.update(id=user_id, **user_info)
+                user.update(user_info)
     return dict(
         data=data,
         user=user,

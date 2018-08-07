@@ -246,7 +246,7 @@ async def _check_event_host(request):
         if not host_id:
             raise JsonErrors.HTTPNotFound(message='event not found')
         if host_id != request['session']['user_id']:
-            raise JsonErrors.HTTPForbidden(message='use is not the host of this event')
+            raise JsonErrors.HTTPForbidden(message='user is not the host of this event')
     return event_id
 
 

@@ -85,7 +85,7 @@ class Signup extends React.Component {
     } else if (data._response_status === 470) {
       this.setState({error: data.message})
     } else {
-      this.props.ctx.setRootState({user: data.user})
+      this.props.ctx.setUser(data.user)
       this.props.history.replace('/dashboard/events/')
       this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
     }

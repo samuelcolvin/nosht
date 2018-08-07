@@ -17,7 +17,7 @@ class Logout extends React.Component {
       this.props.ctx.setError(error)
       return
     }
-    this.props.ctx.setRootState({user: null})
+    this.props.ctx.setUser(null)
     this.setState({finished: true})
     this.props.ctx.setMessage({icon: 'user', message: 'Logged out successfully'})
   }

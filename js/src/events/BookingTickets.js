@@ -28,7 +28,7 @@ export class User extends React.Component {
       this.props.ctx.setError(error)
       return
     }
-    this.props.ctx.setRootState({user: null})
+    this.props.ctx.setUser(null)
   }
 
   render () {
