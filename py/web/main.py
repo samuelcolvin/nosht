@@ -63,7 +63,6 @@ def create_app(*, settings: Settings=None, logging_client=None):
     settings = settings or Settings()
 
     app = web.Application(middlewares=(
-        session_middleware(EncryptedCookieStorage(settings.auth_key, cookie_name='nosht')),
         pg_middleware,
         user_middleware,
         csrf_middleware,
@@ -128,7 +127,10 @@ def create_app(*, settings: Settings=None, logging_client=None):
 
     wrapper_app = web.Application(
         client_max_size=settings.max_request_size,
-        middlewares=(error_middleware,),
+        middlewares=(
+            session_middleware(EncryptedCookieStorage(settings.auth_key, cookie_name='nosht')),
+            error_middleware,
+        ),
     )
     wrapper_app.update(
         settings=settings,

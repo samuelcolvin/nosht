@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import re
@@ -8,6 +9,7 @@ from aiohttp.web_exceptions import HTTPException, HTTPInternalServerError
 from aiohttp.web_middlewares import middleware
 from aiohttp.web_response import Response
 from aiohttp_session import get_session
+from asyncpg import PostgresError
 
 from .auth import remove_port
 from .utils import HEADER_CROSS_ORIGIN, JSON_CONTENT_TYPE, JsonErrors, get_ip, request_root
@@ -24,36 +26,75 @@ def lenient_json(v):
     return v
 
 
+def exc_extra(exc):
+    exception_extra = getattr(exc, 'extra', None)
+    if exception_extra:
+        try:
+            v = exception_extra()
+        except Exception:
+            pass
+        else:
+            return lenient_json(v)
+
+
 async def log_extra(start, request, response=None, **more):
-    try:
+    request_text = response_text = None
+    with contextlib.suppress(Exception):  # UnicodeDecodeError or HTTPRequestEntityTooLarge maybe other things too
         request_text = await request.text()
-    except Exception:
-        # UnicodeDecodeError or HTTPRequestEntityTooLarge maybe other things too
-        request_text = None
-    return dict(
+    with contextlib.suppress(Exception):  # UnicodeDecodeError
+        response_text = lenient_json(getattr(response, 'text', None))
+    data = dict(
         request=dict(
             url=str(request.rel_url),
             user_agent=request.headers.get('User-Agent'),
             duration=time() - start,
-            ip=get_ip(request),
             method=request.method,
             host=request.host,
             headers=dict(request.headers),
-            body=lenient_json(request_text),
+            text=lenient_json(request_text),
         ),
         response=dict(
             status=getattr(response, 'status', None),
             headers=dict(getattr(response, 'headers', {})),
-            text=lenient_json(getattr(response, 'text', None)),
+            text=response_text,
         ),
         **more
+    )
+
+    tags = dict()
+    user = dict(ip_address=get_ip(request))
+    session = await get_session(request)
+    user_id = session.get('user_id')
+    if user_id:
+        with contextlib.suppress(PostgresError):  # eg. InFailedSQLTransactionError
+            async with request.app['main_app']['pg'].acquire() as conn:
+                user_info = await conn.fetchrow(
+                    """
+                    SELECT u.email, c.name AS company_name, c.id AS company_id, role, status,
+                    full_name(u.first_name, u.last_name, null) as username
+                    FROM users AS u
+                    JOIN companies AS c ON u.company = c.id
+                    WHERE u.id=$1
+                    """,
+                    user_id
+                )
+                tags.update(
+                    user_status=user_info['status'],
+                    user_role=user_info['role'],
+                    company=user_info['company_id'],
+                )
+                user.update(id=user_id, **user_info)
+    return dict(
+        data=data,
+        user=user,
+        tags=tags,
     )
 
 
 async def log_warning(start, request, response):
     logger.warning('%s %d', request.rel_url, response.status, extra={
         'fingerprint': [request.rel_url, str(response.status)],
-        'data': await log_extra(start, request, response)
+        **await log_extra(start, request, response)
     })
 
 
@@ -72,25 +113,15 @@ def get_request_start(request):
 async def error_middleware(request, handler):
     start = get_request_start(request)
     try:
-        http_exception = getattr(request.match_info, 'http_exception', None)
-        if http_exception:
-            raise http_exception
-        else:
-            r = await handler(request)
+        r = await handler(request)
     except HTTPException as e:
         if should_warn(e):
             await log_warning(start, request, e)
         raise
-    except BaseException as e:
-        exception_extra = getattr(e, 'extra', None)
-        if exception_extra:
-            try:
-                exception_extra = exception_extra()
-            except Exception:
-                pass
-        logger.exception('%s: %s', e.__class__.__name__, e, extra={
-            'fingerprint': [e.__class__.__name__, str(e)],
-            'data': await log_extra(start, request, exception_extra=lenient_json(exception_extra))
+    except Exception as exc:
+        logger.exception('%s: %s', exc.__class__.__name__, exc, extra={
+            'fingerprint': [exc.__class__.__name__, str(exc)],
+            **await log_extra(start, request, exception_extra=exc_extra(exc))
         })
         raise HTTPInternalServerError()
     else:
