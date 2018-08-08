@@ -19,6 +19,10 @@ class RequestPasswordReset extends React.Component {
     this.state = {enabled: true, email: null}
   }
 
+  componentDidMount () {
+    this.props.ctx.setRootState({active_page: 'login'})
+  }
+
   async submit (e) {
     e.preventDefault()
     this.setState({enabled: false})

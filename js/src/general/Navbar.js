@@ -101,6 +101,15 @@ export default class Navbar extends React.Component {
                   <NavLink tag={Link} onClick={this.close} to={`/${cat.slug}/`}>{cat.name}</NavLink>
                 </NavItem>
               ))}
+              {this.props.user ? (
+                <NavItem active={this.props.active_page === 'dashboard'}>
+                  <NavLink tag={Link} onClick={this.close} to="/dashboard/events/">Dashbaord</NavLink>
+                </NavItem>
+              ) : (
+                <NavItem active={this.props.active_page === 'login'}>
+                  <NavLink tag={Link} onClick={this.close} to="/login/">Login</NavLink>
+                </NavItem>
+              )}
             </Nav>
           </Collapse>
         </div>

@@ -36,6 +36,7 @@ class Signup extends React.Component {
 
   async componentDidMount () {
     setup_siw()
+    this.props.ctx.setRootState({active_page: 'login'})
   }
 
   async google_auth () {

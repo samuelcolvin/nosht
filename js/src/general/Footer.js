@@ -36,13 +36,9 @@ class Footer extends React.Component {
       {name: 'Signup', to: '/signup/'},
     ]
     if (user) {
-      menu = []
-      if (user.role === 'admin' || user.role === 'host') {
-        menu = [
-          {name: 'Dashboard', to: '/dashboard/events/'},
-        ]
-      }
-      menu.push({name: 'Logout', to: '/logout/'})
+      menu = [
+        {name: 'Logout', to: '/logout/'}
+      ]
     }
     return (
       <footer className="footer">

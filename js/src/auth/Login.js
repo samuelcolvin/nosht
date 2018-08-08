@@ -49,6 +49,7 @@ class Login extends React.Component {
   async componentDidMount () {
     window.addEventListener('message', this.on_message)
     this.props.ctx.setUser(null)
+    this.props.ctx.setRootState({active_page: 'login'})
     await setup_siw()
   }
 
@@ -96,6 +97,10 @@ class Login extends React.Component {
       <Row key="head" className="justify-content-center mb-2">
         <Col md="6">
           <h1 className="text-center">Login</h1>
+          <p>
+            Not yet a user? Go to <Link to="/signup/">Sign up</Link> to create an account
+            and start hosting events.
+          </p>
           <div className="d-flex justify-content-around">
             <Button onClick={this.google_auth.bind(this)} color="primary">
               <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>

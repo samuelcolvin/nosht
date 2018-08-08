@@ -25,6 +25,10 @@ const MenuItem = ({page, location}) => {
 }
 
 class Dashboard extends React.Component {
+  componentDidMount () {
+    this.props.ctx.setRootState({active_page: 'dashboard'})
+  }
+
   render () {
     let pages = [
       {name: 'events', title: 'My Events', list_comp: EventsList, details_comp: EventsDetails},

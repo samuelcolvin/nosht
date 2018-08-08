@@ -25,6 +25,7 @@ class SetPassword extends React.Component {
 
   async componentDidMount () {
     window.addEventListener('message', this.on_message)
+    this.props.ctx.setRootState({active_page: 'login'})
   }
 
   componentWillUnmount () {

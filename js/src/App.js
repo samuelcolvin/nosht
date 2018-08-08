@@ -116,6 +116,7 @@ class App extends React.Component {
                 background={this.state.background}
                 extra_menu={this.state.extra_menu}
                 message={this.state.message}
+                user={this.state.user}
                 active_page={this.state.active_page}/>
         <main className="container">
           {this.state.error ? <Error error={this.state.error}
