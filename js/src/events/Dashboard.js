@@ -8,6 +8,7 @@ import requests from '../utils/requests'
 import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render} from '../general/Dashboard'
 import {MoneyFree, Money} from '../general/Money'
 import {InfoModal} from '../general/Modal'
+import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
 import TicketTypes from './TicketTypes'
@@ -259,6 +260,26 @@ export class EventsDetails extends RenderDetails {
           </span>
         )
       },
+      highlight: props.ctx.user.role === 'admin' ? {
+        render: v => {
+          return (
+            <span>
+              {render(v)}
+              <ButtonConfirm action={`/events/${this.id}/switch-highlight/`}
+                             modal_title="Switch Status"
+                             btn_text={v ? 'Mark as not highlight' : 'Mark as highlight'}
+                             done={this.update}
+                             btn_size="sm"
+                             className="ml-2">
+                {v ?
+                  'Are you sure you want to remove this event from Highlights?'
+                  :
+                  'Are you sure you want to mark this event as a Highlights?'}
+              </ButtonConfirm>
+            </span>
+          )
+        }
+      } : null,
       slug: null,
       cat_id: null,
       cat_slug: null,

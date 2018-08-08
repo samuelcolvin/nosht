@@ -1017,3 +1017,22 @@ async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_serve
             'ts': CloseToNow(),
         }
     ]}
+
+
+@pytest.mark.parametrize('previous_status', [
+    True, False
+])
+async def test_event_switch_status(previous_status, cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+    await login()
+
+    await db_conn.execute('UPDATE events SET highlight=$1', previous_status)
+
+    r = await cli.json_post(url('event-switch-highlight', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    h = await db_conn.fetchval('SELECT highlight FROM events')
+    assert h == (not previous_status)

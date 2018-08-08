@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, condecimal, conint, constr, validator
 from shared.images import delete_image, resize_upload
 from shared.utils import pseudo_random_str, slugify
 from web.actions import ActionTypes, record_action, record_action_id
-from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin_or_host, is_auth
+from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
 from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 from web.utils import (ImageModel, JsonErrors, clean_markdown, decrypt_json, encrypt_json, json_response, parse_request,
@@ -660,3 +660,10 @@ class EventUpdate(UpdateView):
         action_id = await record_action_id(self.request, self.session['user_id'], ActionTypes.event_update,
                                            event_id=event_id, **m.dict(include={'subject', 'message'}))
         await self.app['email_actor'].send_event_update(action_id)
+
+
+@is_admin
+async def switch_highlight(request):
+    event_id = await _check_event_host(request)
+    await request['conn'].execute('UPDATE events SET highlight=NOT highlight WHERE id=$1', event_id)
+    return json_response(status='ok')
