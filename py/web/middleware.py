@@ -115,6 +115,8 @@ async def error_middleware(request, handler):
     try:
         r = await handler(request)
     except HTTPException as e:
+        import traceback
+        traceback.print_exc()
         if should_warn(e):
             await log_warning(start, request, e)
         raise

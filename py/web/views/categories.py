@@ -110,6 +110,7 @@ class CategoryBread(Bread):
     retrieve_enabled = True
     add_enabled = True
     edit_enabled = True
+    delete_enabled = True
 
     model = Model
     table = 'categories'

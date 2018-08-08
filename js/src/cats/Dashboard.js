@@ -69,6 +69,13 @@ export class CategoriesDetails extends RenderDetails {
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
       {name: 'Add Images', link: this.uri + 'add-image/'},
+      {
+        name: 'Delete Category',
+        action: `/categories/${this.id}/delete/`,
+        confirm_msg: 'Are you sure you want to delete this category? This cannot be undone.',
+        success_msg: 'Category deleted.',
+        redirect_to: '/dashboard/categories/',
+      }
     ]
     this.formats = {
       image: {
@@ -95,7 +102,7 @@ export class CategoriesDetails extends RenderDetails {
 
   async image_action (action, image) {
     try {
-      await requests.post(`/categories/${this.id}/${action}/`, {image})
+      await requests.post(`/categories/${this.id}/images/${action}/`, {image})
     } catch (error) {
       this.props.ctx.setError(error)
       return

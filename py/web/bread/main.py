@@ -5,7 +5,7 @@ GET /?filter 200,403
 POST /add/ 201,400,403
 GET /{pk}/ 200,403,404
 POST /{pk}/ 200,400,403,404
-DELETE /{pk}/ 200,400,403,404
+POST /{pk}/delete/ 200,403,404
 OPTIONS / 200,403
 
 rules:
@@ -264,6 +264,10 @@ class Bread(ReadBread):
     SET :values
     :where
     """
+    delete_sql = """
+    DELETE FROM :table
+    :where
+    """
     check_ok_sql = """
     SELECT row_to_json(t) FROM (
       :query
@@ -354,8 +358,18 @@ class Bread(ReadBread):
     async def edit_options(self) -> web.Response:
         pass
 
+    async def delete_execute(self, pk):
+        await self.conn.execute_b(
+            self.delete_sql,
+            table=Var(self.table),
+            where=Where(Var(self.pk_field) == pk),
+            print_=self.print_queries,
+        )
+
     async def delete(self, pk) -> web.Response:
-        pass
+        await self.check_item_permissions(pk)
+        await self.delete_execute(pk)
+        return json_response(message=f'{self.table} {pk} deleted')
 
     @classmethod
     def _routes(cls, root, name) -> List[web.RouteDef]:
@@ -367,7 +381,7 @@ class Bread(ReadBread):
             yield web.post(root + '/{pk:\d+}/', cls.view(Method.edit), name=f'{name}-edit')
             # yield web.options(root + '/{pk:\d+}/', cls.view(Method.edit_options), name=f'{name}-edit-options')
         if cls.delete_enabled:
-            yield web.delete(root + '/{pk:\d+}/', cls.view(Method.delete), name=f'{name}-delete')
+            yield web.post(root + '/{pk:\d+}/delete/', cls.view(Method.delete), name=f'{name}-delete')
 
     def conflict_exc(self, exc: UniqueViolationError):
         columns = re.search('\((.+?)\)', exc.as_dict()['detail']).group(1).split(', ')

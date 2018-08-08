@@ -97,6 +97,33 @@ async def test_edit_cat(cli, url, db_conn, factory: Factory, login):
     assert cat['description'] == 'x'
 
 
+async def test_delete_cat(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    await factory.create_cat()
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
+
+    r = await cli.json_post(url('category-delete', pk=factory.category_id))
+    assert r.status == 200, await r.text()
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
+
+
+async def test_delete_cat_wrong(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    await factory.create_cat()
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
+
+    r = await cli.json_post(url('category-delete', pk=999))
+    assert r.status == 404, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
+
+
 async def test_edit_invalid(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_user()

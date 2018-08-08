@@ -1,4 +1,5 @@
 import React from 'react'
+import {withRouter} from 'react-router-dom'
 import {
   Button,
   Modal,
@@ -33,6 +34,8 @@ export class ButtonConfirm extends React.Component {
     }
     this.setState({open: false, enabled: true})
     this.props.done && this.props.done(data)
+    this.props.redirect_to && this.props.history.push(this.props.redirect_to)
+    this.props.success_msg && this.props.ctx.setMessage(this.props.success_msg)
   }
 
   render () {
@@ -63,4 +66,4 @@ export class ButtonConfirm extends React.Component {
     ]
   }
 }
-export default WithContext(ButtonConfirm)
+export default WithContext(withRouter(ButtonConfirm))
