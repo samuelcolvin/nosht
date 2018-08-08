@@ -124,23 +124,32 @@ class Tickets_ extends React.Component {
       )
     }
     const selected = this.state.selected || {}
+    const is_admin = this.props.ctx.user.role === 'admin'
     return (
       <div className="mb-5">
         <InfoModal isOpen={!!this.state.selected}
                    title={selected.user_name || <Dash/>}
                    onClose={() => this.setState({selected: null})}>
           <Detail name="Guest">
-            {selected.user_id ?
-              <Link to={`/dashboard/users/${selected.user_id}/`}>{selected.user_name }</Link>
+            {selected.user_name ?
+              is_admin ?
+                <Link to={`/dashboard/users/${selected.user_id}/`}>{selected.user_name}</Link>
+                :
+                <span>{selected.user_name}</span>
               :
-              <span className="text-muted">Guest of "{selected.buyer_name}", no name provided</span>
+              <span className="text-muted">No name provided</span>
             }
           </Detail>
           <Detail name="Buyer">
             {selected.user_id === selected.buyer_id ?
               <span className="text-muted">this guest</span>
               :
-              <Link to={`/dashboard/users/${selected.buyer_id}/`}>{selected.buyer_name}</Link>
+              is_admin ?
+                <Link to={`/dashboard/users/${selected.buyer_id}/`}>
+                  {selected.buyer_name || <span className="text-muted">No name provided</span>}
+                </Link>
+                :
+                <span>{selected.buyer_name || <span className="text-muted">No name provided</span>}</span>
             }
           </Detail>
           <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
@@ -165,7 +174,7 @@ class Tickets_ extends React.Component {
               <tr key={i} onClick={() => this.setState({selected: t})} className="cursor-pointer">
                 <th scope="row">{i + 1}</th>
                 <td>{t.user_name || <Dash/>}</td>
-                <td>{t.buyer_name}</td>
+                <td>{t.buyer_name || <Dash/>}</td>
                 <td>{format_datetime(t.bought_at)}</td>
                 <td>{t.ticket_type_name}</td>
                 <td className="text-right">
