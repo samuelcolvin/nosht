@@ -9,6 +9,7 @@ import {UsersList, UsersDetails} from './users/Dashboard'
 import Account from './users/Account'
 import {CategoriesList, CategoriesDetails} from './cats/Dashboard'
 import CompanyDetails from './company/Dashboard'
+import Export from './Export'
 
 const list_uri = page => `/dashboard/${page.name}/`
 const list_match_uri = page => `/dashboard/${page.name}/(add/)?`
@@ -33,7 +34,7 @@ class Dashboard extends React.Component {
         {name: 'categories', list_comp: CategoriesList, details_comp: CategoriesDetails},
         {name: 'users', list_comp: UsersList, details_comp: UsersDetails},
         {name: 'company', details_comp: CompanyDetails, details_uri: '/dashboard/company/'},
-        {name: 'export', list_comp: null, details_comp: null},
+        {name: 'export', details_comp: Export, details_uri: '/dashboard/export/'},
       ]
     }
     pages.push(

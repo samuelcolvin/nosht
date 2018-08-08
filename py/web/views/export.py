@@ -1,7 +1,7 @@
 from csv import DictWriter
 from datetime import datetime
 
-from aiohttp.web_response import Response, StreamResponse
+from aiohttp.web_response import StreamResponse
 
 from web.auth import is_admin
 
@@ -11,7 +11,7 @@ SELECT
   e.id, e.name, e.slug, e.status,
   to_char(e.start_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS start_time,
   to_char(extract(epoch from e.duration)/3600, 'FM9999990.00') AS duration_hours,
-  e.short_description, e.long_description, e.public, e.location_name,
+  e.short_description, e.long_description, boolstr(e.public) AS is_public, e.location_name,
   to_char(e.location_lat, 'FM990.0000000') AS location_lat,
   to_char(e.location_lng, 'FM990.0000000') AS location_lng,
   e.ticket_limit, e.image,
@@ -28,19 +28,21 @@ GROUP BY e.id, cat.id
 """,
     'categories': """
 SELECT
-  id, name, slug, live, description, sort_index, event_content, host_advice, ticket_extra_title, ticket_extra_help_text,
+  id, name, slug, boolstr(live) AS live, description, sort_index, event_content, host_advice,
+  ticket_extra_title, ticket_extra_help_text,
   suggested_price, image
 FROM categories AS c
 WHERE company=$1
 """,
     'users': """
 SELECT
-  u.id, u.role, u.status, u.first_name, u.last_name, u.email, u.phone_number, u.stripe_customer_id, u.receive_emails,
+  u.id, u.role, u.status, u.first_name, u.last_name, u.email, u.phone_number, u.stripe_customer_id,
+  boolstr(u.receive_emails) AS receive_emails,
   to_char(u.created_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_ts,
   to_char(u.active_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS active_ts,
   count(t.id) AS tickets
 FROM users AS u
-JOIN tickets AS t ON u.id = t.user_id
+LEFT JOIN tickets AS t ON u.id = t.user_id
 WHERE u.company=$1
 GROUP BY u.id
 """,
@@ -65,7 +67,7 @@ WHERE a.company=$1 AND t.status!='reserved'
 }
 
 
-class ResponseFile:
+class ResponsePseudoFile:
     def __init__(self, response):
         self.r = response
         self.buffer = ''
@@ -84,23 +86,25 @@ async def export(request):
     export_sql = EXPORTS[export_type]
     conn = request['conn']
     async with conn.transaction():
-        r = await conn.fetchrow(export_sql + ' LIMIT 1', request['company_id'])
-        if not r:
-            return Response(text=f'no {export_type} found')
-
-        fieldnames = list(r.keys())
         response = StreamResponse(headers={
             'Content-Disposition': f'attachment;filename=nosht_{export_type}_{datetime.now().isoformat()}.csv'
         })
         response.content_type = 'text/csv'
         await response.prepare(request)
 
-        response_file = ResponseFile(response)
-        writer = DictWriter(response_file, fieldnames=fieldnames)
+        response_file = ResponsePseudoFile(response)
+        r = await conn.fetchrow(export_sql + ' LIMIT 1', request['company_id'])
+        if not r:
+            writer = DictWriter(response_file, fieldnames=['message'])
+            writer.writeheader()
+            writer.writerow({'message': f'no {export_type} found'})
+            await response_file.write_response()
+            return response
+
+        writer = DictWriter(response_file, fieldnames=list(r.keys()))
         writer.writeheader()
 
         async for record in conn.cursor(export_sql, request['company_id']):
             writer.writerow({k: str('' if v is None else v) for k, v in record.items()})
             await response_file.write_response()
-    await response.write_eof()
     return response

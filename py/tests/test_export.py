@@ -41,7 +41,7 @@ async def test_event_export(cli, url, login, factory: Factory):
             'duration_hours': '2.75',
             'short_description': RegexStr('.*'),
             'long_description': RegexStr('.*'),
-            'public': 'True',
+            'is_public': 'true',
             'location_name': 'Testing Location',
             'location_lat': '51.5000000',
             'location_lng': '-0.5000000',
@@ -68,6 +68,19 @@ async def test_export_as_host(cli, url, login, factory: Factory):
     assert r.status == 403
 
 
+async def test_export_no_events(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    r = await cli.get(url('export', type='events'))
+    assert r.status == 200
+    text = await r.text()
+    data = [dict(r) for r in DictReader(StringIO(text))]
+    assert data == [{'message': 'no events found'}]
+
+
 async def test_cat_export(cli, url, login, factory: Factory):
     await factory.create_company()
     await factory.create_cat()
@@ -83,7 +96,7 @@ async def test_cat_export(cli, url, login, factory: Factory):
             'id': str(factory.category_id),
             'name': 'Supper Clubs',
             'slug': 'supper-clubs',
-            'live': 'True',
+            'live': 'true',
             'description': '',
             'sort_index': '',
             'event_content': '',
@@ -99,15 +112,8 @@ async def test_cat_export(cli, url, login, factory: Factory):
 async def test_user_export(cli, url, login, factory: Factory):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user()
-    await factory.create_event(
-        price=12.34,
-        status='published',
-        location_name='Testing Location',
-        location_lat=51.5,
-        location_lng=-0.5,
-        duration=timedelta(hours=2, minutes=45),
-    )
+    await factory.create_user(receive_emails=False)
+    await factory.create_event(price=10)
     await factory.buy_tickets(await factory.create_reservation())
     await factory.buy_tickets(await factory.create_reservation())
     await login()
@@ -126,7 +132,7 @@ async def test_user_export(cli, url, login, factory: Factory):
             'email': 'frank@example.org',
             'phone_number': '',
             'stripe_customer_id': 'customer-id',
-            'receive_emails': 'True',
+            'receive_emails': 'false',
             'created_ts': RegexStr('\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'),
             'active_ts': RegexStr('\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'),
             'tickets': '2',

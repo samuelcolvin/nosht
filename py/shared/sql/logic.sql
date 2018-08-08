@@ -37,3 +37,11 @@ CREATE OR REPLACE FUNCTION full_name(first_name VARCHAR(255), last_name VARCHAR(
     return coalesce(first_name || ' ' || last_name, first_name, last_name, email);
   END;
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION boolstr(v BOOLEAN) RETURNS VARCHAR(5) AS $$
+  DECLARE
+  BEGIN
+    return CASE WHEN v IS TRUE THEN 'true' ELSE 'false' END;
+  END;
+$$ LANGUAGE plpgsql;
