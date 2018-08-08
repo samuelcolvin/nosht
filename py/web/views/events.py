@@ -193,13 +193,11 @@ class EventBread(Bread):
 
     async def prepare_add_data(self, data):
         data = self.prepare(data)
-        long_desc = data.get('long_description')
-        if long_desc is not None:
-            data['short_description'] = shorten(clean_markdown(long_desc), width=140, placeholder='…')
 
         session = self.request['session']
         data.update(
             slug=slugify(data['name']),
+            short_description=shorten(clean_markdown(data['long_description']), width=140, placeholder='…'),
             host=session['user_id'],
         )
         q = 'SELECT status FROM users WHERE id=$1'
@@ -235,18 +233,17 @@ class EventBread(Bread):
 
 async def _check_event_host(request):
     event_id = int(request.match_info['id'])
-    if request['session']['role'] == 'host':
-        host_id = await request['conn'].fetchval(
-            """
-            SELECT host
-            FROM events AS e
-            JOIN categories AS cat ON e.category = cat.id
-            WHERE e.id=$1 AND cat.company=$2
-            """, event_id, request['company_id'])
-        if not host_id:
-            raise JsonErrors.HTTPNotFound(message='event not found')
-        if host_id != request['session']['user_id']:
-            raise JsonErrors.HTTPForbidden(message='user is not the host of this event')
+    host_id = await request['conn'].fetchval(
+        """
+        SELECT host
+        FROM events AS e
+        JOIN categories AS cat ON e.category = cat.id
+        WHERE e.id=$1 AND cat.company=$2
+        """, event_id, request['company_id'])
+    if not host_id:
+        raise JsonErrors.HTTPNotFound(message='event not found')
+    if request['session']['role'] != 'admin' and host_id != request['session']['user_id']:
+        raise JsonErrors.HTTPForbidden(message='user is not the host of this event')
     return event_id
 
 
@@ -452,23 +449,10 @@ class SetEventStatus(UpdateView):
 
     async def check_permissions(self):
         await check_session(self.request, 'admin', 'host')
-        host_id, user_status = await self.conn.fetchrow_b(
-            """
-            SELECT e.host, u.status FROM events AS e
-            JOIN categories AS c on e.category = c.id
-            JOIN users AS u on e.host = u.id
-            WHERE e.id=:id AND c.company=:company
-            """,
-            id=int(self.request.match_info['id']),
-            company=self.request['company_id']
-        )
-        if not host_id:
-            raise JsonErrors.HTTPNotFound(message='Event not found')
-        if self.session['role'] != 'admin':
-            if host_id != self.session['user_id']:
-                raise JsonErrors.HTTPForbidden(message='You do not have permissions to edit this event')
-            if user_status != 'active':
-                raise JsonErrors.HTTPForbidden(message='Host not active')
+        await _check_event_host(self.request)
+        user_status = await self.conn.fetchrow('SELECT status FROM users WHERE id=$1', self.session['user_id'])
+        if self.session['role'] != 'admin' and user_status != 'active':
+            raise JsonErrors.HTTPForbidden(message='Host not active')
 
     async def execute(self, m: Model):
         await self.conn.execute_b(
@@ -672,21 +656,7 @@ class EventUpdate(UpdateView):
 
     async def execute(self, m: Model):
         await check_grecaptcha(m, self.request)
-        event_id = int(self.request.match_info['id'])
-        host_id = await self.conn.fetchval(
-            """
-            SELECT host FROM events
-            JOIN categories AS cat ON category = cat.id
-            WHERE events.id=$1 AND cat.company=$2
-            """,
-            event_id, self.request['company_id'],
-        )
-        if host_id is None:
-            raise JsonErrors.HTTPNotFound(message='event not found')
-        user_id = self.session['user_id']
-        if self.session['role'] != 'admin' and host_id != user_id:
-            raise JsonErrors.HTTPForbidden(message='you are not permitted to update this event')
-
-        action_id = await record_action_id(self.request, user_id, ActionTypes.event_update,
+        event_id = await _check_event_host(self.request)
+        action_id = await record_action_id(self.request, self.session['user_id'], ActionTypes.event_update,
                                            event_id=event_id, **m.dict(include={'subject', 'message'}))
         await self.app['email_actor'].send_event_update(action_id)

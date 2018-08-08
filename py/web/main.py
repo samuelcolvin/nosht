@@ -24,8 +24,8 @@ from .views.categories import (CategoryBread, category_add_image, category_defau
 from .views.company import CompanyBread, company_upload
 from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, EventBread, EventUpdate, ReserveTickets,
                            SetEventStatus, SetTicketTypes, booking_info, event_categories, event_public,
-                           event_ticket_types, event_tickets, set_event_image_existing, set_event_image_new,
-                           event_updates_sent)
+                           event_ticket_types, event_tickets, event_updates_sent, set_event_image_existing,
+                           set_event_image_new)
 from .views.static import static_handler
 from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_tickets
 

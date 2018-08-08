@@ -316,6 +316,46 @@ async def test_set_event_status_bad(cli, url, db_conn, factory: Factory, login):
     assert 'pending' == await db_conn.fetchval('SELECT status FROM events')
 
 
+async def test_set_event_status_host_not_active(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event()
+    await login()
+    await db_conn.execute("UPDATE users SET status='pending'")
+
+    r = await cli.json_post(url('event-set-status', id=factory.event_id), data=dict(status='published'))
+    assert r.status == 403, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Host not active'}
+    assert 'pending' == await db_conn.fetchval('SELECT status FROM events')
+
+
+async def test_set_event_status_missing_event(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    r = await cli.json_post(url('event-set-status', id=999), data=dict(status='published'))
+    assert r.status == 404, await r.text()
+
+
+async def test_set_event_status_wrong_host(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    user2 = await factory.create_user(role='host', email='user2@example.org')
+    await factory.create_event(host_user_id=user2)
+    await login()
+
+    r = await cli.json_post(url('event-set-status', id=factory.event_id), data=dict(status='published'))
+    assert r.status == 403, await r.text()
+    data = await r.json()
+    assert data == {'message': 'user is not the host of this event'}
+    assert 'pending' == await db_conn.fetchval('SELECT status FROM events')
+
+
 async def test_booking_info(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
@@ -860,15 +900,15 @@ async def test_edit_ticket_type(cli, url, factory: Factory, db_conn, login):
 
 @pytest.mark.parametrize('get_input,response_contains', [
     (
-        lambda event_id, tt_id: (event_id, [{'id': tt_id, 'name': 'foobar'}]),
+        lambda tt_id: [{'id': tt_id, 'name': 'foobar'}],
         '"msg": "field required"'
     ),
     (
-        lambda event_id, tt_id: (event_id + 1, [{'id': tt_id, 'name': 'x', 'slots_used': 1, 'active': True}]),
+        lambda tt_id: [{'id': 999, 'name': 'x', 'slots_used': 1, 'active': True}],
         '"message": "wrong ticket updated"'
     ),
     (
-        lambda event_id, tt_id: (event_id + 1, [{'id': tt_id, 'name': 'x', 'slots_used': 1, 'active': False}]),
+        lambda tt_id: [{'id': tt_id, 'name': 'x', 'slots_used': 1, 'active': False}],
         '"msg": "at least 1 ticket type must be active"'
     ),
 ])
@@ -880,9 +920,9 @@ async def test_invalid_ticket_updates(get_input, response_contains, cli, url, fa
     await login()
 
     tt_id = await db_conn.fetchval('SELECT id FROM ticket_types')
-    event_id, ticket_types = get_input(factory.event_id, tt_id)
+    ticket_types = get_input(tt_id)
 
-    r = await cli.json_post(url('update-event-ticket-types', id=event_id), data={'ticket_types': ticket_types})
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
     assert r.status == 400, await r.text()
     assert response_contains in await r.text()
 
@@ -919,3 +959,61 @@ async def test_send_event_update_no_event(cli, url, login, factory: Factory):
 
     r = await cli.json_post(url('event-send-update', id=999), data=data)
     assert r.status == 404, await r.text()
+
+
+async def test_event_updates_none(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    r = await cli.get(url('event-updates-sent', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {'event_updates': []}
+
+
+async def test_event_updates_wrong_event(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    user2 = await factory.create_user(role='host', email='user2@example.org')
+    await factory.create_event(price=10, host_user_id=user2)
+    await login()
+
+    r = await cli.get(url('event-updates-sent', id=factory.event_id))
+    assert r.status == 403, await r.text()
+
+
+async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+    await login()
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.buy_tickets(await factory.create_reservation(anne), anne)
+
+    data = dict(
+        grecaptcha_token='__ok__',
+        subject='This is a test email & whatever',
+        message='this is the **message**.'
+    )
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    assert len(dummy_server.app['emails']) == 1
+
+    r = await cli.get(url('event-updates-sent', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {'event_updates': [
+        {
+            'message': 'this is the **message**.',
+            'subject': 'This is a test email & whatever',
+            'ts': CloseToNow(),
+        }
+    ]}
