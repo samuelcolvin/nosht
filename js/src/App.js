@@ -16,6 +16,7 @@ import Signup from './auth/Signup'
 import RequestPasswordReset from './auth/RequestPasswordReset'
 import SetPassword from './auth/SetPassword'
 import CreateEvent from './events/Create'
+import {UnsubscribeValid, UnsubscribeInvalid} from './Unsubscribe'
 import Dashboard from './Dashboard'
 
 
@@ -32,6 +33,8 @@ const Routes = () => (
       <Route path="/dashboard/" component={Dashboard}/>
       <Route path="/create/" component={CreateEvent}/>
 
+      <Route exact path="/unsubscribe-valid/" component={UnsubscribeValid}/>
+      <Route exact path="/unsubscribe-invalid/" component={UnsubscribeInvalid}/>
       <Route path="/:category/:event/" component={Event}/>
       <Route exact path="/:category/" component={Category}/>
 
