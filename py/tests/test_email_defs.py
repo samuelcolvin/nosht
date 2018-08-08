@@ -49,6 +49,18 @@ async def test_retrieve_missing_email_defs(cli, url, login, factory: Factory):
     }
 
 
+async def test_retrieve_invalid_email_defs(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+
+    await login()
+
+    r = await cli.get(url('email-defs-retrieve', trigger='xxx'))
+    assert r.status == 404, await r.text()
+    data = await r.json()
+    assert data == {'message': 'no such trigger'}
+
+
 async def test_retrieve_existing_email_defs(cli, url, login, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_user()

@@ -232,8 +232,8 @@ async def test_event_reminder_many(email_actor: EmailActor, factory: Factory, du
     ben = await factory.create_user(first_name='ben', email='ben@example.org')
     charlie = await factory.create_user(first_name='charlie', email='charlie@example.org')
 
-    e1 = await factory.create_event(start_ts=datetime.now() + timedelta(hours=12), price=10,
-                                    status='published', name='event1')
+    e1 = await factory.create_event(start_ts=datetime.now() + timedelta(hours=12),
+                                    duration=timedelta(hours=1), price=10, status='published', name='event1')
     await factory.buy_tickets(await factory.create_reservation(anne, ben, event_id=e1), anne)
     await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e1), charlie)
 

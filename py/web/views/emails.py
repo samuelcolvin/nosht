@@ -1,55 +1,9 @@
-from buildpg import V, Values
-from buildpg.clauses import Where
+from buildpg import Values
 from pydantic import BaseModel, constr
 
 from shared.emails.defaults import EMAIL_DEFAULTS, Triggers
-from web.auth import check_session, is_admin
-from web.bread import Bread
+from web.auth import is_admin
 from web.utils import JsonErrors, json_response, parse_request
-
-
-class EmailDefBread(Bread):
-    class Model(BaseModel):
-        trigger: Triggers
-        subject: constr(max_length=255)
-        title: constr(max_length=127)
-        body: str
-        active: bool = True
-
-    browse_enabled = True
-    retrieve_enabled = True
-    add_enabled = True
-    edit_enabled = True
-    delete_enabled = True
-
-    model = Model
-    table = 'email_definitions'
-    browse_order_by_fields = 'trigger',
-
-    browse_fields = (
-        'trigger',
-        'active',
-    )
-    retrieve_fields = browse_fields + (
-        'subject',
-        'title',
-        'body',
-    )
-
-    browse_sql = ':items_query'
-
-    def get_pk(self):
-        return self.request.match_info['trigger']
-
-    async def check_permissions(self, method):
-        await check_session(self.request, 'admin')
-
-    def where(self):
-        return Where(V('company') == self.request['company_id'])
-
-    async def prepare_add_data(self, data):
-        data['company'] = self.request['company_id']
-        return data
 
 
 @is_admin
@@ -72,10 +26,9 @@ async def email_def_browse(request):
 def get_trigger(request):
     trigger = request.match_info['trigger']
     try:
-        Triggers(trigger)
+        return Triggers(trigger)
     except ValueError:
-        raise JsonErrors.HTTPNotFound(message=f'trigger "{trigger}" not found')
-    return trigger
+        raise JsonErrors.HTTPNotFound(message='no such trigger')
 
 
 @is_admin

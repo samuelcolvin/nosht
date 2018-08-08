@@ -9,7 +9,7 @@ from arq import concurrent, cron
 from buildpg import MultipleValues, Values
 
 from ..actions import ActionTypes
-from ..utils import display_cash_free, password_reset_link, static_map_link
+from ..utils import display_cash_free, format_duration, password_reset_link, static_map_link
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail, date_fmt, datetime_fmt
 
@@ -234,7 +234,7 @@ class EmailActor(BaseEmailActor):
                     'event_start': (
                         d['start_ts'].strftime(datetime_fmt) if duration else d['start_ts'].strftime(date_fmt)
                     ),
-                    'event_duration': duration or 'All day',
+                    'event_duration': format_duration(duration) if duration else 'All day',
                     'event_location': d['location_name'],
                 }
                 lat, lng = d['location_lat'], d['location_lng']
