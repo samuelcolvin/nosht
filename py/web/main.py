@@ -26,6 +26,7 @@ from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, E
                            SetEventStatus, SetTicketTypes, booking_info, event_categories, event_public,
                            event_ticket_types, event_tickets, event_updates_sent, set_event_image_existing,
                            set_event_image_new)
+from .views.export import export
 from .views.static import static_handler
 from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_tickets
 
@@ -125,6 +126,8 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.get('/users/{pk:\d+}/actions/', user_actions, name='user-actions'),
         web.get('/users/{pk:\d+}/tickets/', user_tickets, name='user-tickets'),
         web.post('/users/{pk:\d+}/switch-status/', switch_user_status, name='user-switch-status'),
+
+        web.get('/export/{type:(events|categories|users|tickets)}.csv', export, name='export')
     ])
 
     wrapper_app = web.Application(
