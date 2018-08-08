@@ -8,6 +8,7 @@ import {EventsList, EventsDetails} from './events/Dashboard'
 import {UsersList, UsersDetails} from './users/Dashboard'
 import Account from './users/Account'
 import {CategoriesList, CategoriesDetails} from './cats/Dashboard'
+import {EmailDefList, EmailDefDetails} from './emails/Dashboard'
 import CompanyDetails from './company/Dashboard'
 import Export from './Export'
 
@@ -34,6 +35,7 @@ class Dashboard extends React.Component {
         {name: 'categories', list_comp: CategoriesList, details_comp: CategoriesDetails},
         {name: 'users', list_comp: UsersList, details_comp: UsersDetails},
         {name: 'company', details_comp: CompanyDetails, details_uri: '/dashboard/company/'},
+        {name: 'email-defs', list_comp: EmailDefList, details_comp: EmailDefDetails, title: 'Emails'},
         {name: 'export', details_comp: Export, details_uri: '/dashboard/export/'},
       ]
     }

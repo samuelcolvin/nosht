@@ -17,6 +17,19 @@ export class Form extends React.Component {
     this.set_form_data = this.set_form_data.bind(this)
   }
 
+  componentDidMount () {
+    if (this.props.submit_initial && this.props.fields) {
+      const form_data = {}
+      for (const field of this.props.fields) {
+        const initial = this.props.initial[field.name]
+        if (initial) {
+          form_data[field.name] = initial
+        }
+      }
+      this.setState({form_data})
+    }
+  }
+
   async submit (e) {
     e.preventDefault()
     if (Object.keys(this.state.form_data).length === 0) {

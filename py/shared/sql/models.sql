@@ -178,9 +178,9 @@ CREATE TABLE email_definitions (
   company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
   trigger EMAIL_TRIGGERS NOT NULL,
   active BOOLEAN DEFAULT TRUE,
-  subject VARCHAR(255),
+  subject VARCHAR(255) NOT NULL,
   title VARCHAR(127),
-  body TEXT
+  body TEXT NOT NULL
 );
 CREATE UNIQUE INDEX email_def_unique ON email_definitions USING btree (company, trigger);
 

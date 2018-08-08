@@ -22,6 +22,7 @@ from .views.auth import (authenticate_token, guest_signup, host_signup, login, l
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public)
 from .views.company import CompanyBread, company_upload
+from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
 from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, EventBread, EventUpdate, ReserveTickets,
                            SetEventStatus, SetTicketTypes, booking_info, event_categories, event_public,
                            event_ticket_types, event_tickets, event_updates_sent, set_event_image_existing,
@@ -127,7 +128,12 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.get('/users/{pk:\d+}/tickets/', user_tickets, name='user-tickets'),
         web.post('/users/{pk:\d+}/switch-status/', switch_user_status, name='user-switch-status'),
 
-        web.get('/export/{type:(events|categories|users|tickets)}.csv', export, name='export')
+        web.get('/export/{type:(events|categories|users|tickets)}.csv', export, name='export'),
+
+        web.get('/email-defs/', email_def_browse, name='email-defs-browse'),
+        web.get('/email-defs/{trigger}/', email_def_retrieve, name='email-defs-retrieve'),
+        web.post('/email-defs/{trigger}/edit/', email_def_edit, name='email-defs-edit'),
+        web.post('/email-defs/{trigger}/clear/', clear_email_def, name='email-defs-clear'),
     ])
 
     wrapper_app = web.Application(

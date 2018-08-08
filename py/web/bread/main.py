@@ -27,9 +27,9 @@ from asyncpg import UniqueViolationError
 from buildpg import SetValues, Values, Var, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Clauses, From, Join, Limit, OrderBy, Select, Where
-from pydantic import BaseModel, validate_model
+from pydantic import BaseModel
 
-from web.utils import JsonErrors, json_response, parse_request, raw_json_response
+from web.utils import JsonErrors, json_response, parse_request, parse_request_ignore_missing, raw_json_response
 
 
 class Method(str, Enum):
@@ -217,7 +217,7 @@ class ReadBread(BaseBread):
             count_query=await self.browse_count_query(),
             print_=self.print_queries,
         )
-        return raw_json_response(json_str or '[]')
+        return raw_json_response(json_str)
 
     @as_clauses
     async def retrieve_query(self, pk):
@@ -330,21 +330,9 @@ class Bread(ReadBread):
 
     async def edit(self, pk) -> web.Response:
         await self.check_item_permissions(pk)
-        try:
-            raw_data = await self.request.json()
-        except ValueError:
-            raise JsonErrors.HTTPBadRequest(message='Error decoding JSON')
-        else:
-            if not isinstance(raw_data, dict):
-                raise JsonErrors.HTTPBadRequest(message='data not a dictionary')
+        m, raw_data = await parse_request_ignore_missing(self.request, self.model)
 
-            data, e = validate_model(self.model, raw_data, raise_exc=False)
-            if e:
-                errors = [e for e in e.errors() if not (e['type'] == 'value_error.missing' and len(e['loc']) == 1)]
-                if errors:
-                    raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=errors)
-
-        data = await self.prepare_edit_data(self.model.construct(**data).dict(include=raw_data.keys()))
+        data = await self.prepare_edit_data(m.dict(include=raw_data.keys()))
         if not data:
             raise JsonErrors.HTTPBadRequest(message=f'no data to save')
 

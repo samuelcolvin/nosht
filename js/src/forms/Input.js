@@ -42,7 +42,7 @@ const placeholder = field => {
 }
 
 const GeneralInput = ({className, field, error, disabled, value, onChange, custom_type, ...extra}) => (
-  <FormGroup className={className}>
+  <FormGroup className={className || field.className}>
     <Label field={field}/>
     <BsInput type={custom_type || field.type || 'text'}
              invalid={!!error}

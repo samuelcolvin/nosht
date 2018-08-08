@@ -45,6 +45,7 @@ async def test_with_def(email_actor: EmailActor, factory: Factory, dummy_server,
         values=Values(
             company=factory.company_id,
             trigger=Triggers.password_reset.value,
+            subject='{{{ company_name}}} xxx',
             body='DEBUG:\n```\n{{{ __print_debug_context__ }}}\n```',
         )
     )
@@ -52,7 +53,7 @@ async def test_with_def(email_actor: EmailActor, factory: Factory, dummy_server,
     await email_actor.send_emails(factory.company_id, Triggers.password_reset, [UserEmail(id=factory.user_id)])
 
     assert dummy_server.app['log'] == [
-        ('email_send_endpoint', 'Subject: "Testing Password Reset", To: "Frank Spencer <testing@scolvin.com>"'),
+        ('email_send_endpoint', 'Subject: "Testing xxx", To: "Frank Spencer <testing@scolvin.com>"'),
     ]
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]

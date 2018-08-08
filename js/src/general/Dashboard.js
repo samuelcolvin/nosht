@@ -29,13 +29,15 @@ const Buttons = ({buttons, ctx}) => (
     <ButtonGroup className="btn-divider">
       {buttons.filter(b => b).map(b => (
         b.confirm_msg ?
-          <ButtonConfirm action={b.action}
-                          modal_title={b.name}
-                          btn_text={b.name}
-                          redirect_to={b.redirect_to}
-                          success_msg={b.success_msg}
-                          btn_size="sm"
-                          className="ml-2">
+          <ButtonConfirm key={b.name}
+                         action={b.action}
+                         modal_title={b.name}
+                         btn_text={b.name}
+                         redirect_to={b.redirect_to}
+                         success_msg={b.success_msg}
+                         done={b.done}
+                         btn_size="sm"
+                         className="ml-2">
             {b.confirm_msg}
           </ButtonConfirm>
           :
@@ -116,7 +118,7 @@ export class RenderItem extends React.Component {
     if (fmt && fmt.render) {
       return fmt.render(v, item)
     } else {
-      return v
+      return render(v)
     }
   }
 }
@@ -132,6 +134,10 @@ export class RenderList extends RenderItem {
     }
   }
 
+  get_link (item) {
+    return `${item.id}/`
+  }
+
   render () {
     if (!this.state.items) {
       return <Loading/>
@@ -144,7 +150,7 @@ export class RenderList extends RenderItem {
       ]
     }
     const keys = Object.keys(this.state.items[0])
-    keys.splice(keys.indexOf('id'), 1)
+    keys.includes('id') && keys.splice(keys.indexOf('id'), 1)
     return [
       <Buttons key="1" buttons={this.state.buttons}/>,
       <table key="2" className="table">
@@ -161,7 +167,7 @@ export class RenderList extends RenderItem {
               {keys.map((key, j) => (
                 j === 0 ? (
                   <td key={j}>
-                    <Link to={`${item.id}/`}>{this.render_value(item, key)}</Link>
+                    <Link to={this.get_link(item)}>{this.render_value(item, key)}</Link>
                   </td>
                 ) : (
                   <td key={j}>{this.render_value(item, key)}</td>
