@@ -336,6 +336,12 @@ $waiting-time: 1s;
   padding-left: 16px;
 }
 
+.markdown {
+  p:last-child {
+    margin-bottom: 0;
+  }
+}
+
 .editor {
   border: 1px solid $input-border-color;
   border-radius: $input-border-radius;
@@ -363,12 +369,6 @@ $waiting-time: 1s;
     overflow: auto;
     height: 300px;
   }
-  blockquote {
-    border-left: 4px solid $gray-300;
-    padding: 4px 8px;
-    margin: 0 4px;
-    color: $gray-700;
-  }
   &.invalid {
     border: 1px solid $form-feedback-invalid-color;
     .editor-wrapper {
@@ -385,7 +385,10 @@ $waiting-time: 1s;
   }
 }
 
-.hidden-input {
-  height: 0px;
-  border: none;
+.markdown, .editor {
+  blockquote {
+    border-left: 4px solid $gray-300;
+    padding: 4px 8px;
+    color: $gray-700;
+  }
 }

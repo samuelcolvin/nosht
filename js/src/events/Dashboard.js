@@ -5,7 +5,10 @@ import {Alert, Button, Table, Progress as BsProgress} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime, as_title} from '../utils'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render, Markdown} from '../general/Dashboard'
+import {
+  Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render,
+  MarkdownPreview
+} from '../general/Dashboard'
 import {MoneyFree, Money} from '../general/Money'
 import {InfoModal} from '../general/Modal'
 import ButtonConfirm from '../general/Confirm'
@@ -290,7 +293,7 @@ export class EventsDetails extends RenderDetails {
       long_description: {
         index: 3,
         wide: true,
-        render: (v, item) => <Markdown v={v}/>,
+        render: (v, item) => <MarkdownPreview v={v}/>,
       },
       image: {
         index: 4,

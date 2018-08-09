@@ -15,6 +15,6 @@ export const to_markdown = t => {
   }
 }
 
-export default ({content}) => (
-  <div className="markdown" dangerouslySetInnerHTML={{__html: to_markdown(content)}}/>
+export default ({content, className}) => (
+  <div className={`markdown ${className || ''}`} dangerouslySetInnerHTML={{__html: to_markdown(content)}}/>
 )

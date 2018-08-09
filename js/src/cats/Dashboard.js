@@ -1,7 +1,7 @@
 import React from 'react'
 import {Row, Col, ButtonGroup, Button} from 'reactstrap'
 import requests from '../utils/requests'
-import {RenderList, RenderDetails, ImageThumbnail} from '../general/Dashboard'
+import {RenderList, RenderDetails, ImageThumbnail, MarkdownPreview} from '../general/Dashboard'
 import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'
 
@@ -9,9 +9,9 @@ const CAT_FIELDS = [
   {name: 'name', required: true},
   {name: 'live', type: 'bool'},
   {name: 'sort_index', type: 'integer'},
-  {name: 'description', type: 'md', required: true},
-  {name: 'event_content', type: 'textarea'},
-  {name: 'host_advice', type: 'textarea'},
+  {name: 'description', type: 'textarea', required: true},
+  {name: 'event_content', type: 'md'},
+  {name: 'host_advice', type: 'md'},
 ]
 
 export class CategoriesList extends RenderList {
@@ -82,7 +82,9 @@ export class CategoriesDetails extends RenderDetails {
         wide: true,
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
       },
-      suggested_images: null
+      suggested_images: null,
+      event_content:{wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
+      host_advice:{wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
     }
   }
 

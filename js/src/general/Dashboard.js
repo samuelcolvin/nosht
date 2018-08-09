@@ -256,8 +256,6 @@ export const MiniMap = ({lat, lng, name}) => (
 )
 
 
-export const Markdown = ({v}) => (
-  <div className="dashboard-markdown">
-    {v ? <MarkdownRender content={v}/> : <Dash/>}
-  </div>
+export const MarkdownPreview = ({v}) => (
+  v ? <MarkdownRender className="dashboard-markdown" content={v}/> : <Dash/>
 )

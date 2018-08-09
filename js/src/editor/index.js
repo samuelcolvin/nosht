@@ -44,7 +44,7 @@ export default class Editor extends React.Component {
       blockquote: block_type === 'blockquote',
     }
     const [start, finish] = [selection.getStartOffset(), selection.getEndOffset()]
-    for (const style of block.getCharacterList().slice(start, finish + 1).map(c => c.getStyle())) {
+    for (const style of block.getCharacterList().slice(start - 1, finish + 1).map(c => c.getStyle())) {
       selectionState.bold = selectionState.bold || style.has('BOLD')
       selectionState.italic = selectionState.italic || style.has('ITALIC')
       selectionState.underline = selectionState.underline || style.has('UNDERLINE')
@@ -116,6 +116,9 @@ export default class Editor extends React.Component {
     const newState = RichUtils.handleKeyCommand(editorState, command)
     if (newState) {
       this.onChange(newState)
+      return 'handled'
+    } else if (command === 'secondary-cut') {
+      this.promptLink()
       return 'handled'
     } else {
       return 'not-handled'
