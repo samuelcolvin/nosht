@@ -4,6 +4,7 @@ import FontAwesomeIcon from '@fortawesome/react-fontawesome'
 import {ButtonGroup, Button} from 'reactstrap'
 import requests from '../utils/requests'
 import {as_title} from '../utils'
+import MarkdownRender from './Markdown'
 import {Loading} from './Errors'
 import Map from './Map'
 import ButtonConfirm from './Confirm'
@@ -250,6 +251,13 @@ export const ImageThumbnail = ({image, alt, image_type}) => (
 export const MiniMap = ({lat, lng, name}) => (
   <div>
     {name}
-    <Map geolocation={{lat, lng, name}} height={200} width={400} className="rounded"/>
+    <Map geolocation={{lat, lng, name}} height={200} width={400} className="rounded"><Dash/></Map>
+  </div>
+)
+
+
+export const Markdown = ({v}) => (
+  <div className="dashboard-markdown">
+    {v ? <MarkdownRender content={v}/> : <Dash/>}
   </div>
 )

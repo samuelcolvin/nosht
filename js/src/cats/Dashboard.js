@@ -9,7 +9,7 @@ const CAT_FIELDS = [
   {name: 'name', required: true},
   {name: 'live', type: 'bool'},
   {name: 'sort_index', type: 'integer'},
-  {name: 'description', type: 'textarea', required: true},
+  {name: 'description', type: 'md', required: true},
   {name: 'event_content', type: 'textarea'},
   {name: 'host_advice', type: 'textarea'},
 ]

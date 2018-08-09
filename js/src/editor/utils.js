@@ -58,6 +58,7 @@ export const Buttons = ({buttons}) => (
               e.preventDefault()
               b.onClick(b.icon)
             }}
+            onClick={e => e.preventDefault()}
             disabled={b.disabled}>
       <FontAwesomeIcon icon={b.icon}/>
     </Button>

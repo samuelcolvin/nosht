@@ -151,7 +151,7 @@ export default class Editor extends React.Component {
       {icon: 'unlink', title: 'remove link', onClick: this.removeLink},
     ]
     return (
-      <div className="editor py-2">
+      <div className={`editor py-2 ${this.props.invalid ? 'invalid' :''}`}>
         <LinkModal
           close={() => this.setState({linkModal: false, editUrl: ''})}
           isOpen={this.state.linkModal}
@@ -162,14 +162,16 @@ export default class Editor extends React.Component {
         <div className="d-flex justify-content-end">
           <Buttons buttons={buttons}/>
         </div>
-        <div onClick={() => this.refs.editor.focus()} className="editor-wrapper p-2">
-          <DraftEditor
-            editorState={this.state.editorState}
-            handleKeyCommand={this.handleKeyCommand.bind(this)}
-            onChange={this.onChange}
-            placeholder="Enter text..."
-            ref="editor"
-          />
+        <div className="editor-wrapper p-2">
+          <div onClick={() => this.refs.editor.focus()} className="editor-scroll">
+            <DraftEditor
+              editorState={this.state.editorState}
+              handleKeyCommand={this.handleKeyCommand.bind(this)}
+              onChange={this.onChange}
+              placeholder={this.props.placeholder || 'Enter text...'}
+              ref="editor"
+            />
+          </div>
         </div>
         <div className="mx-1" style={{height: 22}}>
           {

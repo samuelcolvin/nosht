@@ -36,6 +36,22 @@ export class Form extends React.Component {
       this.setState({form_error: 'No data entered'})
       return
     }
+    const initial = this.props.initial || {}
+    const missing = (
+      this.props.fields
+      .filter(f => f.required && !initial[f.name] && !this.state.form_data[f.name])
+      .map(f => f.name)
+    )
+    if (missing.length) {
+      // required since editors don't use inputs so required won't be caught be the browser
+      const errors = {}
+      missing.forEach(f => {errors[f] = 'Field Required'})
+      this.setState({
+        form_error: 'Required fields are emtpy',
+        errors: errors
+      })
+      return
+    }
     this.setState({disabled: true, errors: {}, form_error: null})
     let r
     const data = Object.assign({}, this.state.form_data)

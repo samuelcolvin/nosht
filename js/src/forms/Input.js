@@ -18,6 +18,7 @@ import DatePicker from 'react-datepicker'
 import moment from 'moment'
 import {as_title} from '../utils'
 import Map from '../general/Map'
+import Editor from '../editor'
 
 const Label = ({field, children}) => (
   field.show_label !== false ? (
@@ -56,6 +57,21 @@ const GeneralInput = ({className, field, error, disabled, value, onChange, custo
              onChange={e => onChange(e.target.value)}
              {...extra}/>
     {error && <FormFeedback>{error}</FormFeedback>}
+    <HelpText field={field}/>
+  </FormGroup>
+)
+
+const MdInput = ({className, field, error, disabled, value, onChange, custom_type, ...extra}) => (
+  <FormGroup className={className || field.className}>
+    <Label field={field}/>
+    <Editor invalid={!!error}
+            disabled={disabled}
+            id={field.name}
+            required={field.required}
+            placeholder={placeholder(field)}
+            value={value}
+            onChange={md => onChange(md)}/>
+    {error && <FormFeedback className="d-block">{error}</FormFeedback>}
     <HelpText field={field}/>
   </FormGroup>
 )
@@ -290,6 +306,7 @@ class GeoLocation extends React.Component {
 }
 
 const INPUT_LOOKUP = {
+  'md': MdInput,
   'bool': Checkbox,
   'select': Select,
   'datetime': DatetimeInput,

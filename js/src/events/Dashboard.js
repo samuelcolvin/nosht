@@ -5,7 +5,7 @@ import {Alert, Button, Table, Progress as BsProgress} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime, as_title} from '../utils'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render} from '../general/Dashboard'
+import {Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render, Markdown} from '../general/Dashboard'
 import {MoneyFree, Money} from '../general/Money'
 import {InfoModal} from '../general/Modal'
 import ButtonConfirm from '../general/Confirm'
@@ -24,7 +24,8 @@ export class EventsList extends RenderList {
       },
       duration: {
         render: format_event_duration
-      }
+      },
+      status: {render: as_title},
     }
     this.state['buttons'] = [
       {name: 'Create Event', link: '/create/'},
@@ -251,6 +252,7 @@ export class EventsDetails extends RenderDetails {
         render: format_event_duration
       },
       status: {
+        index: 1,
         render: v => (
           <span>
             {as_title(v)}
@@ -284,8 +286,14 @@ export class EventsDetails extends RenderDetails {
       cat_id: null,
       cat_slug: null,
       ticket_limit: null,
-      long_description: null,
+      short_description: {index: 2},
+      long_description: {
+        index: 3,
+        wide: true,
+        render: (v, item) => <Markdown v={v}/>,
+      },
       image: {
+        index: 4,
         wide: true,
         edit_link: this.uri + 'set-image/',
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>,
@@ -296,7 +304,7 @@ export class EventsDetails extends RenderDetails {
         render: (v, item) => <MiniMap lat={v} lng={item.location_lng}m name={item.location_name}/>,
         title: 'Location',
         wide: true,
-        index: 1,
+        index: 5,
       },
     }
     this.uri = `/dashboard/events/${this.id}/`

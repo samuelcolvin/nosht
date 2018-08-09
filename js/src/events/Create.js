@@ -61,10 +61,11 @@ export const EVENT_FIELDS = [
   {
     name: 'long_description',
     title: 'Long Description',
-    type: 'textarea',
+    type: 'md',
     required: true,
     help_text: 'Detailed description of the event.',
     max_length: 5000,
+    placeholder: 'Full description of the event with everything your guests might like to know...'
   },
 ]
 

@@ -60,7 +60,7 @@ export default class Map extends React.Component {
       return <div id={this.el_id} className={this.props.className || 'mt-2'}
                   style={{height: this.props.height || 300, width: this.props.width}}/>
     } else {
-      return null
+      return this.props.children || null
     }
   }
 }
