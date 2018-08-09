@@ -329,3 +329,29 @@ $waiting-time: 1s;
     }
   }
 }
+
+.editor {
+  border: $border-width solid $input-border-color;
+  border-radius: $input-border-radius;
+  .btn-link {
+    color: $gray-600;
+    &:hover {
+      color: $gray-900;
+    }
+    &:disabled {
+      color: $gray-400;
+    }
+    &.highlight {
+      color: black;
+    }
+  }
+
+  .link-preview {
+    color: #3b5998;
+    text-decoration: underline;
+  }
+  .editor-wrapper {
+    cursor: text;
+    height: 300px;
+  }
+}

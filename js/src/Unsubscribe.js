@@ -1,10 +1,12 @@
 import React from 'react'
 import WithContext from './utils/context'
+import Editor from './editor'
 
 export const UnsubscribeValid = WithContext(({ctx}) => (
   <div>
     <h1>Thank you for Unsubscribing</h1>
-    <p>You will not receive any more emails {ctx.company.company.name}.</p>
+    <p>You will not receive any more emails from {ctx.company.company.name}.</p>
+    <Editor />
   </div>
 ))
 
