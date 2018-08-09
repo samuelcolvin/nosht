@@ -173,6 +173,7 @@ export default class Editor extends React.Component {
               onChange={this.onChange}
               placeholder={this.props.placeholder || 'Enter text...'}
               ref="editor"
+              spellCheck={true}
             />
           </div>
         </div>

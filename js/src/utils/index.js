@@ -109,3 +109,5 @@ export const get_component_name = WrappedComponent => (
 )
 
 export const user_full_name = user => `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email
+
+export const on_mobile = /mobile|ip(hone|od|ad)|android|blackberry|opera mini|iemobile/i.test(navigator.userAgent)

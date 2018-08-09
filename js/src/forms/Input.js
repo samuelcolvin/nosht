@@ -16,7 +16,7 @@ import {
 } from 'reactstrap'
 import DatePicker from 'react-datepicker'
 import moment from 'moment'
-import {as_title} from '../utils'
+import {as_title, on_mobile} from '../utils'
 import Map from '../general/Map'
 import Editor from '../editor'
 
@@ -62,18 +62,31 @@ const GeneralInput = ({className, field, error, disabled, value, onChange, custo
 )
 
 const MdInput = ({className, field, error, disabled, value, onChange, custom_type, ...extra}) => (
-  <FormGroup className={className || field.className}>
-    <Label field={field}/>
-    <Editor invalid={!!error}
-            disabled={disabled}
-            id={field.name}
-            required={field.required}
-            placeholder={placeholder(field)}
-            value={value}
-            onChange={md => onChange(md)}/>
-    {error && <FormFeedback className="d-block">{error}</FormFeedback>}
-    <HelpText field={field}/>
-  </FormGroup>
+  on_mobile ? (
+    <GeneralInput
+      custom_type="textarea"
+      className={className}
+      field={field}
+      error={error}
+      disabled={disabled}
+      value={value}
+      onChange={onChange}
+      {...extra}
+    />
+  ) : (
+    <FormGroup className={className || field.className}>
+      <Label field={field}/>
+      <Editor invalid={!!error}
+              disabled={disabled}
+              id={field.name}
+              required={field.required}
+              placeholder={placeholder(field)}
+              value={value}
+              onChange={md => onChange(md)}/>
+      {error && <FormFeedback className="d-block">{error}</FormFeedback>}
+      <HelpText field={field}/>
+    </FormGroup>
+  )
 )
 
 const Checkbox = ({className, field, disabled, value, onChange}) => (
