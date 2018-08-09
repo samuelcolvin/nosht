@@ -59,7 +59,7 @@ export const Buttons = ({buttons}) => (
               b.onClick(b.icon)
             }}
             disabled={b.disabled}>
-      <FontAwesomeIcon icon={b.icon} className="mr-1"/>
+      <FontAwesomeIcon icon={b.icon}/>
     </Button>
   ))
 )
@@ -80,3 +80,10 @@ export const LinkModal = ({close, isOpen, url, update, onChange}) => {
     </Modal>
   )
 }
+
+export const looks_like_link = s => (
+  !s.match(/ /) && (
+    s.match(/^(https?:\/\/|www\.)/) ||
+    s.match(/(\.com|\.co\.uk)($|\/)/)
+  )
+)
