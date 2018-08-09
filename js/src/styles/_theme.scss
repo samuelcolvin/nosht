@@ -198,10 +198,24 @@ $item-size: 220px;
   }
 }
 
-.react-datepicker-wrapper input{
-  width: 250px;
-  border-radius: 0.25rem 0 0 0.25rem;
+.react-datepicker-wrapper input {
+  width: 200px;
+  border-radius: $border-radius 0 0 $border-radius;
+  font-size: 0.9rem;
 }
+.duration-input {
+  font-size: 0.9rem;
+}
+@media (min-width: map-get($container-max-widths, 'sm')) {
+  .react-datepicker-wrapper input {
+    width: 250px;
+    font-size: 1rem;
+  }
+  .duration-input {
+    font-size: 1rem;
+  }
+}
+
 ul.react-datepicker__time-list {
   padding: 0;
   overflow-x: hidden;
@@ -228,6 +242,9 @@ ul.react-datepicker__time-list {
 li.react-datepicker__time-list-item {
   padding: 5.5px 0 !important;  // 5.5px is required to get the scroll position right when opening the popover
   width: 110px !important;
+}
+.react-datepicker-popper {
+  z-index: 99;
 }
 
 // TODO replace with .small?

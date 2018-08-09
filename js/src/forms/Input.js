@@ -125,7 +125,7 @@ const NumberInput = props => (
 
 const DURATIONS = [
   {value: null, title: 'All Day'},
-  {value: 1800, title: '30 minutes'},
+  {value: 1800, title: '30 mins'},
   {value: 3600 * 1, title: '1 hour'},
   {value: 3600 * 2, title: '2 hours'},
   {value: 3600 * 3, title: '3 hours'},
@@ -163,7 +163,7 @@ class DatetimeInput extends React.Component {
               addonType="append"
               isOpen={this.state.drop_open}
               toggle={() => this.setState({drop_open: !this.state.drop_open})}>
-            <DropdownToggle caret>
+            <DropdownToggle caret className="duration-input">
               Duration ({DURATIONS.find(d => d.value === duration).title})
             </DropdownToggle>
             <DropdownMenu>
