@@ -6,9 +6,9 @@ body {
   overflow-y: scroll;
 }
 
-.grecaptcha-badge {
-  bottom: 120px !important;
-}
+// .grecaptcha-badge {
+//   bottom: 120px !important;
+// }
 
 .extra-menu {
   top: 56px;
@@ -70,7 +70,7 @@ main.container {
 
 .footer {
   background-color: #3B4A59;
-  padding: 1rem 0;
+  padding: 1rem 0 3rem;
   color: white;
   .footer-menu a {
     display: block;
