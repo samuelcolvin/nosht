@@ -7,8 +7,14 @@ export default class Editor extends React.Component {
   constructor (props) {
     super(props)
 
+    let editorState = EditorState.createEmpty(decorator)
+    if (this.props.value) {
+      const content = convertFromRaw(markdownToDraft(this.props.value))
+      editorState = EditorState.createWithContent(content, decorator)
+    }
+
     this.state = {
-      editorState: EditorState.createEmpty(decorator),
+      editorState,
       linkModal: false,
       editUrl: '',
       selectionState: {},
@@ -20,13 +26,6 @@ export default class Editor extends React.Component {
     this.removeLink = this.removeLink.bind(this)
     this.applyInlineStyle = this.applyInlineStyle.bind(this)
     this.applyBlockStyle = this.applyBlockStyle.bind(this)
-  }
-
-  componentDidMount () {
-    if (this.props.value) {
-      const content = convertFromRaw(markdownToDraft(this.props.value))
-      this.onChange(EditorState.createWithContent(content, decorator))
-    }
   }
 
   onChange (editorState) {
@@ -59,7 +58,7 @@ export default class Editor extends React.Component {
     }
     this.setState({editorState, selectionState})
     if (this.props.onChange) {
-      const raw = convertToRaw(this.state.editorState.getCurrentContent())
+      const raw = convertToRaw(editorState.getCurrentContent())
       const md = draftToMarkdown(raw)
       this.props.onChange(md)
     }
