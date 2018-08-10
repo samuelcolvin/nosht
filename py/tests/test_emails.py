@@ -75,7 +75,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     await factory.create_user(email='testing@scolvin.com')
     await factory.create_event(price=10, location_name='The Location', location_lat=51.5, location_lng=-0.2)
 
-    res = await factory.create_reservation()
+    res = await factory.create_reservation(factory.user_id, None)
     booked_action_id = await factory.buy_tickets(res)
 
     await email_actor.send_event_conf(booked_action_id)
@@ -266,7 +266,7 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
     await login()
 
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
-    await factory.buy_tickets(await factory.create_reservation(anne), anne)
+    await factory.buy_tickets(await factory.create_reservation(anne, None), anne)
 
     data = dict(
         grecaptcha_token='__ok__',

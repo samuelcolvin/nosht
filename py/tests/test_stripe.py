@@ -158,7 +158,7 @@ async def test_existing_customer_fake(cli, url, dummy_server, factory: Factory):
     await factory.create_user(stripe_customer_id='xxx')
     await factory.create_event(price=12.5)
 
-    res: Reservation = await factory.create_reservation()
+    res: Reservation = await factory.create_reservation(factory.user_id, None)
     app = cli.app['main_app']
     data = dict(
         stripe_token='tok_visa',

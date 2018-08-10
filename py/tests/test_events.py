@@ -621,7 +621,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     await factory.create_user()
     await factory.create_event(price=10)
 
-    user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.org')
+    user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.org', role='guest')
 
     res = await factory.create_reservation(user2_id)
     await factory.buy_tickets(res, user2_id)
@@ -927,6 +927,39 @@ async def test_invalid_ticket_updates(get_input, response_contains, cli, url, fa
     assert response_contains in await r.text()
 
 
+async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+    await login()
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.buy_tickets(await factory.create_reservation(anne, None), anne)
+
+    data = dict(
+        grecaptcha_token='__ok__',
+        subject='This is a test email & whatever',
+        message='this is the **message**.'
+    )
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    assert len(dummy_server.app['emails']) == 1
+
+    r = await cli.get(url('event-updates-sent', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {'event_updates': [
+        {
+            'message': 'this is the **message**.',
+            'subject': 'This is a test email & whatever',
+            'ts': CloseToNow(),
+        }
+    ]}
+
+
 async def test_send_event_update_wrong_user(cli, url, login, factory: Factory):
     await factory.create_company()
     await factory.create_cat()
@@ -984,39 +1017,6 @@ async def test_event_updates_wrong_event(cli, url, login, factory: Factory):
 
     r = await cli.get(url('event-updates-sent', id=factory.event_id))
     assert r.status == 403, await r.text()
-
-
-async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_server):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user()
-    await factory.create_event(price=10)
-    await login()
-
-    anne = await factory.create_user(first_name='anne', email='anne@example.org')
-    await factory.buy_tickets(await factory.create_reservation(anne), anne)
-
-    data = dict(
-        grecaptcha_token='__ok__',
-        subject='This is a test email & whatever',
-        message='this is the **message**.'
-    )
-
-    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
-    assert r.status == 200, await r.text()
-
-    assert len(dummy_server.app['emails']) == 1
-
-    r = await cli.get(url('event-updates-sent', id=factory.event_id))
-    assert r.status == 200, await r.text()
-    data = await r.json()
-    assert data == {'event_updates': [
-        {
-            'message': 'this is the **message**.',
-            'subject': 'This is a test email & whatever',
-            'ts': CloseToNow(),
-        }
-    ]}
 
 
 @pytest.mark.parametrize('previous_status', [

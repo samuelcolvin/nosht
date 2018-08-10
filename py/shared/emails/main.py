@@ -40,7 +40,10 @@ class EmailActor(BaseEmailActor):
                 booked_action_id
             )
             buyer_user_id = data['user_id']
-            r = await conn.fetch('SELECT user_id, id FROM tickets WHERE booked_action=$1', booked_action_id)
+            r = await conn.fetch(
+                'SELECT user_id, id FROM tickets WHERE booked_action=$1 AND user_id IS NOT NULL',
+                booked_action_id
+            )
             other_user_ids = {r_[0] for r_ in r}
             other_user_ids.remove(buyer_user_id)
 
@@ -154,7 +157,7 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT DISTINCT user_id, id AS ticket_id
                 FROM tickets
-                WHERE status='booked' AND event=$1
+                WHERE status='booked' AND event=$1 AND user_id IS NOT NULL
                 """, event_id
             )
 
