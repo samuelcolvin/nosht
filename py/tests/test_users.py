@@ -45,6 +45,7 @@ async def test_user_details(cli, url, login, factory: Factory):
         'phone_number': None,
         'created_ts': CloseToNow(),
         'receive_emails': True,
+        'allow_marketing': False,
         'first_name': 'Frank',
         'last_name': 'Spencer',
     }
@@ -233,6 +234,7 @@ async def test_account_view(cli, url, login, factory: Factory):
         'phone_number': None,
         'created_ts': CloseToNow(),
         'receive_emails': True,
+        'allow_marketing': False,
         'first_name': 'Frank',
         'last_name': 'Spencer',
     }

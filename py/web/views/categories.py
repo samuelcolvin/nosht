@@ -3,7 +3,7 @@ from pathlib import Path
 from buildpg import V
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Where
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, constr, condecimal
 
 from shared.images import delete_image, list_images, resize_upload, strip_domain
 from shared.utils import slugify
@@ -103,6 +103,7 @@ class CategoryBread(Bread):
         live: bool = True
         description: constr(max_length=140) = None
         sort_index: int = 1
+        suggested_price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
         event_content: str = None
         host_advice: str = None
         booking_trust_message: str = None
@@ -129,6 +130,7 @@ class CategoryBread(Bread):
     )
     retrieve_fields = browse_fields + (
         'sort_index',
+        'suggested_price',
         'event_content',
         'host_advice',
         'booking_trust_message',

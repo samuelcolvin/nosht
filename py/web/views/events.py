@@ -87,7 +87,7 @@ category_sql = """
 SELECT json_build_object('categories', categories)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS categories FROM (
-    SELECT id, name, host_advice, event_type
+    SELECT id, name, host_advice, event_type, suggested_price
     FROM categories
     WHERE company=$1 AND live=TRUE
     ORDER BY sort_index
