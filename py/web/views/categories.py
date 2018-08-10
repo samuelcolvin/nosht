@@ -3,7 +3,7 @@ from pathlib import Path
 from buildpg import V
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Where
-from pydantic import BaseModel, constr, condecimal
+from pydantic import BaseModel, condecimal, constr
 
 from shared.images import delete_image, list_images, resize_upload, strip_domain
 from shared.utils import slugify

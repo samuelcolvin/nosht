@@ -214,6 +214,7 @@ async def test_cats_retrieve(cli, url, factory: Factory, login):
         'live': True,
         'description': None,
         'sort_index': None,
+        'suggested_price': None,
         'event_content': None,
         'host_advice': None,
         'image': 'https://www.example.org/co.png',

@@ -83,6 +83,7 @@ async def test_event_categories(cli, url, factory: Factory, login):
                 'name': 'Supper Clubs',
                 'host_advice': None,
                 'event_type': 'ticket_sales',
+                'suggested_price': None,
             },
         ],
     }
