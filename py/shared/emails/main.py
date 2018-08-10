@@ -9,7 +9,7 @@ from arq import concurrent, cron
 from buildpg import MultipleValues, Values
 
 from ..actions import ActionTypes
-from ..utils import display_cash_free, format_duration, password_reset_link, static_map_link
+from ..utils import display_cash_free, event_ref, format_duration, password_reset_link, static_map_link
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail, date_fmt, datetime_fmt
 
@@ -81,14 +81,18 @@ class EmailActor(BaseEmailActor):
         await self.send_emails.direct(
             data['company'],
             Triggers.ticket_buyer,
-            [UserEmail(id=buyer_user_id, ctx=ctx_buyer, ticket_id=ticket_id_lookup[buyer_user_id])]
+            [self._ue_with_ref(buyer_user_id, ctx_buyer, ticket_id_lookup[buyer_user_id])]
         )
         if other_user_ids:
             await self.send_emails.direct(
                 data['company'],
                 Triggers.ticket_other,
-                [UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id_lookup[user_id]) for user_id in other_user_ids]
+                [self._ue_with_ref(user_id, ctx, ticket_id_lookup[user_id]) for user_id in other_user_ids]
             )
+
+    def _ue_with_ref(self, user_id, ctx, ticket_id):
+        ctx_ = {**ctx, 'ticket_ref': event_ref(ticket_id, self.settings)}
+        return UserEmail(id=user_id, ctx=ctx_, ticket_id=ticket_id)
 
     @concurrent
     async def send_account_created(self, user_id: int, created_by_admin=False):

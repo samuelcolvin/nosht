@@ -32,11 +32,15 @@ Event:
 
 * Start Time: **{{ event_start }}**
 * Duration: **{{ event_duration }}**
+* Ticket Ref: **{{ ticket_ref }}**
 {{#event_location}}* Location: **{{ event_location }}**{{/event_location}}
 
 {{#static_map}}
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
 {{/static_map}}
+
+**This is your ticket**, please bring the email (and particularly the ticket reference above)
+to the event.
 
 Payment:
 
@@ -62,11 +66,15 @@ Event:
 
 * Start Time: **{{ event_start }}**
 * Duration: **{{ event_duration }}**
-* Location: **{{ event_location }}**
+* Ticket Ref: **{{ ticket_ref }}**
+{{#event_location}}* Location: **{{ event_location }}**{{/event_location}}
 
 {{#static_map}}
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
 {{/static_map}}
+
+**This is your ticket**, please bring the email (and particularly the ticket reference above)
+to the event.
 """
     },
     Triggers.event_update: {

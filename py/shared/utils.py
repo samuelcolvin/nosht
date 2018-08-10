@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import hmac
 import json
@@ -112,3 +113,9 @@ def password_reset_link(user_id, *, auth_fernet):
 
 def pseudo_random_str(length=10):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+
+
+def event_ref(ticket_id, settings: Settings):
+    h = hmac.new(settings.auth_key.encode(), b'%d' % ticket_id, digestmod=hashlib.md5)
+    check = base64.urlsafe_b64encode(h.digest()).decode().lower()
+    return f'{check:.7}-{ticket_id}'
