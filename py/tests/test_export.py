@@ -133,6 +133,7 @@ async def test_user_export(cli, url, login, factory: Factory):
             'phone_number': '',
             'stripe_customer_id': 'customer-id',
             'receive_emails': 'false',
+            'allow_marketing': 'false',
             'created_ts': RegexStr('\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'),
             'active_ts': RegexStr('\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'),
             'tickets': '2',

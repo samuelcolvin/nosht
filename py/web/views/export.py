@@ -37,7 +37,7 @@ WHERE company=$1
     'users': """
 SELECT
   u.id, u.role, u.status, u.first_name, u.last_name, u.email, u.phone_number, u.stripe_customer_id,
-  boolstr(u.receive_emails) AS receive_emails,
+  boolstr(u.receive_emails) AS receive_emails, boolstr(u.allow_marketing) AS allow_marketing,
   to_char(u.created_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_ts,
   to_char(u.active_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS active_ts,
   count(t.id) AS tickets

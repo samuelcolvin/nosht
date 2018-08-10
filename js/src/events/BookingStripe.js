@@ -15,6 +15,7 @@ import requests from '../utils/requests'
 import {load_script, grecaptcha_execute, window_property} from '../utils'
 import {ModalFooter} from '../general/Modal'
 import {MoneyFree} from '../general/Money'
+import Markdown from '../general/Markdown'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import {Waiting} from '../general/Errors'
@@ -68,6 +69,7 @@ class StripeForm_ extends React.Component {
       address: null,
       city: null,
       postcode: null,
+      terms_and_conditions: false,
     }
     this.update_timer = this.update_timer.bind(this)
     this.as_price = p => <MoneyFree>{p && p/100}</MoneyFree>
@@ -177,10 +179,27 @@ class StripeForm_ extends React.Component {
 
   render_form (expired) {
     const form_height = 300
+    let tncs_field = null
+    if (this.props.event.terms_and_conditions_message) {
+      const f = {
+        name: 'tncs',
+        title: <Markdown content={this.props.event.terms_and_conditions_message}/>,
+        type: 'bool',
+        required: true,
+      }
+      tncs_field = (
+        <Input
+          field={f}
+          value={this.state.terms_and_conditions}
+          disabled={this.state.submitting}
+          set_value={v => this.setState({terms_and_conditions: v})}
+        />
+      )
+    }
     if (expired) {
       return <h4 className="has-error">Rervation expired</h4>
     } else if (!this.props.reservation.item_price_cent) {
-      return null
+      return tncs_field && <div style={{height: 40}}>{this.state.submitted ? null : tncs_field}</div>
     } else if (this.state.submitted) {
       return (
         <div style={{height: form_height}} className="vertical-center">
@@ -229,6 +248,7 @@ class StripeForm_ extends React.Component {
               </FormFeedback>
             }
           </FormGroup>
+          {tncs_field}
         </div>
       )
     }
@@ -250,6 +270,12 @@ class StripeForm_ extends React.Component {
     if (expired) {
       items.splice(0, 1)
     }
+    const confirm_disabled = (
+      (!this.state.terms_and_conditions && this.props.event.terms_and_conditions_message) ||
+      expired ||
+      this.state.submitting ||
+      (res.item_price_cent && !this.state.card_complete)
+    )
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
         <ModalBody>
@@ -265,7 +291,7 @@ class StripeForm_ extends React.Component {
         </ModalBody>
         <ModalFooter finished={this.props.finished}
                      label={res.item_price_cent ? 'Buy Now' : 'Confirm'}
-                     disabled={expired || this.state.submitting || (res.item_price_cent && !this.state.card_complete)}/>
+                     disabled={confirm_disabled}/>
       </BootstrapForm>
     )
   }
