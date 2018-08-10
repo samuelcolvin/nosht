@@ -12,6 +12,11 @@ const CAT_FIELDS = [
   {name: 'description', type: 'textarea', required: true},
   {name: 'event_content', type: 'md'},
   {name: 'host_advice', type: 'md'},
+  {name: 'booking_trust_message'},
+  {name: 'terms_and_conditions_message'},
+  {name: 'allow_marketing_message'},
+  {name: 'ticket_extra_title'},
+  {name: 'ticket_extra_help_text'},
 ]
 
 export class CategoriesList extends RenderList {
@@ -83,8 +88,9 @@ export class CategoriesDetails extends RenderDetails {
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
       },
       suggested_images: null,
-      event_content:{wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
-      host_advice:{wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
+      event_content: {wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
+      host_advice: {wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
+      terms_and_conditions_message: {title: 'T&C Message'}
     }
   }
 

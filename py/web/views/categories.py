@@ -3,7 +3,7 @@ from pathlib import Path
 from buildpg import V
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Where
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 
 from shared.images import delete_image, list_images, resize_upload, strip_domain
 from shared.utils import slugify
@@ -101,10 +101,15 @@ class CategoryBread(Bread):
     class Model(BaseModel):
         name: str
         live: bool = True
-        description: str = None
+        description: constr(max_length=140) = None
         sort_index: int = 1
         event_content: str = None
         host_advice: str = None
+        booking_trust_message: str = None
+        terms_and_conditions_message: str = None
+        allow_marketing_message: str = None
+        ticket_extra_title: constr(max_length=140) = None
+        ticket_extra_help_text: str = None
 
     browse_enabled = True
     retrieve_enabled = True
@@ -126,6 +131,11 @@ class CategoryBread(Bread):
         'sort_index',
         'event_content',
         'host_advice',
+        'booking_trust_message',
+        'terms_and_conditions_message',
+        'allow_marketing_message',
+        'ticket_extra_title',
+        'ticket_extra_help_text',
         'image',
     )
 

@@ -31,7 +31,6 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
     r = await cli.get(url('event-get', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
     data = await r.json()
-    # debug(data)
     assert data == {
         'ticket_types': [{'name': 'Standard', 'price': None}],
         'event': {
@@ -54,6 +53,9 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'stripe_key': 'stripe_key_xxx',
             'ticket_extra_help_text': None,
             'ticket_extra_title': None,
+            'allow_marketing_message': None,
+            'booking_trust_message': None,
+            'terms_and_conditions_message': None,
         },
     }
 
@@ -404,6 +406,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
                 'first_name': 'Ticket',
                 'last_name': 'Buyer',
                 'email': 'ticket.buyer@example.org',
+                'allow_marketing': True,
             },
             {
                 't': True,
@@ -436,19 +439,24 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         'event_name': 'The Event Name',
     }
 
-    users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
+    users = [
+        dict(r) for r in
+        await db_conn.fetch('SELECT first_name, last_name, email, role, allow_marketing FROM users ORDER BY id')
+    ]
     assert users == [
         {
             'first_name': None,
             'last_name': None,
             'email': 'ticket.buyer@example.org',
             'role': 'admin',
+            'allow_marketing': True,
         },
         {
             'first_name': None,
             'last_name': None,
             'email': 'other.person@example.org',
             'role': 'guest',
+            'allow_marketing': False,
         },
     ]
     users = [dict(r) for r in await db_conn.fetch(

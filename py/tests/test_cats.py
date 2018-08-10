@@ -56,15 +56,19 @@ async def test_create_cat(cli, url, db_conn, factory: Factory, login):
         'name': 'foobar',
         'slug': 'foobar',
         'live': True,
-        'description': 'I love to party',
         'sort_index': 42,
-        'event_content': None,
-        'host_advice': None,
         'event_type': 'ticket_sales',
         'suggested_price': None,
         'image': None,
-        'ticket_extra_help_text': None,
+        'description': 'I love to party',
+        'event_content': None,
+        'host_advice': None,
+        'booking_trust_message': None,
+        'terms_and_conditions_message': None,
+        'allow_marketing_message': None,
         'ticket_extra_title': None,
+        'ticket_extra_help_text': None,
+
     }
 
 
@@ -213,6 +217,12 @@ async def test_cats_retrieve(cli, url, factory: Factory, login):
         'event_content': None,
         'host_advice': None,
         'image': 'https://www.example.org/co.png',
+        'booking_trust_message': None,
+        'terms_and_conditions_message': None,
+        'allow_marketing_message': None,
+        'ticket_extra_title': None,
+        'ticket_extra_help_text': None,
+
     }
 
 

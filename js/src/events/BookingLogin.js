@@ -77,6 +77,7 @@ class BookingLogin extends React.Component {
   render () {
     return [
       <ModalBody key="1">
+        <p className="text-center">{this.props.event.booking_trust_message}</p>
         <Row className="justify-content-center my-1">
           <Col md="8">
             <div className="d-flex justify-content-between">

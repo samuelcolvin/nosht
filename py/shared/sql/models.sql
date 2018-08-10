@@ -32,6 +32,7 @@ CREATE TABLE users (
   password_hash VARCHAR(63),
   stripe_customer_id VARCHAR(31),
   receive_emails BOOLEAN DEFAULT TRUE,
+  allow_marketing BOOLEAN DEFAULT FALSE,
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   active_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -50,16 +51,19 @@ CREATE TABLE categories (
   name VARCHAR(63) NOT NULL,
   slug VARCHAR(63) NOT NULL,
   live BOOLEAN DEFAULT TRUE,
-  description VARCHAR(140),
   sort_index INT,
+  event_type EVENT_TYPES NOT NULL DEFAULT 'ticket_sales',
+  suggested_price NUMERIC(7, 2) CHECK (suggested_price >= 1),
+  image VARCHAR(255),
+
+  description VARCHAR(140),
   event_content TEXT,
   host_advice TEXT,
+  booking_trust_message TEXT,
+  terms_and_conditions_message TEXT,
+  allow_marketing_message TEXT,
   ticket_extra_title VARCHAR(200),
-  ticket_extra_help_text TEXT,
-  event_type EVENT_TYPES NOT NULL DEFAULT 'ticket_sales',
-  suggested_price NUMERIC(7, 2),
-  image VARCHAR(255),
-  CHECK (suggested_price > 1)
+  ticket_extra_help_text TEXT
 );
 CREATE UNIQUE INDEX category_co_slug ON categories USING btree (company, slug);
 CREATE INDEX category_company ON categories USING btree (company);

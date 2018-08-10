@@ -51,7 +51,10 @@ FROM (
          h.first_name || ' ' || h.last_name AS host_name,
          co.stripe_public_key AS stripe_key,
          c.ticket_extra_title,
-         c.ticket_extra_help_text
+         c.ticket_extra_help_text,
+         c.booking_trust_message,
+         c.terms_and_conditions_message,
+         c.allow_marketing_message
   FROM events AS e
   JOIN categories AS c ON e.category = c.id
   JOIN companies AS co ON c.company = co.id
@@ -492,6 +495,7 @@ class TicketModel(BaseModel):
     last_name: constr(max_length=255) = None
     email: EmailStr = None
     extra_info: str = None
+    allow_marketing: bool = None
 
 
 class ReserveTickets(UpdateView):
@@ -600,8 +604,7 @@ class ReserveTickets(UpdateView):
                 company=self.request['company_id'],
                 role='guest',
                 email=t.email.lower(),
-            )
-            for t in tickets if t.email
+            ) for t in tickets if t.email
         ]
 
         await self.conn.execute_b(
@@ -611,6 +614,15 @@ class ReserveTickets(UpdateView):
             """,
             values=MultipleValues(*user_values)
         )
+
+        async def user_email():
+            return await self.conn.fetchval('SELECT email FROM users WHERE id=$1', self.request['session']['user_id'])
+
+        if tickets[0].allow_marketing is not None and tickets[0].email == await user_email():
+            await self.conn.execute(
+                'UPDATE users SET allow_marketing=$1 WHERE id=$2',
+                tickets[0].allow_marketing, self.request['session']['user_id']
+            )
 
 
 class CancelReservedTickets(UpdateView):
