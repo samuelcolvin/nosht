@@ -16,6 +16,12 @@ const FIELDS = [
     help_text: 'Whether you wish to receive emails, this will be set to "false" if you click unsubscribe in an email.',
     default: true,
   },
+  {
+    name: 'allow_marketing',
+    type: 'bool',
+    help_text: 'Whether you would like to receive marketing emails.',
+    default: false,
+  },
 ]
 
 export default class Account extends RenderDetails {

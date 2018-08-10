@@ -24,6 +24,7 @@ class UserBread(Bread):
         role_type: UserRoles
         phone_number: str = None
         receive_emails: bool = True
+        allow_marketing: bool = False
 
     browse_enabled = True
     retrieve_enabled = True
@@ -47,6 +48,7 @@ class UserBread(Bread):
         'created_ts',
         'active_ts',
         'receive_emails',
+        'allow_marketing',
         'first_name',
         'last_name',
     )
@@ -85,7 +87,8 @@ class UserSelfBread(Bread):
         last_name: str = None
         email: EmailStr
         phone_number: str = None
-        receive_emails: bool = True
+        receive_emails: bool = None
+        allow_marketing: bool = None
 
     retrieve_enabled = True
     edit_enabled = True
@@ -101,6 +104,7 @@ class UserSelfBread(Bread):
         'phone_number',
         'created_ts',
         'receive_emails',
+        'allow_marketing',
         'first_name',
         'last_name',
     )

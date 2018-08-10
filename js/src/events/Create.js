@@ -103,6 +103,15 @@ class CreateEvent extends React.Component {
     this.props.history.push(r ? `/dashboard/events/${r.pk}/` : '/dashboard/events/')
   }
 
+  modify_form_data (d, field_name) {
+    if (field_name === 'category' && d.price === undefined) {
+      const suggested_price = this.state.categories.find(c => c.id.toString() === d.category).suggested_price
+      if (suggested_price) {
+        d.price = suggested_price
+      }
+    }
+  }
+
   render () {
     const cat_id = this.state.form_data && this.state.form_data.category && parseInt(this.state.form_data.category)
     const cat = cat_id && this.state.categories.find(c => c.id === cat_id)
@@ -113,6 +122,7 @@ class CreateEvent extends React.Component {
           <Form fields={this.fields()}
                 action="/events/add/"
                 onChange={d => this.setState({form_data: d})}
+                modify_data={this.modify_form_data.bind(this)}
                 finished={this.finished.bind(this)}/>
         </Col>
         <Col md={4}>

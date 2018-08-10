@@ -101,6 +101,7 @@ class BookWrapper extends React.Component {
   render () {
     if (!this.props.ctx.user) {
       return <BookingLogin
+          event={this.props.event}
           finished={this.props.finished}
           clear_reservation={() => this.setState({reservation: null})}/>
     } else if (!this.state.reservation) {

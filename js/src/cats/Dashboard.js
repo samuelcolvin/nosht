@@ -1,7 +1,8 @@
 import React from 'react'
 import {Row, Col, ButtonGroup, Button} from 'reactstrap'
 import requests from '../utils/requests'
-import {RenderList, RenderDetails, ImageThumbnail, MarkdownPreview} from '../general/Dashboard'
+import {RenderList, RenderDetails, ImageThumbnail, MarkdownPreview, Dash} from '../general/Dashboard'
+import {Money} from '../general/Money'
 import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'
 
@@ -9,9 +10,15 @@ const CAT_FIELDS = [
   {name: 'name', required: true},
   {name: 'live', type: 'bool'},
   {name: 'sort_index', type: 'integer'},
+  {name: 'suggested_price', type: 'number', step: 0.01, min: 1, max: 1000},
   {name: 'description', type: 'textarea', required: true},
   {name: 'event_content', type: 'md'},
   {name: 'host_advice', type: 'md'},
+  {name: 'booking_trust_message'},
+  {name: 'terms_and_conditions_message'},
+  {name: 'allow_marketing_message'},
+  {name: 'ticket_extra_title'},
+  {name: 'ticket_extra_help_text'},
 ]
 
 export class CategoriesList extends RenderList {
@@ -83,8 +90,12 @@ export class CategoriesDetails extends RenderDetails {
         render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
       },
       suggested_images: null,
-      event_content:{wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
-      host_advice:{wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
+      suggested_price: {
+        render: v => v ? <Money>{v}</Money> : <Dash/>
+      },
+      event_content: {wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
+      host_advice: {wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
+      terms_and_conditions_message: {title: 'T&C Message'}
     }
   }
 

@@ -207,6 +207,12 @@ const TicketForm = props => {
         <Row className="mt-1 mb-2">
           <Col md={{size: 8, offset: 2}}>
             <PricingList className="mb-2" items={items}/>
+
+            {props.event.allow_marketing_message &&
+              <Input value={state.ticket_0 && state.ticket_0.allow_marketing}
+                     field={{name: 'allow_marketing', title: props.event.allow_marketing_message, type: 'bool'}}
+                     set_value={v => props.set_ticket_state('ticket_0', 'allow_marketing', v)}/>
+            }
           </Col>
         </Row>
 

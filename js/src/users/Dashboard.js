@@ -26,8 +26,14 @@ const FIELDS = [
   {
     name: 'receive_emails',
     type: 'bool',
-    help_text: 'Whether this user should receive emails',
+    help_text: 'Whether this user should receive emails.',
     default: true,
+  },
+  {
+    name: 'allow_marketing',
+    type: 'bool',
+    help_text: 'Whether this user has opted in to marketing emails.',
+    default: false,
   },
 ]
 const ADD_ROLE_CHOICES = [
