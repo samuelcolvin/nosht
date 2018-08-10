@@ -102,9 +102,15 @@ export default class Navbar extends React.Component {
                 </NavItem>
               ))}
               {this.props.user ? (
-                <NavItem active={this.props.active_page === 'dashboard'}>
-                  <NavLink tag={Link} onClick={this.close} to="/dashboard/events/">Dashbaord</NavLink>
-                </NavItem>
+                this.props.user.role !== 'guest' ? (
+                  <NavItem active={this.props.active_page === 'dashboard'}>
+                    <NavLink tag={Link} onClick={this.close} to="/dashboard/events/">Dashboard</NavLink>
+                  </NavItem>
+                ) : (
+                  <NavItem>
+                    <NavLink tag={Link} onClick={this.close} to="/logout/">Logout</NavLink>
+                  </NavItem>
+                )
               ) : (
                 <NavItem active={this.props.active_page === 'login'}>
                   <NavLink tag={Link} onClick={this.close} to="/login/">Login</NavLink>
