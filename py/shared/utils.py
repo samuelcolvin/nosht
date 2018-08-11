@@ -7,6 +7,7 @@ import re
 import string
 from datetime import timedelta
 from enum import Enum
+from typing import Optional
 from urllib.parse import urlencode
 
 import bcrypt
@@ -58,12 +59,12 @@ def unsubscribe_sig(user_id, settings: Settings):
     return hmac.new(settings.auth_key.encode(), b'unsub:%d' % user_id, digestmod=hashlib.md5).hexdigest()
 
 
-def display_cash(amount, currency):
+def display_cash(amount: Optional[float], currency: Currencies):
     symbol = CURRENCY_LOOKUP[currency]
     return f'{symbol}{amount:0,.2f}'
 
 
-def display_cash_free(amount, currency):
+def display_cash_free(amount: Optional[float], currency: Currencies):
     return display_cash(amount, currency) if amount else 'Free'
 
 

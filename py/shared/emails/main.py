@@ -1,6 +1,6 @@
-import datetime
 import json
 import logging
+from datetime import date, timedelta
 from itertools import groupby
 from operator import itemgetter
 from typing import Optional
@@ -9,7 +9,7 @@ from arq import concurrent, cron
 from buildpg import MultipleValues, Values
 
 from ..actions import ActionTypes
-from ..utils import display_cash_free, event_ref, format_duration, password_reset_link, static_map_link
+from ..utils import display_cash, display_cash_free, event_ref, format_duration, password_reset_link, static_map_link
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail, date_fmt, datetime_fmt
 
@@ -49,7 +49,7 @@ class EmailActor(BaseEmailActor):
 
             ticket_id_lookup = {u_id: t_id for u_id, t_id in r}
 
-        duration: Optional[datetime.timedelta] = data['duration']
+        duration: Optional[timedelta] = data['duration']
         ctx = {
             'event_link': data['event_link'],
             'event_name': data['name'],
@@ -183,7 +183,7 @@ class EmailActor(BaseEmailActor):
                 SELECT
                   e.id, e.name, e.short_description, e.start_ts, e.duration,
                   e.location_name, e.location_lat, e.location_lng,
-                  cat.company as company_id,
+                  cat.company AS company_id,
                   '/' || cat.slug || '/' || e.slug || '/' as event_link
                 FROM events AS e
                 JOIN categories AS cat ON e.category = cat.id
@@ -198,7 +198,7 @@ class EmailActor(BaseEmailActor):
                 ORDER BY cat.company
                 """
             )
-            if len(events) == 0:
+            if not events:
                 return 0
             # create the 'event-guest-reminder' action so the events won't receive multiple reminders
             await conn.execute_b(
@@ -255,4 +255,66 @@ class EmailActor(BaseEmailActor):
                 ])
             user_emails += len(user_ctxs)
             await self.send_emails(company_id, Triggers.event_reminder.value, user_ctxs)
+        return user_emails
+
+    @cron(hour=7, minute=30)
+    async def send_event_reminders(self):
+        async with self.pg.acquire() as conn:
+            # get events for which updates need to be send
+            events = await conn.fetch(
+                """
+                SELECT
+                  e.id, e.name, e.short_description, e.start_ts::date AS start_date, e.host AS host_user_id,
+                  '/' || cat.slug || '/' || e.slug || '/' as link,
+                  cat.company AS company_id, co.currency AS currency,
+                  count(t.id) AS tickets_booked, e.ticket_limit, sum(t.price) AS total_income
+                FROM events AS e
+                JOIN categories AS cat ON e.category = cat.id
+                JOIN companies AS co ON cat.company = co.id
+                LEFT JOIN tickets AS t ON e.id = t.event
+                WHERE e.status='published' AND
+                      e.start_ts BETWEEN now() AND now() + '30 days'::interval AND
+                      t.status == 'booked'
+                GROUP BY cat.company, e.id
+                ORDER BY cat.company, e.id
+                """
+            )
+            if not events:
+                return 0
+            recent_tickets = await conn.fetch(
+                """
+                SELECT t.event AS event_id, COUNT(t.id) AS count
+                FROM tickets AS t
+                JOIN events AS e on t.event = e.id
+                WHERE e.status='published' AND
+                      e.start_ts BETWEEN now() AND now() + '30 days'::interval AND
+                      t.created_ts > now() - '1 day'::interval AND
+                      t.status == 'booked'
+                GROUP BY t.event
+                """
+            )
+
+        today = date.today()
+        user_emails = 0
+        fields = ('link', 'name', 'tickets_booked', 'ticket_limit')
+        recent_tickets = {r['event_id']: r['count'] for r in recent_tickets}
+        for company_id, g in groupby(events, itemgetter('company_id')):
+            user_ctxs = []
+            for e in g:
+                if e['start_date'] == today:
+                    # don't send an update on the day of an event, that's event_host_final_update
+                    continue
+                ctx = {f: e[f] for f in fields}
+                ctx.update(
+                    fully_booked=e['tickets_booked'] == e['ticket_limit'],
+                    event_date=e['event_date'].strftime(date_fmt),
+                    days_to_go=(e['event_date'] - today).days,
+                    total_income=display_cash(e['total_income'], e['currency']) if e['total_income'] else None,
+                    tickets_booked_24h=recent_tickets.get(e['id'], 0)
+                )
+                user_ctxs.append(UserEmail(id=e['host_user_id'], ctx=ctx))
+
+            if user_ctxs:
+                user_emails += len(user_ctxs)
+                await self.send_emails.direct(company_id, Triggers.event_host_update.value, user_ctxs)
         return user_emails

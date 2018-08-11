@@ -11,6 +11,7 @@ class Triggers(str, Enum):
     event_reminder = 'event-reminder'
 
     event_host_update = 'event-host-update'
+    event_host_final_update = 'event-host-final-update'
 
     password_reset = 'password-reset'
     account_created = 'account-created'
@@ -113,7 +114,39 @@ Event:
         'subject': 'event_host_update',
         'title': '',
         'body': """
-Email event_host_update
+Hi {{ first_name }},
+
+Your event {{ name }} is coming up in **{{ days_to_go }}** days on **{{ event_date }}**.
+
+<div class="stat-label">Tickets Booked in the last day:</div>
+<div class="stat-value">
+  <span class="large">{{ tickets_booked_24h }}</span>
+</div>
+
+<div class="stat-label">Tickets Booked Total:</div>
+<div class="stat-value">
+  <span class="large">{{ tickets_booked }}</span> of {{ ticket_limit }} available.
+</div>
+
+{{#total_income}}
+<div class="stat-label"Total made from ticket sales:</div>
+<div class="stat-value">
+  <span class="large">{{ total_income }}</span>
+</div>
+{{/total_income}}
+
+{{#fully_booked}}
+**Congratulations, all tickets have been booked - your event is full.**
+{{/fully_booked}}
+{{^fully_booked}}
+Guests can book your event by going to
+
+    {{ link }}
+    
+Share this link via email or social media to garner further bookings.
+{{/fully_booked}}
+
+{{ centered_button(View Event | {{ link }}) }}
 """
     },
     Triggers.password_reset: {
