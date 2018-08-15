@@ -142,7 +142,7 @@ Your event {{ name }} is coming up in **{{ days_to_go }}** days on **{{ event_da
 Guests can book your event by going to
 
     {{ link }}
-    
+
 Share this link via email or social media to garner further bookings.
 {{/fully_booked}}
 

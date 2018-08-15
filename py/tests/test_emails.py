@@ -201,13 +201,13 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
 
     res = await factory.create_reservation()
     await factory.buy_tickets(res)
-    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET first_name='Cat', last_name='Dig'")
+    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET first_name='Cat', last_name='Dog'")
 
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='event-guest-reminder'")
     assert 1 == await email_actor.send_event_reminders.direct()
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
-    assert email['To'] == 'Cat Dig <frank@example.org>'
+    assert email['To'] == 'Cat Dog <frank@example.org>'
     text = email['part:text/plain']
     assert text.startswith(
         f'Hi Cat,\n'

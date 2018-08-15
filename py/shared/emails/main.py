@@ -258,9 +258,9 @@ class EmailActor(BaseEmailActor):
         return user_emails
 
     @cron(hour=7, minute=30)
-    async def send_event_reminders(self):
+    async def send_event_host_updates(self):
         async with self.pg.acquire() as conn:
-            # get events for which updates need to be send
+            # get events for which updates need to be sent
             events = await conn.fetch(
                 """
                 SELECT
@@ -272,11 +272,11 @@ class EmailActor(BaseEmailActor):
                 JOIN categories AS cat ON e.category = cat.id
                 JOIN companies AS co ON cat.company = co.id
                 LEFT JOIN tickets AS t ON e.id = t.event
-                WHERE e.status='published' AND
+                WHERE e.status = 'published' AND
                       e.start_ts BETWEEN now() AND now() + '30 days'::interval AND
-                      t.status == 'booked'
-                GROUP BY cat.company, e.id
-                ORDER BY cat.company, e.id
+                      t.status = 'booked'
+                GROUP BY cat.company, cat.id, e.id
+                ORDER BY cat.company, cat.id, e.id
                 """
             )
             if not events:
@@ -285,11 +285,11 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT t.event AS event_id, COUNT(t.id) AS count
                 FROM tickets AS t
-                JOIN events AS e on t.event = e.id
-                WHERE e.status='published' AND
+                JOIN events AS e ON t.event = e.id
+                WHERE e.status = 'published' AND
                       e.start_ts BETWEEN now() AND now() + '30 days'::interval AND
                       t.created_ts > now() - '1 day'::interval AND
-                      t.status == 'booked'
+                      t.status = 'booked'
                 GROUP BY t.event
                 """
             )
