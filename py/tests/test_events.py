@@ -640,11 +640,14 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
+    debug(data)
+    ticket_id = await db_conn.fetchval('SELECT id from tickets')
     assert data == {
         'tickets': [
             {
-                'ticket_id': await db_conn.fetchval('SELECT id from tickets'),
-                'extra': None,
+                'id': ticket_id,
+                'ticket_id': RegexStr('.{7}-%s' % ticket_id),
+                'extra_info': None,
                 'booked_at': CloseToNow(),
                 'price': 10,
                 'guest_user_id': user2_id,
@@ -653,7 +656,6 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
                 'buyer_name': None,
                 'ticket_type_name': 'Standard',
                 'ticket_type_id': await db_conn.fetchval('SELECT id from ticket_types'),
-                'ticket_ref': RegexStr('.{7}-\d+'),
             },
         ],
     }
@@ -681,8 +683,9 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     tt_id = await db_conn.fetchval('SELECT id from ticket_types')
     assert tickets == [
         {
-            'ticket_id': await db_conn.fetchval("SELECT id FROM tickets where first_name='anne'"),
-            'extra': None,
+            'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='anne'"),
+            'ticket_id': RegexStr('.{7}-\d+'),
+            'extra_info': None,
             'booked_at': CloseToNow(),
             'price': None,
             'guest_user_id': anne,
@@ -693,11 +696,11 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'buyer_email': 'anne@example.org',
             'ticket_type_name': 'Standard',
             'ticket_type_id': tt_id,
-            'ticket_ref': RegexStr('.{7}-\d+'),
         },
         {
-            'ticket_id': await db_conn.fetchval("SELECT id FROM tickets where first_name='ben'"),
-            'extra': None,
+            'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='ben'"),
+            'ticket_id': RegexStr('.{7}-\d+'),
+            'extra_info': None,
             'booked_at': CloseToNow(),
             'price': None,
             'guest_user_id': ben,
@@ -708,7 +711,6 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'buyer_email': 'anne@example.org',
             'ticket_type_name': 'Standard',
             'ticket_type_id': tt_id,
-            'ticket_ref': RegexStr('.{7}-\d+'),
         },
     ]
 

@@ -135,6 +135,11 @@ class Tickets_ extends React.Component {
         <InfoModal isOpen={!!this.state.selected}
                    title={s.guest_name || <Dash/>}
                    onClose={() => this.setState({selected: null})}>
+          <Detail name="ID">
+            <code className="text-dark font-weight-bold mt-1">
+              {s.ticket_id}
+            </code>
+          </Detail>
           <Detail name="Guest">
             {(s.guest_name || s.guest_email) ?
               is_admin ?
@@ -160,13 +165,20 @@ class Tickets_ extends React.Component {
           <Detail name="Bought At">{format_datetime(s.bought_at)}</Detail>
           <Detail name="Price"><MoneyFree>{s.price}</MoneyFree></Detail>
           <Detail name="Ticket Type">{s.ticket_type_name}</Detail>
-          <Detail name="Extra Info">{s.extra && s.extra.extra_info}</Detail>
+          <Detail name="Extra Info">{s.extra_info}</Detail>
         </InfoModal>
-        <h4>Tickets</h4>
+        <h4>
+          Tickets
+          <a href={`/api/events/${this.props.id}/tickets/export.csv`}
+              download={true} className="btn btn-secondary btn-sm ml-2">
+            <FontAwesomeIcon icon="file-export" className="mr-1"/>
+            Export
+          </a>
+        </h4>
         <Table striped>
           <thead>
             <tr>
-              <th>#</th>
+              <th>ID</th>
               <th>Guest</th>
               <th>Buyer</th>
               <th>Bought At</th>
@@ -177,17 +189,19 @@ class Tickets_ extends React.Component {
           <tbody>
             {this.props.tickets.map((t, i) => (
               <tr key={i} onClick={() => this.setState({selected: t})} className="cursor-pointer">
-                <th scope="row">{i + 1}</th>
+                <th scope="row">
+                  <code className="text-dark">
+                    {t.ticket_id}
+                  </code>
+                </th>
                 <td>{t.guest_name || t.guest_email || <Dash/>}</td>
                 <td>{t.buyer_name || t.buyer_email || <Dash/>}</td>
                 <td>{format_datetime(t.booked_at)}</td>
                 <td>{t.ticket_type_name}</td>
-                <td className="text-right">
-                  {t.extra && t.extra.extra_info.length > 30 ?
-                    <small>{t.extra.extra_info}</small>
-                    :
-                    <span>{t.extra && t.extra.extra_info}</span>
-                  }
+                <td>
+                  <span className={t.extra_info && t.extra_info.length > 30 ? 'font-small' : ''}>
+                    {t.extra_info}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -392,7 +406,7 @@ export class EventsDetails extends RenderDetails {
       this.state.ticket_types ?
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}/>
         : null,
-      <Tickets key="tickets" tickets={this.state.tickets} event={event}/>,
+      <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id}/>,
       <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"

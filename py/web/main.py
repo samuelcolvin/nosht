@@ -25,8 +25,8 @@ from .views.company import CompanyBread, company_upload
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
 from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, EventBread, EventUpdate, ReserveTickets,
                            SetEventStatus, SetTicketTypes, booking_info, event_categories, event_public,
-                           event_ticket_types, event_tickets, event_updates_sent, set_event_image_existing,
-                           set_event_image_new, switch_highlight)
+                           event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
+                           set_event_image_existing, set_event_image_new, switch_highlight)
 from .views.export import export
 from .views.static import static_handler
 from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_tickets
@@ -92,6 +92,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/events/{id:\d+}/set-image/existing/', set_event_image_existing, name='event-set-image-existing'),
         web.get('/events/{id:\d+}/booking-info/', booking_info, name='event-booking-info'),
         web.get('/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
+        web.get('/events/{id:\d+}/tickets/export.csv', event_tickets_export, name='event-tickets-export'),
         web.get('/events/{id:\d+}/ticket-types/', event_ticket_types, name='event-ticket-types'),
         web.post('/events/{id:\d+}/ticket-types/update/', SetTicketTypes.view(), name='update-event-ticket-types'),
         web.post('/events/{id:\d+}/reserve/', ReserveTickets.view(), name='event-reserve-tickets'),

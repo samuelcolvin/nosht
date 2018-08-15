@@ -20,6 +20,7 @@ from web.bread import Bread, UpdateView
 from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 from web.utils import (ImageModel, JsonErrors, clean_markdown, decrypt_json, encrypt_json, json_response, parse_request,
                        raw_json_response, request_image, to_json_if)
+from web.views.export import export_plumbing
 
 logger = logging.getLogger('nosht.events')
 
@@ -251,7 +252,8 @@ async def _check_event_host(request):
 
 
 event_tickets_sql = """
-SELECT t.id as ticket_id, t.extra, iso_ts(a.ts) AS booked_at, t.price::float AS price,
+SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price,
+  t.extra->>'extra_info' AS extra_info,
   t.user_id AS guest_user_id, full_name(t.first_name, t.last_name, null) AS guest_name, ug.email AS guest_email,
   tb.user_id as buyer_user_id, full_name(tb.first_name, tb.last_name, null) AS buyer_name, ub.email AS buyer_email,
   tt.name AS ticket_type_name, tt.id AS ticket_type_id
@@ -269,19 +271,49 @@ ORDER BY a.ts
 @is_admin_or_host
 async def event_tickets(request):
     event_id = await _check_event_host(request)
-    is_admin = request['session']['role'] == 'admin'
+    not_admin = request['session']['role'] != 'admin'
     tickets = []
     settings = request.app['settings']
     for t in await request['conn'].fetch(event_tickets_sql, event_id):
         ticket = {
+            'ticket_id': ticket_ref(t['id'], settings),
             **t,
-            'ticket_ref': ticket_ref(t['ticket_id'], settings)
         }
-        if not is_admin:
+        if not_admin:
             ticket.pop('guest_email')
             ticket.pop('buyer_email')
         tickets.append(ticket)
     return json_response(tickets=tickets)
+
+
+@is_admin_or_host
+async def event_tickets_export(request):
+    event_id = await _check_event_host(request)
+    not_admin = request['session']['role'] != 'admin'
+    event_slug = await request['conn'].fetchval('SELECT slug FROM events WHERE id=$1', event_id)
+    settings = request.app['settings']
+
+    def modify(record):
+        data = {
+            'ticket_id': ticket_ref(record['id'], settings),
+            **record,
+        }
+        data.pop('id')
+        if not_admin:
+            data.pop('guest_email')
+            data.pop('guest_user_id')
+            data.pop('buyer_email')
+            data.pop('buyer_user_id')
+        return data
+
+    return await export_plumbing(
+        request,
+        event_tickets_sql,
+        event_id,
+        filename=f'{event_slug}-tickets',
+        none_message='no tickets booked',
+        modify_records=modify,
+    )
 
 
 event_ticket_types_sql = """

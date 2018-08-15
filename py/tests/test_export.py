@@ -2,7 +2,7 @@ from csv import DictReader
 from datetime import timedelta
 from io import StringIO
 
-from pytest_toolbox.comparison import RegexStr
+from pytest_toolbox.comparison import CloseToNow, RegexStr
 
 from .conftest import Factory
 
@@ -202,5 +202,65 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
             'buyer_user_id': str(factory.user_id),
             'buyer_first_name': 'Frank',
             'buyer_last_name': 'Spencer',
+        },
+    ]
+
+
+async def test_event_ticket_export(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+    await factory.book_free(await factory.create_reservation())
+    await db_conn.execute("UPDATE tickets SET first_name='foo', last_name='bar'")
+
+    await login()
+
+    r = await cli.get(url('event-tickets-export', id=factory.event_id))
+    assert r.status == 200
+    text = await r.text()
+    data = [dict(r) for r in DictReader(StringIO(text))]
+    assert data == [
+        {
+            'ticket_id': RegexStr('.{7}-\d+'),
+            'booked_at': CloseToNow(),
+            'price': '',
+            'extra_info': '',
+            'guest_user_id': str(factory.user_id),
+            'guest_name': 'foo bar',
+            'guest_email': 'frank@example.org',
+            'buyer_user_id': str(factory.user_id),
+            'buyer_name': 'foo bar',
+            'buyer_email': 'frank@example.org',
+            'ticket_type_name': 'Standard',
+            'ticket_type_id': str(await db_conn.fetchval('SELECT id FROM ticket_types')),
+        },
+    ]
+
+
+async def test_event_ticket_export_host(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event(status='published')
+    await factory.book_free(await factory.create_reservation())
+    await db_conn.execute("UPDATE tickets SET first_name='foo', last_name='bar'")
+
+    await login()
+
+    r = await cli.get(url('event-tickets-export', id=factory.event_id))
+    assert r.status == 200
+    text = await r.text()
+    data = [dict(r) for r in DictReader(StringIO(text))]
+    assert data == [
+        {
+            'ticket_id': RegexStr('.{7}-\d+'),
+            'booked_at': CloseToNow(),
+            'price': '',
+            'extra_info': '',
+            'guest_name': 'foo bar',
+            'buyer_name': 'foo bar',
+            'ticket_type_name': 'Standard',
+            'ticket_type_id': str(await db_conn.fetchval('SELECT id FROM ticket_types')),
         },
     ]

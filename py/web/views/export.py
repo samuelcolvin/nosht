@@ -67,6 +67,19 @@ WHERE a.company=$1 AND t.status!='reserved'
 }
 
 
+@is_admin
+async def export(request):
+    export_type = request.match_info['type']
+    export_sql = EXPORTS[export_type]
+    return await export_plumbing(
+        request,
+        export_sql,
+        request['company_id'],
+        filename=f'nosht_{export_type}_{datetime.now().isoformat()}',
+        none_message=f'no {export_type} found',
+    )
+
+
 class ResponsePseudoFile:
     def __init__(self, response):
         self.r = response
@@ -81,12 +94,9 @@ class ResponsePseudoFile:
         self.buffer = ''
 
 
-@is_admin
-async def export(request):
-    export_type = request.match_info['type']
-    export_sql = EXPORTS[export_type]
+async def export_plumbing(request, sql, *sql_args, filename, none_message, modify_records=None):
     response = StreamResponse(headers={
-        'Content-Disposition': f'attachment;filename=nosht_{export_type}_{datetime.now().isoformat()}.csv'
+        'Content-Disposition': f'attachment;filename={filename}.csv'
     })
     response.content_type = 'text/csv'
     await response.prepare(request)
@@ -95,16 +105,20 @@ async def export(request):
 
     writer = None
     async with request['conn'].transaction():
-        async for record in request['conn'].cursor(export_sql, request['company_id']):
+        async for record in request['conn'].cursor(sql, *sql_args):
+            if modify_records:
+                data = modify_records(record)
+            else:
+                data = record
             if writer is None:
-                writer = DictWriter(response_file, fieldnames=list(record.keys()))
+                writer = DictWriter(response_file, fieldnames=list(data.keys()))
                 writer.writeheader()
-            writer.writerow({k: '' if v is None else str(v) for k, v in record.items()})
+            writer.writerow({k: '' if v is None else str(v) for k, v in data.items()})
             await response_file.write_response()
 
     if writer is None:
         writer = DictWriter(response_file, fieldnames=['message'])
         writer.writeheader()
-        writer.writerow({'message': f'no {export_type} found'})
+        writer.writerow({'message': none_message})
         await response_file.write_response()
     return response
