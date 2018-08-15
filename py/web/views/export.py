@@ -76,6 +76,7 @@ class ResponsePseudoFile:
         self.buffer += v
 
     async def write_response(self):
+        # WARNING: this is not safe to all asynchronously, it needs to be fully awaited before write can be called again
         await self.r.write(self.buffer.encode())
         self.buffer = ''
 
@@ -84,27 +85,26 @@ class ResponsePseudoFile:
 async def export(request):
     export_type = request.match_info['type']
     export_sql = EXPORTS[export_type]
-    conn = request['conn']
-    async with conn.transaction():
-        response = StreamResponse(headers={
-            'Content-Disposition': f'attachment;filename=nosht_{export_type}_{datetime.now().isoformat()}.csv'
-        })
-        response.content_type = 'text/csv'
-        await response.prepare(request)
+    response = StreamResponse(headers={
+        'Content-Disposition': f'attachment;filename=nosht_{export_type}_{datetime.now().isoformat()}.csv'
+    })
+    response.content_type = 'text/csv'
+    await response.prepare(request)
 
-        response_file = ResponsePseudoFile(response)
-        r = await conn.fetchrow(export_sql + ' LIMIT 1', request['company_id'])
-        if not r:
-            writer = DictWriter(response_file, fieldnames=['message'])
-            writer.writeheader()
-            writer.writerow({'message': f'no {export_type} found'})
+    response_file = ResponsePseudoFile(response)
+
+    writer = None
+    async with request['conn'].transaction():
+        async for record in request['conn'].cursor(export_sql, request['company_id']):
+            if writer is None:
+                writer = DictWriter(response_file, fieldnames=list(record.keys()))
+                writer.writeheader()
+            writer.writerow({k: '' if v is None else str(v) for k, v in record.items()})
             await response_file.write_response()
-            return response
 
-        writer = DictWriter(response_file, fieldnames=list(r.keys()))
+    if writer is None:
+        writer = DictWriter(response_file, fieldnames=['message'])
         writer.writeheader()
-
-        async for record in conn.cursor(export_sql, request['company_id']):
-            writer.writerow({k: str('' if v is None else v) for k, v in record.items()})
-            await response_file.write_response()
+        writer.writerow({'message': f'no {export_type} found'})
+        await response_file.write_response()
     return response

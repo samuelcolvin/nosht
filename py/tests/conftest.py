@@ -22,7 +22,7 @@ from shared.db import prepare_database
 from shared.settings import Settings
 from shared.utils import encrypt_json, mk_password, slugify
 from web.main import create_app
-from web.stripe import Reservation, StripePayModel, stripe_pay
+from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 
 from .dummy_server import create_dummy_server
 
@@ -305,6 +305,13 @@ class Factory:
             grecaptcha_token='__ok__',
         )
         return await stripe_pay(m, self.company_id, user_id or self.user_id, self.app, self.conn)
+
+    async def book_free(self, reservation: Reservation, user_id=None):
+        m = BookingModel(
+            booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
+            grecaptcha_token='__ok__',
+        )
+        return await book_free(m, self.company_id, user_id or self.user_id, self.app, self.conn)
 
 
 @pytest.fixture
