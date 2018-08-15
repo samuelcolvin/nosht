@@ -9,7 +9,7 @@ from arq import concurrent, cron
 from buildpg import MultipleValues, Values
 
 from ..actions import ActionTypes
-from ..utils import display_cash, display_cash_free, event_ref, format_duration, password_reset_link, static_map_link
+from ..utils import display_cash, display_cash_free, format_duration, password_reset_link, static_map_link, ticket_ref
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail, date_fmt, datetime_fmt
 
@@ -91,7 +91,7 @@ class EmailActor(BaseEmailActor):
             )
 
     def _ue_with_ref(self, user_id, ctx, ticket_id):
-        ctx_ = {**ctx, 'ticket_ref': event_ref(ticket_id, self.settings)}
+        ctx_ = {**ctx, 'ticket_ref': ticket_ref(ticket_id, self.settings)}
         return UserEmail(id=user_id, ctx=ctx_, ticket_id=ticket_id)
 
     @concurrent

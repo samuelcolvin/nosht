@@ -13,7 +13,7 @@ from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, condecimal, conint, constr, validator
 
 from shared.images import delete_image, resize_upload
-from shared.utils import pseudo_random_str, slugify
+from shared.utils import pseudo_random_str, slugify, ticket_ref
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
@@ -251,23 +251,39 @@ async def _check_event_host(request):
 
 
 event_tickets_sql = """
-SELECT json_build_object('tickets', tickets)
-FROM (
-  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS tickets FROM (
-    SELECT t.id as ticket_id, t.extra, u.id AS user_id,
-      full_name(u.first_name, u.last_name, null) AS user_name, a.ts AS bought_at, t.price,
-      tt.name AS ticket_type_name, tt.id AS ticket_type_id,
-      ub.id as buyer_id, full_name(ub.first_name, ub.last_name, null) AS buyer_name
-    FROM tickets AS t
-    LEFT JOIN users u ON t.user_id = u.id
-    JOIN actions a ON t.booked_action = a.id
-    JOIN users ub ON a.user_id = ub.id
-    JOIN ticket_types tt ON t.ticket_type = tt.id
-    WHERE t.event=$1 AND t.status='booked'
-    ORDER BY a.ts
-  ) AS t
-) AS tickets
+SELECT t.id as ticket_id, t.extra, iso_ts(a.ts) AS booked_at, t.price::float AS price,
+  t.user_id AS guest_user_id, full_name(t.first_name, t.last_name, null) AS guest_name, ug.email AS guest_email,
+  tb.user_id as buyer_user_id, full_name(tb.first_name, tb.last_name, null) AS buyer_name, ub.email AS buyer_email,
+  tt.name AS ticket_type_name, tt.id AS ticket_type_id
+FROM tickets AS t
+LEFT JOIN users AS ug ON t.user_id = ug.id
+JOIN actions AS a ON t.booked_action = a.id
+JOIN tickets AS tb ON (a.user_id = tb.user_id AND a.id = tb.booked_action)
+JOIN users AS ub ON a.user_id = ub.id
+JOIN ticket_types AS tt ON t.ticket_type = tt.id
+WHERE t.event=$1 AND t.status='booked'
+ORDER BY a.ts
 """
+
+
+@is_admin_or_host
+async def event_tickets(request):
+    event_id = await _check_event_host(request)
+    is_admin = request['session']['role'] == 'admin'
+    tickets = []
+    settings = request.app['settings']
+    for t in await request['conn'].fetch(event_tickets_sql, event_id):
+        ticket = {
+            **t,
+            'ticket_ref': ticket_ref(t['ticket_id'], settings)
+        }
+        if not is_admin:
+            ticket.pop('guest_email')
+            ticket.pop('buyer_email')
+        tickets.append(ticket)
+    return json_response(tickets=tickets)
+
+
 event_ticket_types_sql = """
 SELECT json_build_object('ticket_types', tickets)
 FROM (
@@ -292,13 +308,6 @@ FROM (
   ) AS t
 ) AS event_updates
 """
-
-
-@is_admin_or_host
-async def event_tickets(request):
-    event_id = await _check_event_host(request)
-    json_str = await request['conn'].fetchval(event_tickets_sql, event_id)
-    return raw_json_response(json_str)
 
 
 @is_admin_or_host

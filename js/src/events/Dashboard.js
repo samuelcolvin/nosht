@@ -128,39 +128,39 @@ class Tickets_ extends React.Component {
         </div>
       )
     }
-    const selected = this.state.selected || {}
+    const s = this.state.selected || {}
     const is_admin = this.props.ctx.user.role === 'admin'
     return (
       <div className="mb-5">
         <InfoModal isOpen={!!this.state.selected}
-                   title={selected.user_name || <Dash/>}
+                   title={s.guest_name || <Dash/>}
                    onClose={() => this.setState({selected: null})}>
           <Detail name="Guest">
-            {selected.user_name ?
+            {(s.guest_name || s.guest_email) ?
               is_admin ?
-                <Link to={`/dashboard/users/${selected.user_id}/`}>{selected.user_name}</Link>
+                <Link to={`/dashboard/users/${s.guest_user_id}/`}>{s.guest_name || s.guest_email}</Link>
                 :
-                <span>{selected.user_name}</span>
+                <span>{s.guest_name}</span>
               :
               <span className="text-muted">No name provided</span>
             }
           </Detail>
           <Detail name="Buyer">
-            {selected.user_id === selected.buyer_id ?
+            {s.guest_user_id === s.buyer_user_id ?
               <span className="text-muted">this guest</span>
               :
               is_admin ?
-                <Link to={`/dashboard/users/${selected.buyer_id}/`}>
-                  {selected.buyer_name || <span className="text-muted">No name provided</span>}
+                <Link to={`/dashboard/users/${s.buyer_user_id}/`}>
+                  {s.buyer_name || s.buyer_email || <span className="text-muted">No name provided</span>}
                 </Link>
                 :
-                <span>{selected.buyer_name || <span className="text-muted">No name provided</span>}</span>
+                <span>{s.buyer_name || s.buyer_email || <span className="text-muted">No name provided</span>}</span>
             }
           </Detail>
-          <Detail name="Bought At">{format_datetime(selected.bought_at)}</Detail>
-          <Detail name="Price"><MoneyFree>{selected.price}</MoneyFree></Detail>
-          <Detail name="Ticket Type">{selected.ticket_type_name}</Detail>
-          <Detail name="Extra Info">{selected.extra && selected.extra.extra_info}</Detail>
+          <Detail name="Bought At">{format_datetime(s.bought_at)}</Detail>
+          <Detail name="Price"><MoneyFree>{s.price}</MoneyFree></Detail>
+          <Detail name="Ticket Type">{s.ticket_type_name}</Detail>
+          <Detail name="Extra Info">{s.extra && s.extra.extra_info}</Detail>
         </InfoModal>
         <h4>Tickets</h4>
         <Table striped>
@@ -178,9 +178,9 @@ class Tickets_ extends React.Component {
             {this.props.tickets.map((t, i) => (
               <tr key={i} onClick={() => this.setState({selected: t})} className="cursor-pointer">
                 <th scope="row">{i + 1}</th>
-                <td>{t.user_name || <Dash/>}</td>
-                <td>{t.buyer_name || <Dash/>}</td>
-                <td>{format_datetime(t.bought_at)}</td>
+                <td>{t.guest_name || t.guest_email || <Dash/>}</td>
+                <td>{t.buyer_name || t.buyer_email || <Dash/>}</td>
+                <td>{format_datetime(t.booked_at)}</td>
                 <td>{t.ticket_type_name}</td>
                 <td className="text-right">
                   {t.extra && t.extra.extra_info.length > 30 ?

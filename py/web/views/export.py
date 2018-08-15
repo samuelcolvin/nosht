@@ -9,7 +9,7 @@ EXPORTS = {
     'events': """
 SELECT
   e.id, e.name, e.slug, e.status,
-  to_char(e.start_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS start_time,
+  iso_ts(e.start_ts) AS start_time,
   to_char(extract(epoch from e.duration)/3600, 'FM9999990.00') AS duration_hours,
   e.short_description, e.long_description, boolstr(e.public) AS is_public, e.location_name,
   to_char(e.location_lat, 'FM990.0000000') AS location_lat,
@@ -38,8 +38,8 @@ WHERE company=$1
 SELECT
   u.id, u.role, u.status, u.first_name, u.last_name, u.email, u.phone_number, u.stripe_customer_id,
   boolstr(u.receive_emails) AS receive_emails, boolstr(u.allow_marketing) AS allow_marketing,
-  to_char(u.created_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_ts,
-  to_char(u.active_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS active_ts,
+  iso_ts(u.created_ts) AS created_ts,
+  iso_ts(u.active_ts) AS active_ts,
   count(t.id) AS tickets
 FROM users AS u
 LEFT JOIN tickets AS t ON u.id = t.user_id
@@ -50,7 +50,7 @@ GROUP BY u.id
 SELECT
   t.id, t.first_name AS ticket_first_name, t.last_name AS ticket_last_name, t.status,
   to_char(t.price, 'FM9999990.00') AS price,
-  to_char(t.created_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_ts,
+  iso_ts(t.created_ts) AS created_ts,
   t.extra->>'extra_info' AS extra_info,
   tt.id AS ticket_type_id, tt.name AS ticket_type_name,
   e.id AS event_id, e.slug AS event_slug,
