@@ -291,20 +291,22 @@ class EmailActor(BaseEmailActor):
                 ORDER BY cat.company
                 """
             )
-            if not events:
-                return 0
+
+        if not events:
+            return 0
 
         today = date.today()
         user_emails = 0
-        fields = ('link', 'name', 'tickets_booked', 'tickets_booked_24h', 'ticket_limit')
         for company_id, g in groupby(events, itemgetter('company_id')):
             user_ctxs = []
             for e in g:
                 if e['event_date'] == today:
                     # don't send an update on the day of an event, that's event_host_final_update
                     continue
-                ctx = {f: e[f] for f in fields}
-                ctx.update(
+                ctx = dict(
+                    link=e['link'],
+                    name=e['name'],
+                    ticket_limit=e['ticket_limit'],
                     fully_booked=e['tickets_booked'] == e['ticket_limit'],
                     event_date=e['event_date'].strftime(date_fmt),
                     days_to_go=(e['event_date'] - today).days,
