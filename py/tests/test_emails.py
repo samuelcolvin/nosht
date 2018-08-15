@@ -373,7 +373,7 @@ async def test_event_host_updates_full(email_actor: EmailActor, factory: Factory
     assert 'Total made from ticket sales' in html
 
 
-async def test_event_host_updates_free(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+async def test_event_host_updates_free(email_actor: EmailActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_cat()
 
@@ -402,6 +402,6 @@ async def test_event_host_updates_today(email_actor: EmailActor, factory: Factor
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(start_ts=datetime.now(), price=10)
+    await factory.create_event(start_ts=datetime.now(), price=10, status='published')
     assert 0 == await email_actor.send_event_host_updates.direct()
     assert len(dummy_server.app['emails']) == 0
