@@ -111,25 +111,25 @@ Event:
 """
     },
     Triggers.event_host_update: {
-        'subject': 'event_host_update',
-        'title': '',
+        'subject': '{{{ name }}} Update from {{{ company_name }}}',
+        'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},
 
 Your event {{ name }} is coming up in **{{ days_to_go }}** days on **{{ event_date }}**.
 
-<div class="stat-label">Tickets Booked in the last day:</div>
+<div class="stat-label">Tickets Booked in the last day</div>
 <div class="stat-value">
   <span class="large">{{ tickets_booked_24h }}</span>
 </div>
 
-<div class="stat-label">Tickets Booked Total:</div>
+<div class="stat-label">Tickets Booked Total</div>
 <div class="stat-value">
-  <span class="large">{{ tickets_booked }}</span> of {{ ticket_limit }} available.
+  <span class="large">{{ tickets_booked }}</span>{{#ticket_limit}} of {{ ticket_limit }}.{{/ticket_limit}}
 </div>
 
 {{#total_income}}
-<div class="stat-label"Total made from ticket sales:</div>
+<div class="stat-label">Total made from ticket sales</div>
 <div class="stat-value">
   <span class="large">{{ total_income }}</span>
 </div>
@@ -141,7 +141,7 @@ Your event {{ name }} is coming up in **{{ days_to_go }}** days on **{{ event_da
 {{^fully_booked}}
 Guests can book your event by going to
 
-    {{ link }}
+<div class="text-center highlighted">{{ link }}</div>
 
 Share this link via email or social media to garner further bookings.
 {{/fully_booked}}

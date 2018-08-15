@@ -296,3 +296,112 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
     ) in html
 
     assert '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n' in html
+
+
+async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+
+    await factory.create_user()
+    await factory.create_event(
+        start_ts=datetime.now() + timedelta(days=5),
+        price=10,
+        status='published',
+    )
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.buy_tickets(await factory.create_reservation(anne), anne)
+
+    assert 1 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    # debug(email)
+    # from pathlib import Path
+    # Path('email.html').write_text(email['part:text/html'])
+    assert email['Subject'] == 'The Event Name Update from Testing'
+    assert email['To'] == 'Frank Spencer <frank@example.org>'
+
+    html = email['part:text/html']
+    assert 'The Event Name is coming up in <strong>5</strong>' in html
+    assert (
+        '<p>Your event The Event Name is coming up in <strong>5</strong> days on <strong>20 Aug 18</strong>.</p>\n'
+        '\n'
+        '<div class="stat-label">Tickets Booked in the last day</div>\n'
+        '<div class="stat-value">\n'
+        '  <span class="large">1</span>\n'
+        '</div>\n'
+        '\n'
+        '<div class="stat-label">Tickets Booked Total</div>\n'
+        '<div class="stat-value">\n'
+        '  <span class="large">1</span>\n'
+        '</div>\n'
+        '\n'
+        '<div class="stat-label">Total made from ticket sales</div>\n'
+        '<div class="stat-value">\n'
+        '  <span class="large">£10.00</span>\n'
+        '</div>\n'
+        '\n'
+        '<p>Guests can book your event by going to</p>\n'
+        '\n'
+        '<div class="text-center highlighted">https://127.0.0.1/supper-clubs/the-event-name/</div>\n'
+    ) in html
+    assert '<strong>Congratulations, all tickets have been booked - your event is full.</strong>' not in html
+
+
+async def test_event_host_updates_full(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+
+    await factory.create_user()
+    await factory.create_event(
+        start_ts=datetime.now() + timedelta(days=5),
+        price=10,
+        status='published',
+        ticket_limit=1
+    )
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.buy_tickets(await factory.create_reservation(anne), anne)
+    await db_conn.execute("UPDATE tickets SET created_ts=now() - '2 days'::interval")
+
+    assert 1 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    html = email['part:text/html']
+    assert '<strong>Congratulations, all tickets have been booked - your event is full.</strong>' in html
+    assert '<span class="large">1</span> of 1.\n' in html
+    assert 'Total made from ticket sales' in html
+
+
+async def test_event_host_updates_free(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.now() + timedelta(days=5), status='published')
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.book_free(await factory.create_reservation(anne), anne)
+
+    assert 1 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 1
+    assert 'Total made from ticket sales' not in dummy_server.app['emails'][0]['part:text/html']
+
+
+async def test_event_host_updates_none(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.now() + timedelta(days=5), price=10)
+
+    assert 0 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 0
+
+
+async def test_event_host_updates_today(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.now(), price=10)
+    assert 0 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 0

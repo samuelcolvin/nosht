@@ -264,44 +264,43 @@ class EmailActor(BaseEmailActor):
             events = await conn.fetch(
                 """
                 SELECT
-                  e.id, e.name, e.short_description, e.start_ts::date AS start_date, e.host AS host_user_id,
+                  e.id, e.name, e.short_description, e.start_ts::date AS event_date, e.host AS host_user_id,
                   '/' || cat.slug || '/' || e.slug || '/' as link,
                   cat.company AS company_id, co.currency AS currency,
-                  count(t.id) AS tickets_booked, e.ticket_limit, sum(t.price) AS total_income
+                  t_all.tickets_booked, e.ticket_limit, t_all.total_income, t_recent.tickets_booked_24h
                 FROM events AS e
                 JOIN categories AS cat ON e.category = cat.id
                 JOIN companies AS co ON cat.company = co.id
-                LEFT JOIN tickets AS t ON e.id = t.event
+                LEFT JOIN (
+                  -- TODO I think this subquery will be called for ALL tickets, could filter the subquery
+                  -- same as the main query is filtered
+                  SELECT event, count(id) AS tickets_booked, sum(price) AS total_income
+                  FROM tickets
+                  WHERE status = 'booked'
+                  GROUP BY event
+                ) AS t_all ON e.id = t_all.event
+                LEFT JOIN (
+                  SELECT event, COUNT(id) AS tickets_booked_24h
+                  FROM tickets
+                  WHERE created_ts > now() - '1 day'::interval AND
+                        status = 'booked'
+                  GROUP BY event
+                ) AS t_recent ON e.id = t_recent.event
                 WHERE e.status = 'published' AND
-                      e.start_ts BETWEEN now() AND now() + '30 days'::interval AND
-                      t.status = 'booked'
-                GROUP BY cat.company, cat.id, e.id
-                ORDER BY cat.company, cat.id, e.id
+                      e.start_ts BETWEEN now() AND now() + '30 days'::interval
+                ORDER BY cat.company
                 """
             )
             if not events:
                 return 0
-            recent_tickets = await conn.fetch(
-                """
-                SELECT t.event AS event_id, COUNT(t.id) AS count
-                FROM tickets AS t
-                JOIN events AS e ON t.event = e.id
-                WHERE e.status = 'published' AND
-                      e.start_ts BETWEEN now() AND now() + '30 days'::interval AND
-                      t.created_ts > now() - '1 day'::interval AND
-                      t.status = 'booked'
-                GROUP BY t.event
-                """
-            )
 
         today = date.today()
         user_emails = 0
-        fields = ('link', 'name', 'tickets_booked', 'ticket_limit')
-        recent_tickets = {r['event_id']: r['count'] for r in recent_tickets}
+        fields = ('link', 'name', 'tickets_booked', 'tickets_booked_24h', 'ticket_limit')
         for company_id, g in groupby(events, itemgetter('company_id')):
             user_ctxs = []
             for e in g:
-                if e['start_date'] == today:
+                if e['event_date'] == today:
                     # don't send an update on the day of an event, that's event_host_final_update
                     continue
                 ctx = {f: e[f] for f in fields}
@@ -310,7 +309,8 @@ class EmailActor(BaseEmailActor):
                     event_date=e['event_date'].strftime(date_fmt),
                     days_to_go=(e['event_date'] - today).days,
                     total_income=display_cash(e['total_income'], e['currency']) if e['total_income'] else None,
-                    tickets_booked_24h=recent_tickets.get(e['id'], 0)
+                    tickets_booked=e['tickets_booked'] or 0,
+                    tickets_booked_24h=e['tickets_booked_24h'] or 0,
                 )
                 user_ctxs.append(UserEmail(id=e['host_user_id'], ctx=ctx))
 
