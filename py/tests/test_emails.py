@@ -385,7 +385,7 @@ async def test_event_host_updates_free(email_actor: EmailActor, factory: Factory
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
     await factory.book_free(await factory.create_reservation(anne), anne)
 
-    assert 1 == await email_actor.send_event_host_updates.direct()
+    await email_actor.send_event_host_updates()
     assert len(dummy_server.app['emails']) == 1
     assert 'Total made from ticket sales' not in dummy_server.app['emails'][0]['part:text/html']
 
@@ -394,7 +394,7 @@ async def test_event_host_updates_none(email_actor: EmailActor, factory: Factory
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(start_ts=datetime.now() + timedelta(days=5), price=10)
+    await factory.create_event(start_ts=datetime.now() + timedelta(days=5))
 
     assert 0 == await email_actor.send_event_host_updates.direct()
     assert len(dummy_server.app['emails']) == 0
@@ -404,6 +404,60 @@ async def test_event_host_updates_today(email_actor: EmailActor, factory: Factor
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(start_ts=datetime.now(), price=10, status='published')
+    await factory.create_event(start_ts=datetime.now(), status='published')
     assert 0 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 0
+
+
+async def test_event_host_updates_cache(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.now() + timedelta(days=5), status='published')
+    assert 1 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 1
+    assert 0 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 1
+
+
+async def test_event_host_final_updates(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.now() + timedelta(hours=3, minutes=30), status='published')
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.book_free(await factory.create_reservation(anne), anne)
+
+    assert 1 == await email_actor.send_event_host_updates_final.direct()
+    assert len(dummy_server.app['emails']) == 1
+    assert 0 == await email_actor.send_event_host_updates_final.direct()
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert email['Subject'] == 'The Event Name Final Update from Testing'
+    assert email['To'] == 'Frank Spencer <frank@example.org>'
+    html = email['part:text/html']
+    assert '<p>It&#39;s nearly time for your Supper Clubs, The Event Name, which is very exciting.' in html
+    assert '<p>You have <strong>1</strong> bookings confirmed' in html
+
+
+async def test_event_host_final_updates_no_tickets(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.now() + timedelta(hours=3, minutes=30), status='published')
+
+    assert 1 == await email_actor.send_event_host_updates_final.direct()
+    assert len(dummy_server.app['emails']) == 1
+    html = dummy_server.app['emails'][0]['part:text/html']
+    assert '<p>You have <strong>0</strong> bookings confirmed' in html
+
+
+async def test_event_host_final_updates_wrong_time(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.now() + timedelta(hours=4, minutes=30), status='published')
+
+    assert 0 == await email_actor.send_event_host_updates_final.direct()
     assert len(dummy_server.app['emails']) == 0

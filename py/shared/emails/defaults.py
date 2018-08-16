@@ -149,6 +149,27 @@ Share this link via email or social media to garner further bookings.
 {{ centered_button(View Event | {{ link }}) }}
 """
     },
+    Triggers.event_host_final_update: {
+        'subject': '{{{ name }}} Final Update from {{{ company_name }}}',
+        'title': '{{ company_name }}',
+        'body': """
+Hi {{ first_name }},
+
+It's nearly time for your {{ category }}, {{ name }}, which is very exciting. \
+We wanted to make sure you have all the info you need.
+
+You have **{{ tickets_booked }}** bookings confirmed, guests can continue to book tickets until the event ends.
+
+You can download your guest list with booking references, dietary requirements and any special requests \
+by visiting the event page:
+
+{{ centered_button(View Event | {{ link }}) }}
+
+We hope everything goes well and we look forward to hearing about it afterwards.
+
+Good luck!
+"""
+    },
     Triggers.password_reset: {
         'subject': '{{{ company_name }}} Password Reset',
         'title': '{{ company_name }}',

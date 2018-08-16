@@ -264,7 +264,7 @@ class EmailActor(BaseEmailActor):
             events = await conn.fetch(
                 """
                 SELECT
-                  e.id, e.name, e.short_description, e.start_ts::date AS event_date, e.host AS host_user_id,
+                  e.id, e.name, e.start_ts::date AS event_date, e.host AS host_user_id,
                   '/' || cat.slug || '/' || e.slug || '/' as link,
                   cat.company AS company_id, co.currency AS currency,
                   t_all.tickets_booked, e.ticket_limit, t_all.total_income, t_recent.tickets_booked_24h
@@ -297,26 +297,81 @@ class EmailActor(BaseEmailActor):
 
         today = date.today()
         user_emails = 0
-        for company_id, g in groupby(events, itemgetter('company_id')):
-            user_ctxs = []
-            for e in g:
-                if e['event_date'] == today:
-                    # don't send an update on the day of an event, that's event_host_final_update
-                    continue
-                ctx = dict(
-                    link=e['link'],
-                    name=e['name'],
-                    ticket_limit=e['ticket_limit'],
-                    fully_booked=e['tickets_booked'] == e['ticket_limit'],
-                    event_date=e['event_date'].strftime(date_fmt),
-                    days_to_go=(e['event_date'] - today).days,
-                    total_income=display_cash(e['total_income'], e['currency']) if e['total_income'] else None,
-                    tickets_booked=e['tickets_booked'] or 0,
-                    tickets_booked_24h=e['tickets_booked_24h'] or 0,
-                )
-                user_ctxs.append(UserEmail(id=e['host_user_id'], ctx=ctx))
+        pool = await self.get_redis()
+        cache_time = 23 * 3600
+        with await pool as redis:
+            for company_id, g in groupby(events, itemgetter('company_id')):
+                user_ctxs = []
+                for e in g:
+                    if e['event_date'] == today:
+                        # don't send an update on the day of an event, that's event_host_final_update
+                        continue
+                    key = 'event-host-update:{}'.format(e['id'])
+                    if await redis.get(key):
+                        continue
+                    await redis.setex(key, cache_time, 1)
+                    ctx = dict(
+                        link=e['link'],
+                        name=e['name'],
+                        ticket_limit=e['ticket_limit'],
+                        fully_booked=e['tickets_booked'] == e['ticket_limit'],
+                        event_date=e['event_date'].strftime(date_fmt),
+                        days_to_go=(e['event_date'] - today).days,
+                        total_income=display_cash(e['total_income'], e['currency']) if e['total_income'] else None,
+                        tickets_booked=e['tickets_booked'] or 0,
+                        tickets_booked_24h=e['tickets_booked_24h'] or 0,
+                    )
+                    user_ctxs.append(UserEmail(id=e['host_user_id'], ctx=ctx))
 
-            if user_ctxs:
-                user_emails += len(user_ctxs)
-                await self.send_emails.direct(company_id, Triggers.event_host_update.value, user_ctxs)
+                if user_ctxs:
+                    user_emails += len(user_ctxs)
+                    await self.send_emails.direct(company_id, Triggers.event_host_update.value, user_ctxs)
+        return user_emails
+
+    @cron(minute={5, 35})  # run twice per hour to make sure of sending if something is wrong a one send time
+    async def send_event_host_updates_final(self):
+        async with self.pg.acquire() as conn:
+            # get events for which updates need to be sent
+            events = await conn.fetch(
+                """
+                SELECT
+                  e.id, e.name, e.host AS host_user_id,
+                  '/' || cat.slug || '/' || e.slug || '/' as link,
+                  cat.name AS category,
+                  cat.company AS company_id
+                FROM events AS e
+                JOIN categories AS cat ON e.category = cat.id
+                WHERE e.status = 'published' AND
+                      e.start_ts BETWEEN now() + '4 hours'::interval AND now() + '5 hours'::interval
+                ORDER BY cat.company
+                """
+            )
+            if not events:
+                return 0
+
+            user_emails = 0
+            pool = await self.get_redis()
+            cache_time = 24 * 3600
+            booked_stmt = await conn.prepare("SELECT count(*) FROM tickets WHERE status='booked' AND event=$1")
+            with await pool as redis:
+                for company_id, g in groupby(events, itemgetter('company_id')):
+                    user_ctxs = []
+                    for e in g:
+                        key = 'event-host-final-update:{}'.format(e['id'])
+                        if await redis.get(key):
+                            continue
+                        await redis.setex(key, cache_time, 1)
+                        # better to do this as a single query here when required than call it every time
+                        tickets_booked = await booked_stmt.fetchval(e['id'])
+                        ctx = dict(
+                            link=e['link'],
+                            name=e['name'],
+                            category=e['category'],
+                            tickets_booked=tickets_booked or 0,
+                        )
+                        user_ctxs.append(UserEmail(id=e['host_user_id'], ctx=ctx))
+
+                    if user_ctxs:
+                        user_emails += len(user_ctxs)
+                        await self.send_emails.direct(company_id, Triggers.event_host_final_update.value, user_ctxs)
         return user_emails
