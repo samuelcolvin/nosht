@@ -322,6 +322,9 @@ class EmailActor(BaseEmailActor):
                     if e['event_date'] == today:
                         # don't send an update on the day of an event, that's event_host_final_update
                         continue
+                    days_to_go = (e['event_date'] - today).days
+                    if days_to_go > 14 and not e['tickets_booked_24h']:
+                        continue
                     key = 'event-host-update:{}'.format(e['id'])
                     if await redis.get(key):
                         continue
@@ -332,7 +335,7 @@ class EmailActor(BaseEmailActor):
                         'ticket_limit': e['ticket_limit'],
                         'fully_booked': e['tickets_booked'] == e['ticket_limit'],
                         'event_date': e['event_date'].strftime(date_fmt),
-                        'days_to_go': (e['event_date'] - today).days,
+                        'days_to_go': days_to_go,
                         'total_income': display_cash(e['total_income'], e['currency']) if e['total_income'] else None,
                         'tickets_booked': e['tickets_booked'] or 0,
                         'tickets_booked_24h': e['tickets_booked_24h'] or 0,

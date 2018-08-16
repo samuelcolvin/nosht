@@ -386,7 +386,7 @@ async def test_event_host_updates_free(email_actor: EmailActor, factory: Factory
     await factory.create_cat()
 
     await factory.create_user()
-    await factory.create_event(start_ts=datetime.utcnow() + timedelta(days=5), status='published')
+    await factory.create_event(start_ts=datetime.utcnow() + timedelta(days=18), status='published')
 
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
     await factory.book_free(await factory.create_reservation(anne), anne)
@@ -394,6 +394,15 @@ async def test_event_host_updates_free(email_actor: EmailActor, factory: Factory
     await email_actor.send_event_host_updates()
     assert len(dummy_server.app['emails']) == 1
     assert 'Total made from ticket sales' not in dummy_server.app['emails'][0]['part:text/html']
+
+
+async def test_event_host_updates_18_days(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=datetime.utcnow() + timedelta(days=18), status='published')
+    assert 0 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 0
 
 
 async def test_event_host_updates_none(email_actor: EmailActor, factory: Factory, dummy_server):
