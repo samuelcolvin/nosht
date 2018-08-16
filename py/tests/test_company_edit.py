@@ -20,6 +20,7 @@ async def test_company_details(cli, url, login, factory: Factory):
         'stripe_secret_key': 'stripe_secret_xxx',
         'currency': 'gbp',
         'email_from': None,
+        'email_reply_to': None,
         'email_template': None,
         'image': 'https://www.example.org/co.png',
         'logo': None,

@@ -12,7 +12,7 @@ from email.policy import SMTP
 from functools import reduce
 from pathlib import Path
 from textwrap import shorten
-from typing import Any, Dict, List, NamedTuple
+from typing import Any, Dict, List, NamedTuple, Optional
 from urllib.parse import urlencode
 
 import chevron
@@ -184,6 +184,7 @@ class BaseEmailActor(Actor):
                          body: str,
                          template: str,
                          e_from: str,
+                         reply_to: Optional[str],
                          global_ctx: Dict[str, Any]):
         base_url = global_ctx['base_url']
 
@@ -204,6 +205,8 @@ class BaseEmailActor(Actor):
         subject = chevron.render(subject, data=ctx)
         e_msg['Subject'] = subject
         e_msg['From'] = e_from
+        if reply_to:
+            e_msg['Reply-To'] = reply_to
         e_msg['To'] = f'{full_name} <{user_email}>' if full_name else user_email
         e_msg['List-Unsubscribe'] = '<{unsubscribe_link}>'.format(**ctx)
 
@@ -241,8 +244,9 @@ class BaseEmailActor(Actor):
         subject, title, body = dft['subject'], dft['title'], dft['body']
 
         async with self.pg.acquire() as conn:
-            company_name, e_from, template, company_logo, company_domain = await conn.fetchrow(
-                'SELECT name, email_from, email_template, logo, domain FROM companies WHERE id=$1', company_id
+            company_name, e_from, reply_to, template, company_logo, company_domain = await conn.fetchrow(
+                'SELECT name, email_from, email_reply_to, email_template, logo, domain FROM companies WHERE id=$1',
+                company_id
             )
             e_from = e_from or self.settings.default_email_address
             template = template or DEFAULT_EMAIL_TEMPLATE
@@ -310,6 +314,7 @@ class BaseEmailActor(Actor):
                         body=body,
                         template=template,
                         e_from=e_from,
+                        reply_to=reply_to,
                         global_ctx=global_ctx,
                     )
                 )

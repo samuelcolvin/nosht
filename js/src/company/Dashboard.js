@@ -18,7 +18,12 @@ const CO_FIELDS = [
   },
   {
     name: 'email_from',
-    help_text: 'Address email emails come from, either a simple email address "mynam@example.com", ' +
+    help_text: 'Address emails come from, either a simple email address "mynam@example.com", ' +
+               'or "My Name <myname@example.com>" is permitted.',
+  },
+  {
+    name: 'email_reply_to',
+    help_text: 'Reply-To address for emails, either a simple email address "mynam@example.com", ' +
                'or "My Name <myname@example.com>" is permitted.',
   },
   {name: 'email_template', type: 'textarea'},

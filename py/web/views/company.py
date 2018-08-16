@@ -18,6 +18,7 @@ class CompanyBread(Bread):
         stripe_secret_key: str
         currency: Currencies
         email_from: NameEmail = None
+        email_reply_to: NameEmail = None
         email_template: str = None
 
     retrieve_enabled = True
@@ -34,6 +35,7 @@ class CompanyBread(Bread):
         'stripe_secret_key',
         'currency',
         'email_from',
+        'email_reply_to',
         'email_template',
         'image',
         'logo',
@@ -47,6 +49,8 @@ class CompanyBread(Bread):
     async def prepare_edit_data(self, data):
         if 'email_from' in data:
             data['email_from'] = str(data['email_from'])
+        if 'email_reply_to' in data:
+            data['email_reply_to'] = str(data['email_reply_to'])
         return data
 
 

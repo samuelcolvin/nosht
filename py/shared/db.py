@@ -471,7 +471,6 @@ async def create_new_company(conn, settings, live, **kwargs):
         'INSERT INTO users (:values__names) VALUES :values RETURNING id',
         values=Values(
             company=company_id,
-            status='active',
             email=user_email,
             first_name=first_name,
             last_name=last_name,
