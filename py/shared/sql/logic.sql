@@ -8,9 +8,6 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS update_user_ts ON actions;
 CREATE TRIGGER update_user_ts AFTER INSERT ON actions FOR EACH ROW EXECUTE PROCEDURE update_user_ts();
 
--- TODO can be removed once run.
-DROP TRIGGER IF EXISTS ticket_insert ON tickets;
-
 CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT, ttl INT) RETURNS INT AS $$
   DECLARE
     tickets_taken_ INT;
@@ -45,3 +42,12 @@ CREATE OR REPLACE FUNCTION boolstr(v BOOLEAN) RETURNS VARCHAR(5) AS $$
     return CASE WHEN v IS TRUE THEN 'true' ELSE 'false' END;
   END;
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION iso_ts(v TIMESTAMP) RETURNS VARCHAR(5) AS $$
+  DECLARE
+  BEGIN
+    return to_char(v, 'YYYY-MM-DD"T"HH24:MI:SS');
+  END;
+$$ LANGUAGE plpgsql;
+

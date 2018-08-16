@@ -49,6 +49,10 @@ label {
   width: 100%;
 }
 
+.font-small {
+  font-size: $small-font-size;
+}
+
 .btn-divider {
   .btn {
     border-left: 1px solid #777;

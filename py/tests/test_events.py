@@ -624,10 +624,10 @@ async def test_reserve_tickets_none_left_no_precheck(cli, url, factory: Factory,
     }
 
 
-async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
+async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user()
+    await factory.create_user(role='host')
     await factory.create_event(price=10)
 
     user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.org', role='guest')
@@ -640,22 +640,79 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
+    # debug(data)
+    ticket_id = await db_conn.fetchval('SELECT id from tickets')
     assert data == {
         'tickets': [
             {
-                'ticket_id': await db_conn.fetchval('SELECT id from tickets'),
+                'id': ticket_id,
+                'ticket_id': RegexStr('.{7}-%s' % ticket_id),
+                'extra_info': None,
+                'booked_at': CloseToNow(),
+                'price': 10,
+                'guest_user_id': user2_id,
+                'guest_name': None,
+                'buyer_user_id': user2_id,
+                'buyer_name': None,
                 'ticket_type_name': 'Standard',
                 'ticket_type_id': await db_conn.fetchval('SELECT id from ticket_types'),
-                'price': 10,
-                'extra': None,
-                'user_id': user2_id,
-                'user_name': 'guest guest',
-                'bought_at': CloseToNow(),
-                'buyer_id': user2_id,
-                'buyer_name': 'guest guest',
             },
         ],
     }
+
+
+async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+
+    anne = await factory.create_user(first_name='x', email='anne@example.org')
+    ben = await factory.create_user(first_name='x', email='ben@example.org')
+    await factory.book_free(await factory.create_reservation(anne, ben), anne)
+    await db_conn.execute("UPDATE tickets SET first_name='anne', last_name='apple' WHERE user_id=$1", anne)
+    await db_conn.execute("UPDATE tickets SET first_name='ben', last_name='banana' WHERE user_id=$1", ben)
+
+    await login()
+
+    r = await cli.get(url('event-tickets', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert len(data['tickets']) == 2
+    tickets = sorted(data['tickets'], key=lambda t: t['guest_name'])
+    tt_id = await db_conn.fetchval('SELECT id from ticket_types')
+    assert tickets == [
+        {
+            'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='anne'"),
+            'ticket_id': RegexStr('.{7}-\d+'),
+            'extra_info': None,
+            'booked_at': CloseToNow(),
+            'price': None,
+            'guest_user_id': anne,
+            'guest_name': 'anne apple',
+            'guest_email': 'anne@example.org',
+            'buyer_user_id': anne,
+            'buyer_name': 'anne apple',
+            'buyer_email': 'anne@example.org',
+            'ticket_type_name': 'Standard',
+            'ticket_type_id': tt_id,
+        },
+        {
+            'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='ben'"),
+            'ticket_id': RegexStr('.{7}-\d+'),
+            'extra_info': None,
+            'booked_at': CloseToNow(),
+            'price': None,
+            'guest_user_id': ben,
+            'guest_name': 'ben banana',
+            'guest_email': 'ben@example.org',
+            'buyer_user_id': anne,
+            'buyer_name': 'anne apple',
+            'buyer_email': 'anne@example.org',
+            'ticket_type_name': 'Standard',
+            'ticket_type_id': tt_id,
+        },
+    ]
 
 
 async def test_cancel_reservation(cli, url, db_conn, factory: Factory):

@@ -9,7 +9,7 @@ EXPORTS = {
     'events': """
 SELECT
   e.id, e.name, e.slug, e.status,
-  to_char(e.start_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS start_time,
+  iso_ts(e.start_ts) AS start_time,
   to_char(extract(epoch from e.duration)/3600, 'FM9999990.00') AS duration_hours,
   e.short_description, e.long_description, boolstr(e.public) AS is_public, e.location_name,
   to_char(e.location_lat, 'FM990.0000000') AS location_lat,
@@ -38,8 +38,8 @@ WHERE company=$1
 SELECT
   u.id, u.role, u.status, u.first_name, u.last_name, u.email, u.phone_number, u.stripe_customer_id,
   boolstr(u.receive_emails) AS receive_emails, boolstr(u.allow_marketing) AS allow_marketing,
-  to_char(u.created_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_ts,
-  to_char(u.active_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS active_ts,
+  iso_ts(u.created_ts) AS created_ts,
+  iso_ts(u.active_ts) AS active_ts,
   count(t.id) AS tickets
 FROM users AS u
 LEFT JOIN tickets AS t ON u.id = t.user_id
@@ -50,7 +50,7 @@ GROUP BY u.id
 SELECT
   t.id, t.first_name AS ticket_first_name, t.last_name AS ticket_last_name, t.status,
   to_char(t.price, 'FM9999990.00') AS price,
-  to_char(t.created_ts, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_ts,
+  iso_ts(t.created_ts) AS created_ts,
   t.extra->>'extra_info' AS extra_info,
   tt.id AS ticket_type_id, tt.name AS ticket_type_name,
   e.id AS event_id, e.slug AS event_slug,
@@ -67,6 +67,19 @@ WHERE a.company=$1 AND t.status!='reserved'
 }
 
 
+@is_admin
+async def export(request):
+    export_type = request.match_info['type']
+    export_sql = EXPORTS[export_type]
+    return await export_plumbing(
+        request,
+        export_sql,
+        request['company_id'],
+        filename=f'nosht_{export_type}_{datetime.utcnow().isoformat()}',
+        none_message=f'no {export_type} found',
+    )
+
+
 class ResponsePseudoFile:
     def __init__(self, response):
         self.r = response
@@ -81,12 +94,9 @@ class ResponsePseudoFile:
         self.buffer = ''
 
 
-@is_admin
-async def export(request):
-    export_type = request.match_info['type']
-    export_sql = EXPORTS[export_type]
+async def export_plumbing(request, sql, *sql_args, filename, none_message, modify_records=None):
     response = StreamResponse(headers={
-        'Content-Disposition': f'attachment;filename=nosht_{export_type}_{datetime.now().isoformat()}.csv'
+        'Content-Disposition': f'attachment;filename={filename}.csv'
     })
     response.content_type = 'text/csv'
     await response.prepare(request)
@@ -95,16 +105,20 @@ async def export(request):
 
     writer = None
     async with request['conn'].transaction():
-        async for record in request['conn'].cursor(export_sql, request['company_id']):
+        async for record in request['conn'].cursor(sql, *sql_args):
+            if modify_records:
+                data = modify_records(record)
+            else:
+                data = record
             if writer is None:
-                writer = DictWriter(response_file, fieldnames=list(record.keys()))
+                writer = DictWriter(response_file, fieldnames=list(data.keys()))
                 writer.writeheader()
-            writer.writerow({k: '' if v is None else str(v) for k, v in record.items()})
+            writer.writerow({k: '' if v is None else str(v) for k, v in data.items()})
             await response_file.write_response()
 
     if writer is None:
         writer = DictWriter(response_file, fieldnames=['message'])
         writer.writeheader()
-        writer.writerow({'message': f'no {export_type} found'})
+        writer.writerow({'message': none_message})
         await response_file.write_response()
     return response
