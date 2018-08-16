@@ -14,7 +14,7 @@ from ..utils import (display_cash, display_cash_free, format_duration, password_
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail, date_fmt, datetime_fmt
 
-logger = logging.getLogger('nosht.email.main')
+logger = logging.getLogger('nosht.emails.main')
 
 
 class EmailActor(BaseEmailActor):
@@ -27,7 +27,8 @@ class EmailActor(BaseEmailActor):
                   full_name(ub.first_name, ub.last_name) AS buyer_name,
                   full_name(uh.first_name, uh.last_name) AS host_name,
                   '/' || cat.slug || '/' || e.slug || '/' as event_link, e.name, e.short_description,
-                  cat.name as category_name, cat.ticket_extra_title as ticket_extra_title,
+                  cat.name as cat_name, cat.slug AS cat_slug,
+                  cat.ticket_extra_title as ticket_extra_title,
                   e.location_name, e.location_lat, e.location_lng,
                   e.start_ts, e.duration, tt.price, cat.company, co.currency, a.extra
                 FROM tickets AS t
@@ -53,9 +54,10 @@ class EmailActor(BaseEmailActor):
                 'event_location': data['location_name'],
                 'ticket_price': display_cash_free(data['price'], data['currency']),
                 'buyer_name': data['buyer_name'],
-                'category_name': data['category_name'],
                 'host_name': data['host_name'],
                 'ticket_extra_title': data['ticket_extra_title'] or 'Extra Information',
+                'category_name': data['cat_name'],
+                is_cat(data['cat_slug']): True,
             }
             lat, lng = data['location_lat'], data['location_lng']
             if lat and lng:
@@ -151,11 +153,13 @@ class EmailActor(BaseEmailActor):
     @concurrent
     async def send_event_update(self, action_id):
         async with self.pg.acquire() as conn:
-            company_id, event_id, sender_name, event_name, subject, message, event_link, cat_name = await conn.fetchrow(
+            data = await conn.fetchrow(
                 """
-                SELECT a.company, e.id, full_name(u.first_name, u.last_name, u.email), e.name,
-                  a.extra->>'subject', a.extra->>'message', '/' || cat.slug || '/' || e.slug || '/',
-                  cat.name
+                SELECT a.company AS company_id, e.id AS event_id, e.name AS event_name,
+                  full_name(u.first_name, u.last_name, u.email) AS sender_name,
+                  a.extra->>'subject' AS subject, a.extra->>'message' AS message,
+                  '/' || cat.slug || '/' || e.slug || '/' AS event_link,
+                  cat.name AS cat_name, cat.slug AS cat_slug
                 FROM actions AS a
                 JOIN users AS u ON a.user_id = u.id
                 JOIN events AS e ON a.event = e.id
@@ -169,18 +173,19 @@ class EmailActor(BaseEmailActor):
                 SELECT DISTINCT user_id, id AS ticket_id
                 FROM tickets
                 WHERE status='booked' AND event=$1 AND user_id IS NOT NULL
-                """, event_id
+                """, data['event_id']
             )
 
         ctx = {
-            'event_link': event_link,
-            'event_name': event_name,
-            'category_name': cat_name,
-            'subject': subject,
-            'message': message,
+            'event_link': data['event_link'],
+            'event_name': data['event_name'],
+            'subject': data['subject'],
+            'message': data['message'],
+            'category_name': data['cat_name'],
+            is_cat(data['cat_slug']): True,
         }
         users = [UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in user_tickets]
-        await self.send_emails.direct(company_id, Triggers.event_update, users)
+        await self.send_emails.direct(data['company_id'], Triggers.event_update, users)
 
     @cron(minute=30)
     async def send_event_reminders(self):
@@ -191,7 +196,7 @@ class EmailActor(BaseEmailActor):
                 SELECT
                   e.id, e.name, e.short_description, e.start_ts, e.duration,
                   e.location_name, e.location_lat, e.location_lng,
-                  cat.name AS category_name, cat.company AS company_id,
+                  cat.name AS cat_name, cat.slug AS cat_slug, cat.company AS company_id,
                   '/' || cat.slug || '/' || e.slug || '/' as link
                 FROM events AS e
                 JOIN categories AS cat ON e.category = cat.id
@@ -251,7 +256,8 @@ class EmailActor(BaseEmailActor):
                     ),
                     'event_duration': format_duration(duration) if duration else 'All day',
                     'event_location': d['location_name'],
-                    'category_name': d['category_name'],
+                    'category_name': d['cat_name'],
+                    is_cat(d['cat_slug']): True,
                 }
                 lat, lng = d['location_lat'], d['location_lng']
                 if lat and lng:
@@ -275,7 +281,7 @@ class EmailActor(BaseEmailActor):
                 SELECT
                   e.id, e.name, e.start_ts::date AS event_date, e.host AS host_user_id,
                   '/' || cat.slug || '/' || e.slug || '/' as link,
-                  cat.name AS category_name,
+                  cat.name AS cat_name, cat.slug AS cat_slug,
                   cat.company AS company_id, co.currency AS currency,
                   t_all.tickets_booked, e.ticket_limit, t_all.total_income, t_recent.tickets_booked_24h
                 FROM events AS e
@@ -320,18 +326,19 @@ class EmailActor(BaseEmailActor):
                     if await redis.get(key):
                         continue
                     await redis.setex(key, cache_time, 1)
-                    ctx = dict(
-                        event_link=e['link'],
-                        event_name=e['name'],
-                        category_name=e['category_name'],
-                        ticket_limit=e['ticket_limit'],
-                        fully_booked=e['tickets_booked'] == e['ticket_limit'],
-                        event_date=e['event_date'].strftime(date_fmt),
-                        days_to_go=(e['event_date'] - today).days,
-                        total_income=display_cash(e['total_income'], e['currency']) if e['total_income'] else None,
-                        tickets_booked=e['tickets_booked'] or 0,
-                        tickets_booked_24h=e['tickets_booked_24h'] or 0,
-                    )
+                    ctx = {
+                        'event_link': e['link'],
+                        'event_name': e['name'],
+                        'ticket_limit': e['ticket_limit'],
+                        'fully_booked': e['tickets_booked'] == e['ticket_limit'],
+                        'event_date': e['event_date'].strftime(date_fmt),
+                        'days_to_go': (e['event_date'] - today).days,
+                        'total_income': display_cash(e['total_income'], e['currency']) if e['total_income'] else None,
+                        'tickets_booked': e['tickets_booked'] or 0,
+                        'tickets_booked_24h': e['tickets_booked_24h'] or 0,
+                        'category_name': e['cat_name'],
+                        is_cat(e['cat_slug']): True,
+                    }
                     user_ctxs.append(UserEmail(id=e['host_user_id'], ctx=ctx))
 
                 if user_ctxs:
@@ -348,7 +355,7 @@ class EmailActor(BaseEmailActor):
                 SELECT
                   e.id, e.name, e.host AS host_user_id,
                   '/' || cat.slug || '/' || e.slug || '/' as link,
-                  cat.name AS category_name,
+                  cat.name AS cat_name, cat.slug AS cat_slug,
                   cat.company AS company_id
                 FROM events AS e
                 JOIN categories AS cat ON e.category = cat.id
@@ -374,15 +381,20 @@ class EmailActor(BaseEmailActor):
                         await redis.setex(key, cache_time, 1)
                         # better to do this as a single query here when required than call it every time
                         tickets_booked = await booked_stmt.fetchval(e['id'])
-                        ctx = dict(
-                            event_link=e['link'],
-                            event_name=e['name'],
-                            category_name=e['category_name'],
-                            tickets_booked=tickets_booked or 0,
-                        )
+                        ctx = {
+                            'event_link': e['link'],
+                            'event_name': e['name'],
+                            'tickets_booked': tickets_booked or 0,
+                            'category_name': e['cat_name'],
+                            is_cat(e['cat_slug']): True,
+                        }
                         user_ctxs.append(UserEmail(id=e['host_user_id'], ctx=ctx))
 
                     if user_ctxs:
                         user_emails += len(user_ctxs)
                         await self.send_emails.direct(company_id, Triggers.event_host_final_update.value, user_ctxs)
         return user_emails
+
+
+def is_cat(slug):
+    return 'is_category_{}'.format(slug.replace('-', '_'))

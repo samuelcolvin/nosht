@@ -36,7 +36,7 @@ Thanks for booking your ticket{{#ticket_count_plural}}s{{/ticket_count_plural}} 
 requirements.
 {{/extra_info}}
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 
 Event:
 
@@ -79,7 +79,7 @@ Great news! {{ buyer_name }} has bought you a ticket for {{ category_name }}, \
 requirements.
 {{/extra_info}}
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 
 Event:
 
@@ -104,7 +104,7 @@ Hi {{ first_name }},
 
 {{{ message }}}
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 """
     },
     Triggers.event_reminder: {
@@ -115,7 +115,7 @@ Hi {{ first_name }},
 
 You're booked in to attend **{{ event_name }}**, the event will start in a day's time.
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 
 Event:
 
@@ -164,7 +164,7 @@ Guests can book your event by going to
 Share this link via email or social media to garner further bookings.
 {{/fully_booked}}
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 """
     },
     Triggers.event_host_final_update: {
@@ -181,7 +181,7 @@ You have **{{ tickets_booked }}** bookings confirmed, guests can continue to boo
 You can download your guest list with booking references, dietary requirements and any special requests \
 by visiting the event page:
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 
 We hope everything goes well and we look forward to hearing about it afterwards.
 
@@ -196,7 +196,7 @@ Hi {{ first_name }},
 
 Please use the link below to reset your password for {{ company_name }}.
 
-{{ centered_button(Reset Your Password | {{ reset_link }}) }}
+{{ primary_button(Reset Your Password | {{ reset_link }}) }}
 """
     },
     Triggers.account_created: {
@@ -218,12 +218,12 @@ You need to confirm your email address before you can administer the system.
 {{/is_admin}}
 {{^is_admin}}You need to confirm your email address before you can publish events.{{/is_admin}}
 
-{{ centered_button(Confirm Email | {{ confirm_email_link }}) }}
+{{ primary_button(Confirm Email | {{ confirm_email_link }}) }}
 {{/confirm_email_link}}
 {{^confirm_email_link}}
 You can now create and publish events whenever you wish.
 
-{{ centered_button(Create & Publish Events | {{ events_link }}) }}
+{{ primary_button(Create & Publish Events | {{ events_link }}) }}
 {{/confirm_email_link}}
 """
     },
@@ -236,7 +236,7 @@ You can now create and publish events whenever you wish.
 {{{ details }}}
 
 {{#action_link}}
-{{ centered_button({{ action_label }} | {{ action_link }}) }}
+{{ primary_button({{ action_label }} | {{ action_link }}) }}
 {{/action_link}}
 """
     },

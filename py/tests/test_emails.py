@@ -301,7 +301,7 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
         '<p>this is the <strong>message</strong>.</p>\n'
     ) in html
 
-    assert '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n' in html
+    assert 'href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n' in html
 
 
 async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dummy_server):
@@ -467,3 +467,45 @@ async def test_event_host_final_updates_wrong_time(email_actor: EmailActor, fact
 
     assert 0 == await email_actor.send_event_host_updates_final.direct()
     assert len(dummy_server.app['emails']) == 0
+
+
+async def test_custom_template(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat(slug='this-and-that')
+    await factory.create_user()
+    await factory.create_event()
+
+    await db_conn.execute_b(
+        'INSERT INTO email_definitions (:values__names) VALUES :values',
+        values=Values(
+            company=factory.company_id,
+            trigger=Triggers.ticket_buyer.value,
+            subject='testing',
+            body="""
+{{#is_category_this_and_that}}
+on this and that.
+{{/is_category_this_and_that}}
+
+{{#is_category_other}}
+on other category.
+{{/is_category_other}}
+
+{{ secondary_button(Testing | {{ events_link }}) }}
+""",
+        )
+    )
+
+    u2 = await factory.create_user(email='different@example.org')
+    res = await factory.create_reservation(u2)
+    booked_action_id = await factory.book_free(res, u2)
+
+    await email_actor.send_event_conf(booked_action_id)
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert (
+        'on this and that.\n'
+        '\n'
+        '<div class="button">\n'
+        '  <a href=""><span class="secondary">Testing</span></a>\n'
+        '</div>\n'
+    ) == email['part:text/plain']

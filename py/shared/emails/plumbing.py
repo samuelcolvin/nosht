@@ -27,7 +27,7 @@ from ..settings import Settings
 from ..utils import RequestError, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
 
-logger = logging.getLogger('nosht.email.plumbing')
+logger = logging.getLogger('nosht.emails.plumbing')
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_EMAIL_TEMPLATE = (THIS_DIR / 'default_template.html').read_text()
@@ -366,14 +366,23 @@ def clean_ctx(context, base_url):
 
 markdown_macros = [
     {
-        'name': 'centered_button',
+        'name': 'primary_button',
         'args': ('text', 'link'),
         'body': (
             '<div class="button">\n'
             '  <a href="{{ link }}"><span>{{ text }}</span></a>\n'
             '</div>\n'
         )
-    }
+    },
+    {
+        'name': 'secondary_button',
+        'args': ('text', 'link'),
+        'body': (
+            '<div class="button">\n'
+            '  <a href="{{ link }}"><span class="secondary">{{ text }}</span></a>\n'
+            '</div>\n'
+        )
+    },
 ]
 
 
