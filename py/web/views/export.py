@@ -75,7 +75,7 @@ async def export(request):
         request,
         export_sql,
         request['company_id'],
-        filename=f'nosht_{export_type}_{datetime.now().isoformat()}',
+        filename=f'nosht_{export_type}_{datetime.utcnow().isoformat()}',
         none_message=f'no {export_type} found',
     )
 
