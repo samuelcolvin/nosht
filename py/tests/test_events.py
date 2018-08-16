@@ -640,7 +640,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
-    debug(data)
+    # debug(data)
     ticket_id = await db_conn.fetchval('SELECT id from tickets')
     assert data == {
         'tickets': [

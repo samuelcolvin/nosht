@@ -325,8 +325,6 @@ async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dum
     html = email['part:text/html']
     assert 'The Event Name is coming up in <strong>5</strong>' in html
     assert (
-        '<p>Your event The Event Name is coming up in <strong>5</strong> days on <strong>20 Aug 18</strong>.</p>\n'
-        '\n'
         '<div class="stat-label">Tickets Booked in the last day</div>\n'
         '<div class="stat-value">\n'
         '  <span class="large">1</span>\n'
@@ -347,6 +345,10 @@ async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dum
         '<div class="text-center highlighted">https://127.0.0.1/supper-clubs/the-event-name/</div>\n'
     ) in html
     assert '<strong>Congratulations, all tickets have been booked - your event is full.</strong>' not in html
+
+    assert RegexStr(
+        '.*The Event Name is coming up in <strong>5</strong> days on <strong>.*'
+    ) == html
 
 
 async def test_event_host_updates_full(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
