@@ -298,7 +298,6 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
     assert '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n' in html
 
 
-@pytest.mark.xfail
 async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_cat()
