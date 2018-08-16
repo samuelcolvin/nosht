@@ -462,7 +462,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     ]
     users = [dict(r) for r in await db_conn.fetch(
         """
-        SELECT event, user_id, first_name, last_name, reserve_action, booked_action, status, extra
+        SELECT event, user_id, first_name, last_name, reserve_action, booked_action, status, extra_info
         FROM tickets
         ORDER BY user_id
         """
@@ -476,7 +476,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
             'reserve_action': reserve_action_id,
             'booked_action': None,
             'status': 'reserved',
-            'extra': None,
+            'extra_info': None,
         },
         {
             'event': factory.event_id,
@@ -486,7 +486,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
             'reserve_action': reserve_action_id,
             'booked_action': None,
             'status': 'reserved',
-            'extra': '{"extra_info": "I love to party"}',
+            'extra_info': 'I love to party',
         },
     ]
 
@@ -534,7 +534,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
     ]
     users = [dict(r) for r in await db_conn.fetch(
         """
-        SELECT event, user_id, first_name, last_name, reserve_action, booked_action, status, extra
+        SELECT event, user_id, first_name, last_name, reserve_action, booked_action, status, extra_info
         FROM tickets
         ORDER BY user_id
         """
@@ -549,7 +549,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
             'reserve_action': reserve_action_id,
             'booked_action': None,
             'status': 'reserved',
-            'extra': None,
+            'extra_info': None,
         },
         {
             'event': factory.event_id,
@@ -559,7 +559,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
             'reserve_action': reserve_action_id,
             'booked_action': None,
             'status': 'reserved',
-            'extra': None,
+            'extra_info': None,
         },
     ]
 

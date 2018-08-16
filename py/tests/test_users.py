@@ -292,7 +292,7 @@ async def test_user_tickets(cli, url, login, factory: Factory):
         'tickets': [
             {
                 'event_name': 'The Event Name',
-                'extra': None,
+                'extra_info': None,
                 'price': 123.0,
                 'event_start': '2020-01-28T19:00:00',
                 'guest_name': 'Frank Spencer',

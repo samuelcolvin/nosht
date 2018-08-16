@@ -10,6 +10,7 @@ class Triggers(str, Enum):
     event_update = 'event-update'
     event_reminder = 'event-reminder'
 
+    event_host_created = 'event-host-created'
     event_host_update = 'event-host-update'
     event_host_final_update = 'event-host-final-update'
 
@@ -25,9 +26,18 @@ EMAIL_DEFAULTS = {
         'body': """
 Hi {{ first_name }},
 
-Thanks for booking your ticket{{#ticket_count_plural}}s{{/ticket_count_plural}} for **{{ event_name }}**.
+Thanks for booking your ticket{{#ticket_count_plural}}s{{/ticket_count_plural}} for {{ category_name }}, \
+**{{ event_name }}** hosted by {{ host_name }}.
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{#extra_info}}
+{{ ticket_extra_title }}: **{{ extra_info }}**
+{{/extra_info}}
+{{^extra_info}}
+{{ ticket_extra_title }} not provided, please let the event host {{ host_name }} know if you have any special \
+requirements.
+{{/extra_info}}
+
+{{ primary_button(View Event | {{ event_link }}) }}
 
 Event:
 
@@ -59,9 +69,18 @@ _(Card Charged: {{ card_details }})_
         'body': """
 Hi {{ first_name }},
 
-Great news! {{ buyer_name }} has bought you a ticket for **{{ event_name }}**.
+Great news! {{ buyer_name }} has bought you a ticket for {{ category_name }}, \
+**{{ event_name }}** hosted by {{ host_name }}.
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{#extra_info}}
+{{ ticket_extra_title }}: **{{ extra_info }}**
+{{/extra_info}}
+{{^extra_info}}
+{{ ticket_extra_title }} not provided, please let the event host {{ host_name }} know if you have any special \
+requirements.
+{{/extra_info}}
+
+{{ primary_button(View Event | {{ event_link }}) }}
 
 Event:
 
@@ -86,7 +105,7 @@ Hi {{ first_name }},
 
 {{{ message }}}
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 """
     },
     Triggers.event_reminder: {
@@ -95,9 +114,9 @@ Hi {{ first_name }},
         'body': """
 Hi {{ first_name }},
 
-You're booked in to attend **{{ event_name }}**, the event will start in a day's time.
+You're booked in to attend **{{ event_name }}** hosted by {{ host_name }}, the event will start in a day's time.
 
-{{ centered_button(View Event | {{ event_link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 
 Event:
 
@@ -111,12 +130,12 @@ Event:
 """
     },
     Triggers.event_host_update: {
-        'subject': '{{{ name }}} Update from {{{ company_name }}}',
+        'subject': '{{{ event_name }}} Update from {{{ company_name }}}',
         'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},
 
-Your event {{ name }} is coming up in **{{ days_to_go }}** days on **{{ event_date }}**.
+Your event {{ event_name }} is coming up in **{{ days_to_go }}** days on **{{ event_date }}**.
 
 <div class="stat-label">Tickets Booked in the last day</div>
 <div class="stat-value">
@@ -141,21 +160,36 @@ Your event {{ name }} is coming up in **{{ days_to_go }}** days on **{{ event_da
 {{^fully_booked}}
 Guests can book your event by going to
 
-<div class="text-center highlighted">{{ link }}</div>
+<div class="text-center highlighted">{{ event_link }}</div>
 
 Share this link via email or social media to garner further bookings.
 {{/fully_booked}}
 
-{{ centered_button(View Event | {{ link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 """
     },
-    Triggers.event_host_final_update: {
-        'subject': '{{{ name }}} Final Update from {{{ company_name }}}',
+    Triggers.event_host_created: {
+        'subject': '{{{ event_name }}} Created for {{{ company_name }}}',
         'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},
 
-It's nearly time for your {{ category }}, {{ name }}, which is very exciting. \
+Great news - you've set up your {{ category_name }} in support of {{ company_name }}. \
+Thank you, we're thrilled that you're getting involved.
+
+You can access all information, including tickets sold, guest lists etc... \
+related to your event at any time by using the following link
+
+{{ primary_button(View Event | {{ event_link }}) }}
+"""
+    },
+    Triggers.event_host_final_update: {
+        'subject': '{{{ event_name }}} Final Update from {{{ company_name }}}',
+        'title': '{{ company_name }}',
+        'body': """
+Hi {{ first_name }},
+
+It's nearly time for your {{ category_name }}, {{ event_name }}, which is very exciting. \
 We wanted to make sure you have all the info you need.
 
 You have **{{ tickets_booked }}** bookings confirmed, guests can continue to book tickets until the event ends.
@@ -163,7 +197,7 @@ You have **{{ tickets_booked }}** bookings confirmed, guests can continue to boo
 You can download your guest list with booking references, dietary requirements and any special requests \
 by visiting the event page:
 
-{{ centered_button(View Event | {{ link }}) }}
+{{ primary_button(View Event | {{ event_link }}) }}
 
 We hope everything goes well and we look forward to hearing about it afterwards.
 
@@ -178,7 +212,7 @@ Hi {{ first_name }},
 
 Please use the link below to reset your password for {{ company_name }}.
 
-{{ centered_button(Reset Your Password | {{ reset_link }}) }}
+{{ primary_button(Reset Your Password | {{ reset_link }}) }}
 """
     },
     Triggers.account_created: {
@@ -200,12 +234,12 @@ You need to confirm your email address before you can administer the system.
 {{/is_admin}}
 {{^is_admin}}You need to confirm your email address before you can publish events.{{/is_admin}}
 
-{{ centered_button(Confirm Email | {{ confirm_email_link }}) }}
+{{ primary_button(Confirm Email | {{ confirm_email_link }}) }}
 {{/confirm_email_link}}
 {{^confirm_email_link}}
 You can now create and publish events whenever you wish.
 
-{{ centered_button(Create & Publish Events | {{ events_link }}) }}
+{{ primary_button(Create & Publish Events | {{ events_link }}) }}
 {{/confirm_email_link}}
 """
     },
@@ -218,7 +252,7 @@ You can now create and publish events whenever you wish.
 {{{ details }}}
 
 {{#action_link}}
-{{ centered_button({{ action_label }} | {{ action_link }}) }}
+{{ primary_button({{ action_label }} | {{ action_link }}) }}
 {{/action_link}}
 """
     },

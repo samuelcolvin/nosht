@@ -164,7 +164,7 @@ CREATE TABLE tickets (
   booked_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',
   created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  extra JSONB
+  extra_info TEXT
 );
 CREATE INDEX ticket_event ON tickets USING btree (event);
 CREATE INDEX ticket_user ON tickets USING btree (user_id);
@@ -175,7 +175,7 @@ CREATE INDEX ticket_created_ts ON tickets USING btree (created_ts);
 -- must match triggers from emails/defaults.py!
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (
   'ticket-buyer', 'ticket-other', 'event-update', 'event-reminder', 'event-booking',
-  'event-host-update', 'event-host-final-update', 'password-reset', 'account-created',
+  'event-host-created', 'event-host-update', 'event-host-final-update', 'password-reset', 'account-created',
   'admin-notification'
 );
 

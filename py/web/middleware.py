@@ -71,7 +71,7 @@ async def log_extra(start, request, response=None, **more):
                 user_info = await conn.fetchrow(
                     """
                     SELECT u.email, c.name AS company_name, c.id AS company_id, role, status,
-                    full_name(u.first_name, u.last_name, null) as username
+                    full_name(u.first_name, u.last_name) as username
                     FROM users AS u
                     JOIN companies AS c ON u.company = c.id
                     WHERE u.id=$1

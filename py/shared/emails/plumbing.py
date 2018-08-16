@@ -27,7 +27,7 @@ from ..settings import Settings
 from ..utils import RequestError, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
 
-logger = logging.getLogger('nosht.email.plumbing')
+logger = logging.getLogger('nosht.emails.plumbing')
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_EMAIL_TEMPLATE = (THIS_DIR / 'default_template.html').read_text()
@@ -62,7 +62,7 @@ safe_markdown = Markdown(
     HtmlRenderer(flags=flags),  # maybe should use SaferHtmlRenderer
     extensions=extensions
 )
-DEBUG_PRINT_REGEX = re.compile(r'{{ ?__print_debug_context__ ?}}')
+DEBUG_PRINT_REGEX = re.compile(r'{{ ?__debug_context__ ?}}')
 date_fmt = '%d %b %y'
 datetime_fmt = '%H:%M %d %b %y'
 
@@ -211,10 +211,11 @@ class BaseEmailActor(Actor):
         e_msg['List-Unsubscribe'] = '<{unsubscribe_link}>'.format(**ctx)
 
         if DEBUG_PRINT_REGEX.search(body):
-            ctx['__print_debug_context__'] = json.dumps(ctx, indent=2)
+            ctx['__debug_context__'] = f'```{json.dumps(ctx, indent=2)}```'
 
         body = apply_macros(body)
-        raw_body = re.sub('\n{3,}', '\n\n', chevron.render(body, data=ctx)).strip('\n')
+        body = chevron.render(body, data=ctx)
+        raw_body = re.sub('\n{3,}', '\n\n', body).strip('\n')
         e_msg.set_content(raw_body, cte='quoted-printable')
 
         ctx.update(
@@ -365,14 +366,23 @@ def clean_ctx(context, base_url):
 
 markdown_macros = [
     {
-        'name': 'centered_button',
+        'name': 'primary_button',
         'args': ('text', 'link'),
         'body': (
             '<div class="button">\n'
             '  <a href="{{ link }}"><span>{{ text }}</span></a>\n'
             '</div>\n'
         )
-    }
+    },
+    {
+        'name': 'secondary_button',
+        'args': ('text', 'link'),
+        'body': (
+            '<div class="button">\n'
+            '  <a href="{{ link }}"><span class="secondary">{{ text }}</span></a>\n'
+            '</div>\n'
+        )
+    },
 ]
 
 
