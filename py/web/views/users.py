@@ -149,7 +149,7 @@ user_tickets_sql = """
 SELECT json_build_object('tickets', tickets)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS tickets FROM (
-    SELECT e.name AS event_name, t.extra, t.price, e.start_ts AS event_start,
+    SELECT e.name AS event_name, t.extra_info, t.price, e.start_ts AS event_start,
       full_name(u.first_name, u.last_name, u.email) AS guest_name,
       full_name(ub.first_name, ub.last_name, u.email) AS buyer_name
     FROM tickets AS t

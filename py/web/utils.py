@@ -9,7 +9,6 @@ from aiohttp.web import HTTPRequestEntityTooLarge, Response
 from aiohttp.web_exceptions import HTTPClientError
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError, validate_model
-from pydantic.json import pydantic_encoder
 
 from shared.images import check_image_size
 from shared.utils import encrypt_json as _encrypt_json
@@ -161,12 +160,6 @@ def decrypt_json(app, token: bytes, *, ttl: int=None, headers_=None) -> Any:
         return json.loads(app['auth_fernet'].decrypt(token, ttl=ttl).decode())
     except InvalidToken:
         raise JsonErrors.HTTPBadRequest(message='invalid token', headers_=headers_)
-
-
-def to_json_if(obj):
-    obj_ = {k: v for k, v in obj.items() if v}
-    if obj_:
-        return json.dumps(obj_, default=pydantic_encoder)
 
 
 def split_name(raw_name):

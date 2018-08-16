@@ -19,7 +19,7 @@ from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin,
 from web.bread import Bread, UpdateView
 from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 from web.utils import (ImageModel, JsonErrors, clean_markdown, decrypt_json, encrypt_json, json_response, parse_request,
-                       raw_json_response, request_image, to_json_if)
+                       raw_json_response, request_image)
 from web.views.export import export_plumbing
 
 logger = logging.getLogger('nosht.events')
@@ -252,8 +252,7 @@ async def _check_event_host(request):
 
 
 event_tickets_sql = """
-SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price,
-  t.extra->>'extra_info' AS extra_info,
+SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price, t.extra_info,
   t.user_id AS guest_user_id, full_name(t.first_name, t.last_name) AS guest_name, ug.email AS guest_email,
   tb.user_id as buyer_user_id, full_name(tb.first_name, tb.last_name) AS buyer_name, ub.email AS buyer_email,
   tt.name AS ticket_type_name, tt.id AS ticket_type_id
@@ -597,18 +596,18 @@ class ReserveTickets(UpdateView):
                         email=t.email and t.email.lower(),
                         first_name=t.first_name,
                         last_name=t.last_name,
-                        extra=funcs.cast(to_json_if(t.dict(include={'extra_info'})), 'jsonb'),
+                        extra_info=t.extra_info or None,
                     )
                     for t in m.tickets
                 ]
 
                 await self.conn.execute_b(
                     """
-                    WITH v (email, first_name, last_name, extra) AS (VALUES :values)
+                    WITH v (email, first_name, last_name, extra_info) AS (VALUES :values)
                     INSERT INTO tickets (event, reserve_action, ticket_type, price, user_id,
-                      first_name, last_name, extra)
+                      first_name, last_name, extra_info)
                     SELECT :event, :reserve_action, :ticket_type, :price, u.id,
-                      v.first_name, v.last_name, v.extra FROM v
+                      v.first_name, v.last_name, v.extra_info FROM v
                     LEFT JOIN users AS u ON v.email=u.email AND u.company=:company_id
                     """,
                     event=event_id,

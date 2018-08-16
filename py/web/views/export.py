@@ -50,8 +50,7 @@ GROUP BY u.id
 SELECT
   t.id, t.first_name AS ticket_first_name, t.last_name AS ticket_last_name, t.status,
   to_char(t.price, 'FM9999990.00') AS price,
-  iso_ts(t.created_ts) AS created_ts,
-  t.extra->>'extra_info' AS extra_info,
+  iso_ts(t.created_ts) AS created_ts, t.extra_info,
   tt.id AS ticket_type_id, tt.name AS ticket_type_name,
   e.id AS event_id, e.slug AS event_slug,
   t.user_id AS guest_user_id, u.first_name AS guest_first_name, u.last_name AS guest_last_name,

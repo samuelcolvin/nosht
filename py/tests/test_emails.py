@@ -79,7 +79,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
 
     res = await factory.create_reservation(factory.user_id)
     booked_action_id = await factory.buy_tickets(res)
-    assert 'UPDATE 1' == await db_conn.execute("""UPDATE tickets SET extra='{"extra_info": "snap"}'""")
+    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET extra_info='snap'")
 
     await email_actor.send_event_conf(booked_action_id)
 

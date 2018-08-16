@@ -78,7 +78,7 @@ class EmailActor(BaseEmailActor):
                 action_extra = json.loads(data['extra'])
                 ctx_buyer['card_details'] = '{card_expiry} - ending {card_last4}'.format(**action_extra)
 
-            sql = "SELECT id, user_id, extra->>'extra_info' FROM tickets WHERE booked_action=$1 AND user_id IS NOT NULL"
+            sql = "SELECT id, user_id, extra_info FROM tickets WHERE booked_action=$1 AND user_id IS NOT NULL"
             buyer_user_id = data['user_id']
             buyer_emails = None
             other_emails = []
