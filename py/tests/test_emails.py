@@ -47,7 +47,7 @@ async def test_with_def(email_actor: EmailActor, factory: Factory, dummy_server,
             company=factory.company_id,
             trigger=Triggers.password_reset.value,
             subject='{{{ company_name}}} xxx',
-            body='DEBUG:\n```\n{{{ __print_debug_context__ }}}\n```',
+            body='DEBUG:\n{{{ __debug_context__ }}}',
         )
     )
 
@@ -70,14 +70,15 @@ async def test_with_def(email_actor: EmailActor, factory: Factory, dummy_server,
     }
 
 
-async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dummy_server):
+async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(email='testing@scolvin.com')
     await factory.create_event(price=10, location_name='The Location', location_lat=51.5, location_lng=-0.2)
 
-    res = await factory.create_reservation(factory.user_id, None)
+    res = await factory.create_reservation(factory.user_id)
     booked_action_id = await factory.buy_tickets(res)
+    assert 'UPDATE 1' == await db_conn.execute("""UPDATE tickets SET extra='{"extra_info": "snap"}'""")
 
     await email_actor.send_event_conf(booked_action_id)
 
@@ -96,6 +97,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
         '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n'
         '</div>\n'
     ) in html
+    assert '<p>Extra Information: <strong>snap</strong></p>\n' in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Duration: <strong>All day</strong></li>' in html
 
@@ -132,23 +134,27 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
 
 async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, settings):
     await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user(first_name=None, last_name=None)
-    await factory.create_event(price=10)
+    await factory.create_cat(ticket_extra_title='Foo Bar')
+    await factory.create_user()
+    await factory.create_event()
 
-    res = await factory.create_reservation()
-    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET first_name='Cat', last_name='Dig'")
-    booked_action_id = await factory.buy_tickets(res)
+    anne = await factory.create_user(first_name=None, last_name=None, email='anne@example.org')
+    res = await factory.create_reservation(anne)
+    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET first_name='Cat', last_name='Dog'")
+    booked_action_id = await factory.book_free(res, anne)
 
     await email_actor.send_event_conf(booked_action_id)
 
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
-    assert email['To'] == 'Cat Dig <frank@example.org>'
+    assert email['To'] == 'Cat Dog <anne@example.org>'
     assert email['part:text/plain'].startswith(
         'Hi Cat,\n'
         '\n'
-        'Thanks for booking your ticket for **The Event Name**.\n'
+        'Thanks for booking your ticket for Supper Clubs, **The Event Name** hosted by Frank Spencer.\n'
+        '\n'
+        'Foo Bar not provided, please let the event host Frank Spencer know if you have any special requirements.\n'
+
     )
     tid = await db_conn.fetchval('SELECT id FROM tickets')
     ticket_id_s = ticket_id_signed(tid, settings)

@@ -25,7 +25,16 @@ EMAIL_DEFAULTS = {
         'body': """
 Hi {{ first_name }},
 
-Thanks for booking your ticket{{#ticket_count_plural}}s{{/ticket_count_plural}} for **{{ event_name }}**.
+Thanks for booking your ticket{{#ticket_count_plural}}s{{/ticket_count_plural}} for {{ category_name }}, \
+**{{ event_name }}** hosted by {{ host_name }}.
+
+{{#extra_info}}
+{{ ticket_extra_title }}: **{{ extra_info }}**
+{{/extra_info}}
+{{^extra_info}}
+{{ ticket_extra_title }} not provided, please let the event host {{ host_name }} know if you have any special \
+requirements.
+{{/extra_info}}
 
 {{ centered_button(View Event | {{ event_link }}) }}
 
@@ -59,7 +68,16 @@ _(Card Charged: {{ card_details }})_
         'body': """
 Hi {{ first_name }},
 
-Great news! {{ buyer_name }} has bought you a ticket for **{{ event_name }}**.
+Great news! {{ buyer_name }} has bought you a ticket for {{ category_name }}, \
+**{{ event_name }}** hosted by {{ host_name }}.
+
+{{#extra_info}}
+{{ ticket_extra_title }}: **{{ extra_info }}**
+{{/extra_info}}
+{{^extra_info}}
+{{ ticket_extra_title }} not provided, please let the event host {{ host_name }} know if you have any special \
+requirements.
+{{/extra_info}}
 
 {{ centered_button(View Event | {{ event_link }}) }}
 
@@ -111,12 +129,12 @@ Event:
 """
     },
     Triggers.event_host_update: {
-        'subject': '{{{ name }}} Update from {{{ company_name }}}',
+        'subject': '{{{ event_name }}} Update from {{{ company_name }}}',
         'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},
 
-Your event {{ name }} is coming up in **{{ days_to_go }}** days on **{{ event_date }}**.
+Your event {{ event_name }} is coming up in **{{ days_to_go }}** days on **{{ event_date }}**.
 
 <div class="stat-label">Tickets Booked in the last day</div>
 <div class="stat-value">
@@ -141,21 +159,21 @@ Your event {{ name }} is coming up in **{{ days_to_go }}** days on **{{ event_da
 {{^fully_booked}}
 Guests can book your event by going to
 
-<div class="text-center highlighted">{{ link }}</div>
+<div class="text-center highlighted">{{ event_link }}</div>
 
 Share this link via email or social media to garner further bookings.
 {{/fully_booked}}
 
-{{ centered_button(View Event | {{ link }}) }}
+{{ centered_button(View Event | {{ event_link }}) }}
 """
     },
     Triggers.event_host_final_update: {
-        'subject': '{{{ name }}} Final Update from {{{ company_name }}}',
+        'subject': '{{{ event_name }}} Final Update from {{{ company_name }}}',
         'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},
 
-It's nearly time for your {{ category }}, {{ name }}, which is very exciting. \
+It's nearly time for your {{ category_name }}, {{ event_name }}, which is very exciting. \
 We wanted to make sure you have all the info you need.
 
 You have **{{ tickets_booked }}** bookings confirmed, guests can continue to book tickets until the event ends.
@@ -163,7 +181,7 @@ You have **{{ tickets_booked }}** bookings confirmed, guests can continue to boo
 You can download your guest list with booking references, dietary requirements and any special requests \
 by visiting the event page:
 
-{{ centered_button(View Event | {{ link }}) }}
+{{ centered_button(View Event | {{ event_link }}) }}
 
 We hope everything goes well and we look forward to hearing about it afterwards.
 

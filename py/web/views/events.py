@@ -254,8 +254,8 @@ async def _check_event_host(request):
 event_tickets_sql = """
 SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price,
   t.extra->>'extra_info' AS extra_info,
-  t.user_id AS guest_user_id, full_name(t.first_name, t.last_name, null) AS guest_name, ug.email AS guest_email,
-  tb.user_id as buyer_user_id, full_name(tb.first_name, tb.last_name, null) AS buyer_name, ub.email AS buyer_email,
+  t.user_id AS guest_user_id, full_name(t.first_name, t.last_name) AS guest_name, ug.email AS guest_email,
+  tb.user_id as buyer_user_id, full_name(tb.first_name, tb.last_name) AS buyer_name, ub.email AS buyer_email,
   tt.name AS ticket_type_name, tt.id AS ticket_type_id
 FROM tickets AS t
 LEFT JOIN users AS ug ON t.user_id = ug.id

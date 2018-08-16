@@ -28,7 +28,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION full_name(first_name VARCHAR(255), last_name VARCHAR(255),
-    email VARCHAR(255)) RETURNS VARCHAR(255) AS $$
+    email VARCHAR(255) DEFAULT NULL) RETURNS VARCHAR(255) AS $$
   DECLARE
   BEGIN
     return coalesce(first_name || ' ' || last_name, first_name, last_name, email);
