@@ -46,8 +46,7 @@ def setup_logging(disable_existing=False):
                 'client': client,
             } if client else {
                 'level': 'WARNING',
-                'class': 'logging.StreamHandler',
-                'formatter': 'nosht.default',
+                'class': 'logging.NullHandler',
             }
         },
         'loggers': {

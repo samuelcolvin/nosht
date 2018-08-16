@@ -3,7 +3,8 @@ from aiohttp import web
 from aiohttp_session import new_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
-from tests.conftest import Factory, FakePgPool
+from shared.db import SimplePgPool
+from tests.conftest import Factory
 from web.middleware import error_middleware, exc_extra
 
 
@@ -27,7 +28,7 @@ async def handle_errors(request):
 
 async def pre_startup_app(app):
     app['main_app'] = {
-        'pg': FakePgPool(app['test_conn'])
+        'pg': SimplePgPool(app['test_conn'])
     }
 
 

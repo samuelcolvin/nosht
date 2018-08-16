@@ -13,6 +13,7 @@ from buildpg import Values, asyncpg
 
 from .actions import ActionTypes
 from .emails.defaults import Triggers
+from .emails.main import EmailActor
 from .images import resize_upload
 from .settings import Settings
 from .utils import mk_password, slugify
@@ -109,6 +110,23 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
     return True
 
 
+class SimplePgPool:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def acquire(self):
+        return self
+
+    async def __aenter__(self):
+        return self.conn
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    async def close(self):
+        pass
+
+
 def reset_database(settings: Settings):
     if not (os.getenv('CONFIRM_DATABASE_RESET') == 'confirm' or input('Confirm database reset? [yN] ') == 'y'):
         print('cancelling')
@@ -136,7 +154,7 @@ def run_patch(settings: Settings, live, direct, patch_name):
     else:
         print(f'running patch {patch_name} live {live}')
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(_run_patch(settings, live, direct, patch_func))
+    return loop.run_until_complete(_run_patch(settings, live, direct, patch_func))
 
 
 async def _run_patch(settings, live, direct, patch_func):
@@ -148,13 +166,12 @@ async def _run_patch(settings, live, direct, patch_func):
     print('=' * 40)
     try:
         await patch_func(conn, settings=settings, live=live)
-    except BaseException as e:
+    except BaseException:
         print('=' * 40)
-        if direct:
-            raise RuntimeError('error running patch') from e
-        else:
+        logger.exception('Error running %s patch', patch_func.__name__)
+        if not direct:
             await tr.rollback()
-            raise RuntimeError('error running patch, rolling back') from e
+        return 1
     else:
         print('=' * 40)
         if direct:
@@ -424,3 +441,45 @@ async def create_demo_data(conn, settings, **kwargs):
                     'INSERT INTO ticket_types (:values__names) VALUES :values',
                     [Values(event=event_id, **tt) for tt in ticket_types]
                 )
+
+
+@patch
+async def create_new_company(conn, settings, live, **kwargs):
+    """
+    Create a new company
+    """
+    co_name = input("Enter the company's name: ")
+    co_slug = slugify(co_name)
+    co_domain = input("Enter the company's domain: ")
+
+    company_id = await conn.fetchval_b(
+        'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
+        values=Values(
+            name=co_name,
+            slug=co_slug,
+            domain=co_domain,
+        )
+    )
+    user_name = input("Enter the main admin's name: ").strip(' ')
+    if ' ' in user_name:
+        first_name, last_name = user_name.split(' ', 1)
+    else:
+        first_name, last_name = user_name, None
+    user_email = input("Enter the main admin's email address: ").strip(' ')
+
+    user_id = await conn.fetchval_b(
+        'INSERT INTO users (:values__names) VALUES :values RETURNING id',
+        values=Values(
+            company=company_id,
+            status='active',
+            email=user_email,
+            first_name=first_name,
+            last_name=last_name,
+            role='admin',
+        ),
+    )
+    actor = EmailActor(settings=settings, pg=SimplePgPool(conn))
+    await actor.startup()
+    if live:
+        await actor.send_account_created.direct(user_id, created_by_admin=True)
+    await actor.close(shutdown=True)

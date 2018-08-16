@@ -36,7 +36,7 @@ def main():
             direct = '--direct' in args
             if direct:
                 args.remove('--direct')
-            run_patch(settings, live, direct, args[0] if args else None)
+            return run_patch(settings, live, direct, args[0] if args else None)
         elif command == 'web':
             logger.info('running web server...')
             from web.main import create_app
@@ -47,7 +47,7 @@ def main():
             RunWorkerProcess('shared/worker.py', 'Worker')
         else:
             logger.error(f'unknown command "{command}"')
-            sys.exit(1)
+            return 1
     finally:
         loop = asyncio.get_event_loop()
         if logging_client and not loop.is_closed():

@@ -17,6 +17,7 @@ from aioredis import create_redis
 from buildpg import MultipleValues, Values, asyncpg
 from PIL import Image, ImageDraw
 
+from shared.db import SimplePgPool
 from shared.db import create_demo_data as _create_demo_data
 from shared.db import prepare_database
 from shared.settings import Settings
@@ -107,26 +108,9 @@ async def _fix_db_conn(loop, settings, clean_db):
     await conn.close()
 
 
-class FakePgPool:
-    def __init__(self, conn):
-        self.conn = conn
-
-    def acquire(self):
-        return self
-
-    async def __aenter__(self):
-        return self.conn
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-    async def close(self):
-        pass
-
-
 @pytest.fixture
 def db_pool(db_conn):
-    return FakePgPool(db_conn)
+    return SimplePgPool(db_conn)
 
 
 @pytest.fixture
@@ -346,7 +330,7 @@ async def redis(loop, settings: Settings):
 
 
 async def pre_startup_app(app):
-    app['main_app']['pg'] = FakePgPool(app['test_conn'])
+    app['main_app']['pg'] = SimplePgPool(app['test_conn'])
 
 
 async def post_startup_app(app):

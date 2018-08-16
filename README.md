@@ -59,3 +59,7 @@ Create an IAM role with the following policy
 
 Go to SES and setup a sending domain. You either need to set it up in the `eu-west-1` region
 or change the region `aws_region` setting.
+
+
+    heroku addons:create heroku-postgresql:hobby-dev -a $HEROKU_APP
+    heroku addons:create rediscloud:30 -a $HEROKU_APP

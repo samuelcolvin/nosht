@@ -8,11 +8,12 @@ ADD ./js/package.json /home/root/package.json
 ADD ./js/yarn.lock /home/root/yarn.lock
 RUN yarn
 
+ARG HEROKU_APP
 ADD ./js/.env /home/root/.env
-ADD ./deploy-settings/*.* /home/root/
+ADD ./deploy-settings-$HEROKU_APP/.env.production /home/root/.env.production
 ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
-ADD ./deploy-settings/favicons/* /home/root/public/
+ADD ./deploy-settings-$HEROKU_APP/favicons/* /home/root/public/
 ARG COMMIT
 RUN REACT_APP_COMMIT=$COMMIT yarn build
 RUN rm build/service-worker.js

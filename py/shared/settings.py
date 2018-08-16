@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     grecaptcha_secret = 'xxx'
     grecaptcha_threshold = 0.5
 
+    # static key for map images in emails
     google_maps_static_key = 'AIzaSyBu9cMA2IpeeIDRu5gu54n2-BZ_fGon4P4'
 
     stripe_root_url = 'https://api.stripe.com/v1/'

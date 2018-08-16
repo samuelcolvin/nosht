@@ -1,4 +1,5 @@
-.DEFAULT_GOAL := all
+.DEFAULT_GOAL:=all
+HEROKU_APP?=nosht
 
 .PHONY: install
 install:
@@ -32,12 +33,14 @@ all: testcov lint
 build: COMMIT=$(shell git rev-parse HEAD)
 build:
 	@ # this makes sure build will work even if the deploy-settings directory doesn't exist
-	mkdir -p deploy-settings/favicons
-	touch deploy-settings/env.production
-	touch deploy-settings/favicons/favicon-16x16.png
+	mkdir -p deploy-settings-$(HEROKU_APP)/favicons
+	touch deploy-settings-$(HEROKU_APP)/.env.production
+	touch deploy-settings-$(HEROKU_APP)/favicons/favicon-16x16.png
 	docker build . -f docker/Dockerfile.base -t nosht-python-build
-	docker build . -f docker/Dockerfile.web -t nosht-web --build-arg COMMIT=$(COMMIT)
-	docker build . -f docker/Dockerfile.worker -t nosht-worker --quiet --build-arg COMMIT=$(COMMIT)
+	docker build . -f docker/Dockerfile.web -t nosht-web \
+		--build-arg COMMIT=$(COMMIT) --build-arg HEROKU_APP=$(HEROKU_APP)
+	docker build . -f docker/Dockerfile.worker -t nosht-worker --quiet \
+		--build-arg COMMIT=$(COMMIT) --build-arg HEROKU_APP=$(HEROKU_APP)
 
 .PHONY: docker-dev
 docker-dev: build
@@ -59,20 +62,20 @@ dev-pgcli:
 
 .PHONY: heroku-release
 heroku-push: build
-	docker tag nosht-web registry.heroku.com/nosht/web
-	docker push registry.heroku.com/nosht/web
-	docker tag nosht-worker registry.heroku.com/nosht/worker
-	docker push registry.heroku.com/nosht/worker
+	docker tag nosht-web registry.heroku.com/$(HEROKU_APP)/web
+	docker push registry.heroku.com/$(HEROKU_APP)/web
+	docker tag nosht-worker registry.heroku.com/$(HEROKU_APP)/worker
+	docker push registry.heroku.com/$(HEROKU_APP)/worker
 
 .PHONY: heroku-release
 heroku-release:
-	heroku container:release web worker -a nosht
+	heroku container:release web worker -a $(HEROKU_APP)
 
 .PHONY: heroku-pgcli
 heroku-pgcli:
-	pgcli `heroku config:get DATABASE_URL -a nosht`
+	pgcli `heroku config:get DATABASE_URL -a $(HEROKU_APP)`
 
 .PHONY: heroku-set-auth-key
 heroku-set-auth-key:
-	heroku config:set -a nosht \
-	 `python -c "from cryptography import fernet;print(fernet.Fernet.generate_key().decode())"`
+	heroku config:set -a $(HEROKU_APP) \
+	 APP_AUTH_KEY=`python -c "from cryptography import fernet;print(fernet.Fernet.generate_key().decode())"`
