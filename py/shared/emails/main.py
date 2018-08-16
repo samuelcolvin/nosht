@@ -23,7 +23,7 @@ class EmailActor(BaseEmailActor):
         async with self.pg.acquire() as conn:
             data = await conn.fetchrow(
                 """
-                SELECT t.user_id,
+                SELECT a.user_id,
                   full_name(ub.first_name, ub.last_name) AS buyer_name,
                   full_name(uh.first_name, uh.last_name) AS host_name,
                   '/' || cat.slug || '/' || e.slug || '/' as event_link, e.name, e.short_description,
@@ -31,15 +31,16 @@ class EmailActor(BaseEmailActor):
                   cat.ticket_extra_title as ticket_extra_title,
                   e.location_name, e.location_lat, e.location_lng,
                   e.start_ts, e.duration, tt.price, cat.company, co.currency, a.extra
-                FROM tickets AS t
-                JOIN actions AS a ON t.booked_action = a.id
-                JOIN users AS ub ON t.user_id = ub.id
+                FROM actions AS a
+                JOIN tickets AS t ON (a.id = t.booked_action AND a.user_id = t.user_id)
+                JOIN users AS ub ON a.user_id = ub.id
                 JOIN ticket_types AS tt ON t.ticket_type = tt.id
                 JOIN events AS e ON t.event = e.id
                 JOIN users AS uh ON e.host = uh.id
                 JOIN categories AS cat ON e.category = cat.id
                 JOIN companies co on cat.company = co.id
-                WHERE t.booked_action = $1 AND t.user_id = ub.id
+                WHERE a.id = $1
+                LIMIT 1
                 """,
                 booked_action_id
             )
@@ -101,6 +102,7 @@ class EmailActor(BaseEmailActor):
         await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails)
         if other_emails:
             await self.send_emails.direct(data['company'], Triggers.ticket_other, other_emails)
+        return len(other_emails) + 1
 
     @concurrent
     async def send_account_created(self, user_id: int, created_by_admin=False):
@@ -120,12 +122,15 @@ class EmailActor(BaseEmailActor):
         await self.send_emails.direct(company_id, Triggers.account_created, [UserEmail(id=user_id, ctx=ctx)])
 
     @concurrent
-    async def send_event_created_note(self, action_id: int):
+    async def send_event_created(self, action_id: int):
         async with self.pg.acquire() as conn:
-            company_id, host_name, host_role, event_name, cat_name, link = await conn.fetchrow(
+            data = await conn.fetchrow(
                 """
-                SELECT a.company, full_name(u.first_name, u.last_name, u.email), u.role,
-                 e.name, cat.name, '/' || cat.slug || '/' || e.slug || '/'
+                SELECT a.company AS company_id, u.role AS host_role, u.id AS host_user_id,
+                full_name(u.first_name, u.last_name, u.email) AS host_name,
+                 e.name AS event_name, e.start_ts::date AS event_date,
+                 cat.name AS cat_name, cat.slug AS cat_slug,
+                 '/' || cat.slug || '/' || e.slug || '/' AS event_link
                 FROM actions AS a
                 JOIN users AS u ON a.user_id = u.id
                 JOIN events AS e ON a.event = e.id
@@ -138,17 +143,27 @@ class EmailActor(BaseEmailActor):
             ctx = dict(
                 summary='Event Created',
                 details=(
-                    f'Event "{event_name}" ({cat_name}) created by "{host_name}" ({host_role}), '
-                    f'click the link below to view the event.'
-                ),
+                    'Event "{event_name}" ({cat_name}) created by "{host_name}" ({host_role}), '
+                    'click the link below to view the event.'
+                ).format(**data),
                 action_label='View Event',
-                action_link=link,
+                action_link=data['event_link'],
             )
             users = [
                 UserEmail(id=r['id'], ctx=ctx) for r in
-                await conn.fetch("SELECT id FROM users WHERE role='admin' AND company=$1", company_id)
+                await conn.fetch("SELECT id FROM users WHERE role='admin' AND company=$1", data['company_id'])
             ]
-        await self.send_emails.direct(company_id, Triggers.admin_notification, users)
+        await self.send_emails.direct(data['company_id'], Triggers.admin_notification, users)
+        if data['host_role'] != 'admin':
+            ctx = {
+                'event_link': data['event_link'],
+                'event_name': data['event_name'],
+                'event_date': data['event_date'].strftime(date_fmt),
+                'category_name': data['cat_name'],
+                is_cat(data['cat_slug']): True,
+            }
+            await self.send_emails.direct(data['company_id'], Triggers.event_host_created,
+                                          [UserEmail(data['host_user_id'], ctx)])
 
     @concurrent
     async def send_event_update(self, action_id):

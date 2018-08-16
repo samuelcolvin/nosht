@@ -10,6 +10,7 @@ class Triggers(str, Enum):
     event_update = 'event-update'
     event_reminder = 'event-reminder'
 
+    event_host_created = 'event-host-created'
     event_host_update = 'event-host-update'
     event_host_final_update = 'event-host-final-update'
 
@@ -163,6 +164,21 @@ Guests can book your event by going to
 
 Share this link via email or social media to garner further bookings.
 {{/fully_booked}}
+
+{{ primary_button(View Event | {{ event_link }}) }}
+"""
+    },
+    Triggers.event_host_created: {
+        'subject': '{{{ event_name }}} Created for {{{ company_name }}}',
+        'title': '{{ company_name }}',
+        'body': """
+Hi {{ first_name }},
+
+Great news - you've set up your {{ category_name }} in support of {{ company_name }}. \
+Thank you, we're thrilled that you're getting involved.
+
+You can access all information, including tickets sold, guest lists etc... \
+related to your event at any time by using the following link
 
 {{ primary_button(View Event | {{ event_link }}) }}
 """

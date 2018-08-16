@@ -175,7 +175,7 @@ CREATE INDEX ticket_created_ts ON tickets USING btree (created_ts);
 -- must match triggers from emails/defaults.py!
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (
   'ticket-buyer', 'ticket-other', 'event-update', 'event-reminder', 'event-booking',
-  'event-host-update', 'event-host-final-update', 'password-reset', 'account-created',
+  'event-host-created', 'event-host-update', 'event-host-final-update', 'password-reset', 'account-created',
   'admin-notification'
 );
 

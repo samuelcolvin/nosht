@@ -6,6 +6,7 @@ import pytest
 from buildpg import Values
 from pytest_toolbox.comparison import RegexStr
 
+from shared.actions import ActionTypes
 from shared.emails import EmailActor, Triggers, UserEmail
 from shared.settings import Settings
 from shared.utils import ticket_id_signed
@@ -161,6 +162,34 @@ async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Fact
     assert ticket_id_s.endswith(f'-{tid}')
     assert f'* Ticket ID: **{ticket_id_s}**\n' in email['part:text/plain']
     assert f'<li>Ticket ID: <strong>{ticket_id_s}</strong></li>\n' in email['part:text/html']
+
+
+async def test_send_ticket_other(email_actor: EmailActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat(ticket_extra_title='Foo Bar')
+    await factory.create_user()
+
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+
+    await factory.create_event(status='published')
+    booked_action_id = await factory.book_free(await factory.create_reservation(anne, ben), anne)
+
+    assert 2 == await email_actor.send_event_conf.direct(booked_action_id)
+    assert len(dummy_server.app['emails']) == 2
+    # debug(dummy_server.app['emails'])
+    anne_email, ben_email = dummy_server.app['emails']
+    assert anne_email['To'] == 'anne anne <anne@example.org>'
+    assert (
+        'Thanks for booking your tickets for Supper Clubs, '
+        '**The Event Name** hosted by Frank Spencer.\n'
+    ) in anne_email['part:text/plain']
+
+    assert ben_email['To'] == 'ben ben <ben@example.org>'
+    assert (
+        'Great news! anne anne has bought you a ticket for Supper Clubs, '
+        '**The Event Name** hosted by Frank Spencer.\n'
+    ) in ben_email['part:text/plain']
 
 
 async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):
@@ -518,3 +547,26 @@ on other category.
         '  <a href=""><span class="secondary">Testing</span></a>\n'
         '</div>\n'
     ) == email['part:text/plain']
+
+
+async def test_event_created(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='admin')
+
+    u2 = await factory.create_user(role='host', email='host@example.org', first_name='ho', last_name='st')
+    await factory.create_event(host_user_id=u2)
+
+    action_id = await db_conn.fetchval(
+        'INSERT INTO actions (company, user_id, event, type) VALUES ($1, $2, $3, $4) RETURNING id',
+        factory.company_id, u2, factory.event_id, ActionTypes.create_event
+    )
+
+    await email_actor.send_event_created(action_id)
+
+    assert len(dummy_server.app['emails']) == 2
+    admin_email = next(e for e in dummy_server.app['emails'] if e['To'] == 'Frank Spencer <frank@example.org>')
+    assert 'Event "The Event Name" (Supper Clubs) created by "ho st" (host)' in admin_email['part:text/plain']
+
+    host_email = next(e for e in dummy_server.app['emails'] if e['To'] == 'ho st <host@example.org>')
+    assert "Great news - you've set up your Supper Clubs in support of Testing." in host_email['part:text/plain']

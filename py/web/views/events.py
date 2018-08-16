@@ -231,7 +231,7 @@ class EventBread(Bread):
             )
             action_id = await record_action_id(self.request, self.request['session']['user_id'],
                                                ActionTypes.create_event, event_id=pk)
-            await self.app['email_actor'].send_event_created_note(action_id)
+            await self.app['email_actor'].send_event_created(action_id)
         return pk
 
 
