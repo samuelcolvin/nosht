@@ -14,7 +14,7 @@ from .conftest import Factory
 
 
 @pytest.fixture
-async def email_actor(settings: Settings, db_pool, loop):
+async def email_actor(settings: Settings, db_pool, loop, redis):
     emails = EmailActor(settings=settings, pg=db_pool, loop=loop, concurrency_enabled=False)
     await emails.startup()
     yield emails
