@@ -299,6 +299,7 @@ async def event_tickets_export(request):
             **record,
         }
         data.pop('id')
+        data.pop('ticket_type_id')
         if not_admin:
             data.pop('guest_email')
             data.pop('guest_user_id')

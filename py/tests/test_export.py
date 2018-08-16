@@ -233,7 +233,6 @@ async def test_event_ticket_export(cli, url, login, factory: Factory, db_conn):
             'buyer_name': 'foo bar',
             'buyer_email': 'frank@example.org',
             'ticket_type_name': 'Standard',
-            'ticket_type_id': str(await db_conn.fetchval('SELECT id FROM ticket_types')),
         },
     ]
 
@@ -261,6 +260,5 @@ async def test_event_ticket_export_host(cli, url, login, factory: Factory, db_co
             'guest_name': 'foo bar',
             'buyer_name': 'foo bar',
             'ticket_type_name': 'Standard',
-            'ticket_type_id': str(await db_conn.fetchval('SELECT id FROM ticket_types')),
         },
     ]
