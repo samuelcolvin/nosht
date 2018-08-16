@@ -33,7 +33,7 @@ Event:
 
 * Start Time: **{{ event_start }}**
 * Duration: **{{ event_duration }}**
-* Ticket Ref: **{{ ticket_ref }}**
+* Ticket ID: **{{ ticket_id }}**
 {{#event_location}}* Location: **{{ event_location }}**{{/event_location}}
 
 {{#static_map}}
@@ -67,7 +67,7 @@ Event:
 
 * Start Time: **{{ event_start }}**
 * Duration: **{{ event_duration }}**
-* Ticket Ref: **{{ ticket_ref }}**
+* Ticket ID: **{{ ticket_id }}**
 {{#event_location}}* Location: **{{ event_location }}**{{/event_location}}
 
 {{#static_map}}

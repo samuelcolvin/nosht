@@ -13,7 +13,7 @@ from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, condecimal, conint, constr, validator
 
 from shared.images import delete_image, resize_upload
-from shared.utils import pseudo_random_str, slugify, ticket_ref
+from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin, is_admin_or_host, is_auth
 from web.bread import Bread, UpdateView
@@ -276,7 +276,7 @@ async def event_tickets(request):
     settings = request.app['settings']
     for t in await request['conn'].fetch(event_tickets_sql, event_id):
         ticket = {
-            'ticket_id': ticket_ref(t['id'], settings),
+            'ticket_id': ticket_id_signed(t['id'], settings),
             **t,
         }
         if not_admin:
@@ -295,7 +295,7 @@ async def event_tickets_export(request):
 
     def modify(record):
         data = {
-            'ticket_id': ticket_ref(record['id'], settings),
+            'ticket_id': ticket_id_signed(record['id'], settings),
             **record,
         }
         data.pop('id')

@@ -8,7 +8,7 @@ from pytest_toolbox.comparison import RegexStr
 
 from shared.emails import EmailActor, Triggers, UserEmail
 from shared.settings import Settings
-from shared.utils import ticket_ref
+from shared.utils import ticket_id_signed
 
 from .conftest import Factory
 
@@ -150,11 +150,11 @@ async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Fact
         '\n'
         'Thanks for booking your ticket for **The Event Name**.\n'
     )
-    ticket_id = await db_conn.fetchval('SELECT id FROM tickets')
-    ref = ticket_ref(ticket_id, settings)
-    assert ref.endswith(f'-{ticket_id}')
-    assert f'* Ticket Ref: **{ref}**\n' in email['part:text/plain']
-    assert f'<li>Ticket Ref: <strong>{ref}</strong></li>\n' in email['part:text/html']
+    tid = await db_conn.fetchval('SELECT id FROM tickets')
+    ticket_id_s = ticket_id_signed(tid, settings)
+    assert ticket_id_s.endswith(f'-{tid}')
+    assert f'* Ticket ID: **{ticket_id_s}**\n' in email['part:text/plain']
+    assert f'<li>Ticket ID: <strong>{ticket_id_s}</strong></li>\n' in email['part:text/html']
 
 
 async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):
