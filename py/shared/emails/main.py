@@ -212,8 +212,10 @@ class EmailActor(BaseEmailActor):
                   e.id, e.name, e.short_description, e.start_ts, e.duration,
                   e.location_name, e.location_lat, e.location_lng,
                   cat.name AS cat_name, cat.slug AS cat_slug, cat.company AS company_id,
-                  '/' || cat.slug || '/' || e.slug || '/' as link
+                  '/' || cat.slug || '/' || e.slug || '/' as link,
+                  full_name(uh.first_name, uh.last_name) AS host_name
                 FROM events AS e
+                JOIN users AS uh on e.host = uh.id
                 JOIN categories AS cat ON e.category = cat.id
                 WHERE e.status='published' AND
                       e.start_ts BETWEEN now() AND now() + '24 hours'::interval AND
@@ -265,6 +267,7 @@ class EmailActor(BaseEmailActor):
                 ctx = {
                     'event_link': d['link'],
                     'event_name': d['name'],
+                    'host_name': d['host_name'],
                     'event_short_description': d['short_description'],
                     'event_start': (
                         d['start_ts'].strftime(datetime_fmt) if duration else d['start_ts'].strftime(date_fmt)

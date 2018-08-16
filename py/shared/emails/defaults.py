@@ -114,7 +114,7 @@ Hi {{ first_name }},
         'body': """
 Hi {{ first_name }},
 
-You're booked in to attend **{{ event_name }}**, the event will start in a day's time.
+You're booked in to attend **{{ event_name }}** hosted by {{ host_name }}, the event will start in a day's time.
 
 {{ primary_button(View Event | {{ event_link }}) }}
 

@@ -224,7 +224,7 @@ async def test_event_reminder_none(email_actor: EmailActor, factory: Factory):
 async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user(first_name=None, last_name=None)
+    await factory.create_user()
     await factory.create_event(
         start_ts=datetime.utcnow() + timedelta(hours=12),
         price=10,
@@ -234,20 +234,22 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
         location_lng=-0.5,
     )
 
-    res = await factory.create_reservation()
-    await factory.buy_tickets(res)
+    u2 = await factory.create_user(first_name=None, last_name=None, email='guest@example.org')
+    res = await factory.create_reservation(u2)
+    await factory.buy_tickets(res, u2)
     assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET first_name='Cat', last_name='Dog'")
 
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='event-guest-reminder'")
     assert 1 == await email_actor.send_event_reminders.direct()
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
-    assert email['To'] == 'Cat Dog <frank@example.org>'
+    assert email['To'] == 'Cat Dog <guest@example.org>'
     text = email['part:text/plain']
     assert text.startswith(
         f'Hi Cat,\n'
         f'\n'
-        f'You\'re booked in to attend **The Event Name**, the event will start in a day\'s time.\n'
+        f'You\'re booked in to attend **The Event Name** hosted by Frank Spencer, '
+        f'the event will start in a day\'s time.\n'
         f'\n'
         f'<div class="button">\n'
         f'  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n'
