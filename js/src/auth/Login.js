@@ -7,6 +7,11 @@ import WithContext from '../utils/context'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
+const next_url = location => {
+  const match = location.search.match('next=([^&]+)')
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 export async function authenticate (data) {
   try {
     await requests.post('auth-token/', {token: data.auth_token})
@@ -15,7 +20,7 @@ export async function authenticate (data) {
     return
   }
   this.props.ctx.setUser(data.user)
-  this.props.history.replace('/dashboard/events/')
+  this.props.history.replace(next_url(this.props.location) || '/dashboard/events/')
   this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
 }
 
@@ -93,14 +98,21 @@ class Login extends React.Component {
   }
 
   render () {
+    const next = next_url(this.props.location)
     return [
       <Row key="head" className="justify-content-center mb-2">
         <Col md="6">
           <h1 className="text-center">Login</h1>
-          <p>
-            Not yet a user? Go to <Link to="/signup/">Sign up</Link> to create an account
-            and start hosting events.
-          </p>
+          {next ?
+            <p>
+              Login to view <code>{next}</code>.
+            </p>
+            :
+            <p>
+              Not yet a user? Go to <Link to="/signup/">Sign up</Link> to create an account
+              and start hosting events.
+            </p>
+          }
           <div className="d-flex justify-content-around">
             <Button onClick={this.google_auth.bind(this)} color="primary">
               <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>

@@ -113,8 +113,9 @@ class App extends React.Component {
 
   setError (error) {
     if (error.status === 401) {
-      this.setMessage({icon: 'ban', message: error.msg || 'Login Required'})
-      this.props.history.push('/login/')
+      this.setMessage({icon: 'sign-in-alt', message: error.msg || 'Login Required'})
+      this.props.history.push(`/login/?next=${encodeURIComponent(this.props.location.pathname)}`)
+      return
     } else if (error.status !== 404) {
       Raven.captureMessage(`caught error: ${error.msg || error.toString()}`, {
         stacktrace: true, level: 'warning', extra: error

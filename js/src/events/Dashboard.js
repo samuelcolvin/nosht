@@ -279,7 +279,7 @@ export class EventsDetails extends RenderDetails {
           </span>
         )
       },
-      highlight: props.ctx.user.role === 'admin' ? {
+      highlight: props.ctx.user && props.ctx.user.role === 'admin' ? {
         render: v => {
           return (
             <span>
