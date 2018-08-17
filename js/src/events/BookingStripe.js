@@ -263,7 +263,7 @@ class StripeForm_ extends React.Component {
       },
       {name: 'Tickets', value: res.ticket_count},
       {name: 'Ticket Price', value: <MoneyFree>{res.item_price}</MoneyFree>},
-      res.item_price && {name: 'Extra Donated to Cover costs', value: <Money>{res.extra_donated}</Money>},
+      res.item_price && {name: 'Extra donated to cover Costs', value: <Money>{res.extra_donated}</Money>},
       {name: 'Total Price', value: <MoneyFree>{res.total_price}</MoneyFree>},
     ]
     const expired = this.state.time_left < 1
