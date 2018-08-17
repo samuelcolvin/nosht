@@ -767,7 +767,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
-    # debug(data)
+    debug(data)
     ticket_id = await db_conn.fetchval('SELECT id from tickets')
     assert data == {
         'tickets': [
@@ -777,10 +777,11 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
                 'extra_info': None,
                 'booked_at': CloseToNow(),
                 'price': 10,
+                'extra_donated': None,
                 'guest_user_id': user2_id,
                 'guest_name': None,
                 'buyer_user_id': user2_id,
-                'buyer_name': None,
+                'buyer_name': 'guest guest',
                 'ticket_type_name': 'Standard',
                 'ticket_type_id': await db_conn.fetchval('SELECT id from ticket_types'),
             },
@@ -797,8 +798,10 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     anne = await factory.create_user(first_name='x', email='anne@example.org')
     ben = await factory.create_user(first_name='x', email='ben@example.org')
     await factory.book_free(await factory.create_reservation(anne, ben), anne)
-    await db_conn.execute("UPDATE tickets SET first_name='anne', last_name='apple' WHERE user_id=$1", anne)
-    await db_conn.execute("UPDATE tickets SET first_name='ben', last_name='banana' WHERE user_id=$1", ben)
+    await db_conn.execute(
+        "UPDATE tickets SET first_name='anne', last_name='apple', extra_donated=1.23 WHERE user_id=$1", anne)
+    await db_conn.execute(
+        "UPDATE tickets SET first_name='ben', last_name='banana', extra_donated=1.23 WHERE user_id=$1", ben)
 
     await login()
 
@@ -808,6 +811,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     assert len(data['tickets']) == 2
     tickets = sorted(data['tickets'], key=lambda t: t['guest_name'])
     tt_id = await db_conn.fetchval('SELECT id from ticket_types')
+    debug(tickets)
     assert tickets == [
         {
             'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='anne'"),
@@ -815,6 +819,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'extra_info': None,
             'booked_at': CloseToNow(),
             'price': None,
+            'extra_donated': 1.23,
             'guest_user_id': anne,
             'guest_name': 'anne apple',
             'guest_email': 'anne@example.org',
@@ -830,6 +835,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'extra_info': None,
             'booked_at': CloseToNow(),
             'price': None,
+            'extra_donated': 1.23,
             'guest_user_id': ben,
             'guest_name': 'ben banana',
             'guest_email': 'ben@example.org',
