@@ -49,6 +49,7 @@ export const EVENT_FIELDS = [
   {
     name: 'ticket_limit',
     type: 'integer',
+    min: 1,
     help_text: 'Maximum number of tickets available for the event.',
   },
   {

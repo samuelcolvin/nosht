@@ -278,6 +278,23 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
     assert location_lat == 50
 
 
+async def test_edit_event_ticket_limit(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(ticket_limit=20)
+    await login()
+
+    anne = await factory.create_user(first_name='x', email='anne@example.org')
+    ben = await factory.create_user(first_name='x', email='ben@example.org')
+    await factory.book_free(await factory.create_reservation(anne, ben), anne)
+
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(ticket_limit=1))
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data['details'][0]['msg'] == 'May not be less than the number of tickets already booked.'
+
+
 async def test_set_event_status(cli, url, db_conn, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()

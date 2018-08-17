@@ -69,12 +69,19 @@ class Event extends React.Component {
                 Edit Event
               </Button>
             }
-            <Button color={event.tickets_available ? 'danger': 'primary'} size="lg"
-                    className="hover-raise" tag={Link} to={this.uri + 'book/'}>
+            <Button color={event.tickets_available !== null ? 'danger': 'primary'} size="lg"
+                    className="hover-raise" tag={Link} to={this.uri + 'book/'} disabled={event.tickets_available === 0}>
               Book Now
             </Button>
-            {event.tickets_available &&
-              <div className="font-weight-bold mt-3">Only {event.tickets_available} Tickets Remaining</div>}
+            {}
+            {event.tickets_available !== null &&
+              <div className="font-weight-bold mt-3">
+                {event.tickets_available === 0 ?
+                  <span>No Tickets Remaining</span>
+                  :
+                  <span>Only {event.tickets_available} Tickets Remaining</span>
+                }
+              </div>}
           </Col>
         </Row>
 

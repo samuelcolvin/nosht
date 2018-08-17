@@ -9,6 +9,7 @@ ADD ./js/yarn.lock /home/root/yarn.lock
 RUN yarn
 
 ARG HEROKU_APP
+RUN echo "build for heroku app: $HEROKU_APP"
 ADD ./js/.env /home/root/.env
 ADD ./deploy-settings-$HEROKU_APP/.env.production /home/root/.env.production
 ADD ./js/src /home/root/src

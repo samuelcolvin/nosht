@@ -234,6 +234,23 @@ class EventBread(Bread):
             await self.app['email_actor'].send_event_created(action_id)
         return pk
 
+    async def edit_execute(self, pk, **data):
+        try:
+            return await super().edit_execute(pk, **data)
+        except CheckViolationError as exc:
+            if exc.constraint_name != 'ticket_limit_check':  # pragma: no branch
+                raise  # pragma: no cover
+            raise JsonErrors.HTTPBadRequest(
+                message='Invalid Ticket Limit',
+                details=[
+                    {
+                        'loc': ['ticket_limit'],
+                        'msg': f'May not be less than the number of tickets already booked.',
+                        'type': 'value_error.too_low',
+                    }
+                ]
+            )
+
 
 async def _check_event_host(request):
     event_id = int(request.match_info['id'])
