@@ -92,10 +92,12 @@ class CreateEvent extends React.Component {
 
   fields () {
     const c = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
+    const m = this.props.location.search.match(/cat=(\d+)/)
+    const cat_default = m ? parseInt(m[1]) : null
     return (
       EVENT_FIELDS
       .filter(f => f.name !== 'short_description')
-      .map(f => f.name === 'category' ? Object.assign({}, f, {choices: c}) : f)
+      .map(f => f.name === 'category' ? Object.assign({}, f, {choices: c, default: cat_default}) : f)
     )
   }
 

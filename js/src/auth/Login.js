@@ -7,7 +7,7 @@ import WithContext from '../utils/context'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 
-const next_url = location => {
+export const next_url = location => {
   const match = location.search.match('next=([^&]+)')
   return match ? decodeURIComponent(match[1]) : null
 }

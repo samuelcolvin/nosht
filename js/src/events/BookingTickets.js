@@ -56,11 +56,13 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
     name: key + 'first_name',
     placeholder: 'first name',
     show_label: false,
+    required: index === 0,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's name."
   }
   const last_name_field = {
     name: key + 'last_name',
     placeholder: 'last name',
+    required: index === 0,
     show_label: false,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's name."
   }
@@ -68,6 +70,7 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
     name: key + 'email',
     type: 'email',
     placeholder: 'email',
+    required: index === 0,
     show_label: false,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's email address."
   }
@@ -78,12 +81,13 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
   }
 
   let title = `Guest ${index + 1}'s Details`
+  const name = `${ticket_info.first_name || ''} ${ticket_info.last_name || ''}`
   if (index === 0) {
-    title = 'Your Details'
-  } else if (ticket_info.name && ticket_info.name.endsWith('s')) {
-    title = `${ticket_info.name}' Details`
-  } else if (ticket_info.name) {
-    title = `${ticket_info.name}'s Details`
+    title = 'Your Details (required)'
+  } else if (name && name.endsWith('s')) {
+    title = `${name}' Details`
+  } else if (name !== ' ') {
+    title = `${name}'s Details`
   }
   return (
     <div className="mb-1 pb-1">

@@ -1,8 +1,11 @@
 import React from 'react'
+import {Link} from 'react-router-dom'
 import requests from '../utils/requests'
 import {NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import EventCards from '../events/Cards'
+
+const single_name = name => name.replace(/ies$/, '').replace(/s$/, '')
 
 class Category extends React.Component {
   constructor (props) {
@@ -42,11 +45,24 @@ class Category extends React.Component {
     if (!cat) {
       return <NotFound location={this.props.location}/>
     }
+    let create_link = `/create/?cat=${cat.id}`
+    if (!this.props.ctx.user) {
+      create_link = `/signup/?next=${encodeURIComponent(create_link)}`
+    }
     return (
-      <div className="card-grid">
+      <div>
         <div>
-          <h1>{cat.name}</h1>
-          <EventCards events={this.state.events}/>
+          <h1 className="d-inline-block mr-3">{cat.name}</h1>
+          <Link to={create_link} color="link">
+            Host your own {single_name(cat.name)}
+          </Link>
+        </div>
+        <div className="card-grid">
+          {this.state.events.length ?
+            <EventCards events={this.state.events}/>
+            :
+            <span className="text-muted">No Upcoming Events in this Category</span>
+          }
         </div>
       </div>
     )

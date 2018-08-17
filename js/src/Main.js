@@ -39,10 +39,14 @@ class Index extends React.Component {
     const events = this.props.ctx.company.highlight_events
     return (
       <div className="card-grid">
-        <div>
-          <h1>Highlighted Events</h1>
-          <EventCards events={events}/>
-        </div>
+        {events.length ?
+          <div>
+            <h1>Highlighted Events</h1>
+            <EventCards events={events}/>
+          </div>
+          :
+          null
+        }
         <div className="mt-4">
           <h1>Categories</h1>
           {chunk_array(categories, 3).map((chunk, i) => (
@@ -50,6 +54,7 @@ class Index extends React.Component {
               {chunk.map((cat, j) => <Category cat={cat} key={j}/>)}
             </Row>
           ))}
+          {categories.length === 0 && <span className="text-muted">No Categories Live</span>}
         </div>
       </div>
     )

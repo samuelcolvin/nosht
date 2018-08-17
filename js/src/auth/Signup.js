@@ -13,6 +13,7 @@ import requests from '../utils/requests'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {setup_siw, facebook_login, google_login} from './login_with'
+import {next_url} from './Login'
 
 const name_field = {
   name: 'name',
@@ -87,7 +88,7 @@ class Signup extends React.Component {
       this.setState({error: data.message})
     } else {
       this.props.ctx.setUser(data.user)
-      this.props.history.replace('/dashboard/events/')
+      this.props.history.replace(next_url(this.props.location) || '/dashboard/events/')
       this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
     }
   }
