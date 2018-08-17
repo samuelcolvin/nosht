@@ -159,9 +159,9 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'Event "foobar" (Supper Clubs) created by "Frank Spencer" (admin), click the link below to view the event.\n'
         '\n'
         '<div class="button">\n'
-        '  <a href="https://127.0.0.1/supper-clubs/foobar/"><span>View Event</span></a>\n'
+        '  <a href="https://127.0.0.1/dashboard/events/%s/"><span>View Event</span></a>\n'
         '</div>\n'
-    )
+    ) % event_id
 
 
 async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login):

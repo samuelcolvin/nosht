@@ -382,6 +382,10 @@ async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dum
     ) in html
     assert '<strong>Congratulations, all tickets have been booked - your event is full.</strong>' not in html
 
+    assert (
+        f'<a href="https://127.0.0.1/dashboard/events/{factory.event_id}/"><span>Event Dashboard</span></a>'
+    ) in html
+
     assert RegexStr(
         '.*The Event Name is coming up in <strong>5</strong> days on <strong>.*'
     ) == html
@@ -572,3 +576,6 @@ async def test_event_created(email_actor: EmailActor, factory: Factory, dummy_se
 
     host_email = next(e for e in dummy_server.app['emails'] if e['To'] == 'ho st <host@example.org>')
     assert "Great news - you've set up your Supper Clubs in support of Testing." in host_email['part:text/plain']
+    assert (
+        f'<a href="https://127.0.0.1/dashboard/events/{factory.event_id}/"><span>Event Dashboard</span></a>'
+    ) in host_email['part:text/html']

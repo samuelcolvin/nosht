@@ -20,6 +20,9 @@ logger = logging.getLogger('nosht.emails.main')
 class EmailActor(BaseEmailActor):
     @concurrent
     async def send_event_conf(self, booked_action_id: int):
+        """
+        Send emails to buyer and other guests when someone books tickets.
+        """
         async with self.pg.acquire() as conn:
             data = await conn.fetchrow(
                 """
@@ -106,6 +109,9 @@ class EmailActor(BaseEmailActor):
 
     @concurrent
     async def send_account_created(self, user_id: int, created_by_admin=False):
+        """
+        Send an email to new user when their account is created (either by themselves or an admin).
+        """
         async with self.pg.acquire() as conn:
             company_id, status, role = await conn.fetchrow(
                 'SELECT company, status, role FROM users WHERE id=$1',
@@ -123,12 +129,15 @@ class EmailActor(BaseEmailActor):
 
     @concurrent
     async def send_event_created(self, action_id: int):
+        """
+        Send an email to all admins when an event is created and also an email to the event host.
+        """
         async with self.pg.acquire() as conn:
             data = await conn.fetchrow(
                 """
                 SELECT a.company AS company_id, u.role AS host_role, u.id AS host_user_id,
                 full_name(u.first_name, u.last_name, u.email) AS host_name,
-                 e.name AS event_name, e.start_ts::date AS event_date,
+                 e.id AS event_id, e.name AS event_name, e.start_ts::date AS event_date,
                  cat.name AS cat_name, cat.slug AS cat_slug,
                  '/' || cat.slug || '/' || e.slug || '/' AS event_link
                 FROM actions AS a
@@ -140,6 +149,7 @@ class EmailActor(BaseEmailActor):
                 action_id
             )
 
+            link = f'/dashboard/events/{data["event_id"]}/'
             ctx = dict(
                 summary='Event Created',
                 details=(
@@ -147,7 +157,7 @@ class EmailActor(BaseEmailActor):
                     'click the link below to view the event.'
                 ).format(**data),
                 action_label='View Event',
-                action_link=data['event_link'],
+                action_link=link,
             )
             users = [
                 UserEmail(id=r['id'], ctx=ctx) for r in
@@ -157,6 +167,7 @@ class EmailActor(BaseEmailActor):
         if data['host_role'] != 'admin':
             ctx = {
                 'event_link': data['event_link'],
+                'event_dashboard_link': link,
                 'event_name': data['event_name'],
                 'event_date': data['event_date'].strftime(date_fmt),
                 'category_name': data['cat_name'],
@@ -167,6 +178,9 @@ class EmailActor(BaseEmailActor):
 
     @concurrent
     async def send_event_update(self, action_id):
+        """
+        Send an email to guests of an event as prompted by the host or an admin.
+        """
         async with self.pg.acquire() as conn:
             data = await conn.fetchrow(
                 """
@@ -204,6 +218,9 @@ class EmailActor(BaseEmailActor):
 
     @cron(minute=30)
     async def send_event_reminders(self):
+        """
+        Send emails to guest of an event 24(ish) hours before the event is expected to start.
+        """
         async with self.pg.acquire() as conn:
             # get events for which reminders need to be send
             events = await conn.fetch(
@@ -292,6 +309,9 @@ class EmailActor(BaseEmailActor):
 
     @cron(hour=7, minute=30)
     async def send_event_host_updates(self):
+        """
+        Send emails to hosts of events every day before the event with details of bookings.
+        """
         async with self.pg.acquire() as conn:
             # get events for which updates need to be sent
             events = await conn.fetch(
@@ -349,6 +369,7 @@ class EmailActor(BaseEmailActor):
                     await redis.setex(key, cache_time, 1)
                     ctx = {
                         'event_link': e['link'],
+                        'event_dashboard_link': f'/dashboard/events/{e["id"]}/',
                         'event_name': e['name'],
                         'ticket_limit': e['ticket_limit'],
                         'fully_booked': e['tickets_booked'] == e['ticket_limit'],
@@ -367,8 +388,11 @@ class EmailActor(BaseEmailActor):
                     await self.send_emails.direct(company_id, Triggers.event_host_update.value, user_ctxs)
         return user_emails
 
-    @cron(minute={5, 35})  # run twice per hour to make sure of sending if something is wrong a one send time
+    @cron(minute={5, 35})  # run twice per hour to make sure of sending if something is wrong at one send time
     async def send_event_host_updates_final(self):
+        """
+        Send an email to the host of an event 4-5 hours before the event is scheduled to start.
+        """
         async with self.pg.acquire() as conn:
             # get events for which updates need to be sent
             events = await conn.fetch(
@@ -404,6 +428,7 @@ class EmailActor(BaseEmailActor):
                         tickets_booked = await booked_stmt.fetchval(e['id'])
                         ctx = {
                             'event_link': e['link'],
+                            'event_dashboard_link': f'/dashboard/events/{e["id"]}/',
                             'event_name': e['name'],
                             'tickets_booked': tickets_booked or 0,
                             'category_name': e['cat_name'],

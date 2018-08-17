@@ -165,7 +165,7 @@ Guests can book your event by going to
 Share this link via email or social media to garner further bookings.
 {{/fully_booked}}
 
-{{ primary_button(View Event | {{ event_link }}) }}
+{{ primary_button(Event Dashboard | {{ event_dashboard_link }}) }}
 """
     },
     Triggers.event_host_created: {
@@ -180,7 +180,7 @@ Thank you, we're thrilled that you're getting involved.
 You can access all information, including tickets sold, guest lists etc... \
 related to your event at any time by using the following link
 
-{{ primary_button(View Event | {{ event_link }}) }}
+{{ primary_button(Event Dashboard | {{ event_dashboard_link }}) }}
 """
     },
     Triggers.event_host_final_update: {
@@ -197,7 +197,7 @@ You have **{{ tickets_booked }}** bookings confirmed, guests can continue to boo
 You can download your guest list with booking references, dietary requirements and any special requests \
 by visiting the event page:
 
-{{ primary_button(View Event | {{ event_link }}) }}
+{{ primary_button(Event Dashboard | {{ event_dashboard_link }}) }}
 
 We hope everything goes well and we look forward to hearing about it afterwards.
 
