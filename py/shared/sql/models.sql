@@ -61,6 +61,8 @@ CREATE TABLE categories (
   event_content TEXT,
   host_advice TEXT,
   booking_trust_message TEXT,
+  cover_costs_message TEXT,
+  cover_costs_percentage NUMERIC(5, 2) CHECK (cover_costs_percentage > 0 AND cover_costs_percentage <= 100),
   terms_and_conditions_message TEXT,
   allow_marketing_message TEXT,
   ticket_extra_title VARCHAR(200),
@@ -159,7 +161,8 @@ CREATE TABLE tickets (
   -- separate from the user's name to avoid confusing updates of the user's name
   first_name VARCHAR(255),
   last_name VARCHAR(255),
-  price NUMERIC(7, 2),  -- in case ticket prices change
+  price NUMERIC(7, 2) CONSTRAINT price_gte_1 CHECK (price >= 1),  -- in case ticket prices change
+  extra_donated NUMERIC(7, 2) CONSTRAINT extra_donated_gt_0 CHECK (extra_donated > 0),
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   booked_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',

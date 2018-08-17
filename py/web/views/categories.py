@@ -107,6 +107,8 @@ class CategoryBread(Bread):
         event_content: str = None
         host_advice: str = None
         booking_trust_message: str = None
+        cover_costs_message: str = None
+        cover_costs_percentage: condecimal(ge=0, le=100, max_digits=5, decimal_places=2) = None
         terms_and_conditions_message: str = None
         allow_marketing_message: str = None
         ticket_extra_title: constr(max_length=140) = None
@@ -134,6 +136,8 @@ class CategoryBread(Bread):
         'event_content',
         'host_advice',
         'booking_trust_message',
+        'cover_costs_message',
+        'cover_costs_percentage',
         'terms_and_conditions_message',
         'allow_marketing_message',
         'ticket_extra_title',
