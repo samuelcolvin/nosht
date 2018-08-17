@@ -6,7 +6,7 @@
     <title>Login Form</title>
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'none';
-      script-src 'sha256-vrt4cX1CmzM/wCxjh07MzQNlHjMp1P7pviaZFSZS3bY=';
+      script-src 'sha256-AvmxzdAGVLt95rnuaTQQo6xantcz92NFmE5CcpPGPx0=';
       style-src http://localhost:3000 https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/;
       connect-src http://localhost:3000;
     ">
@@ -38,13 +38,13 @@
       const email_el = document.getElementById('email')
       const password_el = document.getElementById('password')
 
-      function on_error (user_msg, xhr, details) {
-        console.warn('Error:', user_msg, xhr, details, form)
+      function on_error (msg, xhr, details) {
+        console.warn('Error:', msg, xhr, details, form)
         window.parent.postMessage(JSON.stringify({
-          status: 'client_error',
-          user_msg,
+          msg,
           details,
           origin,
+          status: 'client_error',
           xhr_status: xhr.status,
           xhr_response: xhr.responseText,
           method: form.method,

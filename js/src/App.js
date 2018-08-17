@@ -1,5 +1,6 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
+import Raven from 'raven-js'
 
 import {GlobalContext} from './utils/context'
 import requests from './utils/requests'
@@ -57,6 +58,7 @@ class App extends React.Component {
       grecaptcha_ready: false,
     }
     this.setMessage = this.setMessage.bind(this)
+    this.setError = this.setError.bind(this)
   }
 
   async setMessage (message, time) {
@@ -104,11 +106,28 @@ class App extends React.Component {
     }
   }
 
+  componentDidCatch (error, info) {
+    Raven.captureException(error, {extra: info})
+    this.setState({error: error.toString()})
+  }
+
+  setError (error) {
+    if (error.status === 401) {
+      this.setMessage({icon: 'ban', message: error.msg || 'Login Required'})
+      this.props.history.push('/login/')
+    } else if (error.status !== 404) {
+      Raven.captureMessage(`caught error: ${error.msg || error.toString()}`, {
+        stacktrace: true, level: 'warning', extra: error
+      })
+    }
+    this.setState({error})
+  }
+
   render () {
     const ctx = {
       setRootState: s => this.setState(s),
       setMessage: (...args) => this.setMessage(...args),
-      setError: error => this.setState({error}),
+      setError: error => this.setError(error),
       setUser: user => this.setState({user}),
       company: this.state.company,
       user: this.state.user,
@@ -122,9 +141,7 @@ class App extends React.Component {
                 user={this.state.user}
                 active_page={this.state.active_page}/>
         <main className="container">
-          {this.state.error ? <Error error={this.state.error}
-                                     location={this.props.location}
-                                     setMessage={this.setMessage}/>
+          {this.state.error ? <Error error={this.state.error} location={this.props.location}/>
             : this.state.company ? <Routes/>
               : <Loading/>}
         </main>

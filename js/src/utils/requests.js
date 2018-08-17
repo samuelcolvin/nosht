@@ -49,7 +49,7 @@ const request = (method, path, config) => {
   // await sleep(2000)
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    const on_error = (user_msg, error_details) => reject({user_msg, url, xhr, error_details, status: xhr.status})
+    const on_error = (msg, error_details) => reject({msg, url, xhr, error_details, status: xhr.status})
     xhr.open(method, url)
     xhr.setRequestHeader('Accept', 'application/json')
     method !== 'GET' && xhr.setRequestHeader('Content-Type', 'application/json')
