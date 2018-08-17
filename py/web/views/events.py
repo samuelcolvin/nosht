@@ -655,7 +655,7 @@ class ReserveTickets(UpdateView):
         res = Reservation(
             user_id=user_id,
             action_id=action_id,
-            price_cent=int(total_price * 100),
+            price_cent=total_price and int(total_price * 100),
             event_id=event_id,
             ticket_count=ticket_count,
             event_name=event_name,
@@ -663,9 +663,9 @@ class ReserveTickets(UpdateView):
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
             'ticket_count': ticket_count,
-            'item_price': float(item_price),
+            'item_price': item_price and float(item_price),
             'extra_donated': item_extra_donated and float(item_extra_donated * ticket_count),
-            'total_price': float(total_price),
+            'total_price': total_price and float(total_price),
             'timeout': int(time()) + self.settings.ticket_ttl,
         }
 

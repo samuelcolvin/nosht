@@ -628,6 +628,69 @@ async def test_reserve_tickets_cover_costs(cli, url, factory: Factory, login):
     }
 
 
+async def test_reserve_tickets_free(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+    await login()
+
+    data = {
+        'tickets': [
+            {
+                't': True,
+                'first_name': 'Ticket',
+                'last_name': 'Buyer',
+                'email': 'ticket.buyer@example.org',
+            },
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'booking_token': RegexStr('.+'),
+        'ticket_count': 1,
+        'extra_donated': None,
+        'item_price': None,
+        'total_price': None,
+        'timeout': AnyInt(),
+    }
+    assert decrypt_json(cli.app['main_app'], data['booking_token'].encode()) == {
+        'user_id': factory.user_id,
+        'action_id': AnyInt(),
+        'event_id': factory.event_id,
+        'price_cent': None,
+        'ticket_count': 1,
+        'event_name': 'The Event Name',
+    }
+
+
+async def test_reserve_tickets_wrong_type(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+    await login()
+
+    data = {
+        'tickets': [
+            {
+                't': True,
+                'first_name': 'Ticket',
+                'last_name': 'Buyer',
+                'email': 'ticket.buyer@example.org',
+            },
+        ],
+        'ticket_type': 999,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Ticket type not found'}
+
+
 async def test_reserve_0_tickets(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()

@@ -14,7 +14,7 @@ import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {load_script, grecaptcha_execute, window_property} from '../utils'
 import {ModalFooter} from '../general/Modal'
-import {Money} from '../general/Money'
+import {Money, MoneyFree} from '../general/Money'
 import Markdown from '../general/Markdown'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
@@ -29,7 +29,7 @@ const stripe_styles = {
 
 export const PricingList = ({items, className}) => (
   <div className={className}>
-    {items.map((item, i) => (
+    {items.filter(item => item).map((item, i) => (
       <div key={i} className={`d-flex justify-content-between ${item.className || ''}`}>
         <div>{item.name}:</div>
         <div className="font-weight-bold">{item.value}</div>
@@ -262,9 +262,9 @@ class StripeForm_ extends React.Component {
         className: this.state.time_left < 3 ? 'mb-4 has-error h4' : 'mb-4'
       },
       {name: 'Tickets', value: res.ticket_count},
-      {name: 'Ticket Price', value: <Money>{res.item_price}</Money>},
-      {name: 'Extra Donated to Cover costs', value: <Money>{res.extra_donated}</Money>},
-      {name: 'Total Price', value: <Money>{res.total_price}</Money>},
+      {name: 'Ticket Price', value: <MoneyFree>{res.item_price}</MoneyFree>},
+      res.item_price && {name: 'Extra Donated to Cover costs', value: <Money>{res.extra_donated}</Money>},
+      {name: 'Total Price', value: <MoneyFree>{res.total_price}</MoneyFree>},
     ]
     const expired = this.state.time_left < 1
     if (expired) {

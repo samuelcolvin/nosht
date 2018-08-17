@@ -87,11 +87,6 @@ export class CategoriesDetails extends RenderDetails {
       }
     ]
     this.formats = {
-      image: {
-        wide: true,
-        index: 5,
-        render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
-      },
       suggested_images: null,
       suggested_price: {
         render: v => v ? <Money>{v}</Money> : <Dash/>
@@ -102,6 +97,11 @@ export class CategoriesDetails extends RenderDetails {
       description: {wide: true, index: 3},
       event_content: {wide: true, index: 4, render: (v, item) => <MarkdownPreview v={v}/>},
       host_advice: {wide: true, index: 5, render: (v, item) => <MarkdownPreview v={v}/>},
+      image: {
+        wide: true,
+        index: 6,
+        render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
+      },
     }
   }
 
