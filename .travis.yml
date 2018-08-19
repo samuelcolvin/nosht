@@ -11,18 +11,26 @@ services:
 python:
 - '3.6'
 
+node_js:
+- '8'
+
 cache:
   pip: true
+  yarn: true
+  directories:
+  - node_modules
 
 install:
 - pip install -U pip setuptools
 - pip install -r py/tests/requirements.txt
 - pip install -r py/requirements.txt
 - cp py/setup.cfg .
+- cd js && yarn && cd ..
 
 script:
 - make lint
-# send to codecov if make test passes regardless of other fails, also without waiting for build
-- REAL_STRIPE_TESTS=1 make test && bash <(curl -s https://codecov.io/bash)
+- REAL_STRIPE_TESTS=1 make test
+- make testjs
+- bash <(curl -s https://codecov.io/bash)
 - make build
 - ls -lha

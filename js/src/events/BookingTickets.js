@@ -10,7 +10,7 @@ import {
   ModalBody,
   Row,
 } from 'reactstrap'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {user_full_name} from '../utils'

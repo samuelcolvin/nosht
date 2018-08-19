@@ -4,7 +4,7 @@ import {
   Modal, ModalHeader, ModalBody, ModalFooter,
   FormGroup, Input
 } from 'reactstrap'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {CompositeDecorator, SelectionState} from 'draft-js'
 import getRangesForDraftEntity from 'draft-js/lib/getRangesForDraftEntity'
 

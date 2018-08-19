@@ -9,7 +9,7 @@ import {
   Row,
 } from 'reactstrap'
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {load_script, grecaptcha_execute, window_property} from '../utils'

@@ -9,7 +9,7 @@ import {
   Col,
   Form as BootstrapForm,
 } from 'reactstrap'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import Input from '../forms/Input'

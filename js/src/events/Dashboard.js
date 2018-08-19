@@ -1,6 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {Alert, Button, Table, Progress as BsProgress} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime, as_title} from '../utils'
 import WithContext from '../utils/context'
