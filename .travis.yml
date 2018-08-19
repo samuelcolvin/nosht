@@ -11,8 +11,14 @@ services:
 python:
 - '3.6'
 
+node_js:
+- '8'
+
 cache:
   pip: true
+  yarn: true
+  directories:
+  - node_modules
 
 install:
 - pip install -U pip setuptools
