@@ -1,5 +1,4 @@
 import {spawn} from 'child_process'
-import React from 'react'
 import {library as FaLibrary} from '@fortawesome/fontawesome-svg-core'
 import {far} from '@fortawesome/free-regular-svg-icons'
 import {fas} from '@fortawesome/free-solid-svg-icons'
@@ -9,7 +8,7 @@ import r from '../utils/requests'
 
 FaLibrary.add(far, fas, fab)
 
-export function Server() {
+export function Server () {
   this.proc = null
   this.start = async function start () {
     this.proc = spawn('./src/__tests__/run_server.py', {stdio: 'inherit'})
