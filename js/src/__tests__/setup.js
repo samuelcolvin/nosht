@@ -1,7 +1,13 @@
 import {spawn} from 'child_process'
 import React from 'react'
+import {library as FaLibrary} from '@fortawesome/fontawesome-svg-core'
+import {far} from '@fortawesome/free-regular-svg-icons'
+import {fas} from '@fortawesome/free-solid-svg-icons'
+import {fab} from '@fortawesome/free-brands-svg-icons'
 import {sleep} from '../utils'
 import r from '../utils/requests'
+
+FaLibrary.add(far, fas, fab)
 
 export function Server() {
   this.proc = null

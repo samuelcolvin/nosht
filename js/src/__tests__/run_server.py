@@ -45,11 +45,60 @@ root_data = {
 
 
 async def root(request):
-    return json_response(root_data, headers={'Access-Control-Allow-Origin': '*'})
+    return json_response(root_data)
+
+
+event_data = {
+    'event': {
+        'allow_marketing_message': None,
+        'booking_trust_message': None,
+        'category_content': None,
+        'cover_costs_message': None,
+        'cover_costs_percentage': None,
+        'duration': 7200,
+        'host_id': 1,
+        'host_name': 'Frank Spencer',
+        'id': 1,
+        'image': 'http://www.example.com/img.png',
+        'location': {
+            'lat': 51.479415,
+            'lng': -0.132098,
+            'name': '31 Testing Road, London'
+        },
+        'long_description': 'Sit quisquam quisquam eius sed tempora.',
+        'name': "Frank's Great Supper",
+        'short_description': 'Quisquam quiquia voluptatem dolor ipsum...',
+        'start_ts': '2020-01-28T19:00:00',
+        'stripe_key': 'pk_test_foobar',
+        'terms_and_conditions_message': None,
+        'ticket_extra_help_text': 'This is the help text for this field, tell us about your nut allergy',
+        'ticket_extra_title': 'Dietary Requirements & Extra Information',
+        'tickets_available': None
+    },
+    'ticket_types': [
+        {
+            'name': 'Standard',
+            'price': 30.0
+        }
+    ]
+}
+
+
+async def event(request):
+    assert request.match_info['category'] == 'foo'
+    assert request.match_info['event'] == 'bar'
+    return json_response(event_data)
+
+
+async def on_prepare(request, response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+
 
 app = web.Application()
+app.on_response_prepare.append(on_prepare)
 app.add_routes([
     web.get('/api/', root),
+    web.get('/api/events/{category}/{event}/', event),
 ])
 
 hdlr = logging.StreamHandler()
