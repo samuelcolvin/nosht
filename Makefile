@@ -15,6 +15,7 @@ isort:
 lint:
 	flake8 py
 	pytest -p no:sugar -q --cache-clear --isort py --ignore=py/tests
+	./py/tests/check_debug.sh
 	cd js; yarn lint; cd ..
 
 .PHONY: test

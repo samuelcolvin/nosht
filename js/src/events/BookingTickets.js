@@ -145,10 +145,14 @@ const TicketForm = props => {
       ticket_types.find(tt => tt.id === props.state.ticket_type).price :
       ticket_types[0].price
   )
+  let total = state.ticket_count * ticket_price
+  if (ticket_price && state.ticket_0 && state.ticket_0.cover_costs) {
+    total = total * (1 + props.event.cover_costs_percentage / 100)
+  }
   const items = [
     {name: 'Tickets', value: state.ticket_count},
     {name: 'Ticket Price', value: <MoneyFree>{ticket_price}</MoneyFree>},
-    {name: 'Total Price', value: <MoneyFree>{state.ticket_count * ticket_price}</MoneyFree>},
+    {name: 'Total Price', value: <MoneyFree>{total}</MoneyFree>},
   ]
 
   return (
@@ -216,6 +220,12 @@ const TicketForm = props => {
               <Input value={state.ticket_0 && state.ticket_0.allow_marketing}
                      field={{name: 'allow_marketing', title: props.event.allow_marketing_message, type: 'bool'}}
                      set_value={v => props.set_ticket_state('ticket_0', 'allow_marketing', v)}/>
+            }
+
+            {ticket_price && props.event.cover_costs_message && props.event.cover_costs_percentage !== null &&
+              <Input value={state.ticket_0 && state.ticket_0.cover_costs}
+                     field={{name: 'cover_costs', title: props.event.cover_costs_message, type: 'bool'}}
+                     set_value={v => props.set_ticket_state('ticket_0', 'cover_costs', v)}/>
             }
           </Col>
         </Row>

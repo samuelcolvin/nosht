@@ -54,6 +54,8 @@ FROM (
          c.ticket_extra_title,
          c.ticket_extra_help_text,
          c.booking_trust_message,
+         c.cover_costs_message,
+         c.cover_costs_percentage,
          c.terms_and_conditions_message,
          c.allow_marketing_message
   FROM events AS e
@@ -269,14 +271,16 @@ async def _check_event_host(request):
 
 
 event_tickets_sql = """
-SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price, t.extra_info,
+SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price, t.extra_donated::float AS extra_donated, t.extra_info,
   t.user_id AS guest_user_id, full_name(t.first_name, t.last_name) AS guest_name, ug.email AS guest_email,
-  tb.user_id as buyer_user_id, full_name(tb.first_name, tb.last_name) AS buyer_name, ub.email AS buyer_email,
+  a.user_id as buyer_user_id,
+  coalesce(full_name(tb.first_name, tb.last_name), full_name(ub.first_name, ub.last_name)) AS buyer_name,
+  ub.email AS buyer_email,
   tt.name AS ticket_type_name, tt.id AS ticket_type_id
 FROM tickets AS t
 LEFT JOIN users AS ug ON t.user_id = ug.id
 JOIN actions AS a ON t.booked_action = a.id
-JOIN tickets AS tb ON (a.user_id = tb.user_id AND a.id = tb.booked_action)
+LEFT JOIN tickets AS tb ON (a.user_id = tb.user_id AND a.id = tb.booked_action)
 JOIN users AS ub ON a.user_id = ub.id
 JOIN ticket_types AS tt ON t.ticket_type = tt.id
 WHERE t.event=$1 AND t.status='booked'
@@ -554,6 +558,7 @@ class TicketModel(BaseModel):
     email: EmailStr = None
     extra_info: str = None
     allow_marketing: bool = None
+    cover_costs: bool = False
 
 
 class ReserveTickets(UpdateView):
@@ -575,9 +580,9 @@ class ReserveTickets(UpdateView):
         ticket_count = len(m.tickets)
         user_id = self.session['user_id']
 
-        status, event_name = await self.conn.fetchrow(
+        status, event_name, cover_costs_percentage = await self.conn.fetchrow(
             """
-            SELECT e.status, e.name
+            SELECT e.status, e.name, c.cover_costs_percentage
             FROM events AS e
             JOIN categories c on e.category = c.id
             WHERE c.company=$1 AND e.id=$2
@@ -592,7 +597,7 @@ class ReserveTickets(UpdateView):
                                      event_id, m.ticket_type)
         if not r:
             raise JsonErrors.HTTPBadRequest(message='Ticket type not found')
-        price, *_ = r
+        item_price, *_ = r
 
         if self.settings.ticket_reservation_precheck:  # should only be false during CheckViolationError tests
             tickets_remaining = await self.conn.fetchval(
@@ -601,6 +606,13 @@ class ReserveTickets(UpdateView):
             if tickets_remaining is not None and ticket_count > tickets_remaining:
                 raise JsonErrors.HTTP470(message=f'only {tickets_remaining} tickets remaining',
                                          tickets_remaining=tickets_remaining)
+
+        total_price, item_extra_donated = None, None
+        if item_price:
+            total_price = item_price * ticket_count
+            if cover_costs_percentage and m.tickets[0].cover_costs:
+                item_extra_donated = item_price * cover_costs_percentage / 100
+                total_price += item_extra_donated * ticket_count
 
         try:
             async with self.conn.transaction():
@@ -621,29 +633,31 @@ class ReserveTickets(UpdateView):
                 await self.conn.execute_b(
                     """
                     WITH v (email, first_name, last_name, extra_info) AS (VALUES :values)
-                    INSERT INTO tickets (event, reserve_action, ticket_type, price, user_id,
+                    INSERT INTO tickets (event, reserve_action, ticket_type, price, extra_donated, user_id,
                       first_name, last_name, extra_info)
-                    SELECT :event, :reserve_action, :ticket_type, :price, u.id,
+                    SELECT :event, :reserve_action, :ticket_type, :price, :extra_donated, u.id,
                       v.first_name, v.last_name, v.extra_info FROM v
                     LEFT JOIN users AS u ON v.email=u.email AND u.company=:company_id
                     """,
                     event=event_id,
                     reserve_action=action_id,
                     ticket_type=m.ticket_type,
-                    price=price,
+                    price=item_price,
+                    extra_donated=item_extra_donated,
                     company_id=self.request['company_id'],
                     values=MultipleValues(*ticket_values),
                 )
                 await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
-        except CheckViolationError as e:
-            logger.warning('CheckViolationError: %s', e)
+        except CheckViolationError as exc:
+            if exc.constraint_name != 'ticket_limit_check':  # pragma: no branch
+                raise  # pragma: no cover
+            logger.warning('CheckViolationError: %s', exc)
             raise JsonErrors.HTTPBadRequest(message='insufficient tickets remaining')
 
-        price_cent = price and int(price * ticket_count * 100)
         res = Reservation(
             user_id=user_id,
             action_id=action_id,
-            price_cent=price_cent,
+            price_cent=total_price and int(total_price * 100),
             event_id=event_id,
             ticket_count=ticket_count,
             event_name=event_name,
@@ -651,8 +665,9 @@ class ReserveTickets(UpdateView):
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
             'ticket_count': ticket_count,
-            'item_price_cent': price and int(price * 100),
-            'total_price_cent': price_cent,
+            'item_price': item_price and float(item_price),
+            'extra_donated': item_extra_donated and float(item_extra_donated * ticket_count),
+            'total_price': total_price and float(total_price),
             'timeout': int(time()) + self.settings.ticket_ttl,
         }
 

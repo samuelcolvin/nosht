@@ -15,6 +15,8 @@ const CAT_FIELDS = [
   {name: 'event_content', type: 'md'},
   {name: 'host_advice', type: 'md'},
   {name: 'booking_trust_message'},
+  {name: 'cover_costs_message'},
+  {name: 'cover_costs_percentage', type: 'number', step: 0.01, min: 0.01, max: 100},
   {name: 'terms_and_conditions_message'},
   {name: 'allow_marketing_message'},
   {name: 'ticket_extra_title'},
@@ -85,17 +87,21 @@ export class CategoriesDetails extends RenderDetails {
       }
     ]
     this.formats = {
-      image: {
-        wide: true,
-        render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
-      },
       suggested_images: null,
       suggested_price: {
         render: v => v ? <Money>{v}</Money> : <Dash/>
       },
-      event_content: {wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
-      host_advice: {wide: true, render: (v, item) => <MarkdownPreview v={v}/>},
-      terms_and_conditions_message: {title: 'T&C Message'}
+      terms_and_conditions_message: {title: 'T&C Message'},
+      cover_costs_message: {index: 1},
+      cover_costs_percentage: {index: 2},
+      description: {wide: true, index: 3},
+      event_content: {wide: true, index: 4, render: (v, item) => <MarkdownPreview v={v}/>},
+      host_advice: {wide: true, index: 5, render: (v, item) => <MarkdownPreview v={v}/>},
+      image: {
+        wide: true,
+        index: 6,
+        render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
+      },
     }
   }
 

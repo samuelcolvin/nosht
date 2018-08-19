@@ -55,6 +55,8 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'ticket_extra_title': None,
             'allow_marketing_message': None,
             'booking_trust_message': None,
+            'cover_costs_message': None,
+            'cover_costs_percentage': None,
             'terms_and_conditions_message': None,
         },
     }
@@ -442,8 +444,9 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     assert data == {
         'booking_token': RegexStr('.+'),
         'ticket_count': 2,
-        'item_price_cent': 10_00,
-        'total_price_cent': 20_00,
+        'extra_donated': None,
+        'item_price': 10.0,
+        'total_price': 20.0,
         'timeout': AnyInt(),
     }
     booking_token = decrypt_json(cli.app['main_app'], data['booking_token'].encode())
@@ -535,8 +538,9 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
     assert data == {
         'booking_token': RegexStr('.+'),
         'ticket_count': 2,
-        'item_price_cent': 10_00,
-        'total_price_cent': 20_00,
+        'extra_donated': None,
+        'item_price': 10.0,
+        'total_price': 20.0,
         'timeout': AnyInt(),
     }
 
@@ -579,6 +583,112 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
             'extra_info': None,
         },
     ]
+
+
+async def test_reserve_tickets_cover_costs(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=12.5)
+    await factory.create_user(first_name=None, last_name=None, email='ticket.buyer@example.org')
+    await factory.create_event(status='published', price=10)
+    await login(email='ticket.buyer@example.org')
+
+    data = {
+        'tickets': [
+            {
+                't': True,
+                'first_name': 'Ticket',
+                'last_name': 'Buyer',
+                'email': 'ticket.buyer@example.org',
+                'cover_costs': True,
+            },
+            {
+                't': True,
+            },
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'booking_token': RegexStr('.+'),
+        'ticket_count': 2,
+        'extra_donated': 2.5,
+        'item_price': 10.0,
+        'total_price': 22.50,
+        'timeout': AnyInt(),
+    }
+    assert decrypt_json(cli.app['main_app'], data['booking_token'].encode()) == {
+        'user_id': factory.user_id,
+        'action_id': AnyInt(),
+        'event_id': factory.event_id,
+        'price_cent': 22_50,
+        'ticket_count': 2,
+        'event_name': 'The Event Name',
+    }
+
+
+async def test_reserve_tickets_free(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+    await login()
+
+    data = {
+        'tickets': [
+            {
+                't': True,
+                'first_name': 'Ticket',
+                'last_name': 'Buyer',
+                'email': 'ticket.buyer@example.org',
+            },
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'booking_token': RegexStr('.+'),
+        'ticket_count': 1,
+        'extra_donated': None,
+        'item_price': None,
+        'total_price': None,
+        'timeout': AnyInt(),
+    }
+    assert decrypt_json(cli.app['main_app'], data['booking_token'].encode()) == {
+        'user_id': factory.user_id,
+        'action_id': AnyInt(),
+        'event_id': factory.event_id,
+        'price_cent': None,
+        'ticket_count': 1,
+        'event_name': 'The Event Name',
+    }
+
+
+async def test_reserve_tickets_wrong_type(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+    await login()
+
+    data = {
+        'tickets': [
+            {
+                't': True,
+                'first_name': 'Ticket',
+                'last_name': 'Buyer',
+                'email': 'ticket.buyer@example.org',
+            },
+        ],
+        'ticket_type': 999,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Ticket type not found'}
 
 
 async def test_reserve_0_tickets(cli, url, factory: Factory, login):
@@ -657,7 +767,6 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
-    # debug(data)
     ticket_id = await db_conn.fetchval('SELECT id from tickets')
     assert data == {
         'tickets': [
@@ -667,10 +776,11 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
                 'extra_info': None,
                 'booked_at': CloseToNow(),
                 'price': 10,
+                'extra_donated': None,
                 'guest_user_id': user2_id,
                 'guest_name': None,
                 'buyer_user_id': user2_id,
-                'buyer_name': None,
+                'buyer_name': 'guest guest',
                 'ticket_type_name': 'Standard',
                 'ticket_type_id': await db_conn.fetchval('SELECT id from ticket_types'),
             },
@@ -687,8 +797,10 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     anne = await factory.create_user(first_name='x', email='anne@example.org')
     ben = await factory.create_user(first_name='x', email='ben@example.org')
     await factory.book_free(await factory.create_reservation(anne, ben), anne)
-    await db_conn.execute("UPDATE tickets SET first_name='anne', last_name='apple' WHERE user_id=$1", anne)
-    await db_conn.execute("UPDATE tickets SET first_name='ben', last_name='banana' WHERE user_id=$1", ben)
+    await db_conn.execute(
+        "UPDATE tickets SET first_name='anne', last_name='apple', extra_donated=1.23 WHERE user_id=$1", anne)
+    await db_conn.execute(
+        "UPDATE tickets SET first_name='ben', last_name='banana', extra_donated=1.23 WHERE user_id=$1", ben)
 
     await login()
 
@@ -705,6 +817,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'extra_info': None,
             'booked_at': CloseToNow(),
             'price': None,
+            'extra_donated': 1.23,
             'guest_user_id': anne,
             'guest_name': 'anne apple',
             'guest_email': 'anne@example.org',
@@ -720,6 +833,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'extra_info': None,
             'booked_at': CloseToNow(),
             'price': None,
+            'extra_donated': 1.23,
             'guest_user_id': ben,
             'guest_name': 'ben banana',
             'guest_email': 'ben@example.org',

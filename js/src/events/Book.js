@@ -58,6 +58,7 @@ class BookWrapper extends React.Component {
         last_name: t.last_name || null,
         email: t.email || null,
         extra_info: t.extra_info || null,
+        cover_costs: t.cover_costs || null,
       }))
 
     tickets[0].first_name = tickets[0].first_name || this.props.ctx.user.first_name

@@ -58,7 +58,7 @@ const Progress = WithContext(({event, tickets, ticket_types, ctx}) => {
       <div>
         <div className="text-center mb-1">
           <span className="very-large">
-            <Money>{tickets && tickets.reduce((sum, t) => sum + t.price, 0)}</Money>
+            <Money>{tickets && tickets.reduce((sum, t) => sum + t.price + t.extra_donated, 0)}</Money>
           </span>
           &nbsp;collected so far
         </div>
@@ -164,6 +164,7 @@ class Tickets_ extends React.Component {
           </Detail>
           <Detail name="Bought At">{format_datetime(s.bought_at)}</Detail>
           <Detail name="Price"><MoneyFree>{s.price}</MoneyFree></Detail>
+          <Detail name="Extra Donated"><Money>{s.extra_donated}</Money></Detail>
           <Detail name="Ticket Type">{s.ticket_type_name}</Detail>
           <Detail name="Extra Info">{s.extra_info}</Detail>
         </InfoModal>

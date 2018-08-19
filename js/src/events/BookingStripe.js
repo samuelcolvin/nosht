@@ -14,7 +14,7 @@ import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {load_script, grecaptcha_execute, window_property} from '../utils'
 import {ModalFooter} from '../general/Modal'
-import {MoneyFree} from '../general/Money'
+import {Money, MoneyFree} from '../general/Money'
 import Markdown from '../general/Markdown'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
@@ -29,7 +29,7 @@ const stripe_styles = {
 
 export const PricingList = ({items, className}) => (
   <div className={className}>
-    {items.map((item, i) => (
+    {items.filter(item => item).map((item, i) => (
       <div key={i} className={`d-flex justify-content-between ${item.className || ''}`}>
         <div>{item.name}:</div>
         <div className="font-weight-bold">{item.value}</div>
@@ -72,7 +72,6 @@ class StripeForm_ extends React.Component {
       terms_and_conditions: false,
     }
     this.update_timer = this.update_timer.bind(this)
-    this.as_price = p => <MoneyFree>{p && p/100}</MoneyFree>
     this.render_form = this.render_form.bind(this)
     this.take_payment = this.take_payment.bind(this)
     this.book_free = this.book_free.bind(this)
@@ -112,7 +111,7 @@ class StripeForm_ extends React.Component {
   submit (e) {
     e.preventDefault()
     this.setState({submitting: true})
-    if (this.props.reservation.item_price_cent) {
+    if (this.props.reservation.total_price) {
       this.take_payment()
     } else {
       this.book_free()
@@ -198,7 +197,7 @@ class StripeForm_ extends React.Component {
     }
     if (expired) {
       return <h4 className="has-error">Rervation expired</h4>
-    } else if (!this.props.reservation.item_price_cent) {
+    } else if (!this.props.reservation.total_price) {
       return tncs_field && <div style={{height: 40}}>{this.state.submitted ? null : tncs_field}</div>
     } else if (this.state.submitted) {
       return (
@@ -263,8 +262,9 @@ class StripeForm_ extends React.Component {
         className: this.state.time_left < 3 ? 'mb-4 has-error h4' : 'mb-4'
       },
       {name: 'Tickets', value: res.ticket_count},
-      {name: 'Ticket Price', value: this.as_price(res.item_price_cent)},
-      {name: 'Total Price', value: this.as_price(res.total_price_cent)},
+      {name: 'Ticket Price', value: <MoneyFree>{res.item_price}</MoneyFree>},
+      res.item_price && {name: 'Extra donated to cover Costs', value: <Money>{res.extra_donated}</Money>},
+      {name: 'Total Price', value: <MoneyFree>{res.total_price}</MoneyFree>},
     ]
     const expired = this.state.time_left < 1
     if (expired) {
@@ -274,7 +274,7 @@ class StripeForm_ extends React.Component {
       (!this.state.terms_and_conditions && this.props.event.terms_and_conditions_message) ||
       expired ||
       this.state.submitting ||
-      (res.item_price_cent && !this.state.card_complete)
+      (res.total_price && !this.state.card_complete)
     )
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
@@ -290,7 +290,7 @@ class StripeForm_ extends React.Component {
           </Row>
         </ModalBody>
         <ModalFooter finished={this.props.finished}
-                     label={res.item_price_cent ? 'Buy Now' : 'Confirm'}
+                     label={res.total_price ? 'Buy Now' : 'Confirm'}
                      disabled={confirm_disabled}/>
       </BootstrapForm>
     )
