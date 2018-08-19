@@ -23,6 +23,10 @@ test:
 	mkdir -p js/build
 	pytest py/tests --cov=py --cov-config py/setup.cfg --isort py/tests
 
+.PHONY: testjs
+testjs:
+	cd js; CI=1 yarn test --coverage; cd ..
+
 .PHONY: testcov
 testcov: test
 	coverage html --rcfile=py/setup.cfg
