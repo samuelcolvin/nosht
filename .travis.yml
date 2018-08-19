@@ -23,6 +23,8 @@ install:
 script:
 - make lint
 # send to codecov if make test passes regardless of other fails, also without waiting for build
-- REAL_STRIPE_TESTS=1 make test && bash <(curl -s https://codecov.io/bash)
+- REAL_STRIPE_TESTS=1 make test
+- make testjs
+- bash <(curl -s https://codecov.io/bash)
 - make build
 - ls -lha
