@@ -17,6 +17,7 @@ from aioredis import create_redis
 from buildpg import MultipleValues, Values, asyncpg
 from PIL import Image, ImageDraw
 
+from shared.actions import ActionTypes
 from shared.db import SimplePgPool
 from shared.db import create_demo_data as _create_demo_data
 from shared.db import prepare_database
@@ -242,7 +243,7 @@ class Factory:
             values=Values(
                 company=self.company_id,
                 user_id=user_id,
-                type='reserve-tickets'
+                type=ActionTypes.reserve_tickets
             )
         )
         price = await self.conn.fetchval('SELECT price FROM ticket_types WHERE id=$1', self.ticket_type_id)

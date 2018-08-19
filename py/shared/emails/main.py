@@ -33,21 +33,26 @@ class EmailActor(BaseEmailActor):
                   cat.name as cat_name, cat.slug AS cat_slug,
                   cat.ticket_extra_title as ticket_extra_title,
                   e.location_name, e.location_lat, e.location_lng,
-                  e.start_ts, e.duration, tt.price, cat.company, co.currency, a.extra
+                  e.start_ts, e.duration, cat.company, co.currency, a.extra
                 FROM actions AS a
-                JOIN tickets AS t ON (a.id = t.booked_action AND a.user_id = t.user_id)
                 JOIN users AS ub ON a.user_id = ub.id
-                JOIN ticket_types AS tt ON t.ticket_type = tt.id
-                JOIN events AS e ON t.event = e.id
+                JOIN events AS e ON a.event = e.id
                 JOIN users AS uh ON e.host = uh.id
                 JOIN categories AS cat ON e.category = cat.id
                 JOIN companies co on cat.company = co.id
                 WHERE a.id = $1
-                LIMIT 1
                 """,
                 booked_action_id
             )
-
+            price = await conn.fetchval(
+                """
+                SELECT tt.price
+                FROM tickets AS t
+                JOIN ticket_types AS tt ON t.ticket_type = tt.id
+                WHERE t.booked_action = $1
+                """,
+                booked_action_id
+            )
             duration: Optional[timedelta] = data['duration']
             ctx = {
                 'event_link': data['event_link'],
@@ -56,7 +61,7 @@ class EmailActor(BaseEmailActor):
                 'event_start': data['start_ts'] if duration else data['start_ts'].date(),
                 'event_duration': duration or 'All day',
                 'event_location': data['location_name'],
-                'ticket_price': display_cash_free(data['price'], data['currency']),
+                'ticket_price': display_cash_free(price, data['currency']),
                 'buyer_name': data['buyer_name'],
                 'host_name': data['host_name'],
                 'ticket_extra_title': data['ticket_extra_title'] or 'Extra Information',
@@ -75,7 +80,7 @@ class EmailActor(BaseEmailActor):
                 **ctx,
                 'ticket_count': ticket_count,
                 'ticket_count_plural': ticket_count > 1,
-                'total_price': display_cash_free(data['price'] and data['price'] * ticket_count, data['currency']),
+                'total_price': display_cash_free(price and price * ticket_count, data['currency']),
             }
             if data['extra']:
                 action_extra = json.loads(data['extra'])
@@ -102,7 +107,8 @@ class EmailActor(BaseEmailActor):
                         UserEmail(user_id, ctx_other, ticket_id)
                     )
 
-        await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails)
+        if buyer_emails:
+            await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails)
         if other_emails:
             await self.send_emails.direct(data['company'], Triggers.ticket_other, other_emails)
         return len(other_emails) + 1

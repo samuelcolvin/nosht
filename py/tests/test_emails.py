@@ -192,6 +192,51 @@ async def test_send_ticket_other(email_actor: EmailActor, factory: Factory, dumm
     ) in ben_email['part:text/plain']
 
 
+async def test_send_ticket_not_buyer(email_actor: EmailActor, factory: Factory, dummy_server, login, cli, url):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+
+    await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+    await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await factory.create_user(first_name='charlie', last_name='charlie', email='charlie@example.org')
+
+    await login('anne@example.org')
+
+    data = {
+        'tickets': [
+            {
+                't': True,
+                'first_name': 'benx',
+                'last_name': 'benx',
+                'email': 'ben@example.org',
+            },
+            {
+                't': True,
+                'email': 'charlie@example.org',
+            },
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    data = await r.json()
+
+    data = dict(booking_token=data['booking_token'], grecaptcha_token='__ok__')
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert len(dummy_server.app['emails']) == 2
+    # debug(dummy_server.app['emails'])
+    recipients = {e['To'] for e in dummy_server.app['emails']}
+    assert recipients == {'ben ben <ben@example.org>', 'charlie charlie <charlie@example.org>'}
+    assert all(
+        'Great news! anne anne has bought you a ticket for Supper Clubs' in e['part:text/html']
+        for e in dummy_server.app['emails']
+    )
+
+
 async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):
     await factory.create_company()
     await factory.create_user(email='testing@scolvin.com')

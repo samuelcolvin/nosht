@@ -65,7 +65,12 @@ async def book_free(m: BookingModel, company_id: int, user_id: Optional[int], ap
     async with conn.transaction():
         confirm_action_id = await conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-            values=Values(company=company_id, user_id=res.user_id, type=ActionTypes.book_free_tickets.value)
+            values=Values(
+                company=company_id,
+                user_id=res.user_id,
+                event=res.event_id,
+                type=ActionTypes.book_free_tickets,
+            )
         )
         await conn.execute(
             "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
@@ -135,7 +140,12 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
         # mark the tickets paid in DB, then create charge in stripe, then finish transaction
         booked_action_id = await conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-            values=Values(company=company_id, user_id=res.user_id, type=ActionTypes.buy_tickets.value)
+            values=Values(
+                company=company_id,
+                user_id=res.user_id,
+                type=ActionTypes.buy_tickets,
+                event=res.event_id,
+            )
         )
         await conn.execute(
             "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
