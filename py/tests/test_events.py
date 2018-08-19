@@ -767,7 +767,6 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
-    debug(data)
     ticket_id = await db_conn.fetchval('SELECT id from tickets')
     assert data == {
         'tickets': [
@@ -811,7 +810,6 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     assert len(data['tickets']) == 2
     tickets = sorted(data['tickets'], key=lambda t: t['guest_name'])
     tt_id = await db_conn.fetchval('SELECT id from ticket_types')
-    debug(tickets)
     assert tickets == [
         {
             'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='anne'"),
