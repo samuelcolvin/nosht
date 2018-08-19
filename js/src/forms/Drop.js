@@ -1,7 +1,7 @@
 import React from 'react'
 import {Button, Progress} from 'reactstrap'
 import Dropzone from 'react-dropzone'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {error_response} from '../utils/requests'
 import AsModal from '../general/Modal'
 

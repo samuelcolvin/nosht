@@ -2,7 +2,8 @@ const make_url = path => {
   if (path.match(/^https?:\//)) {
     return path
   } else {
-    return window.location.origin + path.replace(/^(\/)?/, '/api/')
+    const origin = process.env.REACT_APP_REQUEST_ORIGIN || window.location.origin
+    return origin + path.replace(/^(\/)?/, '/api/')
   }
 }
 

@@ -1,6 +1,6 @@
 import React from 'react'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {Link} from 'react-router-dom'
 import requests from '../utils/requests'
 import WithContext from '../utils/context'

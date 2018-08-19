@@ -1,6 +1,10 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 import Raven from 'raven-js'
+import {library as FaLibrary} from '@fortawesome/fontawesome-svg-core'
+import {far} from '@fortawesome/free-regular-svg-icons'
+import {fas} from '@fortawesome/free-solid-svg-icons'
+import {fab} from '@fortawesome/free-brands-svg-icons'
 
 import {GlobalContext} from './utils/context'
 import requests from './utils/requests'
@@ -20,6 +24,7 @@ import CreateEvent from './events/Create'
 import {UnsubscribeValid, UnsubscribeInvalid} from './Unsubscribe'
 import Dashboard from './Dashboard'
 
+FaLibrary.add(far, fas, fab)
 
 const Routes = () => (
     <Switch>
@@ -142,9 +147,14 @@ class App extends React.Component {
                 user={this.state.user}
                 active_page={this.state.active_page}/>
         <main className="container">
-          {this.state.error ? <Error error={this.state.error} location={this.props.location}/>
-            : this.state.company ? <Routes/>
-              : <Loading/>}
+          {this.state.error ?
+            <Error error={this.state.error} location={this.props.location}/>
+            :
+            this.state.company ?
+              <Routes/>
+              :
+              <Loading/>
+          }
         </main>
         <Footer user={this.state.user}/>
       </GlobalContext.Provider>

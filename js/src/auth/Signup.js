@@ -7,7 +7,7 @@ import {
   FormFeedback,
   Row,
 } from 'reactstrap'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {grecaptcha_execute, user_full_name} from '../utils'

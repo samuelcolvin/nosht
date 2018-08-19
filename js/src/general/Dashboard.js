@@ -1,6 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import FontAwesomeIcon from '@fortawesome/react-fontawesome'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {ButtonGroup, Button} from 'reactstrap'
 import requests from '../utils/requests'
 import {as_title} from '../utils'
