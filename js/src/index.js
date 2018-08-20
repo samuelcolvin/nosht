@@ -14,7 +14,5 @@ if (process.env.NODE_ENV === 'production') {
     }
   ).install()
 }
-ReactGA.initialize(process.env.REACT_APP_GA_TRACKING_ID, {
-  titleCase: false,
-})
+ReactGA.initialize(process.env.REACT_APP_GA_TRACKING_ID || 'UA-000000-01', {titleCase: false})
 ReactDOM.render(<Router><App/></Router>, document.getElementById('root'))
