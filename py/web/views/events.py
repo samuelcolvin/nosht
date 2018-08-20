@@ -243,7 +243,7 @@ class EventBread(Bread):
 
     async def edit_execute(self, pk, **data):
         try:
-            return await super().edit_execute(pk, **data)
+            await super().edit_execute(pk, **data)
         except CheckViolationError as exc:
             if exc.constraint_name != 'ticket_limit_check':  # pragma: no branch
                 raise  # pragma: no cover
@@ -257,6 +257,9 @@ class EventBread(Bread):
                     }
                 ]
             )
+        else:
+            await record_action(self.request, self.request['session']['user_id'], ActionTypes.edit_event,
+                                event_id=pk, subtype='edit-event')
 
 
 async def _check_event_host(request):
@@ -443,6 +446,8 @@ class SetTicketTypes(UpdateView):
                     """,
                     values=MultipleValues(*(Values(event=event_id, **tt.dict(exclude={'id'})) for tt in new))
                 )
+            await record_action(self.request, self.request['session']['user_id'], ActionTypes.edit_event,
+                                event_id=event_id, subtype='edit-ticket-types')
 
 
 GET_IMAGE_SQL = """
@@ -468,6 +473,8 @@ async def _delete_existing_image(request):
     # delete the image from S3 if it's set and isn't a category image option
     if image and '/option/' not in image:
         await delete_image(image, request.app['settings'])
+    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
+                        event_id=event_id, subtype='delete-image')
 
 
 SLUGS_SQL = """
@@ -492,6 +499,8 @@ async def set_event_image_new(request):
 
     image_url = await resize_upload(content, upload_path, request.app['settings'])
     await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', image_url, event_id)
+    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
+                        event_id=event_id, subtype='set-image-new')
     return json_response(status='success')
 
 
@@ -503,7 +512,10 @@ async def set_event_image_existing(request):
 
     await _delete_existing_image(request)
 
-    await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', m.image, int(request.match_info['id']))
+    event_id = int(request.match_info['id'])
+    await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', m.image, event_id)
+    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
+                        event_id=event_id, subtype='set-image-existing')
     return json_response(status='success')
 
 
@@ -525,11 +537,14 @@ class SetEventStatus(UpdateView):
             raise JsonErrors.HTTPForbidden(message='Host not active')
 
     async def execute(self, m: Model):
+        event_id = int(self.request.match_info['id'])
         await self.conn.execute_b(
             'UPDATE events SET status=:status WHERE id=:id',
             status=m.status.value,
-            id=int(self.request.match_info['id']),
+            id=event_id,
         )
+        await record_action(self.request, self.request['session']['user_id'], ActionTypes.edit_event,
+                            event_id=event_id, subtype='change-status')
 
 
 @is_auth
@@ -756,4 +771,6 @@ class EventUpdate(UpdateView):
 async def switch_highlight(request):
     event_id = await _check_event_host(request)
     await request['conn'].execute('UPDATE events SET highlight=NOT highlight WHERE id=$1', event_id)
+    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
+                        event_id=event_id, subtype='switch-highlight')
     return json_response(status='ok')

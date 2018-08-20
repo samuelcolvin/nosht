@@ -1,4 +1,9 @@
+from datetime import datetime
+
+from buildpg import Values
 from pytest_toolbox.comparison import RegexStr
+
+from shared.actions import ActionTypes
 
 from .conftest import Factory
 
@@ -42,3 +47,80 @@ async def test_root(cli, url, factory: Factory):
         },
         'user': None,
     }
+
+
+async def test_sitemap(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+
+    await db_conn.execute_b(
+        'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+        values=Values(
+            company=factory.company_id,
+            user_id=factory.user_id,
+            type=ActionTypes.edit_event,
+            event=factory.event_id,
+            ts=datetime(2032, 6, 1)
+        )
+    )
+
+    e2 = await factory.create_event(name='second event', status='published', highlight=True)
+
+    await db_conn.execute_b(
+        'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+        values=Values(
+            company=factory.company_id,
+            user_id=factory.user_id,
+            type=ActionTypes.create_event,
+            event=e2,
+            ts=datetime(2031, 1, 1)
+        )
+    )
+
+    r = await cli.get(url('sitemap'))
+    text = await r.text()
+    assert r.status == 200, text
+    assert text.startswith(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    )
+    assert text.endswith(
+        '</url>\n</urlset>\n'
+    )
+    lines = sorted(text.strip('\n').split('\n'))
+    # debug(text, lines)
+    assert lines == [
+        '</urlset>',
+        '<?xml version="1.0" encoding="UTF-8"?>',
+
+        '<url>'
+        '<loc>https://127.0.0.1/</loc>'
+        '<lastmod>2032-06-01</lastmod>'
+        '<changefreq>daily</changefreq>'
+        '<priority>1.0</priority>'
+        '</url>',
+
+        '<url>'
+        '<loc>https://127.0.0.1/supper-clubs/</loc>'
+        '<lastmod>2032-06-01</lastmod>'
+        '<changefreq>daily</changefreq>'
+        '<priority>0.9</priority>'
+        '</url>',
+
+        '<url>'
+        '<loc>https://127.0.0.1/supper-clubs/second-event/</loc>'
+        '<lastmod>2031-01-01</lastmod>'
+        '<changefreq>daily</changefreq>'
+        '<priority>0.7</priority>'
+        '</url>',
+
+        '<url><loc>https://127.0.0.1/supper-clubs/the-event-name/</loc>'
+        '<lastmod>2032-06-01</lastmod>'
+        '<changefreq>daily</changefreq>'
+        '<priority>0.5</priority>'
+        '</url>',
+
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]

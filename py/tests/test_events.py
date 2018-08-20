@@ -279,6 +279,10 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
     assert ticket_limit == 12
     assert location_lat == 50
 
+    action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='edit-event'")
+    assert action['user_id'] == factory.user_id
+    assert action['event'] == factory.event_id
+
 
 async def test_edit_event_ticket_limit(cli, url, factory: Factory, login):
     await factory.create_company()

@@ -234,6 +234,16 @@ class Factory:
             )
         )
         self.ticket_type_id = self.ticket_type_id or ticket_type_id
+
+        await self.conn.execute_b(
+            'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+            values=Values(
+                company=self.company_id,
+                user_id=host_user_id or self.user_id,
+                type=ActionTypes.create_event,
+                event=event_id,
+            )
+        )
         return event_id
 
     async def create_reservation(self, user_id=None, *extra_user_ids, event_id=None):

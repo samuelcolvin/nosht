@@ -16,7 +16,7 @@ from shared.settings import Settings
 from shared.utils import mk_password
 
 from .middleware import csrf_middleware, error_middleware, pg_middleware, user_middleware
-from .views import index
+from .views import index, sitemap
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout,
                          reset_password_request, set_password, unsubscribe)
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
@@ -82,6 +82,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
 
     app.add_routes([
         web.get('/', index, name='index'),
+        web.get('/sitemap.xml', sitemap, name='sitemap'),
 
         web.get('/cat/{category}/', category_public, name='category'),
 
