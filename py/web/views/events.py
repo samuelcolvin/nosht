@@ -187,7 +187,7 @@ class EventBread(Bread):
     def select(self) -> Select:
         if self.method == Method.retrieve:
             event_link = Func('event_link', V('cat.slug'), V('e.slug'), V('e.public'),
-                              funcs.cast(self.settings.auth_key, 'VARCHAR')).as_('link')
+                              funcs.cast(self.settings.auth_key, 'TEXT')).as_('link')
             return Select(self.retrieve_fields + (event_link,))
         return super().select()
 
