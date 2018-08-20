@@ -158,7 +158,7 @@ async def user_middleware(request, handler):
     host = remove_port(request.host)
     if user_id:
         company_id = await conn.fetchval(USER_COMPANY_SQL, host, user_id)
-        msg = 'company not found for this host and user'
+        msg = 'company not found for this host and user, clear your cookies and reload the page'
     else:
         company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', host)
         msg = 'no company found for this host'

@@ -25,7 +25,6 @@ class Category extends React.Component {
     this.props.ctx.setRootState({
       page_title: cat.name,
       background: cat.image,
-      extra_menu: null,
       active_page: this.props.match.params.category,
     })
     try {

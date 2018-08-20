@@ -42,7 +42,6 @@ class Event extends React.Component {
     this.props.ctx.setRootState({
       page_title: event.name,
       background: event.image,
-      extra_menu: [{name: 'Book Now', to: this.uri + 'book/'}],
     })
     this.setState({event, ticket_types})
   }
