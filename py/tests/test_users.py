@@ -3,6 +3,7 @@ from buildpg import MultipleValues, Values
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
 from shared.utils import mk_password
+
 from .conftest import Factory
 
 

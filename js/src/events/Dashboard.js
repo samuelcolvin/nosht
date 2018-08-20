@@ -287,7 +287,7 @@ export class EventsDetails extends RenderDetails {
               {render(v)}
               <ButtonConfirm action={`/events/${this.id}/switch-highlight/`}
                              modal_title="Switch Status"
-                             btn_text={v ? 'Mark as not highlight' : 'Mark as highlight'}
+                             btn_text={v ? 'Mark as not highlighted' : 'Mark as highlight'}
                              done={this.update}
                              btn_size="sm"
                              className="ml-2">

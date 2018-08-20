@@ -32,7 +32,7 @@ const TicketType = ({index, ticket_type, update_ticket, active_count}) => {
     title: 'Group Size',
     type: 'integer',
     required: true,
-    help_text: 'Number of tickets associated with this type of ticket.',
+    help_text: 'Number of people associated with this type of ticket.',
   }
   const active_field = {
     name: `type_${index}_active`,
