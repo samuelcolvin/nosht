@@ -23,9 +23,9 @@ from .views.categories import (CategoryBread, category_add_image, category_defau
                                category_images, category_public)
 from .views.company import CompanyBread, company_upload
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
-from .views.events import (BookFreeTickets, BuyTickets, CancelReservedTickets, EventBread, EventUpdate, ReserveTickets,
-                           SetEventStatus, SetTicketTypes, booking_info, event_categories, event_public,
-                           event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
+from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
+from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories,
+                           event_public, event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
                            set_event_image_existing, set_event_image_new, switch_highlight)
 from .views.export import export
 from .views.static import static_handler
