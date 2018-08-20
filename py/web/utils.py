@@ -210,9 +210,15 @@ def clean_markdown(md):
 
 
 def get_offset(request, paginate_by=100):
-    try:
-        p = int(request.query.get('page'))
-    except (ValueError, TypeError):
+    page = request.query.get('page')
+    if not page:
         return 0
+
+    try:
+        p = int(page)
+        if p < 1:
+            raise ValueError()
+    except ValueError:
+        raise JsonErrors.HTTPBadRequest(message=f"invalid page '{page}'")
     else:
         return (p - 1) * paginate_by

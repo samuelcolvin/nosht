@@ -7,7 +7,7 @@ from time import time
 from typing import List, Optional
 
 from asyncpg import CheckViolationError
-from buildpg import MultipleValues, SetValues, V, Values, funcs
+from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, condecimal, conint, constr, validator
@@ -159,6 +159,8 @@ class EventBread(Bread):
         'e.location_lng',
         'e.short_description',
         'e.long_description',
+        'e.host',
+        Func('full_name', V('uh.first_name'), V('uh.last_name'), V('uh.email')).as_('host_name'),
     )
 
     async def check_permissions(self, method):
@@ -167,6 +169,7 @@ class EventBread(Bread):
     def join(self):
         return (
             Join(V('categories').as_('cat').on(V('cat.id') == V('e.category'))) +
+            Join(V('users').as_('uh').on(V('uh.id') == V('e.host'))) +
             Join(V('companies').as_('co').on(V('co.id') == V('cat.company')))
         )
 

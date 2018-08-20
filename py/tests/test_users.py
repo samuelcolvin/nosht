@@ -1,6 +1,8 @@
 import pytest
+from buildpg import MultipleValues, Values
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
+from shared.utils import mk_password
 from .conftest import Factory
 
 
@@ -24,6 +26,7 @@ async def test_user_list(cli, url, login, factory: Factory):
             },
         ],
         'count': 1,
+        'pages': 1,
     }
 
 
@@ -313,3 +316,46 @@ async def test_user_tickets_wrong_user(cli, url, login, factory: Factory):
 
     r = await cli.get(url('user-tickets', pk=user_id2))
     assert r.status == 403, await r.text()
+
+
+async def test_pagination(cli, url, login, factory: Factory, db_conn, settings):
+    await factory.create_company()
+
+    pw = mk_password('testing', settings)
+    await db_conn.execute_b(
+        'INSERT INTO users (:values__names) VALUES :values RETURNING id',
+        values=MultipleValues(*(
+            Values(
+                company=factory.company_id,
+                password_hash=pw,
+                email=f'user+{i + 1}@example.org',
+                role='admin',
+                status='active',
+            ) for i in range(120)
+        ))
+    )
+    await login('user+1@example.org')
+
+    r = await cli.get(url('user-browse'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['count'] == 120
+    assert data['pages'] == 3
+    assert len(data['items']) == 50
+    assert data['items'][0]['email'] == 'user+1@example.org'
+
+    r = await cli.get(url('user-browse', query={'page': '2'}))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['count'] == 120
+    assert data['pages'] == 3
+    assert len(data['items']) == 50
+    assert data['items'][0]['email'] == 'user+51@example.org'
+
+    r = await cli.get(url('user-browse', query={'page': '3'}))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['count'] == 120
+    assert data['pages'] == 3
+    assert len(data['items']) == 20
+    assert data['items'][0]['email'] == 'user+101@example.org'

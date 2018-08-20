@@ -21,7 +21,7 @@
     "@fortawesome/free-brands-svg-icons": "^5.1.0-11",
     "@fortawesome/free-regular-svg-icons": "^5.1.0-11",
     "@fortawesome/free-solid-svg-icons": "^5.1.0-11",
-    "@fortawesome/react-fontawesome": "^0.1.0-11",
+    "@fortawesome/react-fontawesome": "^0.1.2",
     "bootstrap": "^4.1.1",
     "date-fns": "^1.29.0",
     "draft-js": "^0.10.5",

@@ -87,6 +87,13 @@ export class RenderItem extends React.Component {
     this.update()
   }
 
+  componentDidUpdate (prevProps) {
+    const l = this.props.location
+    if (l.pathname + l.search !== prevProps.location.pathname + prevProps.location.search) {
+      this.update()
+    }
+  }
+
   async update () {
     let data = null
     const uri = this.get_uri()
@@ -131,8 +138,19 @@ export class RenderList extends RenderItem {
     this.state = {
       items: null,
       count: null,
+      pages: null,
       buttons: null,
     }
+    this.get_page = this.get_page.bind(this)
+  }
+
+  get_page () {
+    const m = this.props.location.search.match(/page=(\d+)/)
+    return m ? parseInt(m[1]) : 1
+  }
+
+  get_uri () {
+    return `/${this.props.page.name}/?page=${this.get_page()}`
   }
 
   get_link (item) {
@@ -152,9 +170,10 @@ export class RenderList extends RenderItem {
     }
     const keys = Object.keys(this.state.items[0])
     keys.includes('id') && keys.splice(keys.indexOf('id'), 1)
+    const current_page = this.get_page()
     return [
-      <Buttons key="1" buttons={this.state.buttons}/>,
-      <table key="2" className="table">
+      <Buttons key="b" buttons={this.state.buttons}/>,
+      <table key="t" className="table">
         <thead>
           <tr>
             {keys.map((key, i) => (
@@ -178,7 +197,18 @@ export class RenderList extends RenderItem {
           ))}
         </tbody>
       </table>,
-      <div key="3">
+      this.state.pages > 1 ? (
+        <nav key="p" aria-label="Page navigation example">
+          <ul className="pagination justify-content-center">
+            {[...Array(this.state.pages).keys()].map(i => i + 1).map(p => (
+              <li key={p} className={'page-item' + (p === current_page ? ' active' : '')}>
+                <Link className="page-link" to={`?page=${p}`}>{p}</Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null,
+      <div key="e">
         {this.extra()}
       </div>
     ]

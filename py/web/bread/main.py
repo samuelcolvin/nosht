@@ -20,16 +20,17 @@ To update:
 import re
 from enum import Enum
 from functools import update_wrapper, wraps
-from typing import Generator, List, Tuple, Type
+from typing import Generator, List, Optional, Tuple, Type
 
 from aiohttp import web
 from asyncpg import UniqueViolationError
 from buildpg import SetValues, Values, Var, funcs
 from buildpg.asyncpg import BuildPgConnection
-from buildpg.clauses import Clauses, From, Join, Limit, OrderBy, Select, Where
+from buildpg.clauses import Clause, Clauses, From, Join, Limit, OrderBy, Select, Where
 from pydantic import BaseModel
 
-from web.utils import JsonErrors, json_response, parse_request, parse_request_ignore_missing, raw_json_response
+from web.utils import (JsonErrors, get_offset, json_response, parse_request, parse_request_ignore_missing,
+                       raw_json_response)
 
 
 class Method(str, Enum):
@@ -143,6 +144,13 @@ def as_clauses(gen):
     return gen_wrapper
 
 
+class Offset(Clause):
+    base = 'OFFSET'
+
+    def __init__(self, offset_value):
+        super().__init__(offset_value)
+
+
 class ReadBread(BaseBread):
     """
     GET /?filter 200,403
@@ -158,7 +166,8 @@ class ReadBread(BaseBread):
     browse_sql = """
     SELECT json_build_object(
       'items', items,
-      'count', count_
+      'count', count_,
+      'pages', ceil(count_ / :pagination::float)
     )
     FROM (
       SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') as items FROM (
@@ -186,13 +195,19 @@ class ReadBread(BaseBread):
         f = f or [self.pk_ref()] + list(self.model.__fields__.keys())
         return Select(f)
 
-    def browse_order_by(self) -> OrderBy:
+    def browse_order_by(self) -> Optional[OrderBy]:
         if self.browse_order_by_fields:
             return OrderBy(*self.browse_order_by_fields)
 
-    def browse_limit(self) -> Limit:
+    def browse_limit(self) -> Optional[Limit]:
         if self.browse_limit_value:
             return Limit(Var(str(self.browse_limit_value)))
+
+    def browse_offset(self) -> Optional[Offset]:
+        if self.browse_limit_value:
+            offset = get_offset(self.request, paginate_by=self.browse_limit_value)
+            if offset:
+                return Offset(offset)
 
     @as_clauses
     async def browse_items_query(self):
@@ -202,6 +217,7 @@ class ReadBread(BaseBread):
         yield self.where()
         yield self.browse_order_by()
         yield self.browse_limit()
+        yield self.browse_offset()
 
     @as_clauses
     async def browse_count_query(self):
@@ -215,6 +231,7 @@ class ReadBread(BaseBread):
             self.browse_sql,
             items_query=await self.browse_items_query(),
             count_query=await self.browse_count_query(),
+            pagination=Var(str(self.browse_limit_value)),
             print_=self.print_queries,
         )
         return raw_json_response(json_str)
