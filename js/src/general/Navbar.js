@@ -11,42 +11,33 @@ import {
   NavLink,
 } from 'reactstrap'
 
-const SWITCH_MENU_HEIGHT = 400
 const BACK_TOP_DEFAULT = 56
 let BACK_TOP = BACK_TOP_DEFAULT
 
-const ExtraMenu = ({menu, message, show_extra}) => {
-  return (
-    <div className={'extra-menu fixed-top' + ((show_extra && menu) || message ? ' show' : '')}>
-      <div className="container">
-        <div>
-          {message &&
-            <span className="item">
-              {message.icon && <FontAwesomeIcon icon={message.icon} className="mr-2"/>}
-              <span>{message.message || message}</span>
-            </span>
-          }
-        </div>
-        <div className="right">
-          {(menu || []).map((item, i) => <Link className="item" key={i} to={item.to}>{item.name}</Link>)}
-        </div>
+const ExtraMenu = ({message}) => (
+  <div className={'extra-menu fixed-top' + (message ? ' show' : '')}>
+    <div className="container">
+      <div>
+        {message &&
+          <span className="item">
+            {message.icon && <FontAwesomeIcon icon={message.icon} className="mr-2"/>}
+            <span>{message.message || message}</span>
+          </span>
+        }
       </div>
     </div>
-  )
-}
+  </div>
+)
 
 export default class Navbar extends React.Component {
   constructor (props) {
     super(props)
 
     this.close = this.close.bind(this)
-    this.set_extra = this.set_extra.bind(this)
     this.state = {
       is_open: false,
-      show_extra: false,
     }
     let y_pos = window.scrollY
-    this.set_extra(y_pos)
 
     let busy = false
     this.on_desktop = window.innerWidth > 600
@@ -62,7 +53,6 @@ export default class Navbar extends React.Component {
             if (el) {
               el.style.top = BACK_TOP
             }
-            this.set_extra(y_pos)
             busy = false
           })
           busy = true
@@ -73,15 +63,6 @@ export default class Navbar extends React.Component {
 
   close () {
     this.state.is_open && this.setState({is_open: false})
-  }
-
-  set_extra (y_pos) {
-    if (y_pos > SWITCH_MENU_HEIGHT && !this.state.show_extra) {
-      this.setState({show_extra: true})
-    }
-    if (y_pos < SWITCH_MENU_HEIGHT && this.state.show_extra) {
-      this.setState({show_extra: false})
-    }
   }
 
   render () {
@@ -127,10 +108,7 @@ export default class Navbar extends React.Component {
       const background = this.props.background || company.image
       return [
         navbar,
-        <ExtraMenu key="2"
-          menu={this.props.extra_menu}
-          message={this.props.message}
-          show_extra={this.state.show_extra}/>,
+        <ExtraMenu key="2" message={this.props.message}/>,
         <div key="3" id="background-image" style={{
           backgroundImage: background ? `url("${background}/main.jpg")` : null,
           top: BACK_TOP

@@ -287,7 +287,7 @@ export class EventsDetails extends RenderDetails {
               {render(v)}
               <ButtonConfirm action={`/events/${this.id}/switch-highlight/`}
                              modal_title="Switch Status"
-                             btn_text={v ? 'Mark as not highlight' : 'Mark as highlight'}
+                             btn_text={v ? 'Mark as not highlighted' : 'Mark as highlight'}
                              done={this.update}
                              btn_size="sm"
                              className="ml-2">
@@ -304,6 +304,11 @@ export class EventsDetails extends RenderDetails {
       cat_id: null,
       cat_slug: null,
       ticket_limit: null,
+      host: null,
+      host_name: props.ctx.user.role === 'admin' ? {
+        render: (v, item) => <Link to={`/dashboard/users/${item.host}/`}>{v}</Link>,
+        title: 'Host',
+      } : null,
       short_description: {index: 2},
       long_description: {
         index: 3,

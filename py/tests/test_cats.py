@@ -198,6 +198,7 @@ async def test_cats_browse(cli, url, factory: Factory, login):
             },
         ],
         'count': 1,
+        'pages': 1,
     }
 
 

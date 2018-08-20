@@ -33,7 +33,7 @@ class UserBread(Bread):
 
     model = Model
     table = 'users'
-    browse_order_by_fields = V('active_ts').desc(),
+    browse_order_by_fields = V('active_ts').desc(), V('id').asc()
     browse_fields = (
         'id',
         Func('full_name', V('first_name'), V('last_name'), V('email')).as_('name'),

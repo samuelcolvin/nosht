@@ -56,7 +56,6 @@ class App extends React.Component {
       company: null,
       user: null,
       background: null,
-      extra_menu: null,
       active_page: null,
       error: null,
       message: null,
@@ -66,9 +65,9 @@ class App extends React.Component {
     this.setError = this.setError.bind(this)
   }
 
-  async setMessage (message, time) {
+  async setMessage (message) {
     this.setState({message})
-    await sleep(time || 5000)
+    await sleep(8000)
     this.setState({message: null})
   }
 
@@ -132,7 +131,7 @@ class App extends React.Component {
   render () {
     const ctx = {
       setRootState: s => this.setState(s),
-      setMessage: (...args) => this.setMessage(...args),
+      setMessage: msg => this.setMessage(msg),
       setError: error => this.setError(error),
       setUser: user => this.setState({user}),
       company: this.state.company,
@@ -142,7 +141,6 @@ class App extends React.Component {
       <GlobalContext.Provider value={ctx}>
         <Navbar company={this.state.company}
                 background={this.state.background}
-                extra_menu={this.state.extra_menu}
                 message={this.state.message}
                 user={this.state.user}
                 active_page={this.state.active_page}/>

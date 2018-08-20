@@ -7,7 +7,7 @@ from time import time
 from typing import List, Optional
 
 from asyncpg import CheckViolationError
-from buildpg import MultipleValues, SetValues, V, Values, funcs
+from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr, condecimal, conint, constr, validator
@@ -16,7 +16,7 @@ from shared.images import delete_image, resize_upload
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin, is_admin_or_host, is_auth
-from web.bread import Bread, UpdateView
+from web.bread import Bread, Method, UpdateView
 from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
 from web.utils import (ImageModel, JsonErrors, clean_markdown, decrypt_json, encrypt_json, json_response, parse_request,
                        raw_json_response, request_image)
@@ -159,16 +159,21 @@ class EventBread(Bread):
         'e.location_lng',
         'e.short_description',
         'e.long_description',
+        'e.host',
+        Func('full_name', V('uh.first_name'), V('uh.last_name'), V('uh.email')).as_('host_name'),
     )
 
     async def check_permissions(self, method):
         await check_session(self.request, 'admin', 'host')
 
     def join(self):
-        return (
+        joins = (
             Join(V('categories').as_('cat').on(V('cat.id') == V('e.category'))) +
             Join(V('companies').as_('co').on(V('co.id') == V('cat.company')))
         )
+        if self.method == Method.retrieve:
+            joins += Join(V('users').as_('uh').on(V('uh.id') == V('e.host')))
+        return joins
 
     def where(self):
         logic = V('cat.company') == self.request['company_id']
