@@ -19,6 +19,7 @@ import Markdown from '../general/Markdown'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import {Waiting} from '../general/Errors'
+import ReactGA from 'react-ga'
 
 const stripe_styles = {
   invalid: {
@@ -150,6 +151,12 @@ class StripeForm_ extends React.Component {
       return
     }
     this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
+    ReactGA.event({
+      category: 'ticket-booking',
+      action: 'ticket-booking-confirm',
+      label: 'pay',
+      value: this.props.reservation.total_price
+    })
     this.props.finished()
   }
 
@@ -166,6 +173,11 @@ class StripeForm_ extends React.Component {
     }
 
     this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Booking successful, check your email'})
+    ReactGA.event({
+      category: 'ticket-booking',
+      action: 'ticket-booking-confirm',
+      label: 'free',
+    })
     this.props.finished()
   }
 

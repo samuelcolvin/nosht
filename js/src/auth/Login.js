@@ -6,6 +6,7 @@ import requests from '../utils/requests'
 import WithContext from '../utils/context'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
+import ReactGA from 'react-ga'
 
 export const next_url = location => {
   const match = location.search.match('next=([^&]+)')
@@ -48,6 +49,7 @@ class Login extends React.Component {
       this.props.ctx.setError(data)
       return
     }
+    ReactGA.event({category: 'auth', action: 'auth-login', label: 'email'})
     await this.authenticate(data)
   }
 
@@ -63,6 +65,7 @@ class Login extends React.Component {
   }
 
   async login_with (site, login_data) {
+    ReactGA.event({category: 'auth', action: 'auth-login', label: site})
     login_data.grecaptcha_token = await grecaptcha_execute(`login_with_${site}`)
     let data
     try {

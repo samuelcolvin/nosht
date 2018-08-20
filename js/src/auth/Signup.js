@@ -8,6 +8,7 @@ import {
   Row,
 } from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
+import ReactGA from 'react-ga'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {grecaptcha_execute, user_full_name} from '../utils'
@@ -44,6 +45,7 @@ class Signup extends React.Component {
     this.setState({error: null})
     const auth_data = await google_login(this.props.ctx.setError)
     if (auth_data) {
+      ReactGA.event({category: 'auth', action: 'auth-signup', label: 'google'})
       await this.auth('google', auth_data)
     }
   }
@@ -52,6 +54,7 @@ class Signup extends React.Component {
     this.setState({error: null})
     const auth_data = await facebook_login(this.props.ctx.setError)
     if (auth_data) {
+      ReactGA.event({category: 'auth', action: 'auth-signup', label: 'facebook'})
       await this.auth('facebook', auth_data)
     }
   }
@@ -60,6 +63,7 @@ class Signup extends React.Component {
     this.setState({error: null})
     e.preventDefault()
     if (this.state.email) {
+      ReactGA.event({category: 'auth', action: 'auth-signup', label: 'email'})
       await this.auth('email', {email: this.state.email, name: this.state.name})
     }
   }

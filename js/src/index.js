@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom'
 import {BrowserRouter as Router} from 'react-router-dom'
 import Raven from 'raven-js'
+import ReactGA from 'react-ga'
 import App from './App'
 import './styles/main.scss'
 
@@ -13,4 +14,7 @@ if (process.env.NODE_ENV === 'production') {
     }
   ).install()
 }
+ReactGA.initialize(process.env.REACT_APP_GA_TRACKING_ID, {
+  titleCase: false,
+})
 ReactDOM.render(<Router><App/></Router>, document.getElementById('root'))

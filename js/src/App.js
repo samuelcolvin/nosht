@@ -1,6 +1,7 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
 import Raven from 'raven-js'
+import ReactGA from 'react-ga'
 import {library as FaLibrary} from '@fortawesome/fontawesome-svg-core'
 import {far} from '@fortawesome/free-regular-svg-icons'
 import {fas} from '@fortawesome/free-solid-svg-icons'
@@ -63,6 +64,7 @@ class App extends React.Component {
     }
     this.setMessage = this.setMessage.bind(this)
     this.setError = this.setError.bind(this)
+    this.setUser = this.setUser.bind(this)
   }
 
   async setMessage (message) {
@@ -72,11 +74,12 @@ class App extends React.Component {
   }
 
   async componentDidMount () {
+    ReactGA.pageview(this.props.location.pathname + this.props.location.search)
     try {
       const company = await requests.get('')
-      const user = company.user
+      this.setUser(company.user)
       delete company.user
-      this.setState({company, user})
+      this.setState({company})
     } catch (err) {
       this.setState({error: err})
     }
@@ -93,6 +96,7 @@ class App extends React.Component {
 
   componentDidUpdate (prevProps) {
     if (this.props.location !== prevProps.location) {
+      ReactGA.pageview(this.props.location.pathname + this.props.location.search)
       if (window.scrollY > 400) {
         window.scrollTo(0, 0)
       }
@@ -128,12 +132,17 @@ class App extends React.Component {
     this.setState({error})
   }
 
+  setUser (user) {
+    this.setState({user})
+    ReactGA.set({userId: user.id})
+  }
+
   render () {
     const ctx = {
       setRootState: s => this.setState(s),
       setMessage: msg => this.setMessage(msg),
       setError: error => this.setError(error),
-      setUser: user => this.setState({user}),
+      setUser: user => this.setUser(user),
       company: this.state.company,
       user: this.state.user,
     }

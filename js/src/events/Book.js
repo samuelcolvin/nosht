@@ -1,4 +1,5 @@
 import React from 'react'
+import ReactGA from 'react-ga'
 import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import BookingLogin from './BookingLogin'
@@ -96,6 +97,7 @@ class BookWrapper extends React.Component {
     } else {
       delete r._response_status
       this.setState({reservation: r})
+      ReactGA.event({category: 'ticket-booking', action: 'ticket-booking-reserve', value: tickets.length})
     }
   }
 
