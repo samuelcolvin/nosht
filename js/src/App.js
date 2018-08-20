@@ -42,6 +42,7 @@ const Routes = () => (
 
       <Route exact path="/unsubscribe-valid/" component={UnsubscribeValid}/>
       <Route exact path="/unsubscribe-invalid/" component={UnsubscribeInvalid}/>
+      <Route path="/pvt/:category/:event/:sig/" component={Event}/>
       <Route path="/:category/:event/" component={Event}/>
       <Route exact path="/:category/" component={Category}/>
 
@@ -134,7 +135,7 @@ class App extends React.Component {
 
   setUser (user) {
     this.setState({user})
-    ReactGA.set({userId: user.id})
+    ReactGA.set({userId: user ? user.id : null})
   }
 
   render () {

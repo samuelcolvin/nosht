@@ -26,7 +26,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
         WHERE e.id=$1
         """,
         factory.event_id)
-    r = await cli.get(url('event-get', category=cat_slug, event=event_slug))
+    r = await cli.get(url('event-get-public', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
@@ -63,7 +63,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
 async def test_event_wrong_slug(cli, url, factory: Factory):
     await factory.create_company()
 
-    r = await cli.get(url('event-get', category='foobar', event='snap'))
+    r = await cli.get(url('event-get-public', category='foobar', event='snap'))
     assert r.status == 404, await r.text()
 
 

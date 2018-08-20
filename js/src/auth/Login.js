@@ -10,7 +10,8 @@ import ReactGA from 'react-ga'
 
 export const next_url = location => {
   const match = location.search.match('next=([^&]+)')
-  return match ? decodeURIComponent(match[1]) : null
+  const next = match ? decodeURIComponent(match[1]) : null
+  return next === '/logout/' || next === null ? null : next
 }
 
 export async function authenticate (data) {

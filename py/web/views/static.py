@@ -40,5 +40,7 @@ async def static_handler(request):
         return Response(text=content, content_type='text/html')
     elif is_file:
         return FileResponse(filepath)
+    elif request_path.startswith('pvt/'):
+        return FileResponse(directory / 'index.html', headers={'X-Robots-Tag': 'noindex'})
     else:
         return FileResponse(directory / 'index.html')

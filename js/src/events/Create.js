@@ -30,6 +30,7 @@ export const EVENT_FIELDS = [
     name: 'public',
     title: 'Public Event',
     type: 'bool',
+    default: true,
     help_text: 'Whether or not this event will be visible to anyone on the site and in public search results. ' +
                 'If not public people will need a link to view this event.',
   },

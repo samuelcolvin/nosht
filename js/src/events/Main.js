@@ -27,8 +27,9 @@ class Event extends React.Component {
     let event, ticket_types
     const params = this.props.match.params
     this.props.ctx.setRootState({active_page: params.category})
+    const url = `events/${params.category}/${params.event}/${params.sig ? params.sig + '/': ''}`
     try {
-      const data = await requests.get(`events/${params.category}/${params.event}/`)
+      const data = await requests.get(url)
       event = data.event
       ticket_types = data.ticket_types
     } catch (error) {
