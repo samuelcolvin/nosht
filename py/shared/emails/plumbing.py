@@ -344,8 +344,6 @@ def strip_markdown(s):
 
 def clean_ctx(context, base_url):
     context = context or {}
-    if not isinstance(context, dict):
-        return context
     for key, value in context.items():
         if key.endswith('link') and isinstance(value, str):
             value = value or '/'

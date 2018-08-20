@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from aiohttp.web import Response
-from aiohttp.web_exceptions import HTTPNotFound
+from aiohttp.web_exceptions import HTTPMovedPermanently, HTTPNotFound
 from aiohttp.web_fileresponse import FileResponse
 
 from web.utils import request_root
@@ -17,6 +17,8 @@ async def static_handler(request):
     directory = request.app['static_dir']
     if request_path == '':
         return FileResponse(directory / 'index.html')
+    elif request_path == 'sitemap.xml':
+        raise HTTPMovedPermanently(location=f'https://{request.host}/api/sitemap.xml')
 
     try:
         filename = Path(request_path)

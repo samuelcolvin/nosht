@@ -11,7 +11,7 @@ from typing import List, Optional
 from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
-from buildpg.clauses import Join, Where
+from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, condecimal, conint, constr, validator
 
 from shared.images import delete_image, resize_upload
@@ -29,8 +29,7 @@ event_id_public_sql = """
 SELECT e.id, e.public
 FROM events AS e
 JOIN categories AS c ON e.category = c.id
-JOIN companies AS co ON c.company = co.id
-WHERE c.company=$1 AND c.slug=$2 AND e.slug=$3 AND e.status='published'
+WHERE c.company = $1 AND c.slug = $2 AND e.slug = $3 AND e.status = 'published'
 """
 event_info_sql = """
 SELECT json_build_object(
@@ -95,9 +94,9 @@ async def event_get(request):
     if not event_is_public:
         url_sig = request.match_info.get('sig')
         if not url_sig:
-            raise JsonErrors.HTTPBadRequest(message='event not public')
+            raise JsonErrors.HTTPNotFound(message='event not found')
         sig = hmac.new(
-            request.app['settings'].auth_key.encode(), f'{category_slug}:{event_slug}:{event_id}'.encode(),
+            request.app['settings'].auth_key.encode(), f'/{category_slug}/{event_slug}/'.encode(),
             digestmod=hashlib.md5
         ).hexdigest()
         if not compare_digest(url_sig, sig):
@@ -169,8 +168,6 @@ class EventBread(Bread):
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
     retrieve_fields = browse_fields + (
-        'e.slug',
-        V('cat.slug').as_('cat_slug'),
         V('cat.id').as_('cat_id'),
         'e.public',
         'e.image',
@@ -186,6 +183,13 @@ class EventBread(Bread):
 
     async def check_permissions(self, method):
         await check_session(self.request, 'admin', 'host')
+
+    def select(self) -> Select:
+        if self.method == Method.retrieve:
+            event_link = Func('event_link', V('cat.slug'), V('e.slug'), V('e.public'),
+                              funcs.cast(self.settings.auth_key, 'VARCHAR')).as_('link')
+            return Select(self.retrieve_fields + (event_link,))
+        return super().select()
 
     def join(self):
         joins = (

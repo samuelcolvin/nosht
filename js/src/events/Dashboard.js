@@ -300,9 +300,8 @@ export class EventsDetails extends RenderDetails {
           )
         }
       } : null,
-      slug: null,
       cat_id: null,
-      cat_slug: null,
+      link: null,
       ticket_limit: null,
       host: null,
       host_name: props.ctx.user && props.ctx.user.role === 'admin' ? {
@@ -354,7 +353,7 @@ export class EventsDetails extends RenderDetails {
         buttons: [
           {name: 'Edit', link: this.uri + 'edit/'},
           data.status === 'published' && {name: 'Send Update', link: this.uri + 'send-update/'},
-          {name: 'View Guest Page', link: `/${data.cat_slug}/${data.slug}/`, disabled: data.status !== 'published'},
+          {name: 'View Guest Page', link: data.link, disabled: data.status !== 'published'},
         ]
       }
     )
@@ -376,7 +375,7 @@ export class EventsDetails extends RenderDetails {
         <Alert color="primary">
           Event upcoming, share the following link for guests to book tickets:
           <code className="d-block text-dark font-weight-bold mt-1">
-            {window.location.origin}/{event.cat_slug}/{event.slug}/
+            {window.location.origin}{event.link}
           </code>
         </Alert>
       )

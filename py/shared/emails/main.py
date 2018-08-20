@@ -29,9 +29,9 @@ class EmailActor(BaseEmailActor):
                 SELECT a.user_id,
                   full_name(ub.first_name, ub.last_name) AS buyer_name,
                   full_name(uh.first_name, uh.last_name) AS host_name,
-                  '/' || cat.slug || '/' || e.slug || '/' as event_link, e.name, e.short_description,
-                  cat.name as cat_name, cat.slug AS cat_slug,
-                  cat.ticket_extra_title as ticket_extra_title,
+                  event_link(cat.slug, e.slug, e.public, $2) AS event_link, e.name, e.short_description,
+                  cat.name AS cat_name, cat.slug AS cat_slug,
+                  cat.ticket_extra_title AS ticket_extra_title,
                   e.location_name, e.location_lat, e.location_lng,
                   e.start_ts, e.duration, cat.company, co.currency, a.extra
                 FROM actions AS a
@@ -42,7 +42,7 @@ class EmailActor(BaseEmailActor):
                 JOIN companies co on cat.company = co.id
                 WHERE a.id = $1
                 """,
-                booked_action_id
+                booked_action_id, self.settings.auth_key
             )
             price = await conn.fetchval(
                 """
@@ -145,14 +145,14 @@ class EmailActor(BaseEmailActor):
                 full_name(u.first_name, u.last_name, u.email) AS host_name,
                  e.id AS event_id, e.name AS event_name, e.start_ts::date AS event_date,
                  cat.name AS cat_name, cat.slug AS cat_slug,
-                 '/' || cat.slug || '/' || e.slug || '/' AS event_link
+                 event_link(cat.slug, e.slug, e.public, $2) AS event_link
                 FROM actions AS a
                 JOIN users AS u ON a.user_id = u.id
                 JOIN events AS e ON a.event = e.id
                 JOIN categories AS cat ON e.category = cat.id
                 WHERE a.id=$1
                 """,
-                action_id
+                action_id, self.settings.auth_key
             )
 
             link = f'/dashboard/events/{data["event_id"]}/'
@@ -193,7 +193,7 @@ class EmailActor(BaseEmailActor):
                 SELECT a.company AS company_id, e.id AS event_id, e.name AS event_name,
                   full_name(u.first_name, u.last_name, u.email) AS sender_name,
                   a.extra->>'subject' AS subject, a.extra->>'message' AS message,
-                  '/' || cat.slug || '/' || e.slug || '/' AS event_link,
+                  event_link(cat.slug, e.slug, e.public, $2) AS event_link,
                   cat.name AS cat_name, cat.slug AS cat_slug
                 FROM actions AS a
                 JOIN users AS u ON a.user_id = u.id
@@ -201,7 +201,7 @@ class EmailActor(BaseEmailActor):
                 JOIN categories AS cat ON e.category = cat.id
                 WHERE a.id=$1
                 """,
-                action_id
+                action_id, self.settings.auth_key
             )
             user_tickets = await conn.fetch(
                 """
@@ -235,7 +235,7 @@ class EmailActor(BaseEmailActor):
                   e.id, e.name, e.short_description, e.start_ts, e.duration,
                   e.location_name, e.location_lat, e.location_lng,
                   cat.name AS cat_name, cat.slug AS cat_slug, cat.company AS company_id,
-                  '/' || cat.slug || '/' || e.slug || '/' as link,
+                  event_link(cat.slug, e.slug, e.public, $1) AS event_link,
                   full_name(uh.first_name, uh.last_name) AS host_name
                 FROM events AS e
                 JOIN users AS uh on e.host = uh.id
@@ -249,7 +249,8 @@ class EmailActor(BaseEmailActor):
                               ts > now() - '25 hours'::interval
                       )
                 ORDER BY cat.company
-                """
+                """,
+                self.settings.auth_key
             )
             if not events:
                 return 0
@@ -288,7 +289,7 @@ class EmailActor(BaseEmailActor):
                     continue
                 duration = d['duration']
                 ctx = {
-                    'event_link': d['link'],
+                    'event_link': d['event_link'],
                     'event_name': d['name'],
                     'host_name': d['host_name'],
                     'event_short_description': d['short_description'],
@@ -324,7 +325,7 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT
                   e.id, e.name, e.start_ts::date AS event_date, e.host AS host_user_id,
-                  '/' || cat.slug || '/' || e.slug || '/' as link,
+                  event_link(cat.slug, e.slug, e.public, $1) AS event_link,
                   cat.name AS cat_name, cat.slug AS cat_slug,
                   cat.company AS company_id, co.currency AS currency,
                   t_all.tickets_booked, e.ticket_limit, t_all.total_income, t_recent.tickets_booked_24h
@@ -349,7 +350,8 @@ class EmailActor(BaseEmailActor):
                 WHERE e.status = 'published' AND
                       e.start_ts BETWEEN now() AND now() + '30 days'::interval
                 ORDER BY cat.company
-                """
+                """,
+                self.settings.auth_key
             )
 
         if not events:
@@ -374,7 +376,7 @@ class EmailActor(BaseEmailActor):
                         continue
                     await redis.setex(key, cache_time, 1)
                     ctx = {
-                        'event_link': e['link'],
+                        'event_link': e['event_link'],
                         'event_dashboard_link': f'/dashboard/events/{e["id"]}/',
                         'event_name': e['name'],
                         'ticket_limit': e['ticket_limit'],
@@ -405,7 +407,7 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT
                   e.id, e.name, e.host AS host_user_id,
-                  '/' || cat.slug || '/' || e.slug || '/' as link,
+                  event_link(cat.slug, e.slug, e.public, $1) AS event_link,
                   cat.name AS cat_name, cat.slug AS cat_slug,
                   cat.company AS company_id
                 FROM events AS e
@@ -413,7 +415,8 @@ class EmailActor(BaseEmailActor):
                 WHERE e.status = 'published' AND
                       e.start_ts BETWEEN now() + '4 hours'::interval AND now() + '5 hours'::interval
                 ORDER BY cat.company
-                """
+                """,
+                self.settings.auth_key
             )
             if not events:
                 return 0
@@ -433,7 +436,7 @@ class EmailActor(BaseEmailActor):
                         # better to do this as a single query here when required than call it every time
                         tickets_booked = await booked_stmt.fetchval(e['id'])
                         ctx = {
-                            'event_link': e['link'],
+                            'event_link': e['event_link'],
                             'event_dashboard_link': f'/dashboard/events/{e["id"]}/',
                             'event_name': e['name'],
                             'tickets_booked': tickets_booked or 0,
