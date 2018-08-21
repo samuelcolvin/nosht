@@ -162,9 +162,12 @@ export class RenderList extends RenderItem {
       return <Loading/>
     } else if (this.state.items.length === 0) {
       return [
-        <Buttons key="1" buttons={this.state.buttons}/>,
-        <div key="2" className="text-muted text-center h5 mt-4">
+        <Buttons key="b" buttons={this.state.buttons}/>,
+        <div key="f" className="text-muted text-center h5 mt-4">
           No {as_title(this.props.page.name)} found
+        </div>,
+        <div key="e">
+          {this.extra()}
         </div>
       ]
     }
