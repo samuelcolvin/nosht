@@ -1,6 +1,11 @@
+import logging
+from datetime import date
+
 from aiohttp.web_response import StreamResponse
 
 from web.utils import raw_json_response
+
+logger = logging.getLogger('nosht.views')
 
 company_sql = """
 SELECT json_build_object(
@@ -78,30 +83,38 @@ async def sitemap(request):
         b'<?xml version="1.0" encoding="UTF-8"?>\n'
         b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     )
-    company_domain = await request['conn'].fetchval('SELECT domain FROM companies WHERE id=$1', request['company_id'])
+    try:
+        company_domain = await request['conn'].fetchval(
+            'SELECT domain FROM companies WHERE id=$1', request['company_id'])
 
-    async def write_url(uri_, latest_update_, priority):
-        await response.write((
-            f'<url>'
-            f'<loc>https://{company_domain}/{uri_}</loc>'
-            f'<lastmod>{latest_update_:%Y-%m-%d}</lastmod>'
-            f'<changefreq>daily</changefreq>'
-            f'<priority>{priority:0.1f}</priority>'
-            f'</url>\n'
-        ).encode())
+        async def write_url(uri_, latest_update_, priority):
+            await response.write((
+                f'<url>'
+                f'<loc>https://{company_domain}/{uri_}</loc>'
+                f'<lastmod>{latest_update_:%Y-%m-%d}</lastmod>'
+                f'<changefreq>daily</changefreq>'
+                f'<priority>{priority:0.1f}</priority>'
+                f'</url>\n'
+            ).encode())
 
-    cats = {}
-    async with request['conn'].transaction():
-        async for (cat_uri, uri, latest_update, highlight) in request['conn'].cursor(sitemap_events_sql):
-            cat_latest_update = cats.get(cat_uri)
-            if cat_latest_update is None or latest_update > cat_latest_update:
-                cats[cat_uri] = latest_update
+        cats = {}
+        async with request['conn'].transaction():
+            async for (cat_uri, uri, latest_update, highlight) in request['conn'].cursor(sitemap_events_sql):
+                cat_latest_update = cats.get(cat_uri)
+                if cat_latest_update is None or latest_update > cat_latest_update:
+                    cats[cat_uri] = latest_update
 
-            await write_url(uri, latest_update, 0.7 if highlight else 0.5)
+                await write_url(uri, latest_update, 0.7 if highlight else 0.5)
 
-    for cat_uri, latest_update in cats.items():
-        await write_url(cat_uri, latest_update, 0.9)
+        for cat_uri, latest_update in cats.items():
+            await write_url(cat_uri, latest_update, 0.9)
 
-    await write_url('', max(cats.values()), 1)
+        if cats:
+            await write_url('', max(cats.values()), 1)
+        else:
+            await write_url('', date.today(), 1)
+    except Exception:  # pragma no cover
+        logger.exception('error generating sitemap')
+
     await response.write(b'</urlset>\n')
     return response

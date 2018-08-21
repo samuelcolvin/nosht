@@ -1,9 +1,12 @@
+import logging
 from csv import DictWriter
 from datetime import datetime
 
 from aiohttp.web_response import StreamResponse
 
 from web.auth import is_admin
+
+logger = logging.getLogger('nosht.export')
 
 EXPORTS = {
     'events': """
@@ -99,25 +102,27 @@ async def export_plumbing(request, sql, *sql_args, filename, none_message, modif
     })
     response.content_type = 'text/csv'
     await response.prepare(request)
+    try:
+        response_file = ResponsePseudoFile(response)
 
-    response_file = ResponsePseudoFile(response)
+        writer = None
+        async with request['conn'].transaction():
+            async for record in request['conn'].cursor(sql, *sql_args):
+                if modify_records:
+                    data = modify_records(record)
+                else:
+                    data = record
+                if writer is None:
+                    writer = DictWriter(response_file, fieldnames=list(data.keys()))
+                    writer.writeheader()
+                writer.writerow({k: '' if v is None else str(v) for k, v in data.items()})
+                await response_file.write_response()
 
-    writer = None
-    async with request['conn'].transaction():
-        async for record in request['conn'].cursor(sql, *sql_args):
-            if modify_records:
-                data = modify_records(record)
-            else:
-                data = record
-            if writer is None:
-                writer = DictWriter(response_file, fieldnames=list(data.keys()))
-                writer.writeheader()
-            writer.writerow({k: '' if v is None else str(v) for k, v in data.items()})
+        if writer is None:
+            writer = DictWriter(response_file, fieldnames=['message'])
+            writer.writeheader()
+            writer.writerow({'message': none_message})
             await response_file.write_response()
-
-    if writer is None:
-        writer = DictWriter(response_file, fieldnames=['message'])
-        writer.writeheader()
-        writer.writerow({'message': none_message})
-        await response_file.write_response()
+    except Exception:  # pragma no cover
+        logger.exception('error generating export, filename: %s', filename)
     return response

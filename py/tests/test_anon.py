@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from buildpg import Values
@@ -124,3 +125,28 @@ async def test_sitemap(cli, url, factory: Factory, db_conn):
 
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
+
+
+async def test_sitemap_none(cli, url, factory: Factory):
+    await factory.create_company()
+    r = await cli.get(url('sitemap'))
+    text = await r.text()
+    assert r.status == 200, text
+    assert re.sub('\d{4}-\d\d-\d\d', 'DATE', text) == (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        '<url>'
+        '<loc>https://127.0.0.1/</loc>'
+        '<lastmod>DATE</lastmod>'
+        '<changefreq>daily</changefreq>'
+        '<priority>1.0</priority>'
+        '</url>\n'
+        '</urlset>\n'
+    )
+
+
+async def test_sitemap_error(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+    r = await cli.get(url('sitemap'))
+    text = await r.text()
+    assert r.status == 200, text
