@@ -2,32 +2,18 @@ import React from 'react'
 import {
   Col,
   Form as BootstrapForm,
-  FormFeedback,
-  FormGroup,
-  Label,
   ModalBody,
   Row,
 } from 'reactstrap'
-import {withRouter} from 'react-router-dom'
-import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {load_script, grecaptcha_execute, window_property} from '../utils'
+import {grecaptcha_execute} from '../utils'
 import {ModalFooter} from '../general/Modal'
 import {Money, MoneyFree} from '../general/Money'
 import Markdown from '../general/Markdown'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
-import {Waiting} from '../general/Errors'
 import ReactGA from 'react-ga'
-
-const stripe_styles = {
-  invalid: {
-    // from bootstrap > _variables.scss > $form-feedback-invalid-color
-    color: '#dc3545'
-  }
-}
+import {StripeContext, StripeForm} from './Stripe'
 
 export const PricingList = ({items, className}) => (
   <div className={className}>
@@ -40,38 +26,16 @@ export const PricingList = ({items, className}) => (
   </div>
 )
 
-const name_field = {
-  name: 'billing_name',
-  required: true,
-}
-const address_field = {
-  name: 'billing_address',
-  required: true,
-}
-const city_field = {
-  name: 'billing_city',
-  required: true,
-}
-const postcode_field = {
-  name: 'billing_postcode',
-  required: true,
-}
-
-class StripeForm_ extends React.Component {
+class StripeBookingForm extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
       time_left: 0,
-      card_error: null,
-      card_complete: false,
       submitting: false,
       submitted: false,
       cancelled: false,
-      name: props.billing_name,
-      address: null,
-      city: null,
-      postcode: null,
       terms_and_conditions: false,
+      payment: {}
     }
     this.update_timer = this.update_timer.bind(this)
     this.render_form = this.render_form.bind(this)
@@ -121,20 +85,25 @@ class StripeForm_ extends React.Component {
   }
 
   async take_payment () {
-    const required = ['card_complete', 'name', 'address', 'city', 'postcode']
-    if (this.state.submitting || !required.every(f => this.state[f])) {
-      required.filter(f => !this.state[f]).map(f => this.setState({[`${f}_error`]: 'Required'}))
-      this.setState({submitting: false})
+    const required = ['complete', 'name', 'address', 'city', 'postcode']
+    if (this.state.submitting || !required.every(f => this.state.payment[f])) {
+      const payment = Object.assign({}, this.state.payment, {
+        name_error: this.state.payment.name ? null: 'Required',
+        address_error: this.state.payment.address ? null: 'Required',
+        city_error: this.state.payment.city ? null: 'Required',
+        postcode_error: this.state.payment.postcode ? null: 'Required',
+      })
+      this.setState({submitting: false, payment})
       return
     }
 
     try {
       const [{token}, grecaptcha_token] = await Promise.all([
         this.props.stripe.createToken({
-          name: this.state.name,
-          address_line1: this.state.address,
-          address_city: this.state.city,
-          address_zip: this.state.postcode,
+          name: this.state.payment.name,
+          address_line1: this.state.payment.address,
+          address_city: this.state.payment.city,
+          address_zip: this.state.payment.postcode,
         }),
         grecaptcha_execute('stripe_pay'),
       ])
@@ -182,15 +151,7 @@ class StripeForm_ extends React.Component {
     this.props.finished(true)
   }
 
-  update_stripe_status (status) {
-    this.setState({
-      card_error: status.error && status.error.message,
-      card_complete: status.complete,
-    })
-  }
-
   render_form (expired) {
-    const form_height = 300
     let tncs_field = null
     if (this.props.event.terms_and_conditions_message) {
       const f = {
@@ -212,56 +173,14 @@ class StripeForm_ extends React.Component {
       return <h4 className="has-error">Rervation expired</h4>
     } else if (!this.props.reservation.total_price) {
       return tncs_field && <div style={{height: 40}}>{this.state.submitted ? null : tncs_field}</div>
-    } else if (this.state.submitted) {
-      return (
-        <div style={{height: form_height}} className="vertical-center">
-          <Waiting/>
-          <small className="text-muted mt-4">processing payment...</small>
-        </div>
-      )
     } else {
       return (
-        <div style={{height: form_height}} className="hide-help-text">
-          <Input field={name_field}
-                 value={this.state.name}
-                 error={this.state.name_error}
-                 set_value={v => this.setState({name: v, name_error: null})}/>
-          <Input field={address_field}
-                 value={this.state.address}
-                 error={this.state.address_error}
-                 set_value={v => this.setState({address: v, address_error: null})}/>
-          <Row>
-            <Col md="6">
-              <Input field={city_field}
-                     value={this.state.city}
-                     error={this.state.city_error}
-                     set_value={v => this.setState({city: v, city_error: null})}/>
-            </Col>
-            <Col md="6">
-              <Input field={postcode_field}
-                     value={this.state.postcode}
-                     error={this.state.postcode_error}
-                     set_value={v => this.setState({postcode: v, postcode_error: null})}/>
-            </Col>
-          </Row>
-          <FormGroup>
-            <Label className="required">
-              Card Details
-            </Label>
-            <CardElement className="py-2 px-1"
-                          hidePostalCode={true}
-                          onChange={this.update_stripe_status.bind(this)}
-                          style={stripe_styles}/>
-            {
-              this.state.card_error &&
-              <FormFeedback className="d-block">
-                <FontAwesomeIcon icon="times" className="mr-1"/>
-                {this.state.card_error}
-              </FormFeedback>
-            }
-          </FormGroup>
-          {tncs_field}
-        </div>
+          <StripeForm
+              submitted={this.state.submitted}
+              details={this.state.payment}
+              setDetails={payment => this.setState({payment})}>
+            {tncs_field}
+          </StripeForm>
       )
     }
   }
@@ -287,7 +206,7 @@ class StripeForm_ extends React.Component {
       (!this.state.terms_and_conditions && this.props.event.terms_and_conditions_message) ||
       expired ||
       this.state.submitting ||
-      (res.total_price && !this.state.card_complete)
+      (res.total_price && !this.state.payment.complete)
     )
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
@@ -309,27 +228,4 @@ class StripeForm_ extends React.Component {
     )
   }
 }
-const StripeForm = injectStripe(withRouter(WithContext(StripeForm_)))
-
-export default class Stripe extends React.Component {
-  constructor (props) {
-    super(props)
-    this.state = {stripe: null}
-  }
-
-  async componentDidMount () {
-    await load_script('https://js.stripe.com/v3/')
-    const stripe = await window_property('Stripe')
-    this.setState({stripe: stripe(this.props.event.stripe_key)})
-  }
-
-  render () {
-    return (
-      <StripeProvider stripe={this.state.stripe}>
-        <Elements>
-          <StripeForm {...this.props} stripe={this.state.stripe}/>
-        </Elements>
-      </StripeProvider>
-    )
-  }
-}
+export default StripeContext(StripeBookingForm)

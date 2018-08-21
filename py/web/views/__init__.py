@@ -33,7 +33,7 @@ FROM (
   ) AS t
 ) AS highlight_events,
 (
-  SELECT id, name, image, currency
+  SELECT id, name, image, currency, stripe_public_key
   FROM companies
   WHERE id=$1
 ) AS company,

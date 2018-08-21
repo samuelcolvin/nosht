@@ -6,7 +6,7 @@ import BookingLogin from './BookingLogin'
 import BookingTickets from './BookingTickets'
 import BookingStripe from './BookingStripe'
 
-class BookWrapper extends React.Component {
+class BookForm extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -15,7 +15,6 @@ class BookWrapper extends React.Component {
       got_booking_info: false,
       booking_info: null,
       reservation: null,
-      billing_name: null,
       ticket_type: null
     }
     this.finished = this.finished.bind(this)
@@ -67,10 +66,11 @@ class BookWrapper extends React.Component {
     tickets[0].last_name = tickets[0].last_name || this.props.ctx.user.last_name
     tickets[0].email = tickets[0].email || this.props.ctx.user.email
 
-    this.setState({billing_name:
-      tickets[0].email === this.props.ctx.user.email ?
-      `${tickets[0].first_name || ''} ${tickets[0].last_name || ''}`.trim() : ''
-    })
+    const u = this.props.ctx.user
+    if (tickets[0].email === u.email && u.first_name === null  && u.last_name === null) {
+      const update = {first_name: tickets[0].first_name, last_name: tickets[0].last_name}
+      this.props.ctx.setUser(Object.assign({}, u, update))
+    }
     let ticket_type = this.state.booking_info.ticket_types[0].id
     if (this.state.booking_info.ticket_types.length > 1) {
       if (this.state.ticket_type) {
@@ -129,12 +129,11 @@ class BookWrapper extends React.Component {
           event={this.props.event}
           finished={this.finished}
           register_toggle_handler={this.props.register_toggle_handler}
-          reservation={this.state.reservation}
-          billing_name={this.state.billing_name}/>
+          reservation={this.state.reservation}/>
     }
   }
 }
-const ModalBookForm = AsModal(BookWrapper)
+const ModalBookForm = AsModal(BookForm)
 
 const BookEvent = props => (
   <ModalBookForm {...props}

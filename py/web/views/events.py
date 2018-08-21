@@ -57,7 +57,6 @@ FROM (
          END AS tickets_available,
          h.id AS host_id,
          h.first_name || ' ' || h.last_name AS host_name,
-         co.stripe_public_key AS stripe_key,
          c.id AS category_id,
          c.ticket_extra_title,
          c.ticket_extra_help_text,
@@ -68,7 +67,6 @@ FROM (
          c.allow_marketing_message
   FROM events AS e
   JOIN categories AS c ON e.category = c.id
-  JOIN companies AS co ON c.company = co.id
   JOIN users AS h ON e.host = h.id
   WHERE e.id = $1
 ) AS event,

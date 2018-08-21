@@ -4,6 +4,7 @@ import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
 import requests from '../utils/requests'
 import {unique} from '../utils'
+import WithContext from '../utils/context'
 import {Loading, NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import Markdown from '../general/Markdown'
@@ -14,7 +15,7 @@ import BookEvent from './Book'
 import Thanks from './Thanks'
 
 
-const EventDetails = ({event, ctx, uri, ticket_types}) => (
+const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
   <div>
     <Row>
       <Col>
@@ -86,14 +87,14 @@ const EventDetails = ({event, ctx, uri, ticket_types}) => (
       <Markdown content={event.long_description}/>
     </div>
   </div>
-)
+))
 
 class Event extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
       event: null,
-      complete: true,
+      complete: false,
     }
     const params = this.props.match.params
     this.uri = `/${params.category}/${params.event}/`
@@ -133,11 +134,10 @@ class Event extends React.Component {
     return (
       <div>
         {this.state.complete ?
-            <Thanks event={this.state.event}/>
+            <Thanks event={this.state.event} uri={this.uri}/>
             :
             <EventDetails
               event={this.state.event}
-              ctx={this.props.ctx}
               uri={this.uri}
               ticket_types={this.state.ticket_types}
             />

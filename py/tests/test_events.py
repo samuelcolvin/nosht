@@ -29,6 +29,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
         'ticket_types': [{'name': 'Standard', 'price': None}],
         'event': {
             'id': factory.event_id,
+            'category_id': factory.category_id,
             'name': 'The Event Name',
             'image': 'https://www.example.org/co.png',
             'short_description': RegexStr('.*'),
@@ -44,7 +45,6 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'tickets_available': None,
             'host_id': factory.user_id,
             'host_name': 'Frank Spencer',
-            'stripe_key': 'stripe_key_xxx',
             'ticket_extra_help_text': None,
             'ticket_extra_title': None,
             'allow_marketing_message': None,
