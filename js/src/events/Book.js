@@ -18,6 +18,7 @@ class BookWrapper extends React.Component {
       billing_name: null,
       ticket_type: null
     }
+    this.finished = this.finished.bind(this)
   }
 
   async componentDidUpdate () {
@@ -101,16 +102,23 @@ class BookWrapper extends React.Component {
     }
   }
 
+  finished (complete) {
+    if (complete) {
+      this.props.set_complete()
+    }
+    this.props.finished()
+  }
+
   render () {
     if (!this.props.ctx.user) {
       return <BookingLogin
           event={this.props.event}
-          finished={this.props.finished}
+          finished={this.finished}
           clear_reservation={() => this.setState({reservation: null})}/>
     } else if (!this.state.reservation) {
       return <BookingTickets
           event={this.props.event}
-          finished={this.props.finished}
+          finished={this.finished}
           state={this.state}
           set_ticket_state={this.set_ticket_state.bind(this)}
           set_ticket_type={this.set_ticket_type.bind(this)}
@@ -119,7 +127,7 @@ class BookWrapper extends React.Component {
     } else {
       return <BookingStripe
           event={this.props.event}
-          finished={this.props.finished}
+          finished={this.finished}
           register_toggle_handler={this.props.register_toggle_handler}
           reservation={this.state.reservation}
           billing_name={this.state.billing_name}/>

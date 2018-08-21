@@ -21,7 +21,7 @@ const ExtraMenu = ({message}) => (
         {message &&
           <span className="item">
             {message.icon && <FontAwesomeIcon icon={message.icon} className="mr-2"/>}
-            <span>{message.message || message}</span>
+            <span>{message.message || message.toString()}</span>
           </span>
         }
       </div>

@@ -8,6 +8,7 @@ import {
   ModalBody,
   Row,
 } from 'reactstrap'
+import {withRouter} from 'react-router-dom'
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import WithContext from '../utils/context'
@@ -157,7 +158,7 @@ class StripeForm_ extends React.Component {
       label: 'pay',
       value: this.props.reservation.total_price
     })
-    this.props.finished()
+    this.props.finished(true)
   }
 
   async book_free () {
@@ -178,7 +179,7 @@ class StripeForm_ extends React.Component {
       action: 'ticket-booking-confirm',
       label: 'free',
     })
-    this.props.finished()
+    this.props.finished(true)
   }
 
   update_stripe_status (status) {
@@ -308,7 +309,7 @@ class StripeForm_ extends React.Component {
     )
   }
 }
-const StripeForm = injectStripe(WithContext(StripeForm_))
+const StripeForm = injectStripe(withRouter(WithContext(StripeForm_)))
 
 export default class Stripe extends React.Component {
   constructor (props) {

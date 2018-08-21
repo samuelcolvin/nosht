@@ -11,12 +11,89 @@ import Map from '../general/Map'
 import When from '../general/When'
 import {MoneyFree} from '../general/Money'
 import BookEvent from './Book'
+import Thanks from './Thanks'
+
+
+const EventDetails = ({event, ctx, uri, ticket_types}) => (
+  <div>
+    <Row>
+      <Col>
+        <h1>{event.name}</h1>
+        <p className="lead">
+          {event.short_description}
+        </p>
+      </Col>
+      <Col md="3" className="text-right">
+        {ctx.user && (ctx.user.role === 'admin' || ctx.user.id === event.host_id) &&
+          <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
+            Edit Event
+          </Button>
+        }
+        <Button color={event.tickets_available !== null ? 'danger': 'primary'} size="lg"
+                className="hover-raise" tag={Link} to={uri + 'book/'} disabled={event.tickets_available === 0}>
+          Book Now
+        </Button>
+        {}
+        {event.tickets_available !== null &&
+          <div className="font-weight-bold mt-3">
+            {event.tickets_available === 0 ?
+              <span>No Tickets Remaining</span>
+              :
+              <span>Only {event.tickets_available} Tickets Remaining</span>
+            }
+          </div>}
+      </Col>
+    </Row>
+
+    <Row className="text-muted mb-1 h5">
+      <Col md="auto">
+        <FontAwesomeIcon icon={['far', 'clock']} className="mx-1 text-success"/>
+        <When event={event}/>
+      </Col>
+
+      <Col md="auto">
+        <FontAwesomeIcon icon="pound-sign" className="mx-1 text-success"/>
+          {ticket_types.map(tt => tt.price).filter(unique).map((p, i) => (
+            <span key={i}>
+              {i > 0 && <span className="px-1">/</span>}
+              <MoneyFree>{p}</MoneyFree>
+            </span>
+          ))}
+      </Col>
+
+      <Col md="auto">
+        <FontAwesomeIcon icon={'user'} className="mx-1 text-success"/>
+        hosted by {event.host_name}
+      </Col>
+
+      {event.location.name &&
+        <Col md="auto">
+          <FontAwesomeIcon icon={['fas', 'map-marker']} className="mx-1 text-success"/>
+          at {event.location.name}
+        </Col>
+      }
+    </Row>
+
+    <Map geolocation={event.location}/>
+
+    {event.category_content && (
+      <div className="pt-3">
+        <Markdown content={event.category_content}/>
+      </div>
+    )}
+    <div className="pt-3">
+      <h2>About {event.name}</h2>
+      <Markdown content={event.long_description}/>
+    </div>
+  </div>
+)
 
 class Event extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
       event: null,
+      complete: true,
     }
     const params = this.props.match.params
     this.uri = `/${params.category}/${params.event}/`
@@ -48,84 +125,29 @@ class Event extends React.Component {
   }
 
   render () {
-    const event = this.state.event
-    if (!event) {
+    if (!this.state.event) {
       return <Loading/>
-    } else if (event === 404) {
+    } else if (this.state.event === 404) {
       return <NotFound location={this.props.location}/>
     }
     return (
       <div>
-        <Row>
-          <Col>
-            <h1>{event.name}</h1>
-            <p className="lead">
-              {event.short_description}
-            </p>
-          </Col>
-          <Col md="3" className="text-right">
-            {this.props.ctx.user && (this.props.ctx.user.role === 'admin' || this.props.ctx.user.id === event.host_id) &&
-              <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
-                Edit Event
-              </Button>
-            }
-            <Button color={event.tickets_available !== null ? 'danger': 'primary'} size="lg"
-                    className="hover-raise" tag={Link} to={this.uri + 'book/'} disabled={event.tickets_available === 0}>
-              Book Now
-            </Button>
-            {}
-            {event.tickets_available !== null &&
-              <div className="font-weight-bold mt-3">
-                {event.tickets_available === 0 ?
-                  <span>No Tickets Remaining</span>
-                  :
-                  <span>Only {event.tickets_available} Tickets Remaining</span>
-                }
-              </div>}
-          </Col>
-        </Row>
-
-        <Row className="text-muted mb-1 h5">
-          <Col md="auto">
-            <FontAwesomeIcon icon={['far', 'clock']} className="mx-1 text-success"/>
-            <When event={event}/>
-          </Col>
-
-          <Col md="auto">
-            <FontAwesomeIcon icon="pound-sign" className="mx-1 text-success"/>
-              {this.state.ticket_types.map(tt => tt.price).filter(unique).map((p, i) => (
-                <span key={i}>
-                  {i > 0 && <span className="px-1">/</span>}
-                  <MoneyFree>{p}</MoneyFree>
-                </span>
-              ))}
-          </Col>
-
-          <Col md="auto">
-            <FontAwesomeIcon icon={'user'} className="mx-1 text-success"/>
-            hosted by {event.host_name}
-          </Col>
-
-          {event.location.name &&
-            <Col md="auto">
-              <FontAwesomeIcon icon={['fas', 'map-marker']} className="mx-1 text-success"/>
-              at {event.location.name}
-            </Col>
-          }
-        </Row>
-
-        <Map geolocation={event.location}/>
-
-        {event.category_content && (
-          <div className="pt-3">
-            <Markdown content={event.category_content}/>
-          </div>
-        )}
-        <div className="pt-3">
-          <h2>About {event.name}</h2>
-          <Markdown content={event.long_description}/>
-        </div>
-        <BookEvent {...this.props} parent_uri={this.uri} event={event}/>
+        {this.state.complete ?
+            <Thanks event={this.state.event}/>
+            :
+            <EventDetails
+              event={this.state.event}
+              ctx={this.props.ctx}
+              uri={this.uri}
+              ticket_types={this.state.ticket_types}
+            />
+        }
+        <BookEvent
+            {...this.props}
+            parent_uri={this.uri}
+            event={this.state.event}
+            set_complete={() => this.setState({complete: true})}
+        />
       </div>
     )
   }

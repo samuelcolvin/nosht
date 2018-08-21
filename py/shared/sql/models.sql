@@ -112,11 +112,17 @@ CREATE TABLE donation_options (
   id SERIAL PRIMARY KEY,
   category INT NOT NULL REFERENCES categories ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
+  amount NUMERIC(7, 2) CHECK (amount >= 1),
+  sort_index INT,
 
-  live BOOLEAN
+  live BOOLEAN DEFAULT TRUE,
   image VARCHAR(255),
-  description TEXT
+  short_description VARCHAR(140),
+  long_description TEXT
 );
+CREATE INDEX don_category ON donation_options USING btree (category);
+CREATE INDEX don_live ON donation_options USING btree (live);
+CREATE INDEX don_sort_index ON donation_options USING btree (sort_index);
 
 
 CREATE TYPE ACTION_TYPES AS ENUM (

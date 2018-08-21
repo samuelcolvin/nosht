@@ -11,7 +11,7 @@ from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread
 from web.utils import ImageModel, JsonErrors, json_response, parse_request, raw_json_response, request_image
 
-CATEGORY_PUBLIC_SQL = """
+category_public_sql = """
 SELECT json_build_object('events', events)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS events FROM (
@@ -27,16 +27,33 @@ FROM (
 
 
 async def category_public(request):
-    conn: BuildPgConnection = request['conn']
     company_id = request['company_id']
     category_slug = request.match_info['category']
-    json_str = await conn.fetchval(CATEGORY_PUBLIC_SQL, company_id, category_slug)
-    if not json_str:
-        raise JsonErrors.HTTPNotFound(message='category not found')
+    json_str = await request['conn'].fetchval(category_public_sql, company_id, category_slug)
     return raw_json_response(json_str)
 
 
-CAT_IMAGE_SQL = """
+donation_options_sql = """
+SELECT json_build_object('donation_options', donation_options)
+FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS donation_options FROM (
+    SELECT d.id, d.name, d.amount, d.image, d.short_description, d.long_description
+    FROM donation_options AS d
+    JOIN categories AS CAT ON d.category = cat.id
+    WHERE cat.company = $1 AND d.category = $2 AND d.live = TRUE
+    ORDER BY d.sort_index, d.id
+  ) AS t
+) AS donation_options;
+"""
+
+
+async def donation_options(request):
+    company_id = request['company_id']
+    json_str = await request['conn'].fetchval(donation_options_sql, company_id, int(request.match_info['cat_id']))
+    return raw_json_response(json_str)
+
+
+cat_image_sql = """
 SELECT co.slug, cat.slug
 FROM categories AS cat
 JOIN companies co ON cat.company = co.id
@@ -48,7 +65,7 @@ async def _get_cat_img_path(request):
     cat_id = int(request.match_info['cat_id'])
     conn: BuildPgConnection = request['conn']
     try:
-        co_slug, cat_slug = await conn.fetchrow(CAT_IMAGE_SQL, request['company_id'], cat_id)
+        co_slug, cat_slug = await conn.fetchrow(cat_image_sql, request['company_id'], cat_id)
     except TypeError:
         raise JsonErrors.HTTPNotFound(message='category not found')
     else:
