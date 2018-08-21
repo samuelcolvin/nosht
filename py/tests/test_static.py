@@ -1,6 +1,7 @@
 import pytest
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_exceptions import HTTPNotFound
+from pytest_toolbox.comparison import RegexStr
 
 from web.views.static import static_handler
 
@@ -11,6 +12,7 @@ async def test_index(cli, setup_static):
     text = await r.text()
     assert text == 'this is index.html'
     assert r.headers['Content-Type'] == 'text/html'
+    assert r.headers.get('X-Robots-Tag') is None
 
 
 async def test_file(cli, setup_static):
@@ -19,6 +21,7 @@ async def test_file(cli, setup_static):
     assert r.headers['Content-Type'] == 'application/javascript'
     text = await r.text()
     assert text == 'this is test.js'
+    assert r.headers.get('X-Robots-Tag') is None
 
 
 async def test_wrong(cli, setup_static):
@@ -49,3 +52,18 @@ async def test_iframe_missing(cli, setup_static):
     text = await r.text()
     assert text == 'this is index.html'
     assert r.headers['Content-Type'] == 'text/html'
+
+
+async def test_private(cli, setup_static):
+    r = await cli.get('/pvt/foo/bar/')
+    assert r.status == 200, await r.text()
+    assert r.headers['Content-Type'] == 'text/html'
+    assert r.headers.get('X-Robots-Tag') == 'noindex'
+    text = await r.text()
+    assert text == 'this is index.html'
+
+
+async def test_sitemap(cli, setup_static):
+    r = await cli.get('/sitemap.xml', allow_redirects=False)
+    assert r.status == 301, await r.text()
+    assert r.headers['location'] == RegexStr('https://127.0.0.1:\d+/api/sitemap.xml')

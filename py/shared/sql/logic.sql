@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE OR REPLACE FUNCTION update_user_ts() RETURNS trigger AS $$
   BEGIN
     UPDATE users SET active_ts=now() WHERE id=NEW.user_id;
@@ -32,6 +34,20 @@ CREATE OR REPLACE FUNCTION full_name(first_name VARCHAR(255), last_name VARCHAR(
   DECLARE
   BEGIN
     return coalesce(first_name || ' ' || last_name, first_name, last_name, email);
+  END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION event_link(cat_slug VARCHAR(255), event_slug VARCHAR(255), public BOOLEAN, key TEXT) RETURNS TEXT AS $$
+  DECLARE
+    base_uri TEXT;
+  BEGIN
+    SELECT '/' || cat_slug || '/' || event_slug || '/' INTO base_uri;
+    IF public THEN
+      RETURN base_uri;
+    ELSE
+      RETURN '/pvt' || base_uri || encode(hmac(base_uri, key, 'md5'), 'hex') || '/';
+    END IF;
   END;
 $$ LANGUAGE plpgsql;
 

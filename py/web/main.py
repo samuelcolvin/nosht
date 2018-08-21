@@ -19,13 +19,13 @@ from .middleware import csrf_middleware, error_middleware, pg_middleware, user_m
 from .views import index, sitemap
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout,
                          reset_password_request, set_password, unsubscribe)
+from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public)
 from .views.company import CompanyBread, company_upload
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
-from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
-from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories,
-                           event_public, event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
+from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories, event_get,
+                           event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
                            set_event_image_existing, set_event_image_new, switch_highlight)
 from .views.export import export
 from .views.static import static_handler
@@ -103,7 +103,8 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
         web.post('/events/buy/', BuyTickets.view(), name='event-buy-tickets'),
         web.post('/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
-        web.get('/events/{category}/{event}/', event_public, name='event-get'),
+        web.get('/events/{category}/{event}/', event_get, name='event-get-public'),
+        web.get('/events/{category}/{event}/{sig}/', event_get, name='event-get-private'),
 
         web.post('/login/', login, name='login'),
         web.post('/login/{site:(google|facebook)}/', login_with, name='login-google-facebook'),

@@ -1,14 +1,17 @@
+import hashlib
+import hmac
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
+from secrets import compare_digest
 from textwrap import shorten
 from typing import List, Optional
 
 from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
-from buildpg.clauses import Join, Where
+from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, condecimal, conint, constr, validator
 
 from shared.images import delete_image, resize_upload
@@ -22,7 +25,13 @@ from web.views.export import export_plumbing
 
 logger = logging.getLogger('nosht.events')
 
-event_sql = """
+event_id_public_sql = """
+SELECT e.id, e.public
+FROM events AS e
+JOIN categories AS c ON e.category = c.id
+WHERE c.company = $1 AND c.slug = $2 AND e.slug = $3 AND e.status = 'published'
+"""
+event_info_sql = """
 SELECT json_build_object(
   'event', row_to_json(event),
   'ticket_types', ticket_types
@@ -60,27 +69,40 @@ FROM (
   JOIN categories AS c ON e.category = c.id
   JOIN companies AS co ON c.company = co.id
   JOIN users AS h ON e.host = h.id
-  WHERE c.company=$1 AND c.slug=$2 AND e.slug=$3 AND e.status='published'
+  WHERE e.id = $1
 ) AS event,
 (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS ticket_types FROM (
     SELECT tt.name, tt.price
     FROM ticket_types AS tt
     JOIN events AS e ON tt.event = e.id
-    WHERE e.slug=$3 AND tt.active=TRUE
+    WHERE e.id = $1 AND tt.active = TRUE
   ) AS t
 ) AS ticket_types;
 """
 
 
-async def event_public(request):
+async def event_get(request):
     conn: BuildPgConnection = request['conn']
     company_id = request['company_id']
     category_slug = request.match_info['category']
     event_slug = request.match_info['event']
-    json_str = await conn.fetchval(event_sql, company_id, category_slug, event_slug)
-    if not json_str:
+    r = await conn.fetchrow(event_id_public_sql, company_id, category_slug, event_slug)
+    if not r:
         raise JsonErrors.HTTPNotFound(message='event not found')
+    event_id, event_is_public = r
+    if not event_is_public:
+        url_sig = request.match_info.get('sig')
+        if not url_sig:
+            raise JsonErrors.HTTPNotFound(message='event not found')
+        sig = hmac.new(
+            request.app['settings'].auth_key.encode(), f'/{category_slug}/{event_slug}/'.encode(),
+            digestmod=hashlib.md5
+        ).hexdigest()
+        if not compare_digest(url_sig, sig):
+            raise JsonErrors.HTTPBadRequest(message='event signature incorrect, please check the url and try again.')
+
+    json_str = await conn.fetchval(event_info_sql, event_id)
     return raw_json_response(json_str)
 
 
@@ -146,8 +168,6 @@ class EventBread(Bread):
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
     retrieve_fields = browse_fields + (
-        'e.slug',
-        V('cat.slug').as_('cat_slug'),
         V('cat.id').as_('cat_id'),
         'e.public',
         'e.image',
@@ -163,6 +183,13 @@ class EventBread(Bread):
 
     async def check_permissions(self, method):
         await check_session(self.request, 'admin', 'host')
+
+    def select(self) -> Select:
+        if self.method == Method.retrieve:
+            event_link = Func('event_link', V('cat.slug'), V('e.slug'), V('e.public'),
+                              funcs.cast(self.settings.auth_key, 'TEXT')).as_('link')
+            return Select(self.retrieve_fields + (event_link,))
+        return super().select()
 
     def join(self):
         joins = (

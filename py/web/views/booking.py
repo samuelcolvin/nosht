@@ -11,7 +11,7 @@ from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_grecaptcha, check_session, is_auth
 from web.bread import UpdateView
 from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
-from web.utils import (JsonErrors, decrypt_json, encrypt_json, json_response)
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response
 
 logger = logging.getLogger('nosht.booking')
 

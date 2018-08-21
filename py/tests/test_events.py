@@ -19,14 +19,10 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
         location_lng=-0.5
     )
     cat_slug, event_slug = await db_conn.fetchrow(
-        """
-        SELECT cat.slug, e.slug
-        FROM events AS e
-        JOIN categories cat on e.category = cat.id
-        WHERE e.id=$1
-        """,
-        factory.event_id)
-    r = await cli.get(url('event-get', category=cat_slug, event=event_slug))
+        'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
+        factory.event_id
+    )
+    r = await cli.get(url('event-get-public', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
@@ -63,7 +59,170 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
 async def test_event_wrong_slug(cli, url, factory: Factory):
     await factory.create_company()
 
-    r = await cli.get(url('event-get', category='foobar', event='snap'))
+    r = await cli.get(url('event-get-public', category='foobar', event='snap'))
+    assert r.status == 404, await r.text()
+
+
+async def test_event_not_public(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(public=False, status='published')
+
+    cat_slug, event_slug = await db_conn.fetchrow(
+        'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
+        factory.event_id
+    )
+    r = await cli.get(url('event-get-public', category=cat_slug, event=event_slug))
+    assert r.status == 404, await r.text()
+    assert {'message': 'event not found'} == await r.json()
+
+
+async def test_private_event_good(cli, url, factory: Factory, db_conn, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(public=False, status='published')
+
+    event_link = await db_conn.fetchval(
+        """
+        SELECT event_link(cat.slug, e.slug, e.public, $2)
+        FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1
+        """,
+        factory.event_id, settings.auth_key
+    )
+    _, cat_slug, event_slug, sig = event_link.strip('/').split('/')
+    r = await cli.get(url('event-get-private', category=cat_slug, event=event_slug, sig=sig))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['event']['id'] == factory.event_id
+
+
+async def test_private_event_bad_sig(cli, url, factory: Factory, db_conn, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(public=False, status='published')
+
+    event_link = await db_conn.fetchval(
+        """
+        SELECT event_link(cat.slug, e.slug, e.public, $2)
+        FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1
+        """,
+        factory.event_id, settings.auth_key
+    )
+    _, cat_slug, event_slug, sig = event_link.strip('/').split('/')
+    r = await cli.get(url('event-get-private', category=cat_slug, event=event_slug, sig=sig + 'x'))
+    assert r.status == 400, await r.text()
+    assert {'message': 'event signature incorrect, please check the url and try again.'} == await r.json()
+
+
+async def test_bread_browse(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(public=False, status='published')
+    await factory.create_event(name='second event')
+
+    await login()
+
+    r = await cli.get(url('event-browse'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'items': [
+            {
+                'id': AnyInt(),
+                'name': 'second event',
+                'category': 'Supper Clubs',
+                'status': 'pending',
+                'highlight': False,
+                'start_ts': '2020-01-28T19:00:00',
+                'duration': None,
+            },
+            {
+                'id': AnyInt(),
+                'name': 'The Event Name',
+                'category': 'Supper Clubs',
+                'status': 'published',
+                'highlight': False,
+                'start_ts': '2020-01-28T19:00:00',
+                'duration': None,
+            },
+        ],
+        'count': 2,
+        'pages': 1,
+    }
+
+
+async def test_bread_retrieve(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(public=False, status='published', short_description='xxx', long_description='yyy')
+
+    await login()
+
+    r = await cli.get(url('event-retrieve', pk=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'id': factory.event_id,
+        'name': 'The Event Name',
+        'category': 'Supper Clubs',
+        'status': 'published',
+        'highlight': False,
+        'start_ts': '2020-01-28T19:00:00',
+        'duration': None,
+        'cat_id': factory.category_id,
+        'public': False,
+        'image': None,
+        'ticket_limit': None,
+        'location_name': None,
+        'location_lat': None,
+        'location_lng': None,
+        'short_description': 'xxx',
+        'long_description': 'yyy',
+        'host': factory.user_id,
+        'host_name': 'Frank Spencer',
+        'link': '/pvt/supper-clubs/the-event-name/8d2a9334aa29f2151668a54433df2e9d/',
+    }
+
+
+async def test_bread_browse_host(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event()
+
+    u2 = await factory.create_user(email='u2@example.org')
+    await factory.create_event(host_user_id=u2, name='another event')
+
+    await login()
+
+    r = await cli.get(url('event-browse'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['count'] == 1
+    assert data['pages'] == 1
+    assert len(data['items']) == 1
+
+
+async def test_bread_retrieve_host(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event()
+
+    u2 = await factory.create_user(email='u2@example.org')
+    e2 = await factory.create_event(host_user_id=u2, name='another event')
+
+    await login()
+
+    r = await cli.get(url('event-retrieve', pk=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    r = await cli.get(url('event-retrieve', pk=e2))
     assert r.status == 404, await r.text()
 
 
