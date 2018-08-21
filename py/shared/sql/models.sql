@@ -108,6 +108,17 @@ CREATE INDEX event_start_ts ON events USING btree (start_ts);
 CREATE INDEX event_category ON events USING btree (category);
 
 
+CREATE TABLE donation_options (
+  id SERIAL PRIMARY KEY,
+  category INT NOT NULL REFERENCES categories ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+
+  live BOOLEAN
+  image VARCHAR(255),
+  description TEXT
+);
+
+
 CREATE TYPE ACTION_TYPES AS ENUM (
   'login',
   'guest-signin',
