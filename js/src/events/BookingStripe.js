@@ -13,7 +13,7 @@ import Markdown from '../general/Markdown'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import ReactGA from 'react-ga'
-import {StripeContext, StripeForm} from './Stripe'
+import {StripeContext, StripeForm, stripe_pay, stripe_form_valid} from './Stripe'
 
 export const PricingList = ({items, className}) => (
   <div className={className}>
@@ -41,6 +41,7 @@ class StripeBookingForm extends React.Component {
     this.render_form = this.render_form.bind(this)
     this.take_payment = this.take_payment.bind(this)
     this.book_free = this.book_free.bind(this)
+    this.stripe_pay = stripe_pay.bind(this)
   }
 
   update_timer () {
@@ -85,8 +86,7 @@ class StripeBookingForm extends React.Component {
   }
 
   async take_payment () {
-    const required = ['complete', 'name', 'address', 'city', 'postcode']
-    if (this.state.submitting || !required.every(f => this.state.payment[f])) {
+    if (this.state.submitting || !stripe_form_valid(this.state.payment)) {
       const payment = Object.assign({}, this.state.payment, {
         name_error: this.state.payment.name ? null: 'Required',
         address_error: this.state.payment.address ? null: 'Required',
@@ -98,24 +98,7 @@ class StripeBookingForm extends React.Component {
     }
 
     try {
-      const [{token}, grecaptcha_token] = await Promise.all([
-        this.props.stripe.createToken({
-          name: this.state.payment.name,
-          address_line1: this.state.payment.address,
-          address_city: this.state.payment.city,
-          address_zip: this.state.payment.postcode,
-        }),
-        grecaptcha_execute('stripe_pay'),
-      ])
-      this.setState({submitted: true})
-
-      await requests.post('events/buy/', {
-        stripe_token: token.id,
-        stripe_client_ip: token.client_ip,
-        stripe_card_ref: `${token.card.last4}-${token.card.exp_year}-${token.card.exp_month}`,
-        booking_token: this.props.reservation.booking_token,
-        grecaptcha_token
-      })
+      await this.stripe_pay('events/buy/', {booking_token: this.props.reservation.booking_token})
     } catch (error) {
       this.props.ctx.setError(error)
       return
@@ -206,7 +189,7 @@ class StripeBookingForm extends React.Component {
       (!this.state.terms_and_conditions && this.props.event.terms_and_conditions_message) ||
       expired ||
       this.state.submitting ||
-      (res.total_price && !this.state.payment.complete)
+      (res.total_price && !this.state.payment.complete && !this.state.payment.source_hash)
     )
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>

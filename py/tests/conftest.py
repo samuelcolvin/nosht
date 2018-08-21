@@ -293,9 +293,11 @@ class Factory:
 
     async def buy_tickets(self, reservation: Reservation, user_id=None):
         m = StripePayModel(
-            stripe_token='tok_visa',
-            stripe_client_ip='0.0.0.0',
-            stripe_card_ref='4242-32-01',
+            stripe=dict(
+                token='tok_visa',
+                client_ip='0.0.0.0',
+                card_ref='4242-32-01',
+            ),
             booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
             grecaptcha_token='__ok__',
         )

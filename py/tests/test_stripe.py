@@ -27,9 +27,11 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     app = cli.app['main_app']
 
     m = StripePayModel(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='4242-32-01',
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )
@@ -98,9 +100,11 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
     await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
 
     m = StripePayModel(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='{last4}-{exp_year}-{exp_month}'.format(**customer['sources']['data'][0]),
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='{last4}-{exp_year}-{exp_month}'.format(**customer['sources']['data'][0]),
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )
@@ -131,9 +135,11 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
     data = dict(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='4242-32-01',
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )
@@ -161,9 +167,11 @@ async def test_existing_customer_fake(cli, url, dummy_server, factory: Factory):
     res: Reservation = await factory.create_reservation(factory.user_id, None)
     app = cli.app['main_app']
     data = dict(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='4242-32-01',
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )
@@ -192,9 +200,11 @@ async def test_pay_no_price(cli, url, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
     data = dict(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='4242-32-01',
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )

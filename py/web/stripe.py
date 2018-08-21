@@ -1,7 +1,8 @@
+import hashlib
 import json
 import logging
 from functools import partial
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 from aiohttp import BasicAuth, ClientSession
 from buildpg import Values
@@ -31,10 +32,18 @@ class BookingModel(GrecaptchaModel):
     booking_token: bytes
 
 
+class StripeNewCard(BaseModel):
+    token: str
+    card_ref: str
+    client_ip: str
+
+
+class StripeOldCard(BaseModel):
+    source_hash: str
+
+
 class StripePayModel(BookingModel):
-    stripe_token: str
-    stripe_client_ip: str
-    stripe_card_ref: str
+    stripe: Union[StripeNewCard, StripeOldCard]
 
 
 async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection) -> Reservation:
@@ -81,7 +90,8 @@ async def book_free(m: BookingModel, company_id: int, user_id: Optional[int], ap
     return confirm_action_id
 
 
-async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int], app, conn: BuildPgConnection) -> int:
+async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int], app,  # noqa: C901 (ignore complexity)
+                     conn: BuildPgConnection) -> Tuple[int, str]:
     res = await get_reservation(m, user_id, app, conn)
     if res.price_cent is None or res.price_cent < 100:
         raise JsonErrors.HTTPBadRequest(message='booking price cent < 100')
@@ -95,6 +105,7 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
         """,
         res.user_id, company_id
     )
+    use_saved_card = hasattr(m.stripe, 'source_hash')
 
     source_id = None
     new_customer, new_card = True, True
@@ -110,22 +121,31 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
                 raise
         else:
             new_customer = False
-            try:
-                source_id = next(c['id'] for c in cards['data'] if _card_ref(c) == m.stripe_card_ref)
-            except StopIteration:
-                # cad not found on customer, create a new source
-                source = await stripe_post(
-                    f'customers/{stripe_customer_id}/sources',
-                    source=m.stripe_token,
-                )
-                source_id = source['id']
+            if use_saved_card:
+                try:
+                    source_id = next(c['id'] for c in cards['data'] if _hash_src(c['id']) == m.stripe.source_hash)
+                except StopIteration:
+                    raise JsonErrors.HTTPBadRequest(message='source not found')
             else:
-                new_card = False
+                try:
+                    source_id = next(c['id'] for c in cards['data'] if _card_ref(c) == m.stripe.card_ref)
+                except StopIteration:
+                    # card not found on customer, create a new source
+                    source = await stripe_post(
+                        f'customers/{stripe_customer_id}/sources',
+                        source=m.stripe.token,
+                    )
+                    source_id = source['id']
+                else:
+                    new_card = False
+
+    if new_customer and use_saved_card:
+        raise JsonErrors.HTTPBadRequest(message='using saved card but stripe customer not found')
 
     if new_customer:
         customer = await stripe_post(
             'customers',
-            source=m.stripe_token,
+            source=m.stripe.token,
             email=f'{user_name} <{user_email}>' if user_name else user_email,
             description=f'{user_name or user_email} ({user_role})',
             metadata={
@@ -181,11 +201,15 @@ async def stripe_pay(m: StripePayModel, company_id: int, user_id: Optional[int],
     )
     if new_customer:
         await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, res.user_id)
-    return booked_action_id
+    return booked_action_id, None if use_saved_card else _hash_src(source_id)
 
 
 def _card_ref(c):
     return '{last4}-{exp_year}-{exp_month}'.format(**c)
+
+
+def _hash_src(source_id):
+    return hashlib.sha1(source_id.encode()).hexdigest()
 
 
 async def stripe_request(app, auth, method, path, *, idempotency_key=None, **data):

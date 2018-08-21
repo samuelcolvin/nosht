@@ -205,9 +205,10 @@ class BuyTickets(UpdateView):
 
     async def execute(self, m: StripePayModel):
         await check_grecaptcha(m, self.request)
-        booked_action_id = await stripe_pay(m, self.request['company_id'], self.session.get('user_id'),
-                                            self.app, self.conn)
+        booked_action_id, source_hash = await stripe_pay(m, self.request['company_id'], self.session.get('user_id'),
+                                                         self.app, self.conn)
         await self.app['email_actor'].send_event_conf(booked_action_id)
+        return {'source_hash': source_hash}
 
 
 class BookFreeTickets(UpdateView):
