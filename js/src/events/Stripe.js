@@ -106,7 +106,7 @@ export const get_card = user => {
 
 const ShowCard = ({card}) => (
   <span>
-    {card.brand} expiring: {card.exp_month}/{card.exp_year}, ending: {card.last4}
+    {card.brand} expiring: {card.exp_month}/{card.exp_year - 2000}, ending: {card.last4}
   </span>
 )
 

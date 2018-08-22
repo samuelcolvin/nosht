@@ -229,4 +229,5 @@ class Donate(UpdateViewAuth):
 
     async def execute(self, m: StripeDonateModel):
         await check_grecaptcha(m, self.request)
-        await stripe_donate(m, self.request['company_id'], self.session['user_id'], self.app, self.conn)
+        action_id, _ = await stripe_donate(m, self.request['company_id'], self.session['user_id'], self.app, self.conn)
+        await self.app['email_actor'].send_donation_thanks(action_id)

@@ -68,7 +68,7 @@ class StripeDonateModel(StripeModel):
     def check_required_fields(cls, v, values, **kwargs):
         if v is None and values.get('gift_aid'):
             raise MissingError()
-        return v
+        return v or ''  # https://github.com/samuelcolvin/pydantic/issues/132
 
 
 async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection) -> Reservation:
@@ -270,9 +270,9 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
                     donation_option=m.donation_option_id,
                     amount=price_cents / 100,
                     gift_aid=m.gift_aid,
-                    address=m.address,
-                    city=m.city,
-                    postcode=m.postcode,
+                    address=m.address or None,
+                    city=m.city or None,
+                    postcode=m.postcode or None,
                     action=action_id,
                 )
             )
@@ -308,6 +308,7 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
             'new_customer': new_customer,
             'new_card': new_card,
             'charge_id': charge['id'],
+            'brand': charge['source']['brand'],
             'card_last4': charge['source']['last4'],
             'card_expiry': f"{charge['source']['exp_month']}/{charge['source']['exp_year'] - 2000}",
         }),

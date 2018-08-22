@@ -84,7 +84,7 @@ class EmailActor(BaseEmailActor):
             }
             if data['extra']:
                 action_extra = json.loads(data['extra'])
-                ctx_buyer['card_details'] = '{card_expiry} - ending {card_last4}'.format(**action_extra)
+                ctx_buyer['card_details'] = '{brand} {card_expiry} - ending {card_last4}'.format(**action_extra)
 
             sql = "SELECT id, user_id, extra_info FROM tickets WHERE booked_action=$1 AND user_id IS NOT NULL"
             buyer_user_id = data['user_id']
@@ -112,6 +112,36 @@ class EmailActor(BaseEmailActor):
         if other_emails:
             await self.send_emails.direct(data['company'], Triggers.ticket_other, other_emails)
         return len(other_emails) + 1
+
+    @concurrent
+    async def send_donation_thanks(self, action_id):
+        async with self.pg.acquire() as conn:
+            data = await conn.fetchrow(
+                """
+                SELECT
+                  don.amount, don.gift_aid,
+                  a.user_id, a.extra,
+                  opt.name as donation_option_name,
+                  cat.company, cat.name AS cat_name,
+                  co.currency
+                FROM donations AS don
+                JOIN actions AS a ON don.action = a.id
+                JOIN donation_options AS opt ON don.donation_option = opt.id
+                JOIN categories AS cat ON opt.category = cat.id
+                JOIN companies AS co ON cat.company = co.id
+                WHERE a.id = $1 and a.type = 'donate'
+                """,
+                action_id
+            )
+        action_extra = json.loads(data['extra'])
+        ctx = {
+            'donation_option_name': data['donation_option_name'],
+            'gift_aid_enabled': data['gift_aid'],
+            'category_name': data['cat_name'],
+            'amount_donated': display_cash_free(data['amount'], data['currency']),
+            'card_details': '{brand} {card_expiry} - ending {card_last4}'.format(**action_extra)
+        }
+        await self.send_emails.direct(data['company'], Triggers.donation_thanks, [UserEmail(data['user_id'], ctx)])
 
     @concurrent
     async def send_account_created(self, user_id: int, created_by_admin=False):

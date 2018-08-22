@@ -68,15 +68,20 @@ class Thanks extends React.Component {
                     <CardText>
                       {opt.short_description || opt.long_description}
                     </CardText>
-                    <Button tag={Link} to={this.props.uri + `donate/${opt.id}/`}>
+                    <Button tag={Link} to={this.props.uri + `donate/${opt.id}/`} disabled={!this.props.ctx.user}>
                       Donate <Money>{opt.amount}</Money>
                     </Button>
+                    {!this.props.ctx.user && (
+                      <small className="text-muted d-block">
+                        You must be logged in to donate.
+                      </small>
+                    )}
                   </CardBody>
                 </Card>
               </Col>
             ))}
           </Row>
-        ] : null}
+        ] : <p>No donation options set up for this category.</p>}
 
         <DonateModal
             {...this.props}

@@ -178,7 +178,7 @@ CREATE INDEX ticket_created_ts ON tickets USING btree (created_ts);
 
 -- must match triggers from emails/defaults.py!
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (
-  'ticket-buyer', 'ticket-other', 'event-update', 'event-reminder', 'event-booking',
+  'ticket-buyer', 'ticket-other', 'event-update', 'event-reminder', 'donation-thanks', 'event-booking',
   'event-host-created', 'event-host-update', 'event-host-final-update', 'password-reset', 'account-created',
   'admin-notification'
 );
@@ -224,6 +224,7 @@ CREATE TABLE donations (
 
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE  -- to get event, user and ts
 );
+CREATE UNIQUE INDEX con_action ON donations USING btree (action);
 CREATE INDEX don_donation_option ON donations USING btree (donation_option);
 CREATE INDEX don_gift_aid ON donations USING btree (gift_aid);
 CREATE INDEX don_action ON donations USING btree (action);
