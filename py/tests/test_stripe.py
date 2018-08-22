@@ -3,9 +3,9 @@ import os
 
 import pytest
 from aiohttp import BasicAuth
-from pytest_toolbox.comparison import CloseToNow, RegexStr
+from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
-from web.stripe import Reservation, StripePayModel, stripe_pay, stripe_request
+from web.stripe import Reservation, StripeBuyModel, stripe_buy, stripe_request
 from web.utils import encrypt_json
 
 from .conftest import Factory
@@ -26,7 +26,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    m = StripePayModel(
+    m = StripeBuyModel(
         stripe=dict(
             token='tok_visa',
             client_ip='0.0.0.0',
@@ -45,7 +45,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     )
     assert (ticket_limit, tickets_taken) == (10, 1)
 
-    await stripe_pay(m, factory.company_id, factory.user_id, app, db_conn)
+    await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
 
     customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
     assert customer_id is not None
@@ -99,7 +99,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
     customer_id = customer['id']
     await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
 
-    m = StripePayModel(
+    m = StripeBuyModel(
         stripe=dict(
             token='tok_visa',
             client_ip='0.0.0.0',
@@ -109,7 +109,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
         grecaptcha_token='__ok__',
     )
 
-    await stripe_pay(m, factory.company_id, factory.user_id, app, db_conn)
+    await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
 
     new_customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
     assert new_customer_id == customer_id
@@ -261,4 +261,69 @@ async def test_book_free_with_price(cli, url, factory: Factory):
     data = await r.json()
     assert data == {
         'message': 'booking not free',
+    }
+
+
+async def test_donate_cli(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await factory.create_donation_option()
+
+    await login()
+
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
+        donation_option_id=factory.donation_option_id,
+        event_id=factory.event_id,
+        gift_aid=True,
+        address='Testing Street',
+        city='Testingville',
+        postcode='TE11 0ST',
+        grecaptcha_token='__ok__',
+    )
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    r = await cli.json_post(url('donate'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        ('grecaptcha', '__ok__'),
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
+    ]
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+    r = await db_conn.fetchrow('SELECT * FROM donations')
+    assert dict(r) == {
+        'id': AnyInt(),
+        'donation_option': factory.donation_option_id,
+        'amount': 20,
+        'gift_aid': True,
+        'address': 'Testing Street',
+        'city': 'Testingville',
+        'postcode': 'TE11 0ST',
+        'action': AnyInt(),
+    }
+    action = await db_conn.fetchrow('SELECT * FROM actions WHERE id= $1', r['action'])
+    assert dict(action) == {
+        'id': AnyInt(),
+        'company': factory.company_id,
+        'user_id': factory.user_id,
+        'event': factory.event_id,
+        'ts': CloseToNow(),
+        'type': 'donate',
+        'extra': RegexStr('{.*}'),
+    }
+    assert json.loads(action['extra']) == {
+        'new_card': True,
+        'charge_id': 'charge-id',
+        'card_last4': '1234',
+        'card_expiry': '12/32',
+        'new_customer': True,
     }

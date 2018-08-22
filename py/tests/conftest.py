@@ -24,7 +24,7 @@ from shared.db import prepare_database
 from shared.settings import Settings
 from shared.utils import encrypt_json, mk_password, slugify
 from web.main import create_app
-from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
+from web.stripe import BookingModel, Reservation, StripeBuyModel, book_free, stripe_buy
 
 from .dummy_server import create_dummy_server
 
@@ -129,6 +129,7 @@ class Factory:
         self.user_id = None
         self.event_id = None
         self.ticket_type_id = None
+        self.donation_option_id = None
 
     async def create_company(self,
                              name='Testing',
@@ -292,7 +293,7 @@ class Factory:
         )
 
     async def buy_tickets(self, reservation: Reservation, user_id=None):
-        m = StripePayModel(
+        m = StripeBuyModel(
             stripe=dict(
                 token='tok_visa',
                 client_ip='0.0.0.0',
@@ -301,7 +302,7 @@ class Factory:
             booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
             grecaptcha_token='__ok__',
         )
-        return await stripe_pay(m, self.company_id, user_id or self.user_id, self.app, self.conn)
+        return await stripe_buy(m, self.company_id, user_id or self.user_id, self.app, self.conn)
 
     async def book_free(self, reservation: Reservation, user_id=None):
         m = BookingModel(
@@ -309,6 +310,20 @@ class Factory:
             grecaptcha_token='__ok__',
         )
         return await book_free(m, self.company_id, user_id or self.user_id, self.app, self.conn)
+
+    async def create_donation_option(self, category_id=None, amount=20):
+        donation_option_id = await self.conn.fetchval_b(
+            'INSERT INTO donation_options (:values__names) VALUES :values RETURNING id',
+            values=Values(
+                category=category_id or self.category_id,
+                name='testing donation option',
+                amount=amount,
+                short_description='This is the short_description.',
+                long_description='This is the long_description.',
+            )
+        )
+        self.donation_option_id = self.donation_option_id or donation_option_id
+        return donation_option_id
 
 
 @pytest.fixture

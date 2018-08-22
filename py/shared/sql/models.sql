@@ -108,23 +108,6 @@ CREATE INDEX event_start_ts ON events USING btree (start_ts);
 CREATE INDEX event_category ON events USING btree (category);
 
 
-CREATE TABLE donation_options (
-  id SERIAL PRIMARY KEY,
-  category INT NOT NULL REFERENCES categories ON DELETE CASCADE,
-  name VARCHAR(255) NOT NULL,
-  amount NUMERIC(7, 2) CHECK (amount >= 1),
-  sort_index INT,
-
-  live BOOLEAN DEFAULT TRUE,
-  image VARCHAR(255),
-  short_description VARCHAR(140),
-  long_description TEXT
-);
-CREATE INDEX don_category ON donation_options USING btree (category);
-CREATE INDEX don_live ON donation_options USING btree (live);
-CREATE INDEX don_sort_index ON donation_options USING btree (sort_index);
-
-
 CREATE TYPE ACTION_TYPES AS ENUM (
   'login',
   'guest-signin',
@@ -133,6 +116,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'password-reset',
   'reserve-tickets',
   'buy-tickets',
+  'donate',
   'book-free-tickets',
   'cancel-reserved-tickets',
   'create-event',
@@ -211,3 +195,35 @@ CREATE TABLE email_definitions (
 CREATE UNIQUE INDEX email_def_unique ON email_definitions USING btree (company, trigger);
 
 -- TODO email events
+
+CREATE TABLE donation_options (
+  id SERIAL PRIMARY KEY,
+  category INT NOT NULL REFERENCES categories ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
+  sort_index INT,
+
+  live BOOLEAN DEFAULT TRUE,
+  image VARCHAR(255),
+  short_description VARCHAR(140),
+  long_description TEXT
+);
+CREATE INDEX don_opt_category ON donation_options USING btree (category);
+CREATE INDEX don_opt_live ON donation_options USING btree (live);
+CREATE INDEX don_opt_sort_index ON donation_options USING btree (sort_index);
+
+
+CREATE TABLE donations (
+  id SERIAL PRIMARY KEY,
+  donation_option INT NOT NULL REFERENCES donation_options ON DELETE CASCADE,
+  amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
+  gift_aid BOOLEAN NOT NULL,
+  address VARCHAR(255),
+  city VARCHAR(255),
+  postcode VARCHAR(31),
+
+  action INT NOT NULL REFERENCES actions ON DELETE CASCADE  -- to get event, user and ts
+);
+CREATE INDEX don_donation_option ON donations USING btree (donation_option);
+CREATE INDEX don_gift_aid ON donations USING btree (gift_aid);
+CREATE INDEX don_action ON donations USING btree (action);

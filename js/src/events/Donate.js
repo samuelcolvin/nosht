@@ -11,6 +11,7 @@ import Markdown from '../general/Markdown'
 import {Money} from '../general/Money'
 import {get_card, stripe_pay, StripeContext, StripeForm} from './Stripe'
 import Input from '../forms/Input'
+import ReactGA from 'react-ga'
 
 const gift_aid_field = {
   type: 'bool',
@@ -42,6 +43,10 @@ class DonateForm extends React.Component {
   }
 
   componentDidMount () {
+    if (!this.props.ctx.user) {
+      this.props.ctx.setError('You must be logged in to make a donation')
+      return
+    }
     const stored_card = get_card(this.props.ctx.user)
     this.setState({
       address: stored_card.address_line1,
@@ -59,15 +64,29 @@ class DonateForm extends React.Component {
     this.setState({submitting: true})
     const data = {
       donation_option_id: this.props.donation_option.id,
+      gift_aid: this.state.gift_aid,
+      event_id: this.props.event.id,
       address: this.state.address,
       city: this.state.city,
       postcode: this.state.postcode,
     }
-    const ok = await this.stripe_pay('events/buy/', data)
-    console.log('submitted', ok)
+    const ok = await this.stripe_pay('donate/', data)
+    if (ok) {
+      this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Donation successful, check your email'})
+      ReactGA.event({
+        category: 'donation',
+        action: 'donation-complete',
+        label: this.props.donation_option.id,
+        value: Math.round(this.props.donation_option.amount * 100),
+      })
+      this.props.finished(true)
+    }
   }
 
   render () {
+    if (!this.props.ctx.user) {
+      return null
+    }
     const can_submit = !this.state.submitting && (this.state.payment.complete || this.state.payment.source_hash)
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>

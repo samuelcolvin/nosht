@@ -52,7 +52,7 @@ class Thanks extends React.Component {
           </Row>
         )}
 
-        {this.state.donation_options.length && [
+        {this.state.donation_options.length ? [
           <div key="p" className="h4">
             While you're here, please consider making a donation to {this.props.ctx.company.company.name}...
           </div>,
@@ -76,12 +76,11 @@ class Thanks extends React.Component {
               </Col>
             ))}
           </Row>
-        ]}
+        ] : null}
 
         <DonateModal
             {...this.props}
             parent_uri={this.props.uri + 'donate/'}
-            event={this.state.event}
             donation_option={selected_opt}
             regex={/donate\/\d+\/$/}
         />

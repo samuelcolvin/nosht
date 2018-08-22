@@ -10,6 +10,7 @@ class ActionTypes(str, Enum):
     password_reset = 'password-reset'
     reserve_tickets = 'reserve-tickets'
     buy_tickets = 'buy-tickets'
+    donate = 'donate'
     book_free_tickets = 'book-free-tickets'
     cancel_reserved_tickets = 'cancel-reserved-tickets'
     create_event = 'create-event'
