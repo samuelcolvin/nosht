@@ -1,4 +1,5 @@
 import React from 'react'
+import ReactDOM from 'react-dom'
 import {
   Button,
   ButtonGroup,
@@ -12,10 +13,10 @@ import WithContext from '../utils/context'
 import {as_title, get_component_name} from '../utils'
 import {Detail, render} from './Dashboard'
 
-export const ModalFooter = ({finished, disabled, label}) => (
+export const ModalFooter = ({finished, disabled, label, cancel_disabled}) => (
   <BsModalFooter>
     <ButtonGroup>
-      <Button type="button" color="secondary" onClick={() => finished()}>
+      <Button type="button" color="secondary" onClick={() => finished()} disabled={cancel_disabled}>
         Cancel
       </Button>
       <Button type="submit" color="primary" disabled={disabled}>
@@ -58,6 +59,15 @@ export const InfoModal = ({onClose, isOpen, title, fields, extra_fields, object,
   )
 }
 
+export const SetModalTitle = ({children}) => {
+  const el = document.getElementById('modal-title')
+  if (children && el) {
+    return ReactDOM.createPortal(children, el)
+  } else {
+    return null
+  }
+}
+
 export default function AsModal (WrappedComponent) {
   class AsModal extends React.Component {
     constructor (props) {
@@ -78,7 +88,7 @@ export default function AsModal (WrappedComponent) {
       })
       this.toggle_handlers.map(h => h(r))
       if (!this.state.shown_new) {
-        this.props.history.push(this.props.parent_uri + (r && r.pk ? `${r.pk}/`: ''))
+        this.props.history.replace(this.props.parent_uri + (r && r.pk ? `${r.pk}/`: ''))
       }
     }
 
@@ -93,7 +103,9 @@ export default function AsModal (WrappedComponent) {
     render () {
       return (
         <Modal isOpen={this.state.shown} toggle={() => this.toggle()} size="lg">
-          <ModalHeader toggle={() => this.toggle()}>{this.props.title}</ModalHeader>
+          <ModalHeader toggle={() => this.toggle()}>
+            {this.props.title}<span id="modal-title"/>
+          </ModalHeader>
           <WrappedComponent
             {...this.props}
             finished={this.toggle}

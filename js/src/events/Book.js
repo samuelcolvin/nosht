@@ -105,8 +105,10 @@ class BookForm extends React.Component {
   finished (complete) {
     if (complete) {
       this.props.set_complete()
+      this.props.finished({pk: 'donate'})
+    } else {
+      this.props.finished()
     }
-    this.props.finished()
   }
 
   render () {

@@ -46,6 +46,17 @@ export function StripeContext (WrappedComponent) {
 }
 
 export async function stripe_pay (post_url, request_data) {
+  if (this.state.submitting || !stripe_form_valid(this.state.payment)) {
+    const payment = Object.assign({}, this.state.payment, {
+      name_error: this.state.payment.name ? null: 'Required',
+      address_error: this.state.payment.address ? null: 'Required',
+      city_error: this.state.payment.city ? null: 'Required',
+      postcode_error: this.state.payment.postcode ? null: 'Required',
+    })
+    this.setState({submitting: false, payment})
+    return false
+  }
+
   let token = null
   if (this.state.payment.source_hash) {
     request_data.stripe = {source_hash: this.state.payment.source_hash}
@@ -67,10 +78,17 @@ export async function stripe_pay (post_url, request_data) {
 
   request_data.grecaptcha_token = await grecaptcha_execute('stripe_pay')
 
-  const response_data = await requests.post(post_url,request_data)
+  let response_data
+  try {
+    response_data = await requests.post(post_url,request_data)
+  } catch (error) {
+    this.props.ctx.setError(error)
+    return false
+  }
   if (token) {
     record_card(this.props.ctx.user, token, response_data.source_hash)
   }
+  return true
 }
 
 export const stripe_form_valid = payment_details => (
@@ -81,7 +99,7 @@ export const record_card = (user, token, source_hash) => {
   window.sessionStorage[`card_details_${user.id}`] = JSON.stringify(Object.assign({}, token.card, {source_hash}))
 }
 
-export const get_card = (user) => {
+export const get_card = user => {
   const v = window.sessionStorage[`card_details_${user.id}`]
   return v ? JSON.parse(v) : {}
 }
@@ -113,9 +131,10 @@ class StripeForm_ extends React.Component {
   }
 
   componentDidMount () {
+    const u = this.props.ctx.user
     this.props.setDetails({
       complete: false,
-      name: this.stored_card.name,
+      name: this.stored_card.name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
       name_error: null,
       address: this.stored_card.address_line1,
       address_error: null,
@@ -143,7 +162,8 @@ class StripeForm_ extends React.Component {
   render () {
     let form_height = 300
     const details = this.props.details || {}
-    if (this.stored_card.last4) {
+    const has_saved_card = Boolean(this.stored_card.source_hash)
+    if (has_saved_card) {
       form_height = details.source_hash ? 130 : 340
     }
     if (this.props.submitted) {
@@ -156,7 +176,7 @@ class StripeForm_ extends React.Component {
     } else {
       return (
         <div style={{height: form_height}} className="hide-help-text">
-          {!!this.stored_card.last4 && (
+          {has_saved_card && (
             <Row className="justify-content-center">
               <Col md="10">
                 <div className="form-check">
@@ -177,7 +197,7 @@ class StripeForm_ extends React.Component {
               </Col>
             </Row>
           )}
-          <div className={this.stored_card.last4 && details.source_hash ? 'invisible' : ''}>
+          <div className={details.source_hash ? 'invisible' : ''}>
             <Input field={name_field} value={details.name} error={details.name_error}
                    set_value={v => this.setDetails({name: v, name_error: null})}/>
             <Input field={address_field} value={details.address} error={details.address_error}

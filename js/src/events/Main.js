@@ -94,7 +94,7 @@ class Event extends React.Component {
     super(props)
     this.state = {
       event: null,
-      complete: false,
+      booking_complete: false,
     }
     const params = this.props.match.params
     this.uri = `/${params.category}/${params.event}/`
@@ -133,8 +133,8 @@ class Event extends React.Component {
     }
     return (
       <div>
-        {this.state.complete ?
-            <Thanks event={this.state.event} uri={this.uri}/>
+        {this.props.location.pathname.match(/\/donate(\/(\d+))?\/$/) ?
+            <Thanks event={this.state.event} uri={this.uri} booking_complete={this.state.booking_complete}/>
             :
             <EventDetails
               event={this.state.event}
@@ -146,7 +146,7 @@ class Event extends React.Component {
             {...this.props}
             parent_uri={this.uri}
             event={this.state.event}
-            set_complete={() => this.setState({complete: true})}
+            set_complete={() => this.setState({booking_complete: true})}
         />
       </div>
     )

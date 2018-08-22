@@ -36,18 +36,21 @@ class Thanks extends React.Component {
         <Row>
           <Col>
             <h1>{this.props.event.name}</h1>
+            <Link to={this.props.uri}>&lsaquo; Back to event details</Link>
             <p className="lead">
               {this.props.event.short_description}
             </p>
           </Col>
         </Row>
 
-        <Row className="text-muted mb-3 h5">
-          <Col md="auto">
-            <FontAwesomeIcon icon={['fas', 'check-circle']} className="mx-1 text-success"/>
-            Booking successful, please check your email for tickets and other details.
-          </Col>
-        </Row>
+        {this.props.booking_complete && (
+          <Row className="text-muted mb-3 h5">
+            <Col md="auto">
+              <FontAwesomeIcon icon={['fas', 'check-circle']} className="mx-1 text-success"/>
+              Booking successful, please check your email for tickets and other details.
+            </Col>
+          </Row>
+        )}
 
         {this.state.donation_options.length && [
           <div key="p" className="h4">
@@ -77,10 +80,9 @@ class Thanks extends React.Component {
 
         <DonateModal
             {...this.props}
-            parent_uri={this.uri}
+            parent_uri={this.props.uri + 'donate/'}
             event={this.state.event}
             donation_option={selected_opt}
-            title={`Donate ${selected_opt.name}`}
             regex={/donate\/\d+\/$/}
         />
       </div>

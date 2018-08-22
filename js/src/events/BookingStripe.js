@@ -13,7 +13,7 @@ import Markdown from '../general/Markdown'
 import Input from '../forms/Input'
 import {User} from './BookingTickets'
 import ReactGA from 'react-ga'
-import {StripeContext, StripeForm, stripe_pay, stripe_form_valid} from './Stripe'
+import {StripeContext, StripeForm, stripe_pay} from './Stripe'
 
 export const PricingList = ({items, className}) => (
   <div className={className}>
@@ -86,31 +86,17 @@ class StripeBookingForm extends React.Component {
   }
 
   async take_payment () {
-    if (this.state.submitting || !stripe_form_valid(this.state.payment)) {
-      const payment = Object.assign({}, this.state.payment, {
-        name_error: this.state.payment.name ? null: 'Required',
-        address_error: this.state.payment.address ? null: 'Required',
-        city_error: this.state.payment.city ? null: 'Required',
-        postcode_error: this.state.payment.postcode ? null: 'Required',
+    const ok = await this.stripe_pay('events/buy/', {booking_token: this.props.reservation.booking_token})
+    if (ok) {
+      this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
+      ReactGA.event({
+        category: 'ticket-booking',
+        action: 'ticket-booking-confirm',
+        label: 'pay',
+        value: this.props.reservation.total_price
       })
-      this.setState({submitting: false, payment})
-      return
+      this.props.finished(true)
     }
-
-    try {
-      await this.stripe_pay('events/buy/', {booking_token: this.props.reservation.booking_token})
-    } catch (error) {
-      this.props.ctx.setError(error)
-      return
-    }
-    this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
-    ReactGA.event({
-      category: 'ticket-booking',
-      action: 'ticket-booking-confirm',
-      label: 'pay',
-      value: this.props.reservation.total_price
-    })
-    this.props.finished(true)
   }
 
   async book_free () {
@@ -158,12 +144,12 @@ class StripeBookingForm extends React.Component {
       return tncs_field && <div style={{height: 40}}>{this.state.submitted ? null : tncs_field}</div>
     } else {
       return (
-          <StripeForm
-              submitted={this.state.submitted}
-              details={this.state.payment}
-              setDetails={payment => this.setState({payment})}>
-            {tncs_field}
-          </StripeForm>
+        <StripeForm
+            submitted={this.state.submitted}
+            details={this.state.payment}
+            setDetails={payment => this.setState({payment})}>
+          {tncs_field}
+        </StripeForm>
       )
     }
   }
@@ -206,6 +192,7 @@ class StripeBookingForm extends React.Component {
         </ModalBody>
         <ModalFooter finished={this.props.finished}
                      label={res.total_price ? 'Buy Now' : 'Confirm'}
+                     cancel_disabled={this.state.submitting}
                      disabled={confirm_disabled}/>
       </BootstrapForm>
     )
