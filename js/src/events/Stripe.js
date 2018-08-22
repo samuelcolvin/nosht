@@ -162,40 +162,33 @@ class StripeForm_ extends React.Component {
                 <div className="form-check">
                   <input className="form-check-input" type="radio" id="card-saved" value="saved"
                          checked={!!details.source_hash} onChange={this.radioChange}/>
-                    <label className="form-check-label" htmlFor="card-saved">
-                      Use <ShowCard card={this.stored_card}/>
-                    </label>
+                  <label className="form-check-label" htmlFor="card-saved">
+                    Use <ShowCard card={this.stored_card}/>
+                  </label>
                 </div>
+
                 <div className="form-check">
                   <input className="form-check-input" type="radio" id="card-new" value="new"
                          checked={!details.source_hash} onChange={this.radioChange}/>
-                    <label className="form-check-label" htmlFor="card-new">
-                      Use new Card
-                    </label>
+                  <label className="form-check-label" htmlFor="card-new">
+                    Use new Card
+                  </label>
                 </div>
               </Col>
             </Row>
           )}
           <div className={this.stored_card.last4 && details.source_hash ? 'invisible' : ''}>
-            <Input field={name_field}
-                   value={details.name}
-                   error={details.name_error}
+            <Input field={name_field} value={details.name} error={details.name_error}
                    set_value={v => this.setDetails({name: v, name_error: null})}/>
-            <Input field={address_field}
-                   value={details.address}
-                   error={details.address_error}
+            <Input field={address_field} value={details.address} error={details.address_error}
                    set_value={v => this.setDetails({address: v, address_error: null})}/>
             <Row>
               <Col md="6">
-                <Input field={city_field}
-                       value={details.city}
-                       error={details.city_error}
+                <Input field={city_field} value={details.city} error={details.city_error}
                        set_value={v => this.setDetails({city: v, city_error: null})}/>
               </Col>
               <Col md="6">
-                <Input field={postcode_field}
-                       value={details.postcode}
-                       error={details.postcode_error}
+                <Input field={postcode_field} value={details.postcode} error={details.postcode_error}
                        set_value={v => this.setDetails({postcode: v, postcode_error: null})}/>
               </Col>
             </Row>
