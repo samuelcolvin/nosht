@@ -41,7 +41,7 @@ FROM (
     FROM donation_options AS d
     JOIN categories AS CAT ON d.category = cat.id
     WHERE cat.company = $1 AND d.category = $2 AND d.live = TRUE
-    ORDER BY d.sort_index, d.id
+    ORDER BY d.sort_index, d.amount, d.id
   ) AS t
 ) AS donation_options;
 """

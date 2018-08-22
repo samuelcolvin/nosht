@@ -216,7 +216,7 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
         customer = await stripe_post(
             'customers',
             source=m.stripe.token,
-            email=f'{user_name} <{user_email}>' if user_name else user_email,
+            email=user_email,
             description=f'{user_name or user_email} ({user_role})',
             metadata={
                 'role': user_role,

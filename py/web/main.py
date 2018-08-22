@@ -19,7 +19,8 @@ from .middleware import csrf_middleware, error_middleware, pg_middleware, user_m
 from .views import index, sitemap
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout,
                          reset_password_request, set_password, unsubscribe)
-from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, Donate, ReserveTickets, booking_info
+from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, Donate, ReserveTickets, booking_info, \
+    DonationOptionBread
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public, donation_options)
 from .views.company import CompanyBread, company_upload
@@ -141,6 +142,8 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.get('/email-defs/{trigger}/', email_def_retrieve, name='email-defs-retrieve'),
         web.post('/email-defs/{trigger}/edit/', email_def_edit, name='email-defs-edit'),
         web.post('/email-defs/{trigger}/clear/', clear_email_def, name='email-defs-clear'),
+
+        *DonationOptionBread.routes('/donation-options/')
     ])
 
     wrapper_app = web.Application(

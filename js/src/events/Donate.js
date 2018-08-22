@@ -26,9 +26,6 @@ const gift_aid_field = {
     </span>
   )
 }
-const address_field = {name: 'gift_aid_address', required: true}
-const city_field = {name: 'gift_aid_city', required: true}
-const postcode_field = {name: 'gift_aid_postcode', required: true}
 
 class DonateForm extends React.Component {
   constructor (props) {
@@ -88,6 +85,11 @@ class DonateForm extends React.Component {
       return null
     }
     const can_submit = !this.state.submitting && (this.state.payment.complete || this.state.payment.source_hash)
+
+    const address_field = {name: 'gift_aid_address', required: this.state.gift_aid}
+    const city_field = {name: 'gift_aid_city', required: this.state.gift_aid}
+    const postcode_field = {name: 'gift_aid_postcode', required: this.state.gift_aid}
+
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
         <SetModalTitle>
@@ -99,10 +101,11 @@ class DonateForm extends React.Component {
           </div>
           <Row className="justify-content-center">
             <Col md="8">
+              <hr/>
               <Input field={gift_aid_field} value={this.state.gift_aid}
                      set_value={gift_aid => this.setState({gift_aid})}/>
 
-              <Collapse isOpen={this.state.gift_aid} className="highlight-required">
+              <Collapse isOpen={this.state.gift_aid}>
                 <Input field={address_field} value={this.state.address} error={this.state.address_error}
                        set_value={v => this.setState({address: v, address_error: null})}/>
                 <Row>
