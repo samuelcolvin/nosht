@@ -87,12 +87,12 @@ def create_app(*, settings: Settings=None, logging_client=None):
 
         web.get('/cat/{category}/', category_public, name='category'),
 
+        # event admin
         web.get('/events/categories/', event_categories, name='event-categories'),
         *EventBread.routes('/events/'),
         web.post('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
         web.post('/events/{id:\d+}/set-image/new/', set_event_image_new, name='event-set-image-new'),
         web.post('/events/{id:\d+}/set-image/existing/', set_event_image_existing, name='event-set-image-existing'),
-        web.get('/events/{id:\d+}/booking-info/', booking_info, name='event-booking-info'),
         web.get('/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
         web.get('/events/{id:\d+}/tickets/export.csv', event_tickets_export, name='event-tickets-export'),
         web.get('/events/{id:\d+}/ticket-types/', event_ticket_types, name='event-ticket-types'),
@@ -101,11 +101,15 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/events/{id:\d+}/updates/send/', EventUpdate.view(), name='event-send-update'),
         web.get('/events/{id:\d+}/updates/list/', event_updates_sent, name='event-updates-sent'),
         web.post('/events/{id:\d+}/switch-highlight/', switch_highlight, name='event-switch-highlight'),
+
+        # event public views
         web.post('/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
         web.post('/events/buy/', BuyTickets.view(), name='event-buy-tickets'),
         web.post('/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
         web.get('/events/{category}/{event}/', event_get, name='event-get-public'),
+        web.get('/events/{category}/{event}/booking-info/', booking_info, name='event-booking-info-public'),
         web.get('/events/{category}/{event}/{sig}/', event_get, name='event-get-private'),
+        web.get('/events/{category}/{event}/{sig}/booking-info/', booking_info, name='event-booking-info-private'),
 
         web.post('/donate/', Donate.view(), name='donate'),
 

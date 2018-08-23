@@ -13,6 +13,8 @@ from web.bread import UpdateView
 from web.stripe import BookFreeModel, Reservation, StripeBuyModel, book_free, stripe_buy
 from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response
 
+from .events import check_event_sig
+
 logger = logging.getLogger('nosht.booking')
 
 
@@ -23,7 +25,8 @@ class UpdateViewAuth(UpdateView):
 
 @is_auth
 async def booking_info(request):
-    event_id = int(request.match_info['id'])
+    event_id = await check_event_sig(request)
+
     conn: BuildPgConnection = request['conn']
     settings = request.app['settings']
     tickets_remaining = await conn.fetchval('SELECT check_tickets_remaining($1, $2)', event_id, settings.ticket_ttl)

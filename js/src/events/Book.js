@@ -27,8 +27,9 @@ class BookForm extends React.Component {
     }
     this.setState({got_booking_info: true})
     let r
+    const p = this.props.params
     try {
-      r = await requests.get(`events/${this.props.event.id}/booking-info/`)
+      r = await requests.get(`events/${p.category}/${p.event}/${p.sig ? p.sig + '/': ''}booking-info/`)
     } catch (error) {
       this.props.ctx.setError(error)
       return

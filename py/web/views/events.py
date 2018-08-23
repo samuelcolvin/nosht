@@ -81,15 +81,18 @@ FROM (
 """
 
 
-async def event_get(request):
-    conn: BuildPgConnection = request['conn']
+async def check_event_sig(request):
     company_id = request['company_id']
     category_slug = request.match_info['category']
     event_slug = request.match_info['event']
-    r = await conn.fetchrow(event_id_public_sql, company_id, category_slug, event_slug)
-    if not r:
-        raise JsonErrors.HTTPNotFound(message='event not found')
-    event_id, event_is_public = r
+    r = await request['conn'].fetchrow(event_id_public_sql, company_id, category_slug, event_slug)
+
+    # so we always do the hashing even for an event that does exist to avoid timing attack, probably over kill
+    if r:
+        event_id, event_is_public = r
+    else:
+        event_id, event_is_public = 0, False
+
     if not event_is_public:
         url_sig = request.match_info.get('sig')
         if not url_sig:
@@ -99,9 +102,13 @@ async def event_get(request):
             digestmod=hashlib.md5
         ).hexdigest()
         if not compare_digest(url_sig, sig):
-            raise JsonErrors.HTTPBadRequest(message='event signature incorrect, please check the url and try again.')
+            raise JsonErrors.HTTPNotFound(message='event not found')
+    return event_id
 
-    json_str = await conn.fetchval(event_info_sql, event_id)
+
+async def event_get(request):
+    event_id = await check_event_sig(request)
+    json_str = await request['conn'].fetchval(event_info_sql, event_id)
     return raw_json_response(json_str)
 
 

@@ -6,14 +6,18 @@ from web.utils import decrypt_json, encrypt_json
 from .conftest import Factory
 
 
-async def test_booking_info(cli, url, factory: Factory, login):
+async def test_booking_info(cli, url, factory: Factory, login, db_conn):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(ticket_limit=20)
+    await factory.create_event(ticket_limit=20, status='published')
     await login()
 
-    r = await cli.get(url('event-booking-info', id=factory.event_id))
+    cat_slug, event_slug = await db_conn.fetchrow(
+        'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
+        factory.event_id
+    )
+    r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
@@ -23,14 +27,18 @@ async def test_booking_info(cli, url, factory: Factory, login):
     }
 
 
-async def test_booking_info_limited(cli, url, factory: Factory, login):
+async def test_booking_info_limited(cli, url, factory: Factory, login, db_conn):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(ticket_limit=8)
+    await factory.create_event(ticket_limit=8, status='published')
     await login()
 
-    r = await cli.get(url('event-booking-info', id=factory.event_id))
+    cat_slug, event_slug = await db_conn.fetchrow(
+        'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
+        factory.event_id
+    )
+    r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
@@ -38,6 +46,61 @@ async def test_booking_info_limited(cli, url, factory: Factory, login):
         'existing_tickets': 0,
         'ticket_types': [{'id': AnyInt(), 'name': 'Standard', 'price': None}],
     }
+
+
+async def test_booking_info_sig(cli, url, factory: Factory, login, settings, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(ticket_limit=20, status='published', public=False)
+    await login()
+
+    event_link = await db_conn.fetchval(
+        """
+        SELECT event_link(cat.slug, e.slug, e.public, $2)
+        FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1
+        """,
+        factory.event_id, settings.auth_key
+    )
+    _, cat_slug, event_slug, sig = event_link.strip('/').split('/')
+    r = await cli.get(url('event-booking-info-private', category=cat_slug, event=event_slug, sig=sig))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'tickets_remaining': None,
+        'existing_tickets': 0,
+        'ticket_types': [{'id': AnyInt(), 'name': 'Standard', 'price': None}],
+    }
+
+
+async def test_booking_info_private(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(ticket_limit=20, status='published', public=False)
+    await login()
+
+    cat_slug, event_slug = await db_conn.fetchrow(
+        'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
+        factory.event_id
+    )
+    r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
+    assert r.status == 404, await r.text()
+
+
+async def test_booking_info_sig_wrong(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(ticket_limit=20, status='published', public=False)
+    await login()
+
+    cat_slug, event_slug = await db_conn.fetchrow(
+        'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
+        factory.event_id
+    )
+    r = await cli.get(url('event-booking-info-private', category=cat_slug, event=event_slug, sig='xxx'))
+    assert r.status == 404, await r.text()
 
 
 async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):

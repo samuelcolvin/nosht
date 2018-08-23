@@ -113,8 +113,8 @@ async def test_private_event_bad_sig(cli, url, factory: Factory, db_conn, settin
     )
     _, cat_slug, event_slug, sig = event_link.strip('/').split('/')
     r = await cli.get(url('event-get-private', category=cat_slug, event=event_slug, sig=sig + 'x'))
-    assert r.status == 400, await r.text()
-    assert {'message': 'event signature incorrect, please check the url and try again.'} == await r.json()
+    assert r.status == 404, await r.text()
+    assert {'message': 'event not found'} == await r.json()
 
 
 async def test_bread_browse(cli, url, factory: Factory, login):

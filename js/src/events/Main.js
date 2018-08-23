@@ -97,17 +97,20 @@ class Event extends React.Component {
       booking_complete: false,
     }
     const params = this.props.match.params
-    this.uri = `/${params.category}/${params.event}/`
+    if (params.sig) {
+      this.uri = `/pvt/${params.category}/${params.event}/${params.sig}/`
+    } else {
+      this.uri = `/${params.category}/${params.event}/`
+    }
     this.props.register(this.get_data.bind(this))
   }
 
   async get_data () {
     let event, ticket_types
-    const params = this.props.match.params
-    this.props.ctx.setRootState({active_page: params.category})
-    const url = `events/${params.category}/${params.event}/${params.sig ? params.sig + '/': ''}`
+    const p = this.props.match.params
+    this.props.ctx.setRootState({active_page: p.category})
     try {
-      const data = await requests.get(url)
+      const data = await requests.get(`events/${p.category}/${p.event}/${p.sig ? p.sig + '/': ''}`)
       event = data.event
       ticket_types = data.ticket_types
     } catch (error) {
@@ -146,6 +149,7 @@ class Event extends React.Component {
             {...this.props}
             parent_uri={this.uri}
             event={this.state.event}
+            params={this.props.match.params}
             set_complete={() => this.setState({booking_complete: true})}
         />
       </div>
