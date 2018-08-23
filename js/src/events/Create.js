@@ -9,6 +9,7 @@ export const EVENT_FIELDS = [
   {
     name: 'name',
     required: true,
+    title: 'Event name',
     help_text: 'Public name of the event, keep this short and appealing.',
   },
   {
