@@ -46,6 +46,10 @@ class DonateForm extends React.Component {
     }
     const stored_card = get_card(this.props.ctx.user)
     this.setState({
+      first_name: this.props.ctx.user.first_name,
+      first_name_error: null,
+      last_name: this.props.ctx.user.last_name,
+      last_name_error: null,
       address: stored_card.address_line1,
       address_error: null,
       city: stored_card.address_city,
@@ -63,6 +67,8 @@ class DonateForm extends React.Component {
       donation_option_id: this.props.donation_option.id,
       gift_aid: this.state.gift_aid,
       event_id: this.props.event.id,
+      first_name: this.state.first_name,
+      last_name: this.state.last_name,
       address: this.state.address,
       city: this.state.city,
       postcode: this.state.postcode,
@@ -86,9 +92,11 @@ class DonateForm extends React.Component {
     }
     const can_submit = !this.state.submitting && (this.state.payment.complete || this.state.payment.source_hash)
 
-    const address_field = {name: 'gift_aid_address', required: this.state.gift_aid}
-    const city_field = {name: 'gift_aid_city', required: this.state.gift_aid}
-    const postcode_field = {name: 'gift_aid_postcode', required: this.state.gift_aid}
+    const first_name_field = {name: 'first_name', required: this.state.gift_aid}
+    const last_name_field = {name: 'last_name', required: this.state.gift_aid}
+    const address_field = {name: 'address', required: this.state.gift_aid}
+    const city_field = {name: 'city', required: this.state.gift_aid}
+    const postcode_field = {name: 'postcode', required: this.state.gift_aid}
 
     const opt = this.props.donation_option
     return (
@@ -112,6 +120,16 @@ class DonateForm extends React.Component {
                      set_value={gift_aid => this.setState({gift_aid})}/>
 
               <Collapse isOpen={this.state.gift_aid}>
+                <Row>
+                  <Col md="6">
+                    <Input field={first_name_field} value={this.state.first_name} error={this.state.first_name_error}
+                           set_value={v => this.setState({first_name: v, first_name_error: null})}/>
+                  </Col>
+                  <Col md="6">
+                    <Input field={last_name_field} value={this.state.last_name} error={this.state.last_name_error}
+                           set_value={v => this.setState({last_name: v, last_name_error: null})}/>
+                  </Col>
+                </Row>
                 <Input field={address_field} value={this.state.address} error={this.state.address_error}
                        set_value={v => this.setState({address: v, address_error: null})}/>
                 <Row>

@@ -60,11 +60,13 @@ class StripeDonateModel(StripeModel):
     donation_option_id: int
     event_id: int
     gift_aid: bool
+    first_name: constr(max_length=255) = None
+    last_name: constr(max_length=255) = None
     address: constr(max_length=255) = None
     city: constr(max_length=255) = None
     postcode: constr(max_length=31) = None
 
-    @validator('address', 'city', 'postcode', always=True, pre=True)
+    @validator('first_name', 'last_name', 'address', 'city', 'postcode', always=True, pre=True)
     def check_required_fields(cls, v, values, **kwargs):
         if v is None and values.get('gift_aid'):
             raise MissingError()
@@ -270,6 +272,8 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
                     donation_option=m.donation_option_id,
                     amount=price_cents / 100,
                     gift_aid=m.gift_aid,
+                    first_name=m.first_name or None,
+                    last_name=m.last_name or None,
                     address=m.address or None,
                     city=m.city or None,
                     postcode=m.postcode or None,

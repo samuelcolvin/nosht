@@ -219,6 +219,8 @@ CREATE TABLE IF NOT EXISTS donations (
   donation_option INT NOT NULL REFERENCES donation_options ON DELETE CASCADE,
   amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
   gift_aid BOOLEAN NOT NULL,
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
   address VARCHAR(255),
   city VARCHAR(255),
   postcode VARCHAR(31),

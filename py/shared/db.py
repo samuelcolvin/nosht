@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from textwrap import shorten
-from typing import NamedTuple, Callable
+from typing import Callable, NamedTuple
 
 import aiohttp
 import lorem
@@ -22,6 +22,8 @@ from .utils import mk_password, slugify
 
 logger = logging.getLogger('nosht.db')
 patches = []
+
+
 class Patch(NamedTuple):
     func: Callable
     direct: bool = False

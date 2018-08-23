@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactGA from 'react-ga'
+import {set_tmp_name} from '../utils'
 import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import BookingLogin from './BookingLogin'
@@ -68,8 +69,8 @@ class BookForm extends React.Component {
 
     const u = this.props.ctx.user
     if (tickets[0].email === u.email && u.first_name === null  && u.last_name === null) {
-      const update = {first_name: tickets[0].first_name, last_name: tickets[0].last_name}
-      this.props.ctx.setUser(Object.assign({}, u, update))
+      set_tmp_name(tickets[0].first_name, tickets[0].last_name)
+      this.props.ctx.setUser(u)
     }
     let ticket_type = this.state.booking_info.ticket_types[0].id
     if (this.state.booking_info.ticket_types.length > 1) {
