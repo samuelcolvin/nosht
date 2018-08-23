@@ -23,7 +23,7 @@ from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, R
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
                                category_images, category_public, donation_options)
 from .views.company import CompanyBread, company_upload
-from .views.donate import Donate, DonationOptionBread
+from .views.donate import Donate, DonationOptionBread, donation_image_upload
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
 from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories, event_get,
                            event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
@@ -143,7 +143,8 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/email-defs/{trigger}/edit/', email_def_edit, name='email-defs-edit'),
         web.post('/email-defs/{trigger}/clear/', clear_email_def, name='email-defs-clear'),
 
-        *DonationOptionBread.routes('/donation-options/')
+        *DonationOptionBread.routes('/donation-options/'),
+        web.post('/donation-options/{pk:\d+}/upload-image/', donation_image_upload, name='donation-image-upload')
     ])
 
     wrapper_app = web.Application(

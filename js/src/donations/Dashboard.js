@@ -62,12 +62,15 @@ export class DonationOptionDetails extends RenderDetails {
       amount: {render: v => <Money>{v}</Money>},
       category_name: {title: 'Category'},
       long_description: {wide: true, render: v => <MarkdownPreview v={v}/>},
-      image: {wide: true, render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>},
+      image: {
+        wide: true,
+        edit_link: this.uri + 'set-image/',
+        render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>
+      },
       category: null,
     }
     this.state['buttons'] = [
       {name: 'Edit', link: this.uri + 'edit/'},
-      {name: 'Set Images', link: this.uri + 'set-image/'},
       {
         name: 'Delete Donation Option',
         action: `/donation-options/${this.id}/delete/`,
@@ -104,7 +107,8 @@ export class DonationOptionDetails extends RenderDetails {
                          regex={/set-image\/$/}
                          update={this.update}
                          title="Upload Image"
-                         action="/xxx/"/>,
+                         action={`donation-options/${this.id}/upload-image/`}
+                         help_text="Images must be at least 640px x 480px."/>,
     ]
   }
 }

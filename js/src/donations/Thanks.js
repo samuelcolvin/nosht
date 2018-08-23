@@ -5,7 +5,7 @@ import {Link} from 'react-router-dom'
 import PromptUpdate from '../general/PromptUpdate'
 import requests from '../utils/requests'
 import {Money} from '../general/Money'
-import DonateModal from './Donate'
+import DonateModal from './ModalForm'
 
 class Thanks extends React.Component {
   constructor (props) {
@@ -56,9 +56,9 @@ class Thanks extends React.Component {
           <div key="p" className="h4">
             While you're here, please consider making a donation to {this.props.ctx.company.company.name}...
           </div>,
-          <Row key="g" className="pt-2">
+          <Row key="g">
             {this.state.donation_options.map(opt => (
-              <Col key={opt.id} md="4" className="box-container">
+              <Col key={opt.id} md="4" className="box-container pb-4">
                 <Card>
                   {opt.image &&
                     <CardImg top width="100%" src={opt.image + '/thumb.jpg'} alt={opt.name}/>

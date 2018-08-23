@@ -9,7 +9,7 @@ import {UsersList, UsersDetails} from './users/Dashboard'
 import Account from './users/Account'
 import {CategoriesList, CategoriesDetails} from './cats/Dashboard'
 import {EmailDefList, EmailDefDetails} from './emails/Dashboard'
-import {DonationOptionsList, DonationOptionDetails} from './donation_options/Dashboard'
+import {DonationOptionsList, DonationOptionDetails} from './donations/Dashboard'
 import CompanyDetails from './company/Dashboard'
 import Export from './Export'
 

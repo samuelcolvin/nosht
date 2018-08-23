@@ -56,7 +56,7 @@ class CompanyBread(Bread):
 
 
 LOGO_SIZE = 256, 256
-upload_logo = partial(upload_other, req_width=LOGO_SIZE[0], req_height=LOGO_SIZE[1])
+upload_logo = partial(upload_other, req_size=LOGO_SIZE)
 
 
 @is_admin
@@ -78,7 +78,6 @@ async def company_upload(request):
 
     await request['conn'].execute_b('UPDATE companies SET :set WHERE id=:id', set=V(field_name) == image_url, id=co_id)
 
-    # delete the image from S3 before uploading a new one
     if old_image:
         await delete_image(old_image, request.app['settings'])
     return json_response(status='success')

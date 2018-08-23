@@ -1,12 +1,15 @@
 import logging
+from pathlib import Path
 
 from buildpg import V
 from buildpg.clauses import Join, Where
 from pydantic import BaseModel, condecimal, constr
 
-from web.auth import check_grecaptcha, check_session
+from shared.images import delete_image, upload_other
+from web.auth import check_grecaptcha, check_session, is_admin
 from web.bread import Bread
 from web.stripe import StripeDonateModel, stripe_donate
+from web.utils import JsonErrors, json_response, request_image
 
 from .booking import UpdateViewAuth
 
@@ -65,3 +68,39 @@ class DonationOptionBread(Bread):
 
     def join(self):
         return Join(V('categories').as_('cat').on(V('cat.id') == V('opt.category')))
+
+
+IMAGE_SIZE = 640, 480
+
+
+@is_admin
+async def donation_image_upload(request):
+    co_id = request['company_id']
+    don_opt_id = int(request.match_info['pk'])
+    r = await request['conn'].fetchrow(
+        """
+        SELECT co.slug, cat.slug, d.image
+        FROM donation_options AS d
+        JOIN categories AS cat ON d.category = cat.id
+        JOIN companies AS co ON cat.company = co.id 
+        WHERE d.id = $1 AND cat.company = $2
+        """,
+        don_opt_id,
+        co_id,
+    )
+    if not r:
+        raise JsonErrors.HTTPNotFound(message='donation option not found')
+
+    co_slug, cat_slug, old_image = r
+    content = await request_image(request, expected_size=IMAGE_SIZE)
+
+    upload_path = Path(co_slug) / cat_slug / str(don_opt_id)
+    image_url = await upload_other(
+        content, upload_path=upload_path, settings=request.app['settings'], req_size=IMAGE_SIZE, thumb=True,
+    )
+
+    await request['conn'].execute('UPDATE donation_options SET image=$1 WHERE id=$2', image_url, don_opt_id)
+
+    if old_image:
+        await delete_image(old_image, request.app['settings'])
+    return json_response(status='success')

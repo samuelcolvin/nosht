@@ -9,7 +9,7 @@ import {
 import AsModal, {SetModalTitle, ModalFooter} from '../general/Modal'
 import Markdown from '../general/Markdown'
 import {Money} from '../general/Money'
-import {get_card, stripe_pay, StripeContext, StripeForm} from './Stripe'
+import {get_card, stripe_pay, StripeContext, StripeForm} from '../events/Stripe'
 import Input from '../forms/Input'
 import ReactGA from 'react-ga'
 
@@ -90,14 +90,20 @@ class DonateForm extends React.Component {
     const city_field = {name: 'gift_aid_city', required: this.state.gift_aid}
     const postcode_field = {name: 'gift_aid_postcode', required: this.state.gift_aid}
 
+    const opt = this.props.donation_option
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
         <SetModalTitle>
-          {this.props.donation_option.name} &bull; <Money>{this.props.donation_option.amount}</Money> donation
+          {opt.name} &bull; <Money>{opt.amount}</Money> donation
         </SetModalTitle>
         <ModalBody key="mb">
           <div>
-            <Markdown content={this.props.donation_option.long_description}/>
+            <div className="text-center">
+              {opt.image &&
+                <img src={opt.image + '/main.jpg'} className="img-fluid" alt={opt.name}/>
+              }
+            </div>
+            <Markdown content={opt.long_description}/>
           </div>
           <Row className="justify-content-center">
             <Col md="8">
@@ -129,7 +135,7 @@ class DonateForm extends React.Component {
           </Row>
         </ModalBody>
         <ModalFooter finished={this.props.finished}
-                     label={<span>Donate <Money>{this.props.donation_option.amount}</Money></span>}
+                     label={<span>Donate <Money>{opt.amount}</Money></span>}
                      cancel_disabled={this.state.submitting}
                      disabled={!can_submit}/>
       </BootstrapForm>

@@ -12,7 +12,7 @@ import Map from '../general/Map'
 import When from '../general/When'
 import {MoneyFree} from '../general/Money'
 import BookEvent from './Book'
-import Thanks from './Thanks'
+import Thanks from '../donations/Thanks'
 
 
 const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
