@@ -338,7 +338,7 @@ async def test_add_image_wrong_id(cli, url, factory: Factory, db_conn, login):
     assert r.status == 404, await r.text()
 
 
-async def test_list_donations(cli, url, factory: Factory, login):
+async def test_list_donations(cli, url, factory: Factory, login, db_conn):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()

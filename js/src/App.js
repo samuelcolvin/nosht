@@ -135,7 +135,7 @@ class App extends React.Component {
   }
 
   setUser (user) {
-    if (user && (!user.first_name && !user.last_name)) {
+    if (user && !user.first_name && !user.last_name) {
       user = Object.assign({}, user, get_tmp_name())
     }
     this.setState({user})

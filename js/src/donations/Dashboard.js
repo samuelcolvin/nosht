@@ -1,13 +1,13 @@
 import React from 'react'
 import requests from '../utils/requests'
 import {Table} from 'reactstrap'
+import {Link} from 'react-router-dom'
 import {RenderList, RenderDetails, ImageThumbnail, MarkdownPreview} from '../general/Dashboard'
 import {Money} from '../general/Money'
 import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'
-import {as_title, format_datetime} from '../utils'
+import {format_datetime} from '../utils'
 import {InfoModal} from '../general/Modal'
-import {Link} from 'react-router-dom'
 
 const FIELDS = [
   {name: 'name', required: true},
@@ -115,7 +115,6 @@ class Donations extends React.Component {
               <tr key={d.id} onClick={() => this.setState({selected: d})} className="cursor-pointer">
                 <td>{d.first_name} {d.last_name}</td>
                 <td>{format_datetime(d.ts)}</td>
-                {/*<td>{as_title(a.type)}</td>*/}
               </tr>
             ))}
           </tbody>

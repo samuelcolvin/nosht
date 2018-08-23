@@ -9,7 +9,7 @@ from shared.images import delete_image, upload_other
 from web.auth import check_grecaptcha, check_session, is_admin
 from web.bread import Bread
 from web.stripe import StripeDonateModel, stripe_donate
-from web.utils import JsonErrors, json_response, request_image, raw_json_response
+from web.utils import JsonErrors, json_response, raw_json_response, request_image
 
 from .booking import UpdateViewAuth
 
@@ -121,7 +121,7 @@ FROM (
     LEFT JOIN events AS e ON a.event = e.id
     JOIN donation_options AS opts ON d.donation_option = opts.id
     JOIN categories AS cat ON opts.category = cat.id
-    WHERE d.id = $1 AND cat.company = $2
+    WHERE d.donation_option = $1 AND cat.company = $2
     ORDER BY d.id DESC
   ) AS t
 ) AS donations
