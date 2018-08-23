@@ -3,14 +3,14 @@ from time import time
 from typing import List
 
 from asyncpg import CheckViolationError
-from buildpg import MultipleValues, Values, V
+from buildpg import MultipleValues, V, Values
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, EmailStr, constr, validator, condecimal
+from pydantic import BaseModel, EmailStr, condecimal, constr, validator
 
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_grecaptcha, check_session, is_auth
-from web.bread import UpdateView, Bread
+from web.bread import Bread, UpdateView
 from web.stripe import (BookingModel, Reservation, StripeBuyModel, StripeDonateModel, book_free, stripe_buy,
                         stripe_donate)
 from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response

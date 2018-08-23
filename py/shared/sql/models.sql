@@ -205,7 +205,7 @@ CREATE TABLE donation_options (
 
   live BOOLEAN DEFAULT TRUE,
   image VARCHAR(255),
-  short_description VARCHAR(140),http://localhost:3000/dashboard/donation-options/add/
+  short_description VARCHAR(140),
   long_description TEXT
 );
 CREATE INDEX don_opt_category ON donation_options USING btree (category);
@@ -227,4 +227,4 @@ CREATE TABLE donations (
 CREATE UNIQUE INDEX con_action ON donations USING btree (action);
 CREATE INDEX don_donation_option ON donations USING btree (donation_option);
 CREATE INDEX don_gift_aid ON donations USING btree (gift_aid);
-CREATE INDEX donhttp://localhost:3000/dashboard/donation-options/1/_action ON donations USING btree (action);
+CREATE INDEX don_action ON donations USING btree (action);
