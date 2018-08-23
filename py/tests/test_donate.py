@@ -1,8 +1,9 @@
 import json
 
+from aiohttp import FormData
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
-from .conftest import Factory
+from .conftest import Factory, create_image
 
 
 async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, login, db_conn):
@@ -138,3 +139,196 @@ async def test_donate_no_gift_aid(cli, url, dummy_server, factory: Factory, logi
         '\n'
         '_(Card Charged: Visa 12/32 - ending 1234)_\n'
     )
+
+
+async def test_bread_browse(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+
+    await login()
+
+    r = await cli.get(url('donation-options-browse'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'items': [
+            {
+                'id': factory.donation_option_id,
+                'name': 'testing donation option',
+                'category_name': 'Supper Clubs',
+                'live': True,
+                'amount': 20.0,
+            },
+        ],
+        'count': 1,
+        'pages': 1,
+    }
+
+
+async def test_bread_retrieve(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+
+    await login()
+
+    r = await cli.get(url('donation-options-retrieve', pk=factory.donation_option_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'id': factory.donation_option_id,
+        'name': 'testing donation option',
+        'category_name': 'Supper Clubs',
+        'live': True,
+        'amount': 20.0,
+        'category': factory.category_id,
+        'sort_index': None,
+        'short_description': 'This is the short_description.',
+        'long_description': 'This is the long_description.',
+        'image': None,
+    }
+
+
+async def test_bread_add(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+
+    await login()
+
+    data = {
+        'category': factory.category_id,
+        'name': 'Testing Donation Options',
+        'amount': 25,
+        'short_description': 'short_description',
+        'long_description': 'long_description',
+    }
+    r = await cli.json_post(url('donation-options-add'), data=data)
+    assert r.status == 201, await r.text()
+    data = await r.json()
+    pk = data['pk']
+    d = await db_conn.fetchrow('SELECT * FROM donation_options WHERE id=$1', pk)
+    assert dict(d) == {
+        'id': pk,
+        'category': factory.category_id,
+        'name': 'Testing Donation Options',
+        'amount': 25,
+        'sort_index': None,
+        'live': True,
+        'image': None,
+        'short_description': 'short_description',
+        'long_description': 'long_description',
+    }
+
+
+async def test_bread_edit(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+
+    await login()
+
+    data = {
+        'amount': 123,
+        'long_description': 'this is different',
+    }
+    r = await cli.json_post(url('donation-options-edit', pk=factory.donation_option_id), data=data)
+    assert r.status == 200, await r.text()
+    d = await db_conn.fetchrow('SELECT amount, long_description FROM donation_options')
+    assert dict(d) == {
+        'amount': 123,
+        'long_description': 'this is different',
+    }
+
+
+async def test_bread_delete(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+
+    await login()
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donation_options')
+    r = await cli.json_post(url('donation-options-delete', pk=factory.donation_option_id))
+    assert r.status == 200, await r.text()
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donation_options')
+
+
+async def test_add_image(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+    await login()
+    assert None is await db_conn.fetchval('SELECT image FROM donation_options')
+    data = FormData()
+    data.add_field('image', create_image(700, 500), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('donation-image-upload', pk=factory.donation_option_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 200, await r.text()
+    assert sorted(dummy_server.app['images']) == [
+        (
+            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/\d+/\w+/main.jpg'),
+            672,
+            480,
+        ),
+        (
+            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/\d+/\w+/thumb.jpg'),
+            400,
+            200,
+        ),
+
+    ]
+    assert None is not await db_conn.fetchval('SELECT image FROM donation_options')
+    assert sum('DELETE aws_endpoint_url/' in e for e in dummy_server.app['log']) == 0
+
+
+async def test_add_image_delete_old(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+    await login()
+    await db_conn.execute("UPDATE donation_options SET image='testing'")
+    data = FormData()
+    data.add_field('image', create_image(700, 500), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('donation-image-upload', pk=factory.donation_option_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 200, await r.text()
+    assert sum('DELETE aws_endpoint_url/' in e for e in dummy_server.app['log']) == 2
+
+
+async def test_add_image_wrong_id(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+    assert None is await db_conn.fetchval('SELECT image FROM donation_options')
+    data = FormData()
+    data.add_field('image', create_image(700, 500), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('donation-image-upload', pk=999),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 404, await r.text()

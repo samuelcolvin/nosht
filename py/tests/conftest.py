@@ -397,7 +397,8 @@ def _fix_url(cli):
         try:
             r = inner_app.router[name]
         except KeyError as e:
-            raise KeyError(f'invalid url name, choices: {pformat(inner_app.router._named_resources)}') from e
+            print('routes:', pformat(inner_app.router._named_resources))
+            raise e
         assert None not in kwargs.values(), f'invalid kwargs, includes none: {kwargs}'
         url = r.url_for(**{k: str(v) for k, v in kwargs.items()})
         if query:

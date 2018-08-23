@@ -82,7 +82,7 @@ async def donation_image_upload(request):
         SELECT co.slug, cat.slug, d.image
         FROM donation_options AS d
         JOIN categories AS cat ON d.category = cat.id
-        JOIN companies AS co ON cat.company = co.id 
+        JOIN companies AS co ON cat.company = co.id
         WHERE d.id = $1 AND cat.company = $2
         """,
         don_opt_id,

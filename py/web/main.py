@@ -143,7 +143,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/email-defs/{trigger}/edit/', email_def_edit, name='email-defs-edit'),
         web.post('/email-defs/{trigger}/clear/', clear_email_def, name='email-defs-clear'),
 
-        *DonationOptionBread.routes('/donation-options/'),
+        *DonationOptionBread.routes('/donation-options/', name='donation-options'),
         web.post('/donation-options/{pk:\d+}/upload-image/', donation_image_upload, name='donation-image-upload')
     ])
 
