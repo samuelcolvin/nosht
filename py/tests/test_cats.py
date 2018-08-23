@@ -250,8 +250,8 @@ async def test_upload_image(cli, url, factory: Factory, login, dummy_server):
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/\w+/main.jpg'),
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/\w+/thumb.jpg'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/\w+/main.png'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/\w+/thumb.png'),
     ]
 
 
@@ -363,6 +363,6 @@ async def test_delete_image(cli, url, factory: Factory, login, dummy_server):
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        'DELETE aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/whatever/main.jpg',
-        'DELETE aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/whatever/thumb.jpg',
+        'DELETE aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/whatever/main.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/whatever/thumb.png',
     ]

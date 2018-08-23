@@ -703,8 +703,8 @@ async def test_image_existing_delete(cli, url, factory: Factory, db_conn, login,
 
     assert len(dummy_server.app['log']) == 3
     assert set(dummy_server.app['log'][1:]) == {
-        'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/main.jpg',
-        'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/thumb.jpg'
+        'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/main.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/thumb.png'
     }
 
 
@@ -734,12 +734,12 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
     assert len(dummy_server.app['log']) == 5
 
     log = sorted(dummy_server.app['log'][1:])
-    assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/main.jpg'
-    assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/thumb.jpg'
+    assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/main.png'
+    assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/thumb.png'
     assert log[2] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
-                              r'the-event-name/\w+?/main.jpg')
+                              r'the-event-name/\w+?/main.png')
     assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
-                              r'the-event-name/\w+?/thumb.jpg')
+                              r'the-event-name/\w+?/thumb.png')
 
 
 async def test_add_ticket_type(cli, url, factory: Factory, db_conn, login):

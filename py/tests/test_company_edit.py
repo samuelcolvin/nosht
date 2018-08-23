@@ -64,10 +64,10 @@ async def test_upload_image(cli, url, factory: Factory, login, db_conn, dummy_se
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        'DELETE aws_endpoint_url/testingbucket.example.org/co.png/main.jpg',
-        'DELETE aws_endpoint_url/testingbucket.example.org/co.png/thumb.jpg',
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/co/image/\w+/main.jpg'),
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/co/image/\w+/thumb.jpg'),
+        'DELETE aws_endpoint_url/testingbucket.example.org/co.png/main.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/co.png/thumb.png',
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/co/image/\w+/main.png'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/co/image/\w+/thumb.png'),
     ]
     logo = await db_conn.fetchval('SELECT image FROM companies')
     assert logo.startswith('https://testingbucket.example.org/tests/testing/co/image/')
@@ -91,7 +91,7 @@ async def test_upload_logo(cli, url, factory: Factory, db_conn, login, dummy_ser
     assert r.status == 200, await r.text()
     assert dummy_server.app['images'] == [
         (
-            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/co/logo/\w+/main.jpg'),
+            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/co/logo/\w+/main.png'),
             341,
             256,
         ),

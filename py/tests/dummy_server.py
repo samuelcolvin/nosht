@@ -104,28 +104,28 @@ s3_response = """\
     <MaxKeys>1000</MaxKeys>
     <IsTruncated>false</IsTruncated>
     <Contents>
-        <Key>co-slug/cat-slug/option/randomkey1/main.jpg</Key>
+        <Key>co-slug/cat-slug/option/randomkey1/main.png</Key>
         <LastModified>2032-07-31T18:12:48.000Z</LastModified>
         <ETag>&quot;d9028601438a5f3f6b21f2ddb171182f&quot;</ETag>
         <Size>1930930</Size>
         <StorageClass>STANDARD</StorageClass>
     </Contents>
     <Contents>
-        <Key>co-slug/cat-slug/option/randomkey1/thumb.jpg</Key>
+        <Key>co-slug/cat-slug/option/randomkey1/thumb.png</Key>
         <LastModified>2032-07-31T18:12:48.000Z</LastModified>
         <ETag>&quot;f0f075450aca93b87356c580a34d3f80&quot;</ETag>
         <Size>53866</Size>
         <StorageClass>STANDARD</StorageClass>
     </Contents>
     <Contents>
-        <Key>co-slug/cat-slug/option/randomkey2/main.jpg</Key>
+        <Key>co-slug/cat-slug/option/randomkey2/main.png</Key>
         <LastModified>2032-07-31T19:05:00.000Z</LastModified>
         <ETag>&quot;e058658dc289ffc656fbaa761f653b0a&quot;</ETag>
         <Size>1269965</Size>
         <StorageClass>STANDARD</StorageClass>
     </Contents>
     <Contents>
-        <Key>co-slug/cat-slug/option/randomkey2/thumb.jpg</Key>
+        <Key>co-slug/cat-slug/option/randomkey2/thumb.png</Key>
         <LastModified>2032-07-31T19:05:00.000Z</LastModified>
         <ETag>&quot;395ab74b92338d76e5f185fd5b8135de&quot;</ETag>
         <Size>32279</Size>

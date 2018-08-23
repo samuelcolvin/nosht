@@ -283,12 +283,12 @@ async def test_add_image(cli, url, factory: Factory, db_conn, login, dummy_serve
     assert r.status == 200, await r.text()
     assert sorted(dummy_server.app['images']) == [
         (
-            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/\d+/\w+/main.jpg'),
+            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/\d+/\w+/main.png'),
             672,
             480,
         ),
         (
-            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/\d+/\w+/thumb.jpg'),
+            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/\d+/\w+/thumb.png'),
             400,
             200,
         ),

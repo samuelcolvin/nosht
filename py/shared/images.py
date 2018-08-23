@@ -48,7 +48,7 @@ async def list_images(path: Path, settings: Settings) -> Set[str]:
         paginator = s3.get_paginator('list_objects_v2')
         async for result in paginator.paginate(Bucket=settings.s3_bucket, Prefix=str(settings.s3_prefix / path)):
             for c in result.get('Contents', []):
-                p = re.sub(r'/(?:main|thumb)\.jpg$', '', c['Key'])
+                p = re.sub(r'/(?:main|thumb)\.png$', '', c['Key'])
                 url = f'{settings.s3_domain}/{p}'
                 files.add(url)
     return files
@@ -58,8 +58,8 @@ async def delete_image(image: str, settings: Settings):
     path = Path(strip_domain(image))
     async with create_s3_session(settings) as s3:
         await asyncio.gather(
-            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'main.jpg')),
-            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'thumb.jpg')),
+            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'main.png')),
+            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'thumb.png')),
         )
 
 
@@ -71,7 +71,7 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: Optional[bytes]
         coros = [
             s3.put_object(
                 Bucket=settings.s3_bucket,
-                Key=str(upload_path / 'main.jpg'),
+                Key=str(upload_path / 'main.png'),
                 Body=main_img,
                 ContentType='image/jpeg',
                 ACL='public-read',
@@ -80,7 +80,7 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: Optional[bytes]
         if thumb_img:
             coros.append(s3.put_object(
                 Bucket=settings.s3_bucket,
-                Key=str(upload_path / 'thumb.jpg'),
+                Key=str(upload_path / 'thumb.png'),
                 Body=thumb_img,
                 ContentType='image/jpeg',
                 ACL='public-read'
@@ -123,12 +123,12 @@ async def upload_background(image_data: bytes, upload_path: Path, settings: Sett
         raise ValueError(f'image too small: {img.size}')
 
     main_stream = BytesIO()
-    img.save(main_stream, 'JPEG', optimize=True, quality=95)
+    img.save(main_stream, 'PNG', optimize=True, quality=95)
 
     thumb_stream = BytesIO()
     thumb = img.resize((768, 200), Image.ANTIALIAS)  # same shape, height 200
     thumb = thumb.crop((184, 0, 584, 200))  # height staying at 200, width 400 (middle)
-    thumb.save(thumb_stream, 'JPEG', optimize=True, quality=95)
+    thumb.save(thumb_stream, 'PNG', optimize=True, quality=95)
 
     return await _upload(upload_path, main_stream.getvalue(), thumb_stream.getvalue(), settings)
 
@@ -149,7 +149,7 @@ async def upload_other(image_data: bytes, *, upload_path: Path, settings: Settin
 
     main_img = img.resize(resize_to, Image.ANTIALIAS)
     main_stream = BytesIO()
-    main_img.save(main_stream, 'JPEG', optimize=True, quality=95)
+    main_img.save(main_stream, 'PNG', optimize=True, quality=95)
 
     thumb_bytes = None
     if thumb:
@@ -162,7 +162,7 @@ async def upload_other(image_data: bytes, *, upload_path: Path, settings: Settin
             thumb_img = img.copy()
 
         thumb_stream = BytesIO()
-        thumb_img.save(thumb_stream, 'JPEG', optimize=True, quality=95)
+        thumb_img.save(thumb_stream, 'PNG', optimize=True, quality=95)
         thumb_bytes = thumb_stream.getvalue()
 
     return await _upload(upload_path, main_stream.getvalue(), thumb_bytes, settings)
