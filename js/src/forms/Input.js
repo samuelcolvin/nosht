@@ -22,7 +22,7 @@ import Editor from '../editor'
 
 const Label = ({field, children}) => (
   field.show_label !== false ? (
-    <BsLabel for={field.name} className={field.required && 'required'}>
+    <BsLabel for={field.name} className={field.required ? 'required' : ''}>
      { children}
       {field.title}
     </BsLabel>

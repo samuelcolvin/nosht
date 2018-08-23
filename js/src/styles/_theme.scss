@@ -172,6 +172,10 @@ textarea {
   height: 23px;
 }
 
+.stripe-error {
+  border: 1px solid $form-feedback-invalid-color !important;
+}
+
 $item-size: 220px;
 .dropzone {
   width: 100%;

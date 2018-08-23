@@ -143,8 +143,8 @@ class StripeBookingForm extends React.Component {
       return (
         <StripeForm
             submitted={this.state.submitted}
-            details={this.state.payment}
-            setDetails={payment => this.setState({payment})}>
+            payment_state={this.state.payment}
+            setPaymentState={payment => this.setState({payment})}>
           {tncs_field}
         </StripeForm>
       )

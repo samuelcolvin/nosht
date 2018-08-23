@@ -151,8 +151,8 @@ class DonateForm extends React.Component {
               <hr/>
               <StripeForm
                   submitted={this.state.submitted}
-                  details={this.state.payment}
-                  setDetails={payment => this.setState({payment})}>
+                  payment_state={this.state.payment}
+                  setPaymentState={payment => this.setState({payment})}>
               </StripeForm>
             </Col>
           </Row>
