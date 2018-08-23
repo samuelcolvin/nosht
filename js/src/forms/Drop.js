@@ -71,7 +71,6 @@ export class DropzoneForm extends React.Component {
 
   onDropSingle (accepted_files, refused_files) {
     const extra_state = {}
-    console.log('ondrop', accepted_files, refused_files)
     for (let file of accepted_files) {
       extra_state.file = {file}
       this.upload_file('file', file)

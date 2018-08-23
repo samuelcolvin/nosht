@@ -10,7 +10,7 @@ from pydantic import BaseModel, EmailStr, constr, validator
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_grecaptcha, check_session, is_auth
 from web.bread import UpdateView
-from web.stripe import BookingModel, Reservation, StripeBuyModel, book_free, stripe_buy
+from web.stripe import BookFreeModel, Reservation, StripeBuyModel, book_free, stripe_buy
 from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response
 
 logger = logging.getLogger('nosht.booking')
@@ -214,10 +214,9 @@ class BuyTickets(UpdateView):
 
 
 class BookFreeTickets(UpdateView):
-    Model = BookingModel
+    Model = BookFreeModel
 
-    async def execute(self, m: BookingModel):
+    async def execute(self, m: BookFreeModel):
         await check_grecaptcha(m, self.request)
-        booked_action_id = await book_free(m, self.request['company_id'], self.session.get('user_id'),
-                                           self.app, self.conn)
+        booked_action_id = await book_free(m, self.request['company_id'], self.session, self.app, self.conn)
         await self.app['email_actor'].send_event_conf(booked_action_id)

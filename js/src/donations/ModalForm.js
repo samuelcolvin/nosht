@@ -61,7 +61,6 @@ class DonateForm extends React.Component {
 
   async submit (e) {
     e.preventDefault()
-    console.log('submit')
     this.setState({submitting: true})
     const data = {
       donation_option_id: this.props.donation_option.id,
