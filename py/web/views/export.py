@@ -54,7 +54,7 @@ ORDER BY u.id
 """,
     'tickets': """
 SELECT
-  t.id, t.first_name AS ticket_first_name, t.last_name AS ticket_last_name, t.status,
+  t.id, t.first_name AS ticket_first_name, t.last_name AS ticket_last_name, t.status, a.type AS booking_action,
   to_char(t.price, 'FM9999990.00') AS price, to_char(t.extra_donated, 'FM9999990.00') AS extra_donated,
   iso_ts(t.created_ts) AS created_ts, t.extra_info,
   tt.id AS ticket_type_id, tt.name AS ticket_type_name,
