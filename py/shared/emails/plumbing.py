@@ -286,8 +286,7 @@ class BaseEmailActor(Actor):
                 ticket_name_lookup = {
                     r['ticket_id']: r for r in
                     await conn.fetch(
-                        'SELECT id AS ticket_id, first_name, last_name FROM tickets WHERE id=ANY($1)',
-                        ticket_ids
+                        'SELECT id AS ticket_id, first_name, last_name FROM tickets WHERE id=ANY($1)', ticket_ids
                     )
                 }
 
@@ -299,26 +298,30 @@ class BaseEmailActor(Actor):
         coros = []
         user_data_lookup = {u['id']: u for u in user_data}
         for user_id, ctx, ticket_id in users_emails:
-            user_data_ = user_data_lookup[user_id]
-            if user_data_:
-                ticket_data = ticket_name_lookup.get(ticket_id)
-                if ticket_data:
-                    user_data_ = dict(user_data_)
-                    user_data_['first_name'] = user_data_['first_name'] or ticket_data['first_name']
-                    user_data_['last_name'] = user_data_['last_name'] or ticket_data['last_name']
-                coros.append(
-                    self.send_email(
-                        user=user_data_,
-                        user_ctx=ctx,
-                        subject=subject,
-                        title=title,
-                        body=body,
-                        template=template,
-                        e_from=e_from,
-                        reply_to=reply_to,
-                        global_ctx=global_ctx,
-                    )
+            try:
+                user_data_ = user_data_lookup[user_id]
+            except KeyError:
+                # this user has receive_emails = FALSE or status = 'suspended'
+                continue
+
+            ticket_data = ticket_id and ticket_name_lookup.get(ticket_id)
+            if ticket_data:
+                user_data_ = dict(user_data_)
+                user_data_['first_name'] = user_data_['first_name'] or ticket_data['first_name']
+                user_data_['last_name'] = user_data_['last_name'] or ticket_data['last_name']
+            coros.append(
+                self.send_email(
+                    user=user_data_,
+                    user_ctx=ctx,
+                    subject=subject,
+                    title=title,
+                    body=body,
+                    template=template,
+                    e_from=e_from,
+                    reply_to=reply_to,
+                    global_ctx=global_ctx,
                 )
+            )
 
         await asyncio.gather(*coros)
         logger.info('%d emails sent for trigger %s, company %s (%d)',

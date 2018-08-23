@@ -25,16 +25,17 @@ async def email_actor(settings: Settings, db_pool, loop, redis):
 
 async def test_send_email(email_actor: EmailActor, factory: Factory, dummy_server):
     await factory.create_company()
-    await factory.create_user(email='testing@scolvin.com')
+    await factory.create_user(email='testing@example.org')
+    u2 = await factory.create_user(email='other@example.org', receive_emails=False)
     ctx = {
         'summary': 'testing',
     }
     await email_actor.send_emails(factory.company_id, Triggers.admin_notification,
-                                  [UserEmail(id=factory.user_id, ctx=ctx)])
+                                  [UserEmail(id=factory.user_id, ctx=ctx), UserEmail(id=u2, ctx=ctx)])
 
     assert dummy_server.app['log'] == [
         ('email_send_endpoint', 'Subject: "Update: testing", '
-                                'To: "Frank Spencer <testing@scolvin.com>"'),
+                                'To: "Frank Spencer <testing@example.org>"'),
     ]
 
 
