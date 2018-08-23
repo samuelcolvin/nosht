@@ -137,8 +137,11 @@ async def aws_endpoint(request):
     # very VERY simple mock of s3
     if request.method == 'GET':
         return Response(text=s3_response)
-    else:
-        return Response(text='')
+    elif request.method == 'PUT':
+        image_data = await request.read()
+        img = Image.open(BytesIO(image_data))
+        request.app['images'].append((request.path, img.width, img.height))
+    return Response(text='')
 
 
 async def s3_demo_image(request):
@@ -176,6 +179,7 @@ async def create_dummy_server(loop, create_server):
     app.update(
         log=[],
         emails=[],
+        images=[],
         server_name=f'http://localhost:{server.port}'
     )
     return server

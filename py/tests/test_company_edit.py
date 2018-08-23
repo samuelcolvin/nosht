@@ -79,7 +79,7 @@ async def test_upload_logo(cli, url, factory: Factory, db_conn, login, dummy_ser
     await login()
     assert None is await db_conn.fetchval('SELECT logo FROM companies')
     data = FormData()
-    data.add_field('image', create_image(300, 300), filename='testing.png', content_type='application/octet-stream')
+    data.add_field('image', create_image(400, 300), filename='testing.png', content_type='application/octet-stream')
     r = await cli.post(
         url('company-upload', field='logo'),
         data=data,
@@ -89,7 +89,34 @@ async def test_upload_logo(cli, url, factory: Factory, db_conn, login, dummy_ser
         }
     )
     assert r.status == 200, await r.text()
-    assert sorted(dummy_server.app['log'][1:]) == [
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/co/logo/\w+/main.jpg'),
+    assert dummy_server.app['images'] == [
+        (
+            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/co/logo/\w+/main.jpg'),
+            341,
+            256,
+        ),
+
     ]
     assert None is not await db_conn.fetchval('SELECT logo FROM companies')
+
+
+async def test_upload_logo_too_small(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    assert None is await db_conn.fetchval('SELECT logo FROM companies')
+    data = FormData()
+    data.add_field('image', create_image(100, 300), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('company-upload', field='logo'),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'image too small: 100x300 < 256x256'}
+    assert dummy_server.app['images'] == []
+    assert None is await db_conn.fetchval('SELECT logo FROM companies')

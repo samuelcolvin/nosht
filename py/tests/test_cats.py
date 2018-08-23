@@ -331,7 +331,7 @@ async def test_upload_image_too_small(cli, url, factory: Factory, login):
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {
-        'message': 'image too small: 200x100<1920x500',
+        'message': 'image too small: 200x100 < 1920x500',
     }
 
 
