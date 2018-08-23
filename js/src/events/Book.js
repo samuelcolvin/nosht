@@ -1,12 +1,13 @@
 import React from 'react'
 import ReactGA from 'react-ga'
+import {set_tmp_name} from '../utils'
 import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import BookingLogin from './BookingLogin'
 import BookingTickets from './BookingTickets'
 import BookingStripe from './BookingStripe'
 
-class BookWrapper extends React.Component {
+class BookForm extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -15,9 +16,9 @@ class BookWrapper extends React.Component {
       got_booking_info: false,
       booking_info: null,
       reservation: null,
-      billing_name: null,
       ticket_type: null
     }
+    this.finished = this.finished.bind(this)
   }
 
   async componentDidUpdate () {
@@ -66,10 +67,11 @@ class BookWrapper extends React.Component {
     tickets[0].last_name = tickets[0].last_name || this.props.ctx.user.last_name
     tickets[0].email = tickets[0].email || this.props.ctx.user.email
 
-    this.setState({billing_name:
-      tickets[0].email === this.props.ctx.user.email ?
-      `${tickets[0].first_name || ''} ${tickets[0].last_name || ''}`.trim() : ''
-    })
+    const u = this.props.ctx.user
+    if (tickets[0].email === u.email && u.first_name === null  && u.last_name === null) {
+      set_tmp_name(tickets[0].first_name, tickets[0].last_name)
+      this.props.ctx.setUser(u)
+    }
     let ticket_type = this.state.booking_info.ticket_types[0].id
     if (this.state.booking_info.ticket_types.length > 1) {
       if (this.state.ticket_type) {
@@ -101,16 +103,25 @@ class BookWrapper extends React.Component {
     }
   }
 
+  finished (complete) {
+    if (complete) {
+      this.props.set_complete()
+      this.props.finished({pk: 'donate'})
+    } else {
+      this.props.finished()
+    }
+  }
+
   render () {
     if (!this.props.ctx.user) {
       return <BookingLogin
           event={this.props.event}
-          finished={this.props.finished}
+          finished={this.finished}
           clear_reservation={() => this.setState({reservation: null})}/>
     } else if (!this.state.reservation) {
       return <BookingTickets
           event={this.props.event}
-          finished={this.props.finished}
+          finished={this.finished}
           state={this.state}
           set_ticket_state={this.set_ticket_state.bind(this)}
           set_ticket_type={this.set_ticket_type.bind(this)}
@@ -119,14 +130,13 @@ class BookWrapper extends React.Component {
     } else {
       return <BookingStripe
           event={this.props.event}
-          finished={this.props.finished}
+          finished={this.finished}
           register_toggle_handler={this.props.register_toggle_handler}
-          reservation={this.state.reservation}
-          billing_name={this.state.billing_name}/>
+          reservation={this.state.reservation}/>
     }
   }
 }
-const ModalBookForm = AsModal(BookWrapper)
+const ModalBookForm = AsModal(BookForm)
 
 const BookEvent = props => (
   <ModalBookForm {...props}

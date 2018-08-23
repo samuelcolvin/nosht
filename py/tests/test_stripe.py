@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 
@@ -5,7 +6,7 @@ import pytest
 from aiohttp import BasicAuth
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
-from web.stripe import Reservation, StripePayModel, stripe_pay, stripe_request
+from web.stripe import Reservation, StripeBuyModel, stripe_buy, stripe_request
 from web.utils import encrypt_json
 
 from .conftest import Factory
@@ -26,10 +27,12 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    m = StripePayModel(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='4242-32-01',
+    m = StripeBuyModel(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )
@@ -43,7 +46,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     )
     assert (ticket_limit, tickets_taken) == (10, 1)
 
-    await stripe_pay(m, factory.company_id, factory.user_id, app, db_conn)
+    action_id, new_source_hash = await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
 
     customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
     assert customer_id is not None
@@ -57,6 +60,8 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
 
     booked_action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='buy-tickets'")
 
+    assert booked_action['id'] == action_id
+    assert new_source_hash is not None
     assert booked_action['company'] == factory.company_id
     assert booked_action['user_id'] == factory.user_id
     assert booked_action['ts'] == CloseToNow(delta=10)
@@ -65,6 +70,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
         'new_card': True,
         'new_customer': True,
         'charge_id': RegexStr('ch_.+'),
+        'brand': 'Visa',
         'card_expiry': RegexStr('\d+/\d+'),
         'card_last4': '4242',
     }
@@ -74,6 +80,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     assert charge['amount'] == 10_00
     assert charge['description'] == f'1 tickets for Foobar ({factory.event_id})'
     assert charge['metadata'] == {
+        'purpose': 'buy-tickets',
         'event': str(factory.event_id),
         'tickets_bought': '1',
         'booked_action': str(booked_action['id']),
@@ -97,15 +104,17 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
     customer_id = customer['id']
     await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
 
-    m = StripePayModel(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='{last4}-{exp_year}-{exp_month}'.format(**customer['sources']['data'][0]),
+    m = StripeBuyModel(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='{last4}-{exp_year}-{exp_month}'.format(**customer['sources']['data'][0]),
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )
 
-    await stripe_pay(m, factory.company_id, factory.user_id, app, db_conn)
+    await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
 
     new_customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
     assert new_customer_id == customer_id
@@ -117,9 +126,44 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
         'new_card': False,
         'new_customer': False,
         'charge_id': RegexStr('ch_.+'),
+        'brand': 'Visa',
         'card_expiry': RegexStr('\d+/\d+'),
         'card_last4': '4242',
     }
+
+
+@real_stripe_test
+async def test_stripe_saved_card(cli, db_conn, factory: Factory):
+    await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    customers = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', 'customers?limit=1')
+    customer = customers['data'][0]
+    customer_id = customer['id']
+    await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
+    source_id = customer['sources']['data'][0]['id']
+    source_hash = hashlib.sha1(source_id.encode()).hexdigest()
+
+    m = StripeBuyModel(
+        stripe=dict(
+            source_hash=source_hash,
+        ),
+        booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
+    )
+
+    action_id, new_source_hash = await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
+
+    new_customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
+    assert new_customer_id == customer_id
+
+    assert action_id == await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+    assert new_source_hash is None
 
 
 async def test_pay_cli(cli, url, dummy_server, factory: Factory):
@@ -131,9 +175,11 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
     data = dict(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='4242-32-01',
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )
@@ -161,9 +207,11 @@ async def test_existing_customer_fake(cli, url, dummy_server, factory: Factory):
     res: Reservation = await factory.create_reservation(factory.user_id, None)
     app = cli.app['main_app']
     data = dict(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='4242-32-01',
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )
@@ -192,9 +240,11 @@ async def test_pay_no_price(cli, url, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
     data = dict(
-        stripe_token='tok_visa',
-        stripe_client_ip='0.0.0.0',
-        stripe_card_ref='4242-32-01',
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
         booking_token=encrypt_json(app, res.dict()),
         grecaptcha_token='__ok__',
     )

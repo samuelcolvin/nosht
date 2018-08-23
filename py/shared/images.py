@@ -14,7 +14,6 @@ from .utils import pseudo_random_str
 logger = logging.getLogger('nosht.images')
 LARGE_SIZE = 3840, 1000
 SMALL_SIZE = 1920, 500
-LOGO_SIZE = 256, 256
 STRIP_DOMAIN = re.compile('^https?://.+?/')
 
 
@@ -90,7 +89,24 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: Optional[bytes]
     return f'{settings.s3_domain}/{upload_path}'
 
 
-async def resize_upload(image_data: bytes, upload_path: Path, settings: Settings) -> str:
+def resize_crop(img, req_width, req_height):
+    if img.size == (req_width, req_height):
+        return None, None
+    aspect_ratio = img.width / img.height
+    if aspect_ratio > (req_width / req_height):
+        # wide image
+        resize_to = int(round(req_height * aspect_ratio)), req_height
+        extra = (resize_to[0] - req_width) / 2
+        crop_box = extra, 0, extra + req_width, req_height
+    else:
+        # tall image
+        resize_to = req_width, int(round(req_width / aspect_ratio))
+        extra = (resize_to[1] - req_height) / 2
+        crop_box = 0, extra, req_width, extra + req_height
+    return resize_to, crop_box
+
+
+async def upload_background(image_data: bytes, upload_path: Path, settings: Settings) -> str:
     try:
         img = Image.open(BytesIO(image_data))
     except OSError:
@@ -98,26 +114,18 @@ async def resize_upload(image_data: bytes, upload_path: Path, settings: Settings
 
     for width, height in (LARGE_SIZE, SMALL_SIZE):
         if img.width >= width and img.height >= height:
-            if img.size != (width, height):
-                aspect_ratio = img.width / img.height
-                if aspect_ratio > 3.84:
-                    # wide image
-                    resize_to = int(round(height * aspect_ratio)), height
-                    extra = (resize_to[0] - width) / 2
-                    crop_box = extra, 0, extra + width, height
-                else:
-                    # tall image
-                    resize_to = width, int(round(width / aspect_ratio))
-                    extra = (resize_to[1] - height) / 2
-                    crop_box = 0, extra, width, extra + height
+            resize_to, crop_box = resize_crop(img, width, height)
+            if resize_to:
                 img = img.resize(resize_to, Image.ANTIALIAS)
                 img = img.crop(crop_box)
             break
     else:
         raise ValueError(f'image too small: {img.size}')
-    main_stream, thumb_stream = BytesIO(), BytesIO()
+
+    main_stream = BytesIO()
     img.save(main_stream, 'JPEG', optimize=True, quality=95)
 
+    thumb_stream = BytesIO()
     thumb = img.resize((768, 200), Image.ANTIALIAS)  # same shape, height 200
     thumb = thumb.crop((184, 0, 584, 200))  # height staying at 200, width 400 (middle)
     thumb.save(thumb_stream, 'JPEG', optimize=True, quality=95)
@@ -125,25 +133,36 @@ async def resize_upload(image_data: bytes, upload_path: Path, settings: Settings
     return await _upload(upload_path, main_stream.getvalue(), thumb_stream.getvalue(), settings)
 
 
-async def upload_logo(image_data: bytes, upload_path: Path, settings: Settings) -> str:
-    try:
-        img = Image.open(BytesIO(image_data))
-    except OSError:
-        raise ValueError('invalid image')
+async def upload_other(image_data: bytes, *, upload_path: Path, settings: Settings, req_size, thumb=False) -> str:
+    img = Image.open(BytesIO(image_data))
 
-    width, height = LOGO_SIZE
-    if img.width < width or img.height < height:
-        raise ValueError(f'image too small: {img.size}')
+    req_width, req_height = req_size
+    assert img.width >= req_width and img.height >= req_height, 'image too small'
 
     aspect_ratio = img.width / img.height
-    if aspect_ratio > 1:
+    if aspect_ratio > (req_width / req_height):
         # wide image
-        resize_to = int(round(height * aspect_ratio)), height
+        resize_to = int(round(req_height * aspect_ratio)), req_height
     else:
         # tall image
-        resize_to = width, int(round(width / aspect_ratio))
+        resize_to = req_width, int(round(req_width / aspect_ratio))
 
-    img = img.resize(resize_to, Image.ANTIALIAS)
-    stream = BytesIO()
-    img.save(stream, 'JPEG', optimize=True, quality=95)
-    return await _upload(upload_path, stream.getvalue(), None, settings)
+    main_img = img.resize(resize_to, Image.ANTIALIAS)
+    main_stream = BytesIO()
+    main_img.save(main_stream, 'JPEG', optimize=True, quality=95)
+
+    thumb_bytes = None
+    if thumb:
+
+        resize_to, crop_box = resize_crop(img, 400, 200)
+        if resize_to:
+            thumb_img = img.resize(resize_to, Image.ANTIALIAS)
+            thumb_img = thumb_img.crop(crop_box)
+        else:
+            thumb_img = img.copy()
+
+        thumb_stream = BytesIO()
+        thumb_img.save(thumb_stream, 'JPEG', optimize=True, quality=95)
+        thumb_bytes = thumb_stream.getvalue()
+
+    return await _upload(upload_path, main_stream.getvalue(), thumb_bytes, settings)

@@ -2,9 +2,11 @@ import asyncio
 import logging
 import os
 import random
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from textwrap import shorten
+from typing import Callable, NamedTuple
 
 import aiohttp
 import lorem
@@ -14,12 +16,17 @@ from buildpg import Values, asyncpg
 from .actions import ActionTypes
 from .emails.defaults import Triggers
 from .emails.main import EmailActor
-from .images import resize_upload
+from .images import upload_background
 from .settings import Settings
 from .utils import mk_password, slugify
 
 logger = logging.getLogger('nosht.db')
 patches = []
+
+
+class Patch(NamedTuple):
+    func: Callable
+    direct: bool = False
 
 
 async def lenient_conn(settings: Settings, with_db=True):
@@ -137,44 +144,46 @@ def reset_database(settings: Settings):
         print('done.')
 
 
-def run_patch(settings: Settings, live, direct, patch_name):
+def run_patch(settings: Settings, live, patch_name):
     if patch_name is None:
         print('available patches:\n{}'.format(
-            '\n'.join('  {}: {}'.format(p.__name__, p.__doc__.strip('\n ')) for p in patches)
+            '\n'.join('  {}: {}'.format(p.func.__name__, p.func.__doc__.strip('\n ')) for p in patches)
         ))
         return
-    patch_lookup = {p.__name__: p for p in patches}
+    patch_lookup = {p.func.__name__: p for p in patches}
     try:
-        patch_func = patch_lookup[patch_name]
+        patch = patch_lookup[patch_name]
     except KeyError as e:
-        raise RuntimeError(f'patch "{patch_name}" not found in patches: {[p.__name__ for p in patches]}') from e
+        raise RuntimeError(f'patch "{patch_name}" not found in patches: {[p.func.__name__ for p in patches]}') from e
 
-    if direct:
+    if patch.direct:
+        if not live:
+            raise RuntimeError('direct patches must be called with "--live"')
         print(f'running patch {patch_name} direct')
     else:
         print(f'running patch {patch_name} live {live}')
     loop = asyncio.get_event_loop()
-    return loop.run_until_complete(_run_patch(settings, live, direct, patch_func))
+    return loop.run_until_complete(_run_patch(settings, live, patch))
 
 
-async def _run_patch(settings, live, direct, patch_func):
+async def _run_patch(settings, live, patch: Patch):
     conn = await lenient_conn(settings)
     tr = None
-    if not direct:
+    if not patch.direct:
         tr = conn.transaction()
         await tr.start()
     print('=' * 40)
     try:
-        await patch_func(conn, settings=settings, live=live)
+        await patch.func(conn, settings=settings, live=live)
     except BaseException:
         print('=' * 40)
-        logger.exception('Error running %s patch', patch_func.__name__)
-        if not direct:
+        logger.exception('Error running %s patch', patch.func.__name__)
+        if not patch.direct:
             await tr.rollback()
         return 1
     else:
         print('=' * 40)
-        if direct:
+        if patch.direct:
             print('committed patch')
         else:
             if live:
@@ -187,9 +196,18 @@ async def _run_patch(settings, live, direct, patch_func):
         await conn.close()
 
 
-def patch(func):
-    patches.append(func)
-    return func
+def patch(*args, direct=False):
+    if args:
+        assert len(args) == 1, 'wrong arguments to patch'
+        func = args[0]
+        patches.append(Patch(func=func))
+        return func
+    else:
+        def wrapper(func):
+            patches.append(Patch(func=func, direct=direct))
+            return func
+
+        return wrapper
 
 
 @patch
@@ -200,10 +218,10 @@ async def run_logic_sql(conn, settings, **kwargs):
     await conn.execute(settings.logic_sql)
 
 
-@patch
+@patch(direct=True)
 async def update_enums(conn, settings, **kwargs):
     """
-    update sql from ActionTypes and Triggers enums
+    update sql from ActionTypes and Triggers enums (direct)
     """
     for t in ActionTypes:
         await conn.execute(f"ALTER TYPE ACTION_TYPES ADD VALUE IF NOT EXISTS '{t.value}'")
@@ -259,7 +277,7 @@ async def create_image(upload_path, client, settings):
         assert r.status == 200, r.status
         content = await r.read()
 
-    return await resize_upload(content, upload_path, settings)
+    return await upload_background(content, upload_path, settings)
 
 
 CATS = [
@@ -482,3 +500,14 @@ async def create_new_company(conn, settings, live, **kwargs):
     if live:
         await actor.send_account_created.direct(user_id, created_by_admin=True)
     await actor.close(shutdown=True)
+
+
+@patch
+async def apply_donation_migrations(conn, settings, **kwargs):
+    """
+    create donation_options and donations tables and indexes, you'll also need to update enums
+    """
+    models_sql = settings.models_sql
+    m = re.search('-- { donations change(.*)-- } donations change', models_sql, flags=re.DOTALL)
+    donations_sql = m.group(1).strip(' \n')
+    await conn.execute(donations_sql)

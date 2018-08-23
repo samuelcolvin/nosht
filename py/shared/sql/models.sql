@@ -116,6 +116,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'password-reset',
   'reserve-tickets',
   'buy-tickets',
+  'donate',
   'book-free-tickets',
   'cancel-reserved-tickets',
   'create-event',
@@ -177,7 +178,7 @@ CREATE INDEX ticket_created_ts ON tickets USING btree (created_ts);
 
 -- must match triggers from emails/defaults.py!
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (
-  'ticket-buyer', 'ticket-other', 'event-update', 'event-reminder', 'event-booking',
+  'ticket-buyer', 'ticket-other', 'event-update', 'event-reminder', 'donation-thanks', 'event-booking',
   'event-host-created', 'event-host-update', 'event-host-final-update', 'password-reset', 'account-created',
   'admin-notification'
 );
@@ -194,3 +195,40 @@ CREATE TABLE email_definitions (
 CREATE UNIQUE INDEX email_def_unique ON email_definitions USING btree (company, trigger);
 
 -- TODO email events
+
+-- { donations change
+CREATE TABLE IF NOT EXISTS donation_options (
+  id SERIAL PRIMARY KEY,
+  category INT NOT NULL REFERENCES categories ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
+  sort_index INT,
+
+  live BOOLEAN DEFAULT TRUE,
+  image VARCHAR(255),
+  short_description VARCHAR(140),
+  long_description TEXT
+);
+CREATE INDEX IF NOT EXISTS don_opt_category ON donation_options USING btree (category);
+CREATE INDEX IF NOT EXISTS don_opt_live ON donation_options USING btree (live);
+CREATE INDEX IF NOT EXISTS don_opt_sort_index ON donation_options USING btree (sort_index);
+
+
+CREATE TABLE IF NOT EXISTS donations (
+  id SERIAL PRIMARY KEY,
+  donation_option INT NOT NULL REFERENCES donation_options ON DELETE CASCADE,
+  amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
+  gift_aid BOOLEAN NOT NULL,
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  address VARCHAR(255),
+  city VARCHAR(255),
+  postcode VARCHAR(31),
+
+  action INT NOT NULL REFERENCES actions ON DELETE CASCADE  -- to get event, user and ts
+);
+CREATE UNIQUE INDEX IF NOT EXISTS con_action ON donations USING btree (action);
+CREATE INDEX IF NOT EXISTS don_donation_option ON donations USING btree (donation_option);
+CREATE INDEX IF NOT EXISTS don_gift_aid ON donations USING btree (gift_aid);
+CREATE INDEX IF NOT EXISTS don_action ON donations USING btree (action);
+-- } donations change

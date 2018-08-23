@@ -53,6 +53,7 @@ async def stripe_get_customer_sources(request):
         'data': [
             {
                 'last4': '4242',
+                'brand': 'Visa',
                 'exp_month': 8,
                 'exp_year': 2019,
             },
@@ -87,6 +88,7 @@ async def stripe_post_charges(request):
         'source': {
             'id': 'source-id',
             'last4': '1234',
+            'brand': 'Visa',
             'exp_month': '12',
             'exp_year': 2032,
         }

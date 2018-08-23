@@ -10,10 +10,15 @@ from pydantic import BaseModel, EmailStr, constr, validator
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_grecaptcha, check_session, is_auth
 from web.bread import UpdateView
-from web.stripe import BookingModel, Reservation, StripePayModel, book_free, stripe_pay
+from web.stripe import BookingModel, Reservation, StripeBuyModel, book_free, stripe_buy
 from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response
 
 logger = logging.getLogger('nosht.booking')
+
+
+class UpdateViewAuth(UpdateView):
+    async def check_permissions(self):
+        await check_session(self.request, 'admin', 'host', 'guest')
 
 
 @is_auth
@@ -50,7 +55,7 @@ class TicketModel(BaseModel):
     cover_costs: bool = False
 
 
-class ReserveTickets(UpdateView):
+class ReserveTickets(UpdateViewAuth):
     class Model(BaseModel):
         tickets: List[TicketModel]
         ticket_type: int
@@ -60,9 +65,6 @@ class ReserveTickets(UpdateView):
             if not v:
                 raise ValueError('at least one ticket must be purchased')
             return v
-
-    async def check_permissions(self):
-        await check_session(self.request, 'admin', 'host', 'guest')
 
     async def execute(self, m: Model):
         event_id = int(self.request.match_info['id'])
@@ -201,13 +203,14 @@ class CancelReservedTickets(UpdateView):
 
 
 class BuyTickets(UpdateView):
-    Model = StripePayModel
+    Model = StripeBuyModel
 
-    async def execute(self, m: StripePayModel):
+    async def execute(self, m: StripeBuyModel):
         await check_grecaptcha(m, self.request)
-        booked_action_id = await stripe_pay(m, self.request['company_id'], self.session.get('user_id'),
-                                            self.app, self.conn)
+        booked_action_id, source_hash = await stripe_buy(m, self.request['company_id'], self.session.get('user_id'),
+                                                         self.app, self.conn)
         await self.app['email_actor'].send_event_conf(booked_action_id)
+        return {'source_hash': source_hash}
 
 
 class BookFreeTickets(UpdateView):

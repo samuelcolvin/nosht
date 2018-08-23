@@ -162,7 +162,7 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
     r = await cli.get(url('export', type='tickets'))
     assert r.status == 200
     text = await r.text()
-    data = sorted([dict(r) for r in DictReader(StringIO(text))], key=lambda d: int(d['id']))
+    data = [dict(r) for r in DictReader(StringIO(text))]
     ticket_type = str(await db_conn.fetchval('SELECT id FROM ticket_types'))
     assert data == [
         {
@@ -204,6 +204,42 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
             'buyer_user_id': str(factory.user_id),
             'buyer_first_name': 'Frank',
             'buyer_last_name': 'Spencer',
+        },
+    ]
+
+
+async def test_donations_export(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+    await factory.create_event()
+    don_id = await factory.create_donation(gift_aid=True)
+    await login()
+
+    r = await cli.get(url('export', type='donations'))
+    assert r.status == 200
+    text = await r.text()
+    data = [dict(r) for r in DictReader(StringIO(text))]
+    assert data == [
+        {
+            'id': str(don_id),
+            'amount': '20.00',
+            'first_name': 'Foo',
+            'last_name': 'Bar',
+            'address': 'address',
+            'city': 'city',
+            'postcode': 'postcode',
+            'gift_aid': 'true',
+            'user_email': 'frank@example.org',
+            'user_first_name': 'Frank',
+            'user_last_name': 'Spencer',
+            'timestamp': CloseToNow(),
+            'event': str(factory.event_id),
+            'donation_option_id': str(factory.donation_option_id),
+            'donation_option_name': 'testing donation option',
+            'category_id': str(factory.category_id),
+            'category_name': 'Supper Clubs',
         },
     ]
 

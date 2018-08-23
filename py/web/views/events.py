@@ -14,7 +14,7 @@ from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, condecimal, conint, constr, validator
 
-from shared.images import delete_image, resize_upload
+from shared.images import delete_image, upload_background
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin, is_admin_or_host
@@ -57,7 +57,7 @@ FROM (
          END AS tickets_available,
          h.id AS host_id,
          h.first_name || ' ' || h.last_name AS host_name,
-         co.stripe_public_key AS stripe_key,
+         c.id AS category_id,
          c.ticket_extra_title,
          c.ticket_extra_help_text,
          c.booking_trust_message,
@@ -67,7 +67,6 @@ FROM (
          c.allow_marketing_message
   FROM events AS e
   JOIN categories AS c ON e.category = c.id
-  JOIN companies AS co ON c.company = co.id
   JOIN users AS h ON e.host = h.id
   WHERE e.id = $1
 ) AS event,
@@ -522,7 +521,7 @@ async def set_event_image_new(request):
 
     upload_path = Path(co_slug) / cat_slug / event_slug
 
-    image_url = await resize_upload(content, upload_path, request.app['settings'])
+    image_url = await upload_background(content, upload_path, request.app['settings'])
     await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', image_url, event_id)
     await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
                         event_id=event_id, subtype='set-image-new')

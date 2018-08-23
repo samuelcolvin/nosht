@@ -45,6 +45,7 @@ async def test_root(cli, url, factory: Factory):
             'name': 'Testing',
             'image': 'https://www.example.org/co.png',
             'currency': 'gbp',
+            'stripe_public_key': 'stripe_key_xxx',
         },
         'user': None,
     }

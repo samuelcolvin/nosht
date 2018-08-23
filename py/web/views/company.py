@@ -1,9 +1,10 @@
+from functools import partial
 from pathlib import Path
 
 from buildpg import V
 from pydantic import BaseModel, NameEmail
 
-from shared.images import LOGO_SIZE, delete_image, resize_upload, upload_logo
+from shared.images import delete_image, upload_background, upload_other
 from shared.utils import Currencies
 from web.auth import check_session, is_admin
 from web.bread import Bread
@@ -54,6 +55,10 @@ class CompanyBread(Bread):
         return data
 
 
+LOGO_SIZE = 256, 256
+upload_logo = partial(upload_other, req_size=LOGO_SIZE)
+
+
 @is_admin
 async def company_upload(request):
     field_name = request.match_info['field']
@@ -68,12 +73,11 @@ async def company_upload(request):
     )
 
     upload_path = Path(co_slug) / 'co' / field_name
-    method = resize_upload if field_name == 'image' else upload_logo
-    image_url = await method(content, upload_path, request.app['settings'])
+    method = upload_background if field_name == 'image' else upload_logo
+    image_url = await method(content, upload_path=upload_path, settings=request.app['settings'])
 
     await request['conn'].execute_b('UPDATE companies SET :set WHERE id=:id', set=V(field_name) == image_url, id=co_id)
 
-    # delete the image from S3 before uploading a new one
     if old_image:
         await delete_image(old_image, request.app['settings'])
     return json_response(status='success')

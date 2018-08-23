@@ -20,14 +20,14 @@ async def test_browse_email_defs(cli, url, login, factory: Factory, db_conn):
     r = await cli.get(url('email-defs-browse'))
     assert r.status == 200, await r.text()
     data = await r.json()
-    assert len(data['items']) == 10
+    assert len(data['items']) == 11
     assert sum(i['customised'] for i in data['items']) == 1
     assert next(i for i in data['items'] if i['customised']) == {
         'active': True,
         'customised': True,
         'trigger': 'password-reset'
     }
-    assert sum(i['active'] for i in data['items']) == 10
+    assert sum(i['active'] for i in data['items']) == 11
 
 
 async def test_retrieve_missing_email_defs(cli, url, login, factory: Factory):

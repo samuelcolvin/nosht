@@ -156,14 +156,16 @@ async def user_middleware(request, handler):
 
     # port is removed as won't matter and messes up on localhost:3000/8000
     host = remove_port(request.host)
+    company_id = None
     if user_id:
         company_id = await conn.fetchval(USER_COMPANY_SQL, host, user_id)
-        msg = 'company not found for this host and user, clear your cookies and reload the page'
-    else:
-        company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', host)
-        msg = 'no company found for this host'
+        if not company_id:
+            request['session'].invalidate()
+
     if not company_id:
-        return JsonErrors.HTTPBadRequest(message=msg)
+        company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', host)
+        if not company_id:
+            return JsonErrors.HTTPBadRequest(message='no company found for this host')
     request['company_id'] = company_id
     return await handler(request)
 
@@ -172,6 +174,7 @@ UPLOAD_PATHS = (
     re.compile(r'/api/companies/upload/(?:image|logo)/'),
     re.compile(r'/api/categories/\d+/add-image/'),
     re.compile(r'/api/events/\d+/set-image/new/'),
+    re.compile(r'/api/donation-options/\d+/upload-image/'),
 )
 CROSS_ORIGIN_URLS = {
     '/api/login/',

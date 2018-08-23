@@ -24,6 +24,7 @@ export async function authenticate (data) {
   this.props.ctx.setUser(data.user)
   this.props.history.replace(next_url(this.props.location) || '/dashboard/events/')
   this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
+  window.sessionStorage.clear()
 }
 
 class Login extends React.Component {

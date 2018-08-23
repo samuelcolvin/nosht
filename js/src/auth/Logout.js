@@ -19,6 +19,7 @@ class Logout extends React.Component {
       return
     }
     this.props.ctx.setUser(null)
+    window.sessionStorage.clear()
     this.setState({finished: true})
     ReactGA.event({category: 'auth', action: 'auth-logout'})
     this.props.ctx.setMessage({icon: 'user', message: 'Logged out successfully'})

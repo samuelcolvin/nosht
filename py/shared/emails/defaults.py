@@ -10,6 +10,8 @@ class Triggers(str, Enum):
     event_update = 'event-update'
     event_reminder = 'event-reminder'
 
+    donation_thanks = 'donation-thanks'
+
     event_host_created = 'event-host-created'
     event_host_update = 'event-host-update'
     event_host_final_update = 'event-host-final-update'
@@ -127,6 +129,25 @@ Event:
 {{#static_map}}
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
 {{/static_map}}
+"""
+    },
+    Triggers.donation_thanks: {
+
+        'subject': 'Thanks for your donation',
+        'title': '{{ company_name }}',
+        'body': """
+Hi {{ first_name }},
+
+Thanks for your donation to {{ donation_option_name }} of {{ amount_donated }}.
+
+{{#gift_aid_enabled}}
+You have allowed us to collect gift aid meaning we can collect %25 on top of your original donation.
+{{/gift_aid_enabled}}
+{{^gift_aid_enabled}}
+You did not enable gift aid.
+{{/gift_aid_enabled}}
+
+_(Card Charged: {{ card_details }})_
 """
     },
     Triggers.event_host_update: {
