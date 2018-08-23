@@ -42,7 +42,7 @@ def test_duration_formats(input, output):
 
 
 def test_request_error():
-    r = RequestError(500, 'xxx', info='hello')
+    r = RequestError(500, 'xxx', text='hello')
     assert str(r) == 'response 500 from "xxx":\nhello'
     assert r.extra() == 'hello'
 

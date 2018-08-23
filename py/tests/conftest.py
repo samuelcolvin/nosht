@@ -290,7 +290,7 @@ class Factory:
             event_id=event_id,
             price_cent=price and int(price * 100),
             ticket_count=1 + len(extra_user_ids),
-            event_name='Foobar',
+            event_name=await self.conn.fetchval('SELECT name FROM events WHERE id=$1', event_id),
         )
 
     async def buy_tickets(self, reservation: Reservation, user_id=None):

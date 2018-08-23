@@ -42,16 +42,19 @@ def mk_password(password: str, settings: Settings) -> str:
 
 
 class RequestError(RuntimeError):
-    def __init__(self, status, url, *, info: str=None):
+    def __init__(self, status, url, *, text: str=None):
         self.status = status
         self.url = url
-        self.info = info
+        self.text = text
 
     def __str__(self):
-        return f'response {self.status} from "{self.url}"' + (f':\n{self.info[:400]}' if self.info else '')
+        return f'response {self.status} from "{self.url}"' + (f':\n{self.text[:400]}' if self.text else '')
+
+    def json(self):
+        return json.loads(self.text)
 
     def extra(self):
-        return self.info
+        return self.text
 
 
 def unsubscribe_sig(user_id, settings: Settings):

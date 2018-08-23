@@ -138,6 +138,9 @@ class JsonErrors:
     class HTTPUnauthorized(_HTTPClientErrorJson):
         status_code = 401
 
+    class HTTPPaymentRequired(_HTTPClientErrorJson):
+        status_code = 402
+
     class HTTPForbidden(_HTTPClientErrorJson):
         status_code = 403
 

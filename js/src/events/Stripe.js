@@ -80,15 +80,21 @@ export async function stripe_pay (post_url, request_data) {
 
   let response_data
   try {
-    response_data = await requests.post(post_url,request_data)
+    response_data = await requests.post(post_url, request_data, {expected_statuses: [200, 402]})
   } catch (error) {
     this.props.ctx.setError(error)
     return false
   }
-  if (token) {
-    record_card(this.props.ctx.user, token, response_data.source_hash)
+  if (response_data.status === 200) {
+    if (token) {
+      record_card(this.props.ctx.user, token, response_data.source_hash)
+    }
+    return true
+  } else {
+    const payment = Object.assign({}, this.state.payment, {error: response_data.message})
+    this.setState({payment, submitted: false, submitting: false})
+    return false
   }
-  return true
 }
 
 export const stripe_form_valid = payment_details => (
@@ -124,7 +130,6 @@ const postcode_field = {name: 'billing_postcode', required: true}
 class StripeForm_ extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {error: null}
     this.setDetails = this.setDetails.bind(this)
     this.radioChange = this.radioChange.bind(this)
     this.stored_card = get_card(props.ctx.user)
@@ -151,8 +156,7 @@ class StripeForm_ extends React.Component {
   }
 
   update_stripe_status (status) {
-    this.setState({error: status.error && status.error.message})
-    this.setDetails({complete: status.complete})
+    this.setDetails({error: status.error && status.error.message, complete: status.complete})
   }
 
   radioChange (e) {
@@ -217,13 +221,13 @@ class StripeForm_ extends React.Component {
                 Card Details
               </Label>
               <CardElement className="py-2 px-1"
-                            hidePostalCode={true}
-                            onChange={this.update_stripe_status.bind(this)}
-                            style={stripe_styles}/>
-              {this.state.error &&
+                           hidePostalCode={true}
+                           onChange={this.update_stripe_status.bind(this)}
+                           style={stripe_styles}/>
+              {details.error &&
                 <FormFeedback className="d-block">
                   <FontAwesomeIcon icon="times" className="mr-1"/>
-                  {this.state.error}
+                  {details.error}
                 </FormFeedback>
               }
             </FormGroup>

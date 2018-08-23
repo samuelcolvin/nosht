@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+from contextlib import contextmanager
 from enum import Enum
 from functools import partial
 from typing import Optional, Tuple, Union, cast
@@ -137,7 +138,8 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
 async def stripe_buy(m: StripeBuyModel, company_id: int, user_id: Optional[int], app,
                      conn: BuildPgConnection) -> Tuple[int, str]:
     res = await get_reservation(m, user_id, app, conn)
-    return await _stripe_pay(m=m, company_id=company_id, app=app, conn=conn, res=res)
+    with _catch_stripe_errors():
+        return await _stripe_pay(m=m, company_id=company_id, app=app, conn=conn, res=res)
 
 
 async def stripe_donate(m: StripeDonateModel, company_id: int, user_id: Optional[int], app,
@@ -164,7 +166,8 @@ async def stripe_donate(m: StripeDonateModel, company_id: int, user_id: Optional
         price_cent=int(amount * 100),
         donation_option_name=name
     )
-    return await _stripe_pay(m=m, company_id=company_id, app=app, conn=conn, don=don)
+    with _catch_stripe_errors():
+        return await _stripe_pay(m=m, company_id=company_id, app=app, conn=conn, don=don)
 
 
 async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
@@ -340,6 +343,20 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
     return action_id, None if use_saved_card else _hash_src(source_id)
 
 
+@contextmanager
+def _catch_stripe_errors():
+    try:
+        yield
+    except RequestError as e:
+        if e.status != 402:
+            raise
+        data = e.json()
+        code = data['error']['code']
+        message = data['error']['message']
+        logger.info('stripe payment failed: %s, %s', code, message)
+        raise JsonErrors.HTTPPaymentRequired(message=message, code=code) from e
+
+
 def _card_ref(c):
     return '{last4}-{exp_year}-{exp_month}'.format(**c)
 
@@ -364,4 +381,4 @@ async def stripe_request(app, auth, method, path, *, idempotency_key=None, **dat
         else:
             # check stripe > developer > logs for more info
             text = await r.text()
-            raise RequestError(r.status, full_path, info=text)
+            raise RequestError(r.status, full_path, text=text)

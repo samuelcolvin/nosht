@@ -116,28 +116,34 @@ class DonateForm extends React.Component {
             <Col md="8">
               <hr/>
               <Input field={gift_aid_field} value={this.state.gift_aid}
+                     disabled={this.state.submitted || this.state.submitting}
                      set_value={gift_aid => this.setState({gift_aid})}/>
 
               <Collapse isOpen={this.state.gift_aid}>
                 <Row>
                   <Col md="6">
                     <Input field={first_name_field} value={this.state.first_name} error={this.state.first_name_error}
+                           disabled={this.state.submitted || this.state.submitting}
                            set_value={v => this.setState({first_name: v, first_name_error: null})}/>
                   </Col>
                   <Col md="6">
                     <Input field={last_name_field} value={this.state.last_name} error={this.state.last_name_error}
+                           disabled={this.state.submitted || this.state.submitting}
                            set_value={v => this.setState({last_name: v, last_name_error: null})}/>
                   </Col>
                 </Row>
                 <Input field={address_field} value={this.state.address} error={this.state.address_error}
+                       disabled={this.state.submitted || this.state.submitting}
                        set_value={v => this.setState({address: v, address_error: null})}/>
                 <Row>
                   <Col md="6">
                     <Input field={city_field} value={this.state.city} error={this.state.city_error}
+                           disabled={this.state.submitted || this.state.submitting}
                            set_value={v => this.setState({city: v, city_error: null})}/>
                   </Col>
                   <Col md="6">
                     <Input field={postcode_field} value={this.state.postcode} error={this.state.postcode_error}
+                           disabled={this.state.submitted || this.state.submitting}
                            set_value={v => this.setState({postcode: v, postcode_error: null})}/>
                   </Col>
                 </Row>

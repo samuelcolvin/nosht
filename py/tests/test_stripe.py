@@ -166,7 +166,7 @@ async def test_stripe_saved_card(cli, db_conn, factory: Factory):
     assert new_source_hash is None
 
 
-async def test_pay_cli(cli, url, dummy_server, factory: Factory):
+async def test_pay_cli(cli, url, dummy_server, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
@@ -196,6 +196,35 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory):
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
         ),
     ]
+    assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+
+
+async def test_pay_declined(cli, url, dummy_server, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=12.5, name='this should be declined')
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
+        booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
+    )
+
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 402, await r.text()
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
+    ]
+    assert not await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
 
 
 async def test_existing_customer_fake(cli, url, dummy_server, factory: Factory):

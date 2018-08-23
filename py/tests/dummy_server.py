@@ -83,16 +83,26 @@ async def stripe_post_customers(request):
 
 
 async def stripe_post_charges(request):
-    return json_response({
-        'id': 'charge-id',
-        'source': {
-            'id': 'source-id',
-            'last4': '1234',
-            'brand': 'Visa',
-            'exp_month': '12',
-            'exp_year': 2032,
-        }
-    })
+    data = await request.post()
+    if 'decline' in data['description']:
+        return json_response({
+          'error': {
+            'code': 'card_declined',
+            'message': 'Your card was declined.',
+            'type': 'card_error'
+          }
+        }, status=402)
+    else:
+        return json_response({
+            'id': 'charge-id',
+            'source': {
+                'id': 'source-id',
+                'last4': '1234',
+                'brand': 'Visa',
+                'exp_month': '12',
+                'exp_year': 2032,
+            }
+        })
 
 
 s3_response = """\

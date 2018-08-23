@@ -181,7 +181,7 @@ class StripeBookingForm extends React.Component {
         <Input
           field={f}
           value={this.state.buy_offline}
-          disabled={this.state.submitting}
+          disabled={this.state.submitting || this.state.submitted}
           set_value={v => this.setState({buy_offline: v})}
         />
       )
