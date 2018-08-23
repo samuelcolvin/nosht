@@ -5,7 +5,7 @@ from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Where
 from pydantic import BaseModel, condecimal, constr
 
-from shared.images import delete_image, list_images, resize_upload, strip_domain
+from shared.images import delete_image, list_images, strip_domain, upload_background
 from shared.utils import slugify
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread
@@ -76,7 +76,7 @@ async def _get_cat_img_path(request):
 async def category_add_image(request):
     content = await request_image(request)
     upload_path = await _get_cat_img_path(request)
-    await resize_upload(content, upload_path, request.app['settings'])
+    await upload_background(content, upload_path, request.app['settings'])
     return json_response(status='success')
 
 

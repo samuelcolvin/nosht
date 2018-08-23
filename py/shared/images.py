@@ -14,7 +14,6 @@ from .utils import pseudo_random_str
 logger = logging.getLogger('nosht.images')
 LARGE_SIZE = 3840, 1000
 SMALL_SIZE = 1920, 500
-LOGO_SIZE = 256, 256
 STRIP_DOMAIN = re.compile('^https?://.+?/')
 
 
@@ -90,7 +89,7 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: Optional[bytes]
     return f'{settings.s3_domain}/{upload_path}'
 
 
-async def resize_upload(image_data: bytes, upload_path: Path, settings: Settings) -> str:
+async def upload_background(image_data: bytes, upload_path: Path, settings: Settings) -> str:
     try:
         img = Image.open(BytesIO(image_data))
     except OSError:
@@ -125,23 +124,18 @@ async def resize_upload(image_data: bytes, upload_path: Path, settings: Settings
     return await _upload(upload_path, main_stream.getvalue(), thumb_stream.getvalue(), settings)
 
 
-async def upload_logo(image_data: bytes, upload_path: Path, settings: Settings) -> str:
-    try:
-        img = Image.open(BytesIO(image_data))
-    except OSError:
-        raise ValueError('invalid image')
+async def upload_other(image_data: bytes, *, upload_path: Path, settings: Settings, req_width, req_height) -> str:
+    img = Image.open(BytesIO(image_data))
 
-    width, height = LOGO_SIZE
-    if img.width < width or img.height < height:
-        raise ValueError(f'image too small: {img.size}')
+    assert img.width >= req_width and img.height >= req_height, 'image too small'
 
     aspect_ratio = img.width / img.height
-    if aspect_ratio > 1:
+    if aspect_ratio > (req_width / req_height):
         # wide image
-        resize_to = int(round(height * aspect_ratio)), height
+        resize_to = int(round(req_height * aspect_ratio)), req_height
     else:
         # tall image
-        resize_to = width, int(round(width / aspect_ratio))
+        resize_to = req_width, int(round(req_width / aspect_ratio))
 
     img = img.resize(resize_to, Image.ANTIALIAS)
     stream = BytesIO()

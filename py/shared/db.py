@@ -14,7 +14,7 @@ from buildpg import Values, asyncpg
 from .actions import ActionTypes
 from .emails.defaults import Triggers
 from .emails.main import EmailActor
-from .images import resize_upload
+from .images import upload_background
 from .settings import Settings
 from .utils import mk_password, slugify
 
@@ -259,7 +259,7 @@ async def create_image(upload_path, client, settings):
         assert r.status == 200, r.status
         content = await r.read()
 
-    return await resize_upload(content, upload_path, settings)
+    return await upload_background(content, upload_path, settings)
 
 
 CATS = [
