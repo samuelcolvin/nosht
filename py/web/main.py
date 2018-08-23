@@ -136,7 +136,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.get('/users/{pk:\d+}/tickets/', user_tickets, name='user-tickets'),
         web.post('/users/{pk:\d+}/switch-status/', switch_user_status, name='user-switch-status'),
 
-        web.get('/export/{type:(events|categories|users|tickets)}.csv', export, name='export'),
+        web.get('/export/{type:(events|categories|users|tickets|donations)}.csv', export, name='export'),
 
         web.get('/email-defs/', email_def_browse, name='email-defs-browse'),
         web.get('/email-defs/{trigger}/', email_def_retrieve, name='email-defs-retrieve'),

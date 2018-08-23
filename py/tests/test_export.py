@@ -2,7 +2,10 @@ from csv import DictReader
 from datetime import timedelta
 from io import StringIO
 
+from buildpg import Values
 from pytest_toolbox.comparison import CloseToNow, RegexStr
+
+from shared.actions import ActionTypes
 
 from .conftest import Factory
 
@@ -162,7 +165,7 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
     r = await cli.get(url('export', type='tickets'))
     assert r.status == 200
     text = await r.text()
-    data = sorted([dict(r) for r in DictReader(StringIO(text))], key=lambda d: int(d['id']))
+    data = [dict(r) for r in DictReader(StringIO(text))]
     ticket_type = str(await db_conn.fetchval('SELECT id FROM ticket_types'))
     assert data == [
         {
@@ -204,6 +207,61 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
             'buyer_user_id': str(factory.user_id),
             'buyer_first_name': 'Frank',
             'buyer_last_name': 'Spencer',
+        },
+    ]
+
+
+async def test_donations_export(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+    await factory.create_event()
+    await login()
+
+    action_id = await db_conn.fetchval_b(
+        'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+        values=Values(company=factory.company_id, user_id=factory.user_id, type=ActionTypes.donate,
+                      event=factory.event_id)
+    )
+    don_id = await db_conn.fetchval_b(
+        'INSERT INTO donations (:values__names) VALUES :values RETURNING id',
+        values=Values(
+            donation_option=factory.donation_option_id,
+            amount=20,
+            gift_aid=True,
+            action=action_id,
+            first_name='Foo',
+            last_name='Bar',
+            address='address',
+            city='city',
+            postcode='postcode',
+        )
+    )
+
+    r = await cli.get(url('export', type='donations'))
+    assert r.status == 200
+    text = await r.text()
+    data = [dict(r) for r in DictReader(StringIO(text))]
+    assert data == [
+        {
+            'id': str(don_id),
+            'amount': '20.00',
+            'first_name': 'Foo',
+            'last_name': 'Bar',
+            'address': 'address',
+            'city': 'city',
+            'postcode': 'postcode',
+            'gift_aid': 'true',
+            'user_email': 'frank@example.org',
+            'user_first_name': 'Frank',
+            'user_last_name': 'Spencer',
+            'timestamp': CloseToNow(),
+            'event': str(factory.event_id),
+            'donation_option_id': str(factory.donation_option_id),
+            'donation_option_name': 'testing donation option',
+            'category_id': str(factory.category_id),
+            'category_name': 'Supper Clubs',
         },
     ]
 

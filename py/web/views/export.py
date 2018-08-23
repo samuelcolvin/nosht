@@ -28,6 +28,7 @@ JOIN ticket_types AS tt ON e.id = tt.event
 LEFT JOIN tickets AS t ON (e.id = t.event AND t.status='booked')
 WHERE cat.company=$1
 GROUP BY e.id, cat.id
+ORDER BY e.id, cat.id
 """,
     'categories': """
 SELECT
@@ -36,6 +37,7 @@ SELECT
   suggested_price, image
 FROM categories AS c
 WHERE company=$1
+ORDER BY id
 """,
     'users': """
 SELECT
@@ -48,6 +50,7 @@ FROM users AS u
 LEFT JOIN tickets AS t ON u.id = t.user_id
 WHERE u.company=$1
 GROUP BY u.id
+ORDER BY u.id
 """,
     'tickets': """
 SELECT
@@ -65,7 +68,25 @@ JOIN ticket_types AS tt on t.ticket_type = tt.id
 JOIN actions a ON t.booked_action = a.id
 JOIN users ub ON a.user_id = ub.id
 WHERE a.company=$1 AND t.status!='reserved'
-"""
+ORDER BY t.id
+""",
+    'donations': """
+SELECT
+  d.id, to_char(d.amount, 'FM9999990.00') AS amount,
+  d.first_name, d.last_name, d.address, d.city, d.postcode, boolstr(d.gift_aid) AS gift_aid,
+  u.email AS user_email, u.first_name AS user_first_name, u.last_name AS user_last_name,
+  iso_ts(a.ts) AS timestamp, a.event,
+  opts.id AS donation_option_id, opts.name AS donation_option_name,
+  cat.id AS category_id, cat.name AS category_name
+FROM donations AS d
+JOIN actions AS a ON d.action = a.id
+JOIN users AS u ON a.user_id = u.id
+JOIN donation_options AS opts ON d.donation_option = opts.id
+JOIN categories AS cat ON opts.category = cat.id
+JOIN companies AS co ON cat.company = co.id
+WHERE cat.company=$1
+ORDER BY d.id
+    """
 }
 
 

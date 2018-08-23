@@ -266,19 +266,19 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
                     event=m.event_id,
                 )
             )
+            don_values = dict(
+                donation_option=m.donation_option_id,
+                amount=price_cents / 100,
+                gift_aid=m.gift_aid,
+                action=action_id,
+                first_name=m.first_name or None,
+                last_name=m.last_name or None,
+            )
+            if m.gift_aid:
+                don_values.update(address=m.address or None, city=m.city or None, postcode=m.postcode or None)
             don_id = await conn.fetchval_b(
                 'INSERT INTO donations (:values__names) VALUES :values RETURNING id',
-                values=Values(
-                    donation_option=m.donation_option_id,
-                    amount=price_cents / 100,
-                    gift_aid=m.gift_aid,
-                    first_name=m.first_name or None,
-                    last_name=m.last_name or None,
-                    address=m.address or None,
-                    city=m.city or None,
-                    postcode=m.postcode or None,
-                    action=action_id,
-                )
+                values=Values(**don_values)
             )
             cache_key = f'idempotency-donate-{m.donation_option_id}-{user_id}'
             with await app['redis'] as redis:
