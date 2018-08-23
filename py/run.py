@@ -33,10 +33,7 @@ def main():
             live = '--live' in args
             if live:
                 args.remove('--live')
-            direct = '--direct' in args
-            if direct:
-                args.remove('--direct')
-            return run_patch(settings, live, direct, args[0] if args else None)
+            return run_patch(settings, live, args[0] if args else None)
         elif command == 'web':
             logger.info('running web server...')
             from web.main import create_app

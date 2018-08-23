@@ -196,7 +196,8 @@ CREATE UNIQUE INDEX email_def_unique ON email_definitions USING btree (company, 
 
 -- TODO email events
 
-CREATE TABLE donation_options (
+-- { donations change
+CREATE TABLE IF NOT EXISTS donation_options (
   id SERIAL PRIMARY KEY,
   category INT NOT NULL REFERENCES categories ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
@@ -208,12 +209,12 @@ CREATE TABLE donation_options (
   short_description VARCHAR(140),
   long_description TEXT
 );
-CREATE INDEX don_opt_category ON donation_options USING btree (category);
-CREATE INDEX don_opt_live ON donation_options USING btree (live);
-CREATE INDEX don_opt_sort_index ON donation_options USING btree (sort_index);
+CREATE INDEX IF NOT EXISTS don_opt_category ON donation_options USING btree (category);
+CREATE INDEX IF NOT EXISTS don_opt_live ON donation_options USING btree (live);
+CREATE INDEX IF NOT EXISTS don_opt_sort_index ON donation_options USING btree (sort_index);
 
 
-CREATE TABLE donations (
+CREATE TABLE IF NOT EXISTS donations (
   id SERIAL PRIMARY KEY,
   donation_option INT NOT NULL REFERENCES donation_options ON DELETE CASCADE,
   amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
@@ -224,7 +225,8 @@ CREATE TABLE donations (
 
   action INT NOT NULL REFERENCES actions ON DELETE CASCADE  -- to get event, user and ts
 );
-CREATE UNIQUE INDEX con_action ON donations USING btree (action);
-CREATE INDEX don_donation_option ON donations USING btree (donation_option);
-CREATE INDEX don_gift_aid ON donations USING btree (gift_aid);
-CREATE INDEX don_action ON donations USING btree (action);
+CREATE UNIQUE INDEX IF NOT EXISTS con_action ON donations USING btree (action);
+CREATE INDEX IF NOT EXISTS don_donation_option ON donations USING btree (donation_option);
+CREATE INDEX IF NOT EXISTS don_gift_aid ON donations USING btree (gift_aid);
+CREATE INDEX IF NOT EXISTS don_action ON donations USING btree (action);
+-- } donations change
