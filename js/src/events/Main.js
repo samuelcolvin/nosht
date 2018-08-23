@@ -38,7 +38,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
         {event.tickets_available !== null &&
           <div className="font-weight-bold mt-3">
             {event.tickets_available === 0 ?
-              <span>No Tickets Remaining</span>
+              <span>Sold Out! Head back to the home page to check out our other events.</span>
               :
               <span>Only {event.tickets_available} Tickets Remaining</span>
             }
