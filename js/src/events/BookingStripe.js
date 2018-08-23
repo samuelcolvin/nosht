@@ -35,10 +35,11 @@ class StripeBookingForm extends React.Component {
       submitted: false,
       cancelled: false,
       terms_and_conditions: false,
+      buy_offline: false,
       payment: {}
     }
     this.update_timer = this.update_timer.bind(this)
-    this.render_form = this.render_form.bind(this)
+    this.payment_form = this.payment_form.bind(this)
     this.take_payment = this.take_payment.bind(this)
     this.book_free = this.book_free.bind(this)
     this.stripe_pay = stripe_pay.bind(this)
@@ -78,10 +79,12 @@ class StripeBookingForm extends React.Component {
   submit (e) {
     e.preventDefault()
     this.setState({submitting: true})
-    if (this.props.reservation.total_price) {
+    if (this.state.buy_offline) {
+      this.book_free('buy-tickets-offline')
+    } else if (this.props.reservation.total_price) {
       this.take_payment()
     } else {
-      this.book_free()
+      this.book_free('book-free-tickets')
     }
   }
 
@@ -90,37 +93,31 @@ class StripeBookingForm extends React.Component {
     if (ok) {
       this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
       ReactGA.event({
-        category: 'ticket-booking',
-        action: 'ticket-booking-confirm',
-        label: 'pay',
+        category: 'ticket-booking', action: 'ticket-booking-confirm', label: 'pay',
         value: this.props.reservation.total_price
       })
       this.props.finished(true)
     }
   }
 
-  async book_free () {
+  async book_free (book_action) {
     this.setState({submitted: true})
-    const grecaptcha_token = await grecaptcha_execute('book_free')
+    const grecaptcha_token = await grecaptcha_execute(book_action.replace(/-/g, '_'))
 
     try {
       await requests.post('events/book-free/',
-          {booking_token: this.props.reservation.booking_token, grecaptcha_token})
+          {booking_token: this.props.reservation.booking_token, book_action, grecaptcha_token})
     } catch (error) {
       this.props.ctx.setError(error)
       return
     }
 
     this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Booking successful, check your email'})
-    ReactGA.event({
-      category: 'ticket-booking',
-      action: 'ticket-booking-confirm',
-      label: 'free',
-    })
+    ReactGA.event({category: 'ticket-booking', action: 'ticket-booking-confirm', label: book_action})
     this.props.finished(true)
   }
 
-  render_form (expired) {
+  payment_form (expired) {
     let tncs_field = null
     if (this.props.event.terms_and_conditions_message) {
       const f = {
@@ -171,11 +168,29 @@ class StripeBookingForm extends React.Component {
     if (expired) {
       items.splice(0, 1)
     }
+
+    let buy_offline_field = null
+    if (res.total_price &&
+        (this.props.ctx.user.role === 'admin' || this.props.ctx.user.id === this.props.event.host_id)) {
+      const f = {
+        name: 'buy_offline',
+        type: 'bool',
+        help_text: "Skip Payment here, useful to reserve tickets or book tickets for guests who've paid another way."
+      }
+      buy_offline_field = (
+        <Input
+          field={f}
+          value={this.state.buy_offline}
+          disabled={this.state.submitting}
+          set_value={v => this.setState({buy_offline: v})}
+        />
+      )
+    }
     const confirm_disabled = (
       (!this.state.terms_and_conditions && this.props.event.terms_and_conditions_message) ||
       expired ||
       this.state.submitting ||
-      (res.total_price && !this.state.payment.complete && !this.state.payment.source_hash)
+      (res.total_price && !this.state.payment.complete && !this.state.payment.source_hash && !this.state.buy_offline)
     )
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
@@ -184,9 +199,10 @@ class StripeBookingForm extends React.Component {
           <Row className="justify-content-center">
             <Col md="8">
               <PricingList className="mb-2" items={items}/>
+              {buy_offline_field}
               <hr/>
 
-              {this.render_form(expired)}
+              {!this.state.buy_offline && this.payment_form(expired)}
             </Col>
           </Row>
         </ModalBody>

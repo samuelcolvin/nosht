@@ -1,5 +1,6 @@
 from pytest_toolbox.comparison import AnyInt, RegexStr
 
+from web.stripe import Reservation
 from web.utils import decrypt_json, encrypt_json
 
 from .conftest import Factory
@@ -395,3 +396,146 @@ async def test_cancel_reservation(cli, url, db_conn, factory: Factory):
 
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
     assert 0 == await db_conn.fetchval('SELECT tickets_taken FROM events')
+
+
+async def test_book_free(cli, url, dummy_server, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=None)
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        book_action='book-free-tickets',
+        grecaptcha_token='__ok__',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
+    ]
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
+
+
+async def test_book_free_with_price(cli, url, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        book_action='book-free-tickets',
+        grecaptcha_token='__ok__',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 400, await r.text()
+
+    data = await r.json()
+    assert data == {
+        'message': 'booking not free',
+    }
+
+
+async def test_buy_offline(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    await login()
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        book_action='buy-tickets-offline',
+        grecaptcha_token='__ok__',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        ('grecaptcha', '__ok__'),
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
+    ]
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
+
+
+async def test_buy_offline_other_admin(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    u2 = await factory.create_user(email='other@example.org')
+    await login('other@example.org')
+
+    res: Reservation = await factory.create_reservation(u2)
+    app = cli.app['main_app']
+
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        book_action='buy-tickets-offline',
+        grecaptcha_token='__ok__',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        ('grecaptcha', '__ok__'),
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <other@example.org>"',
+        ),
+    ]
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
+
+
+async def test_buy_offline_other_not_admin(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    u2 = await factory.create_user(email='other@example.org', role='host')
+    await login('other@example.org')
+
+    res: Reservation = await factory.create_reservation(u2)
+    app = cli.app['main_app']
+
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        book_action='buy-tickets-offline',
+        grecaptcha_token='__ok__',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 400, await r.text()
+    assert {'message': 'to buy tickets offline you must be the host or an admin'} == await r.json()
+
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        ('grecaptcha', '__ok__'),
+    ]
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")

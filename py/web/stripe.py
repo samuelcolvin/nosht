@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+from enum import Enum
 from functools import partial
 from typing import Optional, Tuple, Union, cast
 
@@ -36,6 +37,15 @@ class Donation(BaseModel):
 
 class BookingModel(GrecaptchaModel):
     booking_token: bytes
+
+
+class BookActions(str, Enum):
+    buy_tickets_offline = 'buy-tickets-offline'
+    book_free_tickets = 'book-free-tickets'
+
+
+class BookFreeModel(BookingModel):
+    book_action: BookActions
 
 
 class StripeNewCard(BaseModel):
@@ -93,10 +103,17 @@ async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection
     return res
 
 
-async def book_free(m: BookingModel, company_id: int, user_id: Optional[int], app, conn: BuildPgConnection) -> int:
+async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn: BuildPgConnection) -> int:
+    user_id = session.get('user_id')
     res = await get_reservation(m, user_id, app, conn)
-    if res.price_cent is not None:
-        raise JsonErrors.HTTPBadRequest(message='booking not free')
+    if m.book_action is BookActions.book_free_tickets:
+        if res.price_cent is not None:
+            raise JsonErrors.HTTPBadRequest(message='booking not free')
+    else:
+        if session.get('role') != 'admin':
+            event_host = await conn.fetchval('SELECT host FROM events WHERE id=$1', res.event_id)
+            if user_id != event_host:
+                raise JsonErrors.HTTPBadRequest(message='to buy tickets offline you must be the host or an admin')
 
     async with conn.transaction():
         confirm_action_id = await conn.fetchval_b(
@@ -105,7 +122,7 @@ async def book_free(m: BookingModel, company_id: int, user_id: Optional[int], ap
                 company=company_id,
                 user_id=res.user_id,
                 event=res.event_id,
-                type=ActionTypes.book_free_tickets,
+                type=m.book_action,
             )
         )
         await conn.execute(
