@@ -9,7 +9,7 @@ from shared.images import delete_image, upload_other
 from web.auth import check_grecaptcha, check_session, is_admin
 from web.bread import Bread
 from web.stripe import StripeDonateModel, stripe_donate
-from web.utils import JsonErrors, json_response, request_image
+from web.utils import JsonErrors, json_response, request_image, raw_json_response
 
 from .booking import UpdateViewAuth
 
@@ -104,3 +104,32 @@ async def donation_image_upload(request):
     if old_image:
         await delete_image(old_image, request.app['settings'])
     return json_response(status='success')
+
+
+donations_sql = """
+SELECT json_build_object('donations', donations)
+FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS donations FROM (
+    SELECT
+      d.id, d.amount,
+      d.first_name, d.last_name, d.address, d.city, d.postcode, d.gift_aid,
+      u.id AS user_id, u.first_name AS user_first_name, u.last_name AS user_last_name, u.email AS user_email,
+      a.ts, a.event as event_id, e.name AS event_name
+    FROM donations AS d
+    JOIN actions AS a ON d.action = a.id
+    JOIN users AS u ON a.user_id = u.id
+    LEFT JOIN events AS e ON a.event = e.id
+    JOIN donation_options AS opts ON d.donation_option = opts.id
+    JOIN categories AS cat ON opts.category = cat.id
+    WHERE d.id = $1 AND cat.company = $2
+    ORDER BY d.id DESC
+  ) AS t
+) AS donations
+"""
+
+
+@is_admin
+async def opt_donations(request):
+    donation_opt_id = int(request.match_info['pk'])
+    json_str = await request['conn'].fetchval(donations_sql, donation_opt_id, request['company_id'])
+    return raw_json_response(json_str)

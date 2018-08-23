@@ -130,6 +130,7 @@ class Factory:
         self.event_id = None
         self.ticket_type_id = None
         self.donation_option_id = None
+        self.donation_id = None
 
     async def create_company(self,
                              name='Testing',
@@ -324,6 +325,33 @@ class Factory:
         )
         self.donation_option_id = self.donation_option_id or donation_option_id
         return donation_option_id
+
+    async def create_donation(self, donation_option_id=None, event_id=None, amount=20, gift_aid=False):
+        action_id = await self.conn.fetchval_b(
+            'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+            values=Values(company=self.company_id, user_id=self.user_id, type=ActionTypes.donate,
+                          event=event_id or self.event_id)
+        )
+        kwargs = dict(
+            donation_option=donation_option_id or self.donation_option_id,
+            amount=amount,
+            gift_aid=gift_aid,
+            action=action_id,
+            first_name='Foo',
+            last_name='Bar',
+        )
+        if gift_aid:
+            kwargs.update(
+                address='address',
+                city='city',
+                postcode='postcode',
+            )
+        donation_id = await self.conn.fetchval_b(
+            'INSERT INTO donations (:values__names) VALUES :values RETURNING id',
+            values=Values(**kwargs)
+        )
+        self.donation_id = self.donation_id or donation_id
+        return donation_id
 
 
 @pytest.fixture

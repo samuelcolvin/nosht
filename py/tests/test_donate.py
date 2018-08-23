@@ -336,3 +336,64 @@ async def test_add_image_wrong_id(cli, url, factory: Factory, db_conn, login):
         }
     )
     assert r.status == 404, await r.text()
+
+
+async def test_list_donations(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await factory.create_donation_option()
+    await factory.create_donation()
+    await login()
+
+    r = await cli.get(url('donation-opt-donations', pk=factory.donation_option_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'donations': [
+            {
+                'id': factory.donation_id,
+                'amount': 20.0,
+                'first_name': 'Foo',
+                'last_name': 'Bar',
+                'address': None,
+                'city': None,
+                'postcode': None,
+                'gift_aid': False,
+                'user_id': factory.user_id,
+                'user_first_name': 'Frank',
+                'user_last_name': 'Spencer',
+                'user_email': 'frank@example.org',
+                'ts': CloseToNow(),
+                'event_id': factory.event_id,
+                'event_name': 'The Event Name',
+            },
+        ],
+    }
+
+
+async def test_list_donations_wrong_id(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    r = await cli.get(url('donation-opt-donations', pk=999))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {'donations': []}
+
+
+async def test_list_donations_wrong_role(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event()
+    await login()
+
+    r = await cli.get(url('donation-opt-donations', pk=999))
+    assert r.status == 403, await r.text()
+    data = await r.json()
+    assert data == {'message': 'role must be: admin'}

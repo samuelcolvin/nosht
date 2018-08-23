@@ -2,10 +2,7 @@ from csv import DictReader
 from datetime import timedelta
 from io import StringIO
 
-from buildpg import Values
 from pytest_toolbox.comparison import CloseToNow, RegexStr
-
-from shared.actions import ActionTypes
 
 from .conftest import Factory
 
@@ -211,33 +208,14 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
     ]
 
 
-async def test_donations_export(cli, url, login, factory: Factory, db_conn):
+async def test_donations_export(cli, url, login, factory: Factory):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
     await factory.create_donation_option()
     await factory.create_event()
+    don_id = await factory.create_donation(gift_aid=True)
     await login()
-
-    action_id = await db_conn.fetchval_b(
-        'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-        values=Values(company=factory.company_id, user_id=factory.user_id, type=ActionTypes.donate,
-                      event=factory.event_id)
-    )
-    don_id = await db_conn.fetchval_b(
-        'INSERT INTO donations (:values__names) VALUES :values RETURNING id',
-        values=Values(
-            donation_option=factory.donation_option_id,
-            amount=20,
-            gift_aid=True,
-            action=action_id,
-            first_name='Foo',
-            last_name='Bar',
-            address='address',
-            city='city',
-            postcode='postcode',
-        )
-    )
 
     r = await cli.get(url('export', type='donations'))
     assert r.status == 200

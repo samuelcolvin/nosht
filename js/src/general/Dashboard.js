@@ -55,7 +55,7 @@ export const Detail = ({name, wide, edit_link, children}) => (
     <div className="key">
       {name}
       {edit_link && <Button tag={Link} to={edit_link} size="sm" className="ml-2">
-        <FontAwesomeIcon icon="pen" className="mr-1"/>
+        <FontAwesomeIcon icon="pencil-alt" className="mr-1"/>
         Edit {name}
       </Button>}
     </div>

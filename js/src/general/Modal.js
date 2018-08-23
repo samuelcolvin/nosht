@@ -41,12 +41,12 @@ export const InfoModal = ({onClose, isOpen, title, fields, extra_fields, object,
           <div>
             {Object.entries(fields).map(([k, value]) => (
               <Detail k={k} name={value.title || as_title(k)}>
-                {value.render ? value.render(object[k]) : object[k]}
+                {value.render ? value.render(object[k], object) : object[k]}
               </Detail>
             ))}
             {Object.entries(object.extra || []).map(([k, value]) => (
               <Detail key={`extra_${k}`} name={(e_fields[k] && e_fields[k].title) || as_title(k)}>
-                {(e_fields[k] && e_fields[k].render && e_fields[k].render(value)) || render(value)}
+                {(e_fields[k] && e_fields[k].render && e_fields[k].render(value, object)) || render(value)}
               </Detail>
             ))}
           </div>

@@ -1,9 +1,13 @@
 import React from 'react'
 import requests from '../utils/requests'
+import {Table} from 'reactstrap'
 import {RenderList, RenderDetails, ImageThumbnail, MarkdownPreview} from '../general/Dashboard'
 import {Money} from '../general/Money'
 import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'
+import {as_title, format_datetime} from '../utils'
+import {InfoModal} from '../general/Modal'
+import {Link} from 'react-router-dom'
 
 const FIELDS = [
   {name: 'name', required: true},
@@ -54,6 +58,73 @@ export class DonationOptionsList extends RenderList {
   }
 }
 
+class Donations extends React.Component {
+  constructor (props) {
+    super(props)
+    this.state = {selected: null}
+  }
+
+  render () {
+    if (!this.props.donations || !this.props.donations.length) {
+      return (
+        <div>
+          <h4>Donations</h4>
+          <small>No Donations for this donation option</small>
+        </div>
+      )
+    }
+    const fields = {
+      ts: {title: 'Time', render: format_datetime},
+      amount: {render: v => <Money>{v}</Money>},
+      gift_aid: {},
+      first_name: {},
+      last_name: {},
+      address: {},
+      city: {},
+      postcode: {},
+      user_id: {
+        title: 'User',
+        render: (v, item) => (
+          <Link to={`/dashboard/users/${v}/`}>
+            {item.user_first_name} {item.user_last_name} {item.user_email}
+          </Link>
+        )
+      },
+      event_id: {
+        title: 'Event',
+        render: (v, item) => <Link to={`/dashboard/events/${v}/`}>{item.event_name}</Link>
+      }
+    }
+    return (
+      <div>
+        <InfoModal isOpen={!!this.state.selected}
+                   onClose={() => this.setState({selected: null})}
+                   title={this.state.selected && `${this.state.selected.first_name} ${this.state.selected.last_name}`}
+                   fields={fields}
+                   object={this.state.selected}/>
+        <h4>Donations</h4>
+        <Table striped>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {this.props.donations.map(d => (
+              <tr key={d.id} onClick={() => this.setState({selected: d})} className="cursor-pointer">
+                <td>{d.first_name} {d.last_name}</td>
+                <td>{format_datetime(d.ts)}</td>
+                {/*<td>{as_title(a.type)}</td>*/}
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
+    )
+  }
+}
+
 export class DonationOptionDetails extends RenderDetails {
   constructor (props) {
     super(props)
@@ -82,17 +153,23 @@ export class DonationOptionDetails extends RenderDetails {
   }
 
   async got_data (data) {
-    await super.got_data(data)
+    super.got_data(data)
+    let r
     try {
-      const r = await requests.get('/events/categories/')
-      this.setState({categories: r.categories})
+      r = await Promise.all([
+        requests.get('/events/categories/'),
+        requests.get(`/donation-options/${this.id}/donations/`),
+      ])
     } catch (error) {
       this.props.ctx.setError(error)
+      return
     }
+    this.setState({categories: r[0].categories, donations: r[1].donations})
   }
 
   extra () {
     return [
+      <Donations key="l" donations={this.state.donations}/>,
       <ModalForm title="Edit Donation Option"
                  key="e"
                  parent_uri={this.uri}

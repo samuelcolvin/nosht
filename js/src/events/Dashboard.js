@@ -86,7 +86,7 @@ const TicketTypeTable = WithContext(({ticket_types, uri, ctx}) => (
     <h4>
       Ticket Types
       <Button tag={Link} to={uri + 'ticket-types/'} size="sm" className="ml-2">
-        <FontAwesomeIcon icon="pen" className="mr-1"/>
+        <FontAwesomeIcon icon="pencil-alt" className="mr-1"/>
         Edit
       </Button>
     </h4>
