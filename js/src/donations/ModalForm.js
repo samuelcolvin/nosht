@@ -113,7 +113,7 @@ class DonateForm extends React.Component {
             <Markdown content={opt.long_description}/>
           </div>
           <Row className="justify-content-center">
-            <Col md="8">
+            <Col lg="8">
               <hr/>
               <Input field={gift_aid_field} value={this.state.gift_aid}
                      disabled={this.state.submitted || this.state.submitting}

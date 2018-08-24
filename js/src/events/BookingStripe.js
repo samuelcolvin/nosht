@@ -197,7 +197,7 @@ class StripeBookingForm extends React.Component {
         <ModalBody>
           <User {...this.props}/>
           <Row className="justify-content-center">
-            <Col md="8">
+            <Col lg="8">
               <PricingList className="mb-2" items={items}/>
               {buy_offline_field}
               <hr/>
@@ -209,7 +209,7 @@ class StripeBookingForm extends React.Component {
         <ModalFooter finished={this.props.finished}
                      label={res.total_price ? 'Buy Now' : 'Confirm'}
                      cancel_disabled={this.state.submitting}
-                     disabled={confirm_disabled}/>
+                     disabled={Boolean(confirm_disabled)}/>
       </BootstrapForm>
     )
   }

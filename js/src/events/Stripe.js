@@ -85,7 +85,6 @@ export async function stripe_pay (post_url, request_data) {
     this.props.ctx.setError(error)
     return false
   }
-  console.log(response_data)
   if (response_data._response_status === 200) {
     if (token) {
       record_card(this.props.ctx.user, token, response_data.source_hash)
@@ -128,6 +127,7 @@ class StripeForm_ extends React.Component {
     this.setPaymentState = this.setPaymentState.bind(this)
     this.radioChange = this.radioChange.bind(this)
     this.stored_card = get_card(props.ctx.user)
+    this.state = {form_height: null}
   }
 
   componentDidMount () {
@@ -147,6 +147,13 @@ class StripeForm_ extends React.Component {
     })
   }
 
+  componentDidUpdate () {
+    const el = document.getElementById('stripe-form')
+    if (el && el.offsetHeight !== this.state.form_height) {
+      this.setState({form_height: el.offsetHeight})
+    }
+  }
+
   setPaymentState (change) {
     this.props.setPaymentState(Object.assign({}, this.props.payment_state, change))
   }
@@ -160,22 +167,18 @@ class StripeForm_ extends React.Component {
   }
 
   render () {
-    let form_height = 300
     const payment_state = this.props.payment_state || {}
     const has_saved_card = Boolean(this.stored_card.source_hash)
-    if (has_saved_card) {
-      form_height = payment_state.source_hash ? 130 : 340
-    }
     if (this.props.submitted) {
       return (
-        <div style={{height: form_height}} className="vertical-center">
+        <div style={{height: this.state.form_height}} className="vertical-center">
           <Waiting/>
           <small className="text-muted mt-4">processing payment...</small>
         </div>
       )
     } else {
       return (
-        <div style={{height: form_height}} className="hide-help-text">
+        <div className="hide-help-text" id="stripe-form">
           {has_saved_card && (
             <Row className="justify-content-center">
               <Col md="10">

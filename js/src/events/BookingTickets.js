@@ -93,14 +93,14 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
     <div className="mb-1 pb-1">
       <h5>{title}</h5>
       <Row>
-        <Col md="4">
+        <Col lg="4" md="6">
           <Input className="my-0"
                 value={!ticket_info.first_name && index === 0 && user.first_name ?
                        user.first_name : ticket_info.first_name}
                 field={first_name_field}
                 set_value={v => set_ticket_state(key, 'first_name', v)}/>
         </Col>
-        <Col md="4">
+        <Col lg="4" md="6">
           <Input className="my-0"
                 value={!ticket_info.last_name && index === 0 && user.last_name ?
                        user.last_name :
@@ -108,7 +108,7 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
                 field={last_name_field}
                 set_value={v => set_ticket_state(key, 'last_name', v)}/>
         </Col>
-        <Col md="4">
+        <Col lg="4">
           <Input className="my-0"
                 value={ticket_info.email === undefined && index === 0 ? user.email : ticket_info.email}
                 field={email_field}
@@ -213,7 +213,7 @@ const TicketForm = props => {
         </div>
 
         <Row className="mt-1 mb-2">
-          <Col md={{size: 8, offset: 2}}>
+          <Col lg={{size: 8, offset: 2}}>
             <PricingList className="mb-2" items={items}/>
 
             {props.event.allow_marketing_message &&

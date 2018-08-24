@@ -158,16 +158,18 @@ class App extends React.Component {
                 message={this.state.message}
                 user={this.state.user}
                 active_page={this.state.active_page}/>
-        <main className="container">
-          {this.state.error ?
-            <Error error={this.state.error} location={this.props.location}/>
-            :
-            this.state.company ?
-              <Routes/>
+        <div className="pad-footer">
+          <main className="container">
+            {this.state.error ?
+              <Error error={this.state.error} location={this.props.location}/>
               :
-              <Loading/>
-          }
-        </main>
+              this.state.company ?
+                <Routes/>
+                :
+                <Loading/>
+            }
+          </main>
+        </div>
         <Footer user={this.state.user}/>
       </GlobalContext.Provider>
     )
