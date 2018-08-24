@@ -7,6 +7,7 @@ import WithContext from '../utils/context'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 import ReactGA from 'react-ga'
+import {Loading} from '../general/Errors'
 
 export const next_url = location => {
   const match = location.search.match('next=([^&]+)')
@@ -30,7 +31,7 @@ export async function authenticate (data) {
 class Login extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {error: null}
+    this.state = {error: null, loaded: false}
     this.on_message = this.on_message.bind(this)
     this.authenticate = authenticate.bind(this)
     this.login_with = this.login_with.bind(this)
@@ -142,12 +143,14 @@ class Login extends React.Component {
         }
         <Row className="justify-content-center">
           <Col xl="4" lg="6" md="8" className="login">
+            {!this.state.loaded && <div className="justify-content-center"><Loading/></div>}
             <iframe
               id="login-iframe"
               title="Login"
               frameBorder="0"
               scrolling="no"
               sandbox="allow-forms allow-scripts"
+              onLoad={() => this.setState({loaded: true})}
               src="/iframes/login.html"/>
           </Col>
         </Row>
