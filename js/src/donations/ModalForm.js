@@ -149,11 +149,8 @@ class DonateForm extends React.Component {
                 </Row>
               </Collapse>
               <hr/>
-              <StripeForm
-                  submitted={this.state.submitted}
-                  payment_state={this.state.payment}
-                  setPaymentState={payment => this.setState({payment})}>
-              </StripeForm>
+              <StripeForm submitted={this.state.submitted} payment_state={this.state.payment}
+                          setPaymentState={payment => this.setState({payment})}/>
             </Col>
           </Row>
         </ModalBody>

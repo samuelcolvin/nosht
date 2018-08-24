@@ -137,16 +137,15 @@ class StripeBookingForm extends React.Component {
     }
     if (expired) {
       return <h4 className="has-error">Rervation expired</h4>
-    } else if (!this.props.reservation.total_price) {
+    } else if (!this.props.reservation.total_price || this.state.buy_offline) {
       return tncs_field && <div style={{height: 40}}>{this.state.submitted ? null : tncs_field}</div>
     } else {
       return (
-        <StripeForm
-            submitted={this.state.submitted}
-            payment_state={this.state.payment}
-            setPaymentState={payment => this.setState({payment})}>
+        <div>
+          <StripeForm submitted={this.state.submitted} payment_state={this.state.payment}
+                      setPaymentState={payment => this.setState({payment})}/>
           {tncs_field}
-        </StripeForm>
+        </div>
       )
     }
   }
@@ -201,8 +200,7 @@ class StripeBookingForm extends React.Component {
               <PricingList className="mb-2" items={items}/>
               {buy_offline_field}
               <hr/>
-
-              {!this.state.buy_offline && this.payment_form(expired)}
+              {this.payment_form(expired)}
             </Col>
           </Row>
         </ModalBody>

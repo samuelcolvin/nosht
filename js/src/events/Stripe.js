@@ -235,7 +235,6 @@ class StripeForm_ extends React.Component {
               }
             </FormGroup>
           </Collapse>
-          {this.props.children}
         </div>
       )
     }
