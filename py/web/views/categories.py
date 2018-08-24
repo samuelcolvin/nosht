@@ -33,26 +33,6 @@ async def category_public(request):
     return raw_json_response(json_str)
 
 
-donation_options_sql = """
-SELECT json_build_object('donation_options', donation_options)
-FROM (
-  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS donation_options FROM (
-    SELECT d.id, d.name, d.amount, d.image, d.short_description, d.long_description
-    FROM donation_options AS d
-    JOIN categories AS CAT ON d.category = cat.id
-    WHERE cat.company = $1 AND d.category = $2 AND d.live = TRUE
-    ORDER BY d.sort_index, d.amount, d.id
-  ) AS t
-) AS donation_options;
-"""
-
-
-async def donation_options(request):
-    company_id = request['company_id']
-    json_str = await request['conn'].fetchval(donation_options_sql, company_id, int(request.match_info['cat_id']))
-    return raw_json_response(json_str)
-
-
 cat_image_sql = """
 SELECT co.slug, cat.slug
 FROM categories AS cat

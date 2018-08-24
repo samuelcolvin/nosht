@@ -21,9 +21,9 @@ from .views.auth import (authenticate_token, guest_signup, host_signup, login, l
                          reset_password_request, set_password, unsubscribe)
 from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
 from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
-                               category_images, category_public, donation_options)
+                               category_images, category_public)
 from .views.company import CompanyBread, company_upload
-from .views.donate import Donate, DonationOptionBread, donation_image_upload, opt_donations
+from .views.donate import Donate, DonationOptionBread, donation_image_upload, donation_options, opt_donations
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
 from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories, event_get,
                            event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
@@ -127,7 +127,6 @@ def create_app(*, settings: Settings=None, logging_client=None):
         *CompanyBread.routes('/companies/'),
         web.post('/companies/upload/{field:(image|logo)}/', company_upload, name='company-upload'),
 
-        web.get('/categories/{cat_id:\d+}/donation-options/', donation_options, name='donation-options'),
         web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
         web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
         web.post('/categories/{cat_id:\d+}/images/set-default/', category_default_image, name='categories-set-default'),
@@ -148,6 +147,8 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/email-defs/{trigger}/clear/', clear_email_def, name='email-defs-clear'),
 
         *DonationOptionBread.routes('/donation-options/', name='donation-options'),
+
+        web.get('/categories/{cat_id:\d+}/donation-options/', donation_options, name='donation-options'),
         web.post('/donation-options/{pk:\d+}/upload-image/', donation_image_upload, name='donation-image-upload'),
         web.get('/donation-options/{pk:\d+}/donations/', opt_donations, name='donation-opt-donations'),
     ])

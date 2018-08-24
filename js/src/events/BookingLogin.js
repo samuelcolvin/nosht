@@ -78,18 +78,18 @@ class BookingLogin extends React.Component {
     return [
       <ModalBody key="1">
         <p className="text-center">{this.props.event.booking_trust_message}</p>
-        <Row className="justify-content-center my-1">
-          <Col md="8">
-            <div className="d-flex justify-content-between">
+        <Row>
+          <Col lg={{size: 4, offset: 2}} md="6" className="text-center text-md-left my-1">
               <Button onClick={this.google_auth.bind(this)} color="primary">
                 <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
                 Signup with Google
               </Button>
+          </Col>
+          <Col lg="4" md="6" className="text-center text-md-right my-1">
               <Button onClick={this.facebook_auth.bind(this)} color="primary">
                 <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
                 Signup with Facebook
               </Button>
-            </div>
           </Col>
         </Row>
         <div className="text-center text-muted my-1">
@@ -97,7 +97,7 @@ class BookingLogin extends React.Component {
         </div>
         <form onSubmit={this.email_auth.bind(this)}>
           <Row className="justify-content-center my-1">
-            <Col md="8">
+            <Col lg="8">
               <InputGroup>
                 <Input type="email"
                        invalid={!!this.state.email_error}

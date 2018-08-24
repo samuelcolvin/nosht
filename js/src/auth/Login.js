@@ -104,52 +104,58 @@ class Login extends React.Component {
 
   render () {
     const next = next_url(this.props.location)
-    return [
-      <Row key="head" className="justify-content-center mb-2">
-        <Col md="6">
-          <h1 className="text-center">Login</h1>
-          {next ?
-            <p>
-              Login to view <code>{next}</code>.
-            </p>
-            :
-            <p>
-              Not yet a user? Go to <Link to="/signup/">Sign up</Link> to create an account
-              and start hosting events.
-            </p>
-          }
-          <div className="d-flex justify-content-around">
+    return (
+      <div>
+        <Row className="justify-content-center mb-2">
+          <Col lg="6">
+            <h1 className="text-center">Login</h1>
+            {next ?
+              <div className="text-center mb-2">
+                Login to view <code>{next}</code>.
+              </div>
+              :
+              <div className="text-center mb-2">
+                Not yet a user? Go to <Link to="/signup/">Sign up</Link> to create an account
+                and start hosting events.
+              </div>
+            }
+          </Col>
+        </Row>
+        <Row className="mb-2">
+          <Col lg={{size: 3, offset: 3}} md={{size: 4, offset: 2}} className="text-center text-md-left my-1">
             <Button onClick={this.google_auth.bind(this)} color="primary">
               <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
               Login with Google
             </Button>
+          </Col>
+          <Col lg="3" md="4" className="text-center text-md-right my-1">
             <Button onClick={this.facebook_auth.bind(this)} color="primary">
               <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
               Login with Facebook
             </Button>
-          </div>
-        </Col>
-        {this.state.error &&
-          <Col md="12" className="text-center mt-2">
-            <FormFeedback className="d-block">{this.state.error}</FormFeedback>
           </Col>
+        </Row>
+        {this.state.error &&
+          <div className="text-center mt-2">
+            <FormFeedback className="d-block">{this.state.error}</FormFeedback>
+          </div>
         }
-      </Row>,
-      <Row key="iframe" className="justify-content-center">
-        <Col md="4" className="login">
-          <iframe
-            id="login-iframe"
-            title="Login"
-            frameBorder="0"
-            scrolling="no"
-            sandbox="allow-forms allow-scripts"
-            src="/iframes/login.html"/>
-        </Col>
-      </Row>,
-      <div key="reset" className="text-center">
-        <Button tag={Link} to="/password-reset/" color="link" size="sm">Reset Password</Button>
-      </div>,
-    ]
+        <Row className="justify-content-center">
+          <Col xl="4" lg="6" md="8" className="login">
+            <iframe
+              id="login-iframe"
+              title="Login"
+              frameBorder="0"
+              scrolling="no"
+              sandbox="allow-forms allow-scripts"
+              src="/iframes/login.html"/>
+          </Col>
+        </Row>
+        <div className="text-center">
+          <Button tag={Link} to="/password-reset/" color="link" size="sm">Reset Password</Button>
+        </div>
+      </div>
+    )
   }
 }
 

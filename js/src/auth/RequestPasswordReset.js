@@ -48,7 +48,7 @@ class RequestPasswordReset extends React.Component {
         </div>
 
         <Row className="justify-content-center">
-          <Col md="4">
+          <Col xl="4" lg="6" md="8">
             <form onSubmit={this.submit.bind(this)} className="hide-form-label">
               <Input field={FIELD}
                     value={this.state.email}

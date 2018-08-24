@@ -26,12 +26,29 @@ export const NotFound = withRouter(({url, children, location}) => (
   </div>
 ))
 
-export const Loading = ({children}) => (
-  <small className="text-muted">
-    loading...
-    {children}
-  </small>
-)
+export class Loading extends React.Component {
+  constructor (props) {
+    super(props)
+    this.state = {dots: 0}
+  }
+
+  componentDidMount () {
+    this.clear = setInterval(() => this.setState({dots: this.state.dots >= 3 ? 0 : this.state.dots + 1}), 500)
+  }
+
+  componentWillUnmount () {
+    clearInterval(this.clear)
+  }
+
+  render () {
+    return (
+      <div className="text-muted">
+        loading{'.'.repeat(this.state.dots)}
+        {this.props.children}
+      </div>
+    )
+  }
+}
 
 
 export const Waiting = () => (
