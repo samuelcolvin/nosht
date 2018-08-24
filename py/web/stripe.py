@@ -190,7 +190,8 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
 
     user_name, user_email, user_role, stripe_customer_id, stripe_secret_key, currency = await conn.fetchrow(
         """
-        SELECT first_name || ' ' || last_name AS name, email, role, stripe_customer_id, stripe_secret_key, currency
+        SELECT
+          full_name(first_name, last_name, email) AS name, email, role, stripe_customer_id, stripe_secret_key, currency
         FROM users AS u
         JOIN companies c on u.company = c.id
         WHERE u.id=$1 AND c.id=$2
@@ -239,7 +240,7 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
             'customers',
             source=m.stripe.token,
             email=user_email,
-            description=f'{user_name or user_email} ({user_role})',
+            description=f'{user_name} ({user_role})',
             metadata={
                 'role': user_role,
                 'user_id': user_id,
