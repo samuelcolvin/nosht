@@ -372,7 +372,7 @@ async def stripe_request(app, auth, method, path, *, idempotency_key=None, **dat
     metadata = data.pop('metadata', None)
     if metadata:
         data.update({f'metadata[{k}]': v for k, v in metadata.items()})
-    headers = {}
+    headers = {'Stripe-Version': settings.stripe_api_version}
     if idempotency_key:
         headers['Idempotency-Key'] = idempotency_key + settings.stripe_idempotency_extra
     full_path = settings.stripe_root_url + path
