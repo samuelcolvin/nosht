@@ -109,6 +109,7 @@ class Event extends React.Component {
     let event, ticket_types
     const p = this.props.match.params
     this.props.ctx.setRootState({active_page: p.category})
+    this.setState({event: null})
     try {
       const data = await requests.get(`events/${p.category}/${p.event}/${p.sig ? p.sig + '/': ''}`)
       event = data.event

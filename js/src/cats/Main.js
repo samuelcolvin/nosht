@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import requests from '../utils/requests'
-import {NotFound} from '../general/Errors'
+import {Loading, NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import EventCards from '../events/Cards'
 
@@ -11,7 +11,7 @@ class Category extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
-      events: [],
+      events: null,
     }
     this.cat_info = this.cat_info.bind(this)
     this.props.register(this.get_data.bind(this))
@@ -22,6 +22,7 @@ class Category extends React.Component {
     if (!cat) {
       return
     }
+    this.setState({events: null})
     this.props.ctx.setRootState({
       page_title: cat.name,
       background: cat.image,
@@ -52,15 +53,15 @@ class Category extends React.Component {
       <div>
         <div>
           <h1 className="d-inline-block mr-3">{cat.name}</h1>
-          <Link to={create_link} color="link">
-            Host your own {single_name(cat.name)}
-          </Link>
+          {this.state.events && <Link to={create_link} color="link">Host your own {single_name(cat.name)}</Link>}
         </div>
         <div className="card-grid">
-          {this.state.events.length ?
-            <EventCards events={this.state.events}/>
-            :
-            <span className="text-muted">No Upcoming Events in this Category</span>
+          {this.state.events ? (
+            this.state.events.length ?
+              <EventCards events={this.state.events}/>
+              :
+              <span className="text-muted">No Upcoming Events in this Category</span>
+            ) : <Loading/>
           }
         </div>
       </div>
