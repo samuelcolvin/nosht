@@ -122,7 +122,6 @@ class Login extends React.Component {
           </Col>
         </Row>
         <Row className="mb-2">
-
           <Col lg={{size: 3, offset: 3}} md={{size: 4, offset: 2}} className="text-center text-md-left my-1">
             <Button onClick={this.google_auth.bind(this)} color="primary">
               <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
@@ -135,12 +134,12 @@ class Login extends React.Component {
               Login with Facebook
             </Button>
           </Col>
-          {this.state.error &&
-            <Col className="text-center mt-2">
-              <FormFeedback className="d-block">{this.state.error}</FormFeedback>
-            </Col>
-          }
         </Row>
+        {this.state.error &&
+          <div className="text-center mt-2">
+            <FormFeedback className="d-block">{this.state.error}</FormFeedback>
+          </div>
+        }
         <Row className="justify-content-center">
           <Col xl="4" lg="6" md="8" className="login">
             <iframe
