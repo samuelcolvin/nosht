@@ -5,11 +5,9 @@ import random
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from textwrap import shorten
 from typing import Callable, NamedTuple
 
 import aiohttp
-import lorem
 from async_timeout import timeout
 from buildpg import Values, asyncpg
 
@@ -450,7 +448,7 @@ async def create_demo_data(conn, settings, **kwargs):
                         host=user_lookup[event.pop('host_email')],
                         slug=event_slug,
                         image=await create_image(Path(co_slug) / cat_slug / event_slug, client, settings),
-                        short_description=shorten(lorem.paragraph(), width=random.randint(100, 140), placeholder='...'),
+                        short_description='Neque labore est numquam dolorem. Quiquia ipsum ut dolore dolore porro.',
                         long_description=EVENT_LONG_DESCRIPTION,
                         **event
                     )

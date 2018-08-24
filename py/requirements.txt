@@ -1,4 +1,4 @@
-aiobotocore==0.9.2
+aiobotocore==0.9.4
 aiodns==1.1.1
 aiohttp==3.3.2
 aiohttp-session==2.5.1
@@ -8,14 +8,13 @@ async-timeout==3.0.0
 bcrypt==3.1.4
 buildpg==0.0.2
 cchardet==2.1.1
-chevron==0.12.1
-cryptography==2.3
-google-auth==1.5.0
+chevron==0.12.2
+cryptography==2.3.1
+google-auth==1.5.1
 libsass==0.14.5
-lorem==0.1.1
 misaka==2.1.0
-pydantic[email]==0.11.2
+pydantic[email]==0.12.1
 Pillow==5.2.0
 raven==6.9.0
 raven-aiohttp==0.7.0
-uvloop==0.10.2
+uvloop==0.11.2
