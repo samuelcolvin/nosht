@@ -518,13 +518,13 @@ async def update_image_paths(conn, settings, **kwargs):
     """
     add main.jpg to all image paths
     """
-    v = await conn.execute("UPDATE companies SET image = image || 'main.jpg' WHERE image LIKE '%/'")
+    v = await conn.execute("UPDATE companies SET image = image || '/main.jpg' WHERE image NOT LIKE '%/main%'")
     logger.info('companies image: %s', v)
-    v = await conn.execute("UPDATE companies SET logo = logo || 'main.jpg' WHERE logo LIKE '%/'")
+    v = await conn.execute("UPDATE companies SET logo = logo || '/main.jpg' WHERE logo NOT LIKE '%/main%'")
     logger.info('companies logo: %s', v)
-    v = await conn.execute("UPDATE categories SET image = image || 'main.jpg' WHERE image LIKE '%/'")
+    v = await conn.execute("UPDATE categories SET image = image || '/main.jpg' WHERE image NOT LIKE '%/main%'")
     logger.info('categories: %s', v)
-    v = await conn.execute("UPDATE events SET image = image || 'main.jpg' WHERE image LIKE '%/'")
+    v = await conn.execute("UPDATE events SET image = image || '/main.jpg' WHERE image NOT LIKE '%/main%'")
     logger.info('events: %s', v)
-    v = await conn.execute("UPDATE donation_options SET image = image || 'main.jpg' WHERE image LIKE '%/'")
+    v = await conn.execute("UPDATE donation_options SET image = image || '/main.jpg' WHERE image NOT LIKE '%/main%'")
     logger.info('donation_options: %s', v)
