@@ -78,7 +78,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
     charge = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', f'charges/{extra["charge_id"]}')
     # debug(d)
     assert charge['amount'] == 10_00
-    assert charge['description'] == f'1 tickets for Foobar ({factory.event_id})'
+    assert charge['description'] == f'1 tickets for The Event Name ({factory.event_id})'
     assert charge['metadata'] == {
         'purpose': 'buy-tickets',
         'event': str(factory.event_id),
