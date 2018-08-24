@@ -110,7 +110,7 @@ export default class Navbar extends React.Component {
         navbar,
         <ExtraMenu key="2" message={this.props.message}/>,
         <div key="3" id="background-image" style={{
-          backgroundImage: background ? `url("${background}/main.jpg")` : null,
+          backgroundImage: background ? `url("${background}")` : null,
           top: BACK_TOP
         }}/>,
       ]

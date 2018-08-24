@@ -120,3 +120,5 @@ export const get_tmp_name = () => {
   const v = window.sessionStorage[`user_name`]
   return v ? JSON.parse(v) : {first_name: null, last_name: null}
 }
+
+export const image_thumb = (img, rep) => img.replace(/main\.(\w+)$/, (rep || 'thumb') + '.$1')

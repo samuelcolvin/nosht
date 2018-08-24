@@ -3,6 +3,8 @@ import {Button, Row, Col, Card, CardImg, CardBody, CardTitle, CardText} from 're
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {Link} from 'react-router-dom'
 import PromptUpdate from '../general/PromptUpdate'
+import {Loading} from '../general/Errors'
+import {image_thumb} from '../utils'
 import requests from '../utils/requests'
 import {Money} from '../general/Money'
 import DonateModal from './ModalForm'
@@ -10,11 +12,14 @@ import DonateModal from './ModalForm'
 class Thanks extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {donation_options: []}
+    this.state = {donation_options: null}
     this.props.register(this.get_data.bind(this))
   }
 
   async get_data () {
+    if (this.state.donation_options) {
+      return
+    }
     let data
     try {
       data = await requests.get(`/categories/${this.props.event.category_id}/donation-options/`)
@@ -26,6 +31,9 @@ class Thanks extends React.Component {
   }
 
   render () {
+    if (!this.state.donation_options) {
+      return <Loading/>
+    }
     let selected_opt = {}
     const m = this.props.location.pathname.match(/donate\/(\d+)\/$/)
     if (m && this.state.donation_options.length) {
@@ -61,7 +69,7 @@ class Thanks extends React.Component {
               <Col key={opt.id} md="4" className="box-container pb-4">
                 <Card>
                   {opt.image &&
-                    <CardImg top width="100%" src={opt.image + '/thumb.jpg'} alt={opt.name}/>
+                    <CardImg top width="100%" src={image_thumb(opt.image)} alt={opt.name}/>
                   }
                   <CardBody>
                     <CardTitle>{opt.name}</CardTitle>

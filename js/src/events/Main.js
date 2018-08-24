@@ -106,6 +106,10 @@ class Event extends React.Component {
   }
 
   async get_data () {
+    if (this.state.event) {
+      // this breaks update if there's a link between events, but means far fewer requests
+      return
+    }
     let event, ticket_types
     const p = this.props.match.params
     this.props.ctx.setRootState({active_page: p.category})

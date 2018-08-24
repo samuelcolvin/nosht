@@ -1,6 +1,7 @@
 import React from 'react'
 import {
   Col,
+  Collapse,
   FormFeedback,
   FormGroup,
   Label,
@@ -148,10 +149,16 @@ class StripeForm_ extends React.Component {
   }
 
   componentDidUpdate () {
-    const el = document.getElementById('stripe-form')
-    if (el && el.offsetHeight !== this.state.form_height) {
-      this.setState({form_height: el.offsetHeight})
-    }
+    this.clear_timer = setTimeout(() => {
+      const el = document.getElementById('stripe-form')
+      if (el && el.offsetHeight !== this.state.form_height) {
+        this.setState({form_height: el.offsetHeight})
+      }
+    }, 100)
+  }
+
+  componentWillUnmount () {
+    clearInterval(this.clear_timer)
   }
 
   setPaymentState (change) {
@@ -180,27 +187,25 @@ class StripeForm_ extends React.Component {
       return (
         <div className="hide-help-text" id="stripe-form">
           {has_saved_card && (
-            <Row className="justify-content-center">
-              <Col md="10">
-                <div className="form-check">
-                  <input className="form-check-input" type="radio" id="card-saved" value="saved"
-                         checked={!!payment_state.source_hash} onChange={this.radioChange}/>
-                  <label className="form-check-label" htmlFor="card-saved">
-                    Use <ShowCard card={this.stored_card}/>
-                  </label>
-                </div>
+            <div className="pb-2">
+              <div className="form-check">
+                <input className="form-check-input" type="radio" id="card-saved" value="saved"
+                       checked={!!payment_state.source_hash} onChange={this.radioChange}/>
+                <label className="form-check-label" htmlFor="card-saved">
+                  Use <ShowCard card={this.stored_card}/>
+                </label>
+              </div>
 
-                <div className="form-check">
-                  <input className="form-check-input" type="radio" id="card-new" value="new"
-                         checked={!payment_state.source_hash} onChange={this.radioChange}/>
-                  <label className="form-check-label" htmlFor="card-new">
-                    Use new Card
-                  </label>
-                </div>
-              </Col>
-            </Row>
+              <div className="form-check">
+                <input className="form-check-input" type="radio" id="card-new" value="new"
+                       checked={!payment_state.source_hash} onChange={this.radioChange}/>
+                <label className="form-check-label" htmlFor="card-new">
+                  Use new Card
+                </label>
+              </div>
+            </div>
           )}
-          <div className={payment_state.source_hash ? 'invisible' : ''}>
+          <Collapse isOpen={!payment_state.source_hash}>
             <Input field={name_field} value={payment_state.name} error={payment_state.name_error}
                    set_value={v => this.setPaymentState({name: v, name_error: null})}/>
             <Input field={address_field} value={payment_state.address} error={payment_state.address_error}
@@ -229,7 +234,7 @@ class StripeForm_ extends React.Component {
                 </FormFeedback>
               }
             </FormGroup>
-          </div>
+          </Collapse>
           {this.props.children}
         </div>
       )

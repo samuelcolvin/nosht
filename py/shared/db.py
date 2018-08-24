@@ -511,3 +511,20 @@ async def apply_donation_migrations(conn, settings, **kwargs):
     m = re.search('-- { donations change(.*)-- } donations change', models_sql, flags=re.DOTALL)
     donations_sql = m.group(1).strip(' \n')
     await conn.execute(donations_sql)
+
+
+@patch
+async def update_image_paths(conn, settings, **kwargs):
+    """
+    add main.jpg to all image paths
+    """
+    v = await conn.execute("UPDATE companies SET image = image || 'main.jpg' WHERE image LIKE '%/'")
+    logger.info('companies image: %s', v)
+    v = await conn.execute("UPDATE companies SET logo = logo || 'main.jpg' WHERE logo LIKE '%/'")
+    logger.info('companies logo: %s', v)
+    v = await conn.execute("UPDATE categories SET image = image || 'main.jpg' WHERE image LIKE '%/'")
+    logger.info('categories: %s', v)
+    v = await conn.execute("UPDATE events SET image = image || 'main.jpg' WHERE image LIKE '%/'")
+    logger.info('events: %s', v)
+    v = await conn.execute("UPDATE donation_options SET image = image || 'main.jpg' WHERE image LIKE '%/'")
+    logger.info('donation_options: %s', v)

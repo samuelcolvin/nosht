@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {ButtonGroup, Button} from 'reactstrap'
 import requests from '../utils/requests'
-import {as_title} from '../utils'
+import {as_title, image_thumb} from '../utils'
 import MarkdownRender from './Markdown'
 import {Loading} from './Errors'
 import Map from './Map'
@@ -276,7 +276,7 @@ export class RenderDetails extends RenderItem {
 
 export const ImageThumbnail = ({image, alt, image_type}) => (
   image ?
-    <img src={image + `/${image_type || 'thumb'}.jpg`} alt={alt} className="img-thumbnail"/>
+    <img src={image_thumb(image, image_type)} alt={alt} className="img-thumbnail"/>
     :
     <span>&mdash;</span>
 )

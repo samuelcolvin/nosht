@@ -312,7 +312,7 @@ export class EventsDetails extends RenderDetails {
       long_description: {
         index: 3,
         wide: true,
-        render: (v, item) => <MarkdownPreview v={v}/>,
+        render: v => <MarkdownPreview v={v}/>,
       },
       image: {
         index: 4,

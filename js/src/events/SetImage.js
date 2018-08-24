@@ -12,6 +12,7 @@ import {
 import requests from '../utils/requests'
 import {DropzoneForm} from '../forms/Drop'
 import AsModal from '../general/Modal'
+import {image_thumb} from '../utils'
 
 class SetImage extends React.Component {
   constructor (props) {
@@ -66,7 +67,7 @@ class SetImage extends React.Component {
               <Card inverse color={m(image) ? 'info': 'primary'}
                             className={m(image) ? '': 'cursor-pointer select-image'}
                             onClick={() => this.update_image(image)}>
-                <CardImg top src={`${image}/thumb.jpg`}/>
+                <CardImg top src={image_thumb(image)}/>
                 <div className="text-center my-1">
                   {m(image) ? 'Current Image' : 'Use this image'}
                 </div>

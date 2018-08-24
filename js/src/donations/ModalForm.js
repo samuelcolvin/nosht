@@ -107,7 +107,7 @@ class DonateForm extends React.Component {
           <div>
             <div className="text-center">
               {opt.image &&
-                <img src={opt.image + '/main.jpg'} className="img-fluid" alt={opt.name}/>
+                <img src={opt.image} className="img-fluid" alt={opt.name}/>
               }
             </div>
             <Markdown content={opt.long_description}/>

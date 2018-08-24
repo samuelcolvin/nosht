@@ -73,7 +73,7 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: Optional[bytes]
                 Bucket=settings.s3_bucket,
                 Key=str(upload_path / 'main.png'),
                 Body=main_img,
-                ContentType='image/jpeg',
+                ContentType='image/png',
                 ACL='public-read',
             ),
         ]
@@ -82,11 +82,11 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: Optional[bytes]
                 Bucket=settings.s3_bucket,
                 Key=str(upload_path / 'thumb.png'),
                 Body=thumb_img,
-                ContentType='image/jpeg',
+                ContentType='image/png',
                 ACL='public-read'
             ))
         await asyncio.gather(*coros)
-    return f'{settings.s3_domain}/{upload_path}'
+    return f'{settings.s3_domain}/{upload_path}/main.png'
 
 
 def resize_crop(img, req_width, req_height):
