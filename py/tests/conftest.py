@@ -10,10 +10,12 @@ from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
 
+import aiodns
 import lorem
 import pytest
 from aiohttp.test_utils import teardown_test_loop
 from aioredis import create_redis
+from async_timeout import timeout
 from buildpg import MultipleValues, Values, asyncpg
 from PIL import Image, ImageDraw
 
@@ -370,6 +372,7 @@ def login(cli, url):
         r = await cli.json_post(url('auth-token'), data={'token': data['auth_token']})
         assert r.status == 200, await r.text()
         assert len(cli.session.cookie_jar) == 1
+        return r
 
     return f
 
@@ -461,3 +464,18 @@ def _setup_static(tmpdir):
     tmpdir.join('test.js').write('this is test.js')
     tmpdir.join('iframes').mkdir()
     tmpdir.join('iframes').join('login.html').write('this is iframes/login.html')
+
+
+async def _is_online():
+    resolver = aiodns.DNSResolver()
+    try:
+        with timeout(1):
+            await resolver.query('example.com', 'A')
+    except (aiodns.error.DNSError, ValueError, asyncio.TimeoutError):
+        return False
+    else:
+        return True
+
+loop = asyncio.get_event_loop()
+is_online_value = loop.run_until_complete(_is_online())
+is_online = pytest.mark.skipif(not is_online_value, reason='not online')

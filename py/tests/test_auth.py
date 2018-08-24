@@ -1,5 +1,6 @@
 import json
 import re
+from time import time
 
 import pytest
 from cryptography import fernet
@@ -7,7 +8,7 @@ from pytest_toolbox.comparison import AnyInt, RegexStr
 
 from web.utils import encrypt_json
 
-from .conftest import Factory
+from .conftest import Factory, is_online
 
 
 async def test_login_successful(cli, url, factory: Factory):
@@ -132,6 +133,87 @@ async def test_login_with_missing(cli, url, factory: Factory, signed_fb_request)
     assert r.status == 401, await r.text()
 
 
+async def test_facebook_bad_request(cli, url, factory: Factory):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.org')
+
+    data = {
+        'signedRequest': 'xxx',
+        'accessToken': '__ok__',
+        'userID': 123456,
+        'grecaptcha_token': '__ok__',
+    }
+
+    r = await cli.json_post(url('login-google-facebook', site='facebook'), data=data)
+    assert r.status == 400, await r.text()
+    assert {'message': '"signedRequest" not correctly formed'} == await r.json()
+
+
+async def test_facebook_bad_signature(cli, url, factory: Factory):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.org')
+
+    data = {
+        'signedRequest': 'xxx.yyy',
+        'accessToken': '__ok__',
+        'userID': 123456,
+        'grecaptcha_token': '__ok__',
+    }
+
+    r = await cli.json_post(url('login-google-facebook', site='facebook'), data=data)
+    assert r.status == 400, await r.text()
+    assert {'message': '"signedRequest" not correctly signed'} == await r.json()
+
+
+async def test_facebook_bad_fb_response(cli, url, factory: Factory, signed_fb_request):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.org')
+
+    data = {
+        'signedRequest': signed_fb_request({'user_id': '123456'}),
+        'accessToken': '__400__',
+        'userID': 123456,
+        'grecaptcha_token': '__ok__',
+    }
+
+    r = await cli.json_post(url('login-google-facebook', site='facebook'), data=data)
+    assert r.status == 500, await r.text()
+
+
+async def test_facebook_wrong_user(cli, url, factory: Factory, signed_fb_request):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.org')
+
+    data = {
+        'signedRequest': signed_fb_request({'user_id': '123456'}),
+        'accessToken': '__ok__',
+        'userID': 666,
+        'grecaptcha_token': '__ok__',
+    }
+
+    r = await cli.json_post(url('login-google-facebook', site='facebook'), data=data)
+    assert r.status == 400, await r.text()
+    assert {'message': 'facebook userID not consistent'} == await r.json()
+
+
+async def test_facebook_no_name(cli, url, factory: Factory, signed_fb_request):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.org')
+
+    data = {
+        'signedRequest': signed_fb_request({'user_id': '123456'}),
+        'accessToken': '__no_user__',
+        'userID': 123456,
+        'grecaptcha_token': '__ok__',
+    }
+
+    r = await cli.json_post(url('login-google-facebook', site='facebook'), data=data)
+    assert r.status == 400, await r.text()
+    assert {
+        'message': 'Your Facebook profile needs to have both a last name and email address associated with it.'
+    } == await r.json()
+
+
 async def test_logout(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_user()
@@ -147,6 +229,7 @@ async def test_logout(cli, url, factory: Factory, login):
     assert r.status == 401, await r.text()
 
 
+@is_online
 async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_server, settings):
     await factory.create_company()
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
@@ -241,13 +324,38 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
     assert 'Confirm Email' not in email
 
 
+async def test_google_request_error(cli, url, factory: Factory, caplog, settings, dummy_server):
+    await factory.create_company()
+    data = {
+        'id_token': 'good.test.token',
+        'grecaptcha_token': '__ok__',
+    }
+    settings.google_siw_url = dummy_server.app['server_name'] + '/broken'
+    r = await cli.json_post(url('signup-host', site='google'), data=data)
+    assert r.status == 500, await r.text()
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        'GET broken',
+    ]
+    assert 'RequestError: response 404 from "http://localhost:' in caplog.text
+
+
+async def test_google_request_bad_token(cli, url, factory: Factory):
+    await factory.create_company()
+    data = {
+        'id_token': 'good.test.token',
+        'grecaptcha_token': '__ok__',
+    }
+    r = await cli.json_post(url('signup-host', site='google'), data=data)
+    assert r.status == 400, await r.text()
+    assert {'message': 'google jwt decode error'} == await r.json()
+
+
 async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_fb_request):
     await factory.create_company()
     data = {
         'signedRequest': signed_fb_request({'user_id': '123456'}),
-        'accessToken': '__ok__',
-        'userID': 123456,
-        'grecaptcha_token': '__ok__',
+        'accessToken': '__ok__', 'userID': 123456, 'grecaptcha_token': '__ok__',
     }
     r = await cli.json_post(url('signup-host', site='facebook'), data=data)
     assert r.status == 200, await r.text()
@@ -268,6 +376,45 @@ async def test_host_signup_facebook(cli, url, factory: Factory, db_conn, signed_
     assert user_company == factory.company_id
 
 
+async def test_host_signup_facebook_existing(cli, url, factory: Factory, db_conn, signed_fb_request):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.org', role='guest')
+    data = {
+        'signedRequest': signed_fb_request({'user_id': '123456'}),
+        'accessToken': '__ok__', 'userID': 123456, 'grecaptcha_token': '__ok__',
+    }
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+    r = await cli.json_post(url('signup-host', site='facebook'), data=data)
+    assert r.status == 200, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+
+
+async def test_host_signup_facebook_existing_admin(cli, url, factory: Factory, db_conn, signed_fb_request):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.org')
+    data = {
+        'signedRequest': signed_fb_request({'user_id': '123456'}),
+        'accessToken': '__ok__', 'userID': 123456, 'grecaptcha_token': '__ok__',
+    }
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+    r = await cli.json_post(url('signup-host', site='facebook'), data=data)
+    assert r.status == 470, await r.text()
+    assert {'status': 'existing user'} == await r.json()
+
+
+async def test_host_signup_facebook_existing_suspended(cli, url, factory: Factory, db_conn, signed_fb_request):
+    await factory.create_company()
+    await factory.create_user(email='facebook-auth@example.org', role='guest', status='suspended')
+    data = {
+        'signedRequest': signed_fb_request({'user_id': '123456'}),
+        'accessToken': '__ok__', 'userID': 123456, 'grecaptcha_token': '__ok__',
+    }
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+    r = await cli.json_post(url('signup-host', site='facebook'), data=data)
+    assert r.status == 470, await r.text()
+    assert {'status': 'user suspended'} == await r.json()
+
+
 async def test_host_signup_grecaptcha_invalid(cli, url, factory: Factory, db_conn):
     await factory.create_company()
     data = {
@@ -284,6 +431,19 @@ async def test_host_signup_grecaptcha_invalid(cli, url, factory: Factory, db_con
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
 
 
+async def test_grecaptcha_bad_response(cli, url, factory: Factory, caplog):
+    await factory.create_company()
+    data = {
+        'email': 'testing@gmail.com',
+        'name': 'Jane Doe',
+        'grecaptcha_token': '__400__',
+    }
+    r = await cli.json_post(url('signup-host', site='email'), data=data)
+    assert r.status == 500, await r.text()
+    assert 'RequestError: response 400 from "http://localhost:' in caplog.text
+
+
+@is_online
 async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
     await factory.create_company()
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
@@ -486,3 +646,36 @@ async def test_password_reset_wrong(cli, url, factory: Factory, dummy_server, db
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
 
     assert len(dummy_server.app['emails']) == 0
+
+
+async def test_session_expired(cli, url, factory: Factory, login, mocker):
+    await factory.create_company()
+    await factory.create_user()
+
+    await login()
+
+    r = await cli.get(url('event-categories'))
+    assert r.status == 200, await r.text()
+
+    mocker.patch('web.auth.time', return_value=int(1e10))
+
+    r = await cli.get(url('event-categories'))
+    assert r.status == 401, await r.text()
+
+
+async def test_session_updated(cli, url, factory: Factory, login, mocker):
+    await factory.create_company()
+    await factory.create_user()
+
+    r = await login()
+    assert 'Set-Cookie' in r.headers
+
+    r = await cli.get(url('event-categories'))
+    assert r.status == 200, await r.text()
+    assert 'Set-Cookie' not in r.headers
+
+    mocker.patch('web.auth.time', return_value=time() + 700)
+
+    r = await cli.get(url('event-categories'))
+    assert r.status == 200, await r.text()
+    assert 'Set-Cookie' in r.headers
