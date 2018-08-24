@@ -728,7 +728,8 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
     assert r.status == 200, await r.text()
 
     img_path = await db_conn.fetchval('SELECT image FROM events')
-    assert img_path == RegexStr(r'https://testingbucket.example.org/tests/testing/supper-clubs/the-event-name/\w+')
+    assert img_path == RegexStr(r'https://testingbucket.example.org/tests/testing/'
+                                r'supper-clubs/the-event-name/\w+/main.png')
 
     # debug(dummy_server.app['log'])
     assert len(dummy_server.app['log']) == 5
