@@ -432,3 +432,12 @@ $waiting-time: 1s;
     color: $gray-700;
   }
 }
+
+.iframe {
+  position: relative;
+}
+
+.iframe-loading {
+  position: relative;
+  top: 80px;
+}

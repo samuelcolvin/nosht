@@ -7,7 +7,7 @@ import WithContext from '../utils/context'
 import {grecaptcha_execute, user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 import ReactGA from 'react-ga'
-import {Loading} from '../general/Errors'
+import IFrame from '../general/IFrame'
 
 export const next_url = location => {
   const match = location.search.match('next=([^&]+)')
@@ -143,15 +143,7 @@ class Login extends React.Component {
         }
         <Row className="justify-content-center">
           <Col xl="4" lg="6" md="8" className="login">
-            {!this.state.loaded && <div className="justify-content-center"><Loading/></div>}
-            <iframe
-              id="login-iframe"
-              title="Login"
-              frameBorder="0"
-              scrolling="no"
-              sandbox="allow-forms allow-scripts"
-              onLoad={() => this.setState({loaded: true})}
-              src="/iframes/login.html"/>
+            <IFrame id="login-iframe" title="Login" src="/iframes/login.html"/>
           </Col>
         </Row>
         <div className="text-center">

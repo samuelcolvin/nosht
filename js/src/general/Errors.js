@@ -42,8 +42,10 @@ export class Loading extends React.Component {
 
   render () {
     return (
-      <div className="text-muted">
-        loading{'.'.repeat(this.state.dots)}
+      <div className={this.props.classNameOuter || ''}>
+        <div style={{width: 70}} className={this.props.classNameInner || 'text-muted'}>
+          loading{'.'.repeat(this.state.dots)}
+        </div>
         {this.props.children}
       </div>
     )
