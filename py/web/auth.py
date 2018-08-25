@@ -73,10 +73,6 @@ def is_admin(coro):
     return permission_wrapper(coro, 'admin')
 
 
-def is_host(coro):
-    return permission_wrapper(coro, 'host')
-
-
 def is_admin_or_host(coro):
     return permission_wrapper(coro, 'admin', 'host')
 
@@ -116,13 +112,13 @@ async def google_get_details(m: GoogleSiwModel, app):
     settings: Settings = app['settings']
     async with app['http_client'].get(settings.google_siw_url) as r:
         if r.status != 200:
-            raise RequestError(r.status, settings.google_siw_url, info=await r.text())
+            raise RequestError(r.status, settings.google_siw_url, text=await r.text())
         certs = await r.json()
     try:
         id_info = google_jwt.decode(m.id_token, certs=certs, audience=settings.google_siw_client_key)
     except ValueError as e:
         logger.warning('google jwt decode error: %s', e)
-        raise JsonErrors.HTTPBadRequest(message='google jwt decode error')
+        raise JsonErrors.HTTPBadRequest(message='google jwt decode error') from e
 
     # this should happen very rarely, if it does someone is doing something nefarious or things have gone very wrong
     assert id_info['iss'] in {'accounts.google.com', 'https://accounts.google.com'}, 'wrong google iss'
@@ -169,7 +165,7 @@ async def facebook_get_details(m: FacebookSiwModel, app):
     })
     async with app['http_client'].get(details_url) as r:
         if r.status != 200:
-            raise RequestError(r.status, details_url, info=await r.text())
+            raise RequestError(r.status, details_url, text=await r.text())
         response_data = await r.json()
 
     if not (response_data['id'] == signed_data['user_id'] == m.user_id):
@@ -195,7 +191,7 @@ async def check_grecaptcha(m: GrecaptchaModel, request, *, threshold=None, error
     }
     async with request.app['http_client'].post(settings.grecaptcha_url, data=post_data) as r:
         if r.status != 200:
-            raise RequestError(r.status, settings.grecaptcha_url, info=await r.text())
+            raise RequestError(r.status, settings.grecaptcha_url, text=await r.text())
         data = await r.json()
 
     threshold = threshold or settings.grecaptcha_threshold

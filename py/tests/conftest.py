@@ -4,16 +4,19 @@ import hashlib
 import hmac
 import json
 import random
+import sys
 import uuid
 from datetime import datetime
 from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
 
+import aiodns
 import lorem
 import pytest
 from aiohttp.test_utils import teardown_test_loop
 from aioredis import create_redis
+from async_timeout import timeout
 from buildpg import MultipleValues, Values, asyncpg
 from PIL import Image, ImageDraw
 
@@ -370,6 +373,7 @@ def login(cli, url):
         r = await cli.json_post(url('auth-token'), data={'token': data['auth_token']})
         assert r.status == 200, await r.text()
         assert len(cli.session.cookie_jar) == 1
+        return r
 
     return f
 
@@ -461,3 +465,29 @@ def _setup_static(tmpdir):
     tmpdir.join('test.js').write('this is test.js')
     tmpdir.join('iframes').mkdir()
     tmpdir.join('iframes').join('login.html').write('this is iframes/login.html')
+
+
+class Offline:
+    def __init__(self):
+        self.is_offline = None
+
+    def __bool__(self):
+        if self.is_offline is None:
+            loop = asyncio.new_event_loop()
+            self.is_offline = loop.run_until_complete(self._check())
+        return self.is_offline
+
+    async def _check(self):
+        resolver = aiodns.DNSResolver()
+        try:
+            with timeout(1):
+                await resolver.query('google.com', 'A')
+        except (aiodns.error.DNSError, asyncio.TimeoutError) as e:
+            print(f'\nnot online: {e.__class__.__name__} {e}\n', file=sys.stderr)
+            return True
+        else:
+            return False
+
+
+_offline = Offline()
+if_online = pytest.mark.skipif(_offline, reason='not online')

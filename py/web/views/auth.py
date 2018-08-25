@@ -269,9 +269,9 @@ async def host_signup(request):
     if r:
         existing_role, status = r
         if existing_role != 'guest':
-            raise JsonErrors.HTTP470(status='existing-user')
+            raise JsonErrors.HTTP470(status='existing user')
         if status == 'suspended':
-            raise JsonErrors.HTTP470(message='user suspended')
+            raise JsonErrors.HTTP470(status='user suspended')
 
     user_status = 'active' if signin_method in {'facebook', 'google'} else 'pending'
     user_id, user_email = await request['conn'].fetchrow_b(

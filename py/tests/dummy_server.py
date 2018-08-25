@@ -30,6 +30,8 @@ async def grecaptcha(request):
         return json_response(dict(success=True, score=1, action='testing', hostname='127.0.0.1'))
     elif data['response'] == '__low_score__':
         return json_response(dict(success=True, score=0.1))
+    elif data['response'] == '__400__':
+        return json_response({}, status=400)
     else:
         return json_response(dict(success=False))
 
@@ -39,12 +41,22 @@ async def google_siw(request):
 
 
 async def facebook_siw(request):
-    return json_response({
-        'id': '123456',
-        'email': 'facebook-auth@example.org',
-        'first_name': None,
-        'last_name': 'Book',
-    })
+    access_token = request.query['access_token']
+    if access_token == '__ok__':
+        return json_response({
+            'id': '123456',
+            'email': 'facebook-auth@example.org',
+            'first_name': None,
+            'last_name': 'Book',
+        })
+    elif access_token == '__no_user__':
+        return json_response({
+            'id': '123456',
+            'first_name': None,
+            'last_name': 'Book',
+        })
+    else:
+        return json_response({}, status=400)
 
 
 async def stripe_get_customer_sources(request):
