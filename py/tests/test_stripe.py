@@ -4,10 +4,9 @@ import os
 from asyncio import sleep
 
 import pytest
-from aiohttp import BasicAuth
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
-from web.stripe import Reservation, StripeBuyModel, stripe_buy, stripe_request
+from web.stripe import Reservation, StripeBuyModel, stripe_buy, StripeClient
 from web.utils import encrypt_json
 
 from .conftest import Factory
@@ -76,7 +75,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
         'card_last4': '4242',
     }
 
-    charge = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', f'charges/{extra["charge_id"]}')
+    charge = await StripeClient(app, stripe_secret_key).get(f'charges/{extra["charge_id"]}')
     # debug(d)
     assert charge['amount'] == 10_00
     assert charge['description'] == f'1 tickets for The Event Name ({factory.event_id})'
@@ -100,7 +99,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    customers = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', 'customers?limit=1')
+    customers = await StripeClient(app, stripe_secret_key).get('customers?limit=1')
     customer = customers['data'][0]
     customer_id = customer['id']
     await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
@@ -143,7 +142,7 @@ async def test_stripe_saved_card(cli, db_conn, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    customers = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', 'customers?limit=1')
+    customers = await StripeClient(app, stripe_secret_key).get('customers?limit=1')
     customer = customers['data'][0]
     customer_id = customer['id']
     await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
@@ -320,5 +319,4 @@ async def test_request_cancelled(cli, url, dummy_server, factory: Factory, db_co
         ),
     ]
     assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
-
     assert 'CancelledError' in caplog.text
