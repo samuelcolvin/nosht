@@ -6,7 +6,7 @@ from asyncio import sleep
 import pytest
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
-from web.stripe import Reservation, StripeBuyModel, stripe_buy, StripeClient
+from web.stripe import Reservation, StripeBuyModel, StripeClient, stripe_buy
 from web.utils import encrypt_json
 
 from .conftest import Factory
