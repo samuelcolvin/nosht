@@ -1,12 +1,12 @@
 import hashlib
 import json
 import os
+from asyncio import sleep
 
 import pytest
-from aiohttp import BasicAuth
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
-from web.stripe import Reservation, StripeBuyModel, stripe_buy, stripe_request
+from web.stripe import Reservation, StripeBuyModel, StripeClient, stripe_buy
 from web.utils import encrypt_json
 
 from .conftest import Factory
@@ -75,7 +75,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
         'card_last4': '4242',
     }
 
-    charge = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', f'charges/{extra["charge_id"]}')
+    charge = await StripeClient(app, stripe_secret_key).get(f'charges/{extra["charge_id"]}')
     # debug(d)
     assert charge['amount'] == 10_00
     assert charge['description'] == f'1 tickets for The Event Name ({factory.event_id})'
@@ -99,7 +99,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    customers = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', 'customers?limit=1')
+    customers = await StripeClient(app, stripe_secret_key).get('customers?limit=1')
     customer = customers['data'][0]
     customer_id = customer['id']
     await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
@@ -142,7 +142,7 @@ async def test_stripe_saved_card(cli, db_conn, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    customers = await stripe_request(app, BasicAuth(stripe_secret_key), 'get', 'customers?limit=1')
+    customers = await StripeClient(app, stripe_secret_key).get('customers?limit=1')
     customer = customers['data'][0]
     customer_id = customer['id']
     await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
@@ -284,3 +284,39 @@ async def test_pay_no_price(cli, url, factory: Factory):
     assert data == {
         'message': 'booking price cent < 100',
     }
+
+
+async def test_request_cancelled(cli, url, dummy_server, factory: Factory, db_conn, loop, caplog):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=12.5, name='slow-request')
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
+        booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
+    )
+
+    t = loop.create_task(cli.json_post(url('event-buy-tickets'), data=data))
+    await sleep(0.1)
+    t.cancel()
+
+    await sleep(0.4)
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
+        (
+            'email_send_endpoint',
+            'Subject: "slow-request Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
+    ]
+    assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+    assert 'CancelledError' in caplog.text

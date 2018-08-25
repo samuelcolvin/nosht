@@ -3,10 +3,10 @@ import json
 import logging
 from contextlib import contextmanager
 from enum import Enum
-from functools import partial
 from typing import Optional, Tuple, Union, cast
 
 from aiohttp import BasicAuth, ClientSession
+from aiohttp.hdrs import METH_GET, METH_POST
 from buildpg import Values
 from buildpg.asyncpg import BuildPgConnection
 from pydantic import BaseModel, MissingError, constr, validator
@@ -202,12 +202,10 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
 
     source_id = None
     new_customer, new_card = True, True
-    auth = BasicAuth(stripe_secret_key)
-    stripe_get = partial(stripe_request, app, auth, 'get')
-    stripe_post = partial(stripe_request, app, auth, 'post')
+    stripe = StripeClient(app, stripe_secret_key)
     if stripe_customer_id:
         try:
-            cards = await stripe_get(f'customers/{stripe_customer_id}/sources?object=card')
+            cards = await stripe.get(f'customers/{stripe_customer_id}/sources?object=card')
         except RequestError as e:
             # 404 is ok, it happens when the customer has been deleted, we create a new customer below
             if e.status != 404:
@@ -224,7 +222,7 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
                     source_id = next(c['id'] for c in cards['data'] if _card_ref(c) == m.stripe.card_ref)
                 except StopIteration:
                     # card not found on customer, create a new source
-                    source = await stripe_post(
+                    source = await stripe.post(
                         f'customers/{stripe_customer_id}/sources',
                         source=m.stripe.token,
                     )
@@ -236,7 +234,7 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
         raise JsonErrors.HTTPBadRequest(message='using saved card but stripe customer not found')
 
     if new_customer:
-        customer = await stripe_post(
+        customer = await stripe.post(
             'customers',
             source=m.stripe.token,
             email=user_email,
@@ -317,7 +315,7 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
             }
             description = f'donation towards {don.donation_option_name} ({don_id})'
 
-        charge = await stripe_post(
+        charge = await stripe.post(
             'charges',
             idempotency_key=idempotency_key,
             amount=price_cents,
@@ -366,20 +364,30 @@ def _hash_src(source_id):
     return hashlib.sha1(source_id.encode()).hexdigest()
 
 
-async def stripe_request(app, auth, method, path, *, idempotency_key=None, **data):
-    client: ClientSession = app['stripe_client']
-    settings: Settings = app['settings']
-    metadata = data.pop('metadata', None)
-    if metadata:
-        data.update({f'metadata[{k}]': v for k, v in metadata.items()})
-    headers = {'Stripe-Version': settings.stripe_api_version}
-    if idempotency_key:
-        headers['Idempotency-Key'] = idempotency_key + settings.stripe_idempotency_extra
-    full_path = settings.stripe_root_url + path
-    async with client.request(method, full_path, data=data or None, auth=auth, headers=headers) as r:
-        if r.status == 200:
-            return await r.json()
-        else:
-            # check stripe > developer > logs for more info
-            text = await r.text()
-            raise RequestError(r.status, full_path, text=text)
+class StripeClient:
+    def __init__(self, app, stripe_secret_key):
+        self._client: ClientSession = app['stripe_client']
+        self._settings: Settings = app['settings']
+        self._auth = BasicAuth(stripe_secret_key)
+
+    async def get(self, path, *, idempotency_key=None, **data):
+        return await self._request(METH_GET, path, idempotency_key=idempotency_key, **data)
+
+    async def post(self, path, *, idempotency_key=None, **data):
+        return await self._request(METH_POST, path, idempotency_key=idempotency_key, **data)
+
+    async def _request(self, method, path, *, idempotency_key=None, **data):
+        metadata = data.pop('metadata', None)
+        if metadata:
+            data.update({f'metadata[{k}]': v for k, v in metadata.items()})
+        headers = {'Stripe-Version': self._settings.stripe_api_version}
+        if idempotency_key:
+            headers['Idempotency-Key'] = idempotency_key + self._settings.stripe_idempotency_extra
+        full_path = self._settings.stripe_root_url + path
+        async with self._client.request(method, full_path, data=data or None, auth=self._auth, headers=headers) as r:
+            if r.status == 200:
+                return await r.json()
+            else:
+                # check stripe > developer > logs for more info
+                text = await r.text()
+                raise RequestError(r.status, full_path, text=text)
