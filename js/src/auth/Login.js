@@ -31,7 +31,7 @@ export async function authenticate (data) {
 class Login extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {error: null, loaded: false}
+    this.state = {error: null}
     this.on_message = this.on_message.bind(this)
     this.authenticate = authenticate.bind(this)
     this.login_with = this.login_with.bind(this)
