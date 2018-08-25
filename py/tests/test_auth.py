@@ -8,7 +8,7 @@ from pytest_toolbox.comparison import AnyInt, RegexStr
 
 from web.utils import encrypt_json
 
-from .conftest import Factory, is_online
+from .conftest import Factory, if_online
 
 
 async def test_login_successful(cli, url, factory: Factory):
@@ -229,7 +229,7 @@ async def test_logout(cli, url, factory: Factory, login):
     assert r.status == 401, await r.text()
 
 
-@is_online
+@if_online
 async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_server, settings):
     await factory.create_company()
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
@@ -443,7 +443,7 @@ async def test_grecaptcha_bad_response(cli, url, factory: Factory, caplog):
     assert 'RequestError: response 400 from "http://localhost:' in caplog.text
 
 
-@is_online
+@if_online
 async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
     await factory.create_company()
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')

@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import random
+import sys
 import uuid
 from datetime import datetime
 from io import BytesIO
@@ -466,16 +467,27 @@ def _setup_static(tmpdir):
     tmpdir.join('iframes').join('login.html').write('this is iframes/login.html')
 
 
-async def _is_online():
-    resolver = aiodns.DNSResolver()
-    try:
-        with timeout(1):
-            await resolver.query('example.com', 'A')
-    except (aiodns.error.DNSError, ValueError, asyncio.TimeoutError):
-        return False
-    else:
-        return True
+class Offline:
+    def __init__(self):
+        self.is_offline = None
 
-loop = asyncio.get_event_loop()
-is_online_value = loop.run_until_complete(_is_online())
-is_online = pytest.mark.skipif(not is_online_value, reason='not online')
+    def __bool__(self):
+        if self.is_offline is None:
+            loop = asyncio.new_event_loop()
+            self.is_offline = loop.run_until_complete(self._check())
+        return self.is_offline
+
+    async def _check(self):
+        resolver = aiodns.DNSResolver()
+        try:
+            with timeout(1):
+                await resolver.query('google.com', 'A')
+        except (aiodns.error.DNSError, asyncio.TimeoutError) as e:
+            print(f'\nnot online: {e.__class__.__name__} {e}\n', file=sys.stderr)
+            return True
+        else:
+            return False
+
+
+_offline = Offline()
+if_online = pytest.mark.skipif(_offline, reason='not online')
