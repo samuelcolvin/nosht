@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+from asyncio import sleep
 
 import pytest
 from aiohttp import BasicAuth
@@ -284,3 +285,40 @@ async def test_pay_no_price(cli, url, factory: Factory):
     assert data == {
         'message': 'booking price cent < 100',
     }
+
+
+async def test_request_cancelled(cli, url, dummy_server, factory: Factory, db_conn, loop, caplog):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=12.5, name='slow-request')
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
+        booking_token=encrypt_json(app, res.dict()),
+        grecaptcha_token='__ok__',
+    )
+
+    t = loop.create_task(cli.json_post(url('event-buy-tickets'), data=data))
+    await sleep(0.1)
+    t.cancel()
+
+    await sleep(0.4)
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
+        (
+            'email_send_endpoint',
+            'Subject: "slow-request Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
+    ]
+    assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+
+    assert 'CancelledError' in caplog.text

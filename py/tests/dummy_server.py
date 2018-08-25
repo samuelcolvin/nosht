@@ -1,4 +1,5 @@
 import base64
+from asyncio import sleep
 from email import message_from_bytes
 from io import BytesIO
 
@@ -105,6 +106,8 @@ async def stripe_post_charges(request):
           }
         }, status=402)
     else:
+        if 'slow-request' in data['description']:
+            await sleep(0.2)
         return json_response({
             'id': 'charge-id',
             'source': {
