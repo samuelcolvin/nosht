@@ -433,11 +433,16 @@ $waiting-time: 1s;
   }
 }
 
-.iframe {
-  position: relative;
-}
-
-.iframe-loading {
-  position: relative;
-  top: 80px;
+.iframe-container {
+  .loading {
+    position: relative;
+    top: 100px;
+    height: 25px;
+    width: 80px;
+    margin: 0 auto;
+  }
+  iframe {
+    position: relative;
+    top: -25px;
+  }
 }
