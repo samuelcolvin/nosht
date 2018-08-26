@@ -60,14 +60,14 @@ export const EVENT_FIELDS = [
     type: 'number',
     step: 0.01, min: 1, max: 1000,
     help_text: "Price of standard tickets for your event. Leave blank if tickets are free. " +
-               "You can add more ticket types once you've created the event",
+               "You can add more ticket types once you've created the event.",
   },
   {
     name: 'long_description',
     title: 'Long Description',
     type: 'md',
     required: true,
-    help_text: 'Detailed description of the event. (you can update this later if you have more information)',
+    help_text: 'Detailed description of the event (you can update this later if you have more information).',
     max_length: 5000,
     placeholder: 'Full description of the event with everything your guests need to know...'
   },

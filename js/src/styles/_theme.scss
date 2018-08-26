@@ -423,6 +423,11 @@ $waiting-time: 1s;
     margin-top: 0.6rem;
     margin-bottom: 0.1rem;
   }
+  textarea {
+    width: 100%;
+    height: calc(100% - 10px);
+    border: none;
+  }
 }
 
 .markdown, .editor {

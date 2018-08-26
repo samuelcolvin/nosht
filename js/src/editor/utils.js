@@ -5,8 +5,9 @@ import {
   FormGroup, Input
 } from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {CompositeDecorator, SelectionState} from 'draft-js'
+import {CompositeDecorator, convertFromRaw, convertToRaw, EditorState, SelectionState} from 'draft-js'
 import getRangesForDraftEntity from 'draft-js/lib/getRangesForDraftEntity'
+import {draftToMarkdown, markdownToDraft} from 'markdown-draft-js'
 
 const find_link = (contentBlock, callback, contentState) => {
   contentBlock.findEntityRanges(
@@ -48,8 +49,8 @@ export const decorator = new CompositeDecorator([
   },
 ])
 
-export const Buttons = ({buttons}) => (
-  buttons.map(b => (
+export const Buttons = ({buttons, edit_raw}) => (
+  buttons.filter(b => b.icon === 'code' || !edit_raw).map(b => (
     <Button key={b.icon}
             color="link"
             title={b.disabled ? 'disabled' : b.title}
@@ -87,4 +88,12 @@ export const looks_like_link = s => (
     s.match(/^(https?:\/\/|www\.)/) ||
     s.match(/(\.com|\.co\.uk)($|\/)/)
   )
+)
+
+export const from_markdown = md => (
+  EditorState.createWithContent(convertFromRaw(markdownToDraft(md)), decorator)
+)
+
+export const to_markdown = state => (
+  draftToMarkdown(convertToRaw(state.getCurrentContent()))
 )
