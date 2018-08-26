@@ -10,22 +10,29 @@ import {
   looks_like_link
 } from './utils'
 
+const storage_key = 'raw_md_editor'
+
 export default class Editor extends React.Component {
   constructor (props) {
     super(props)
 
     let editorState = EditorState.createEmpty(decorator)
-    if (this.props.value) {
+    let edit_raw = false
+    let raw_content = ''
+    if (window.sessionStorage[storage_key] === 'true') {
+      edit_raw = true
+      raw_content = this.props.value || ''
+    } else if (this.props.value) {
       editorState = from_markdown(this.props.value)
     }
 
     this.state = {
-      editorState,
       linkModal: false,
       editUrl: '',
       selectionState: {},
-      edit_raw: false,
-      raw_content: ''
+      editorState,
+      edit_raw,
+      raw_content,
     }
 
     this.onChange = this.onChange.bind(this)
@@ -146,7 +153,8 @@ export default class Editor extends React.Component {
 
   setRaw () {
     const edit_raw = !this.state.edit_raw
-    const state_change = {edit_raw: edit_raw}
+    window.sessionStorage[storage_key] = edit_raw.toString()
+    const state_change = {edit_raw}
     if (edit_raw) {
       state_change.raw_content = to_markdown(this.state.editorState)
     } else {
@@ -209,10 +217,24 @@ export default class Editor extends React.Component {
         </div>
         <div className="mx-1" style={{height: 22}}>
           {
-            ss.url && <small>
-              <span className="text-muted mr-1">links to:</span>
-              <a href={ss.url} target="_blank">{ss.url}</a>
-            </small>
+            ss.url && (
+              <small>
+                <span className="text-muted mr-1">links to:</span>
+                <a href={ss.url} target="_blank" rel="noopener noreferrer">{ss.url}</a>
+              </small>
+            )
+          }
+          {
+            this.state.edit_raw && (
+              <small>
+                You're editing markdown, see&nbsp;
+                <a href="https://guides.github.com/features/mastering-markdown/"
+                   target="_blank" rel="noopener noreferrer">
+                  here
+                </a>
+                &nbsp;for more details.
+              </small>
+            )
           }
         </div>
       </div>
