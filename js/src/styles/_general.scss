@@ -56,7 +56,7 @@ label {
 .btn-divider {
   .btn {
     border-left: 1px solid #777;
-    margin-left: 0px !important;
+    margin-left: 0 !important;
   }
   .btn:first-child {
     border-left: none;
@@ -81,4 +81,8 @@ label {
 
 .invisible {
   visibility: hidden;
+}
+
+.top-70 {
+  top: 70px;
 }

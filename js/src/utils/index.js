@@ -121,4 +121,24 @@ export const get_tmp_name = () => {
   return v ? JSON.parse(v) : {first_name: null, last_name: null}
 }
 
-export const image_thumb = (img, rep) => img.replace(/main\.(\w+)$/, (rep || 'thumb') + '.$1')
+export const image_thumb = (img, rep) => img && img.replace(/main\.(\w+)$/, (rep || 'thumb') + '.$1')
+
+
+export const watch_scroll = callback => {
+  if (on_mobile) {
+    // don't do this on mobile
+    return
+  }
+  let y_pos = window.scrollY
+  let busy = false
+  window.addEventListener('scroll', () => {
+    y_pos = window.scrollY
+    if (!busy) {
+      window.requestAnimationFrame(() => {
+        callback(y_pos)
+        busy = false
+      })
+      busy = true
+    }
+  })
+}

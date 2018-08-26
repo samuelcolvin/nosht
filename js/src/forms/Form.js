@@ -10,11 +10,10 @@ export class Form extends React.Component {
     super(props)
     this.state = {
       disabled: false,
-      form_data: {},
       errors: {},
       form_error: null,
     }
-    this.set_form_data = this.set_form_data.bind(this)
+    this.onFieldChange = this.onFieldChange.bind(this)
   }
 
   componentDidMount () {
@@ -26,20 +25,20 @@ export class Form extends React.Component {
           form_data[field.name] = initial
         }
       }
-      this.setState({form_data})
+      this.props.onChange(form_data)
     }
   }
 
   async submit (e) {
     e.preventDefault()
-    if (Object.keys(this.state.form_data).length === 0) {
+    if (Object.keys(this.props.form_data).length === 0) {
       this.setState({form_error: 'No data entered'})
       return
     }
     const initial = this.props.initial || {}
     const missing = (
       this.props.fields
-      .filter(f => f.required && !initial[f.name] && !this.state.form_data[f.name])
+      .filter(f => f.required && !initial[f.name] && !this.props.form_data[f.name])
       .map(f => f.name)
     )
     if (missing.length) {
@@ -54,7 +53,7 @@ export class Form extends React.Component {
     }
     this.setState({disabled: true, errors: {}, form_error: null})
     let r
-    const data = Object.assign({}, this.state.form_data)
+    const data = Object.assign({}, this.props.form_data)
     if (this.props.grecaptcha_name) {
       data.grecaptcha_token = await grecaptcha_execute(this.props.grecaptcha_name)
     }
@@ -78,19 +77,15 @@ export class Form extends React.Component {
     }
   }
 
-  set_form_data (name, value) {
-    let form_data = Object.assign({}, this.state.form_data, {[name]: value})
-    if (this.props.modify_data) {
-      this.props.modify_data(form_data, name)
-    }
-    this.setState({form_data})
+  onFieldChange (name, value) {
+    let form_data = Object.assign({}, this.props.form_data, {[name]: value})
     this.props.onChange && this.props.onChange(form_data)
   }
 
   render () {
     const initial = this.props.initial || {}
     const get_value = field => {
-      const v = this.state.form_data[field.name]
+      const v = this.props.form_data[field.name]
       return v === undefined ? initial[field.name] : v
     }
     return (
@@ -103,7 +98,7 @@ export class Form extends React.Component {
                     value={get_value(field)}
                     error={this.state.errors[field.name]}
                     disabled={this.state.disabled}
-                    set_value={v => this.set_form_data(field.name, v)}/>
+                    set_value={v => this.onFieldChange(field.name, v)}/>
           ))}
         </div>
         <div className={this.props.form_footer_class || 'text-right'}>
@@ -121,4 +116,20 @@ export class Form extends React.Component {
   }
 }
 
-export const ModalForm = AsModal(Form)
+export class StandaloneForm extends React.Component {
+  constructor (props) {
+    super(props)
+    this.state = {form_data: {}}
+  }
+
+  onChange (form_data) {
+    this.setState({form_data})
+    // TODO remove this
+    this.props.onChange && this.props.onChange(form_data)
+  }
+
+  render () {
+    return <Form {...this.props} form_data={this.state.form_data} onChange={this.onChange.bind(this)}/>
+  }
+}
+export const ModalForm = AsModal(StandaloneForm)

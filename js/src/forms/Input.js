@@ -109,7 +109,7 @@ const Select = ({className, field, disabled, value, onChange}) => (
   <FormGroup className={className}>
     <Label field={field}/>
     <CustomInput type="select"
-                 value={value}
+                 value={value || ''}
                  disabled={disabled}
                  name={field.name}
                  id={field.name}
@@ -158,6 +158,7 @@ class DatetimeInput extends React.Component {
     const duration = this.props.value ? this.props.value.dur : 3600
     const dt = this.props.value ? this.props.value.dt : null
     const all_day = !duration
+    // TODO could use native data picker if on_mobile
     return (
       <FormGroup className={this.props.className}>
         <Label field={field}/>

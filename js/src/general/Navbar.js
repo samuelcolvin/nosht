@@ -10,6 +10,7 @@ import {
   NavItem,
   NavLink,
 } from 'reactstrap'
+import {on_mobile, watch_scroll} from '../utils'
 
 const BACK_TOP_DEFAULT = 56
 let BACK_TOP = BACK_TOP_DEFAULT
@@ -37,28 +38,15 @@ export default class Navbar extends React.Component {
     this.state = {
       is_open: false,
     }
-    let y_pos = window.scrollY
 
-    let busy = false
-    this.on_desktop = window.innerWidth > 600
-
-    if (this.on_desktop) {
-      window.addEventListener('scroll', () => {
-        y_pos = window.scrollY
-        if (!busy) {
-          window.requestAnimationFrame(() => {
-            // parallax
-            BACK_TOP = Math.round(BACK_TOP_DEFAULT + y_pos / 2) + 'px'
-            const el = document.getElementById('background-image')
-            if (el) {
-              el.style.top = BACK_TOP
-            }
-            busy = false
-          })
-          busy = true
-        }
-      })
-    }
+    // parallax
+    watch_scroll(y_pos => {
+      BACK_TOP = Math.round(BACK_TOP_DEFAULT + y_pos / 2) + 'px'
+      const el = document.getElementById('background-image')
+      if (el) {
+        el.style.top = BACK_TOP
+      }
+    })
   }
 
   close () {
@@ -102,7 +90,7 @@ export default class Navbar extends React.Component {
         </div>
       </NavbarBootstrap>
     )
-    if (!this.on_desktop) {
+    if (on_mobile) {
       return navbar
     } else {
       const background = this.props.background || company.image

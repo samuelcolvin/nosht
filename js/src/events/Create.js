@@ -92,16 +92,19 @@ class CreateEvent extends React.Component {
       return
     }
     this.setState({categories: data.categories})
+    const m = this.props.location.search.match(/cat=(\d+)/)
+    const cat_initial = m ? parseInt(m[1]) : null
+    if (cat_initial) {
+      this.setState({form_data: Object.assign({}, this.state.form_data, {category: cat_initial})})
+    }
   }
 
   fields () {
-    const c = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
-    const m = this.props.location.search.match(/cat=(\d+)/)
-    const cat_default = m ? parseInt(m[1]) : null
+    const choices = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
     return (
       EVENT_FIELDS
       .filter(f => f.name !== 'short_description')
-      .map(f => f.name === 'category' ? Object.assign({}, f, {choices: c, default: cat_default}) : f)
+      .map(f => f.name === 'category' ? Object.assign({}, f, {choices}) : f)
     )
   }
 
@@ -109,30 +112,34 @@ class CreateEvent extends React.Component {
     this.props.history.push(r ? `/dashboard/events/${r.pk}/` : '/dashboard/events/')
   }
 
-  modify_form_data (d, field_name) {
-    if (field_name === 'category' && d.price === undefined) {
-      const suggested_price = this.state.categories.find(c => c.id.toString() === d.category).suggested_price
+  onChange (form_data) {
+    if (form_data.category !== this.state.form_data.category && form_data.price === undefined) {
+      const selected_cat = this.state.categories.find(c => c.id.toString() === form_data.category)
+      const suggested_price = selected_cat && selected_cat.suggested_price
       if (suggested_price) {
-        d.price = suggested_price
+        form_data.price = suggested_price
       }
     }
+    this.setState({form_data})
   }
 
   render () {
     const cat_id = this.state.form_data && this.state.form_data.category && parseInt(this.state.form_data.category)
-    const cat = cat_id && this.state.categories.find(c => c.id === cat_id)
+    const cat = cat_id && this.state.categories && this.state.categories.find(c => c.id === cat_id)
     return (
       <Row>
         <Col md={8}>
           <h1>Create Event</h1>
-          <Form fields={this.fields()}
-                action="/events/add/"
-                onChange={d => this.setState({form_data: d})}
-                modify_data={this.modify_form_data.bind(this)}
-                finished={this.finished.bind(this)}/>
+          <Form
+              fields={this.fields()}
+              action="/events/add/"
+              form_data={this.state.form_data}
+              onChange={this.onChange.bind(this)}
+              finished={this.finished.bind(this)}
+          />
         </Col>
         <Col md={4}>
-          {cat && <Markdown content={cat.host_advice}/>}
+          {cat && <Markdown className="sticky-top top-70" content={cat.host_advice}/>}
         </Col>
       </Row>
     )
