@@ -2,6 +2,7 @@ import React from 'react'
 import WithContext from '../utils/context'
 import {Row, Col} from 'reactstrap'
 import {authenticate} from './Login'
+import IFrame from '../general/IFrame'
 
 class SetPassword extends React.Component {
   constructor (props) {
@@ -39,12 +40,7 @@ class SetPassword extends React.Component {
       </div>,
       <Row key="2" className="justify-content-center">
         <Col md="4" className="password-reset">
-          <iframe
-            title="Set Password"
-            frameBorder="0"
-            scrolling="no"
-            sandbox="allow-forms allow-scripts"
-            src={`/iframes/set-password.html${window.location.search}`}/>
+          <IFrame title="Set Password" src={`/iframes/set-password.html${window.location.search}`}/>
         </Col>
       </Row>
     ]
