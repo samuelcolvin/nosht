@@ -32,8 +32,9 @@ export const EVENT_FIELDS = [
     title: 'Public Event',
     type: 'bool',
     default: true,
-    help_text: 'Whether or not this event will be visible to anyone on the site and in public search results. ' +
-                'If not public people will need a link to view this event.',
+    help_text: 'Tick to make this event public so it will be visible to anyone on the site and ' +
+        'appear in public search results. If your event is not public you will need to share the event link ' +
+        'with people for them to view this event.',
   },
   {
     name: 'date',
@@ -58,17 +59,17 @@ export const EVENT_FIELDS = [
     name: 'price',
     type: 'number',
     step: 0.01, min: 1, max: 1000,
-    help_text: "Price of standard tickets for the event. Leave blank if tickets are free. You can add more " +
-                "ticket types onces you've created the event.",
+    help_text: "Price of standard tickets for your event. Leave blank if tickets are free. " +
+               "You can add more ticket types once you've created the event",
   },
   {
     name: 'long_description',
     title: 'Long Description',
     type: 'md',
     required: true,
-    help_text: 'Detailed description of the event.',
+    help_text: 'Detailed description of the event. (you can update this later if you have more information)',
     max_length: 5000,
-    placeholder: 'Full description of the event with everything your guests might like to know...'
+    placeholder: 'Full description of the event with everything your guests need to know...'
   },
 ]
 

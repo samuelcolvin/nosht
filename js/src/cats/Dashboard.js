@@ -7,20 +7,67 @@ import {ModalForm} from '../forms/Form'
 import {ModalDropzoneForm} from '../forms/Drop'
 
 const CAT_FIELDS = [
-  {name: 'name', required: true},
-  {name: 'live', type: 'bool'},
-  {name: 'sort_index', type: 'integer'},
-  {name: 'suggested_price', type: 'number', step: 0.01, min: 1, max: 1000},
-  {name: 'description', type: 'textarea', required: true},
-  {name: 'event_content', type: 'md'},
-  {name: 'host_advice', type: 'md'},
-  {name: 'booking_trust_message'},
-  {name: 'cover_costs_message'},
-  {name: 'cover_costs_percentage', type: 'number', step: 0.01, min: 0.01, max: 100},
-  {name: 'terms_and_conditions_message'},
-  {name: 'allow_marketing_message'},
-  {name: 'ticket_extra_title'},
-  {name: 'ticket_extra_help_text'},
+  {
+    name: 'name', required: true,
+    help_text: 'Public name of this event category.',
+  },
+  {
+    name: 'live', type: 'bool',
+    help_text: 'Whether the category is active, untick to make the category unavailable.',
+  },
+  {
+    name: 'sort_index', type: 'integer',
+    help_text: 'Number used to order categories on the front page and in the top menu.',
+  },
+  {
+    name: 'suggested_price', type: 'number', step: 0.01, min: 1, max: 1000,
+    help_text: 'Default price set when hosts are creating events of this type, ' +
+        'leave blank for no suggested price/free.',
+  },
+  {
+    name: 'description', type: 'textarea', required: true,
+    help_text: 'Public description of the category, keep this short and sweet.',
+  },
+  {
+    name: 'event_content', type: 'md',
+    help_text: 'Content shown on every event, use this to promote your organisation and the work you do.',
+  },
+  {
+    name: 'host_advice', type: 'md',
+    help_text: "Advice to event hosts. This is shown to hosts when they're creating events.",
+  },
+  {
+    name: 'booking_trust_message',
+    help_text: 'Message shown just above the login/email form when guests start to book an event.',
+  },
+  {
+    name: 'cover_costs_message',
+    help_text: 'Title of the "cover our costs" checkbox shown to guests when they\'re booking an event.',
+  },
+  {
+    name: 'cover_costs_percentage', type: 'number', step: 0.01, min: 0.01, max: 100,
+    help_text: 'Percentage of the total ticket(s) price which will be added when guests agree to "cover costs".',
+  },
+  {
+    name: 'terms_and_conditions_message',
+    help_text: 'Message shown to guests when they agree to terms and conditions, ' +
+        'you can use markdown/html to include a link to your terms and conditions. ' +
+        'In the format "<a target="_blank" href="http://www.example.com/terms-and-conditions.html">click here</a>". ' +
+        'If not blank guests won\'t be asked to agree to terms and conditions.',
+  },
+  {
+    name: 'allow_marketing_message',
+    help_text: "Message shown to guests when they're asked to consent to marketing. If blank they won't be asked.",
+  },
+  {
+    name: 'ticket_extra_title',
+    help_text: 'Title of text box where guests can provide extra information for each guest. ' +
+        'e.g. "Dietary requirements and other information".',
+  },
+  {
+    name: 'ticket_extra_help_text',
+    help_text: 'Help text under the text box where guests can provide extra information for each guest.',
+  },
 ]
 
 export class CategoriesList extends RenderList {

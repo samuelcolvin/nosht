@@ -122,7 +122,7 @@ class StripeBookingForm extends React.Component {
     if (this.props.event.terms_and_conditions_message) {
       const f = {
         name: 'tncs',
-        title: <Markdown content={this.props.event.terms_and_conditions_message}/>,
+        title: <Markdown content={this.props.event.terms_and_conditions_message} sanitize={false}/>,
         type: 'bool',
         required: true,
       }
