@@ -7,7 +7,7 @@ import {
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {CompositeDecorator, convertFromRaw, convertToRaw, EditorState, SelectionState} from 'draft-js'
 import getRangesForDraftEntity from 'draft-js/lib/getRangesForDraftEntity'
-import {draftToMarkdown, markdownToDraft} from 'markdown-draft-js'
+import {mdToDraftjs, draftjsToMd} from 'draftjs-md-converter'
 
 const find_link = (contentBlock, callback, contentState) => {
   contentBlock.findEntityRanges(
@@ -69,7 +69,7 @@ export const Buttons = ({buttons, edit_raw}) => (
 export const LinkModal = ({close, isOpen, url, update, onChange}) => {
   return (
     <Modal isOpen={isOpen} toggle={close}>
-      <ModalHeader toggle={close}>Edit Link</ModalHeader>
+      <ModalHeader toggle={close}>Insert Link</ModalHeader>
       <ModalBody>
         <FormGroup>
           <Input placeholder="www.example.com..." value={url} onChange={onChange}/>
@@ -91,9 +91,13 @@ export const looks_like_link = s => (
 )
 
 export const from_markdown = md => (
-  EditorState.createWithContent(convertFromRaw(markdownToDraft(md)), decorator)
+  EditorState.createWithContent(convertFromRaw(mdToDraftjs(md)), decorator)
 )
 
+const md_styles = {
+  BOLD: '**',
+}
+
 export const to_markdown = state => (
-  draftToMarkdown(convertToRaw(state.getCurrentContent()))
+  draftjsToMd(convertToRaw(state.getCurrentContent()), md_styles)
 )

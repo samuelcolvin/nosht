@@ -51,9 +51,9 @@ const CAT_FIELDS = [
   {
     name: 'terms_and_conditions_message',
     help_text: 'Message shown to guests when they agree to terms and conditions, ' +
-        'you can use markdown/html to include a link to your terms and conditions. ' +
-        'In the format "<a target="_blank" href="http://www.example.com/terms-and-conditions.html">click here</a>". ' +
-        'If not blank guests won\'t be asked to agree to terms and conditions.',
+        'you can use markdown to include a link to your terms and conditions ' +
+        'in the format "[click here](http://www.example.com/terms-and-conditions.html)". ' +
+        'If blank guests won\'t be asked to agree to terms and conditions.',
   },
   {
     name: 'allow_marketing_message',

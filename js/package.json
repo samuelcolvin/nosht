@@ -25,7 +25,7 @@
     "bootstrap": "^4.1.1",
     "date-fns": "^1.29.0",
     "draft-js": "^0.10.5",
-    "markdown-draft-js": "^1.0.1",
+    "draftjs-md-converter": "^1.1.1",
     "marked": "^0.4.0",
     "moment": "^2.22.2",
     "node-sass": "^4.9.0",

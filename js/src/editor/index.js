@@ -106,10 +106,8 @@ export default class Editor extends React.Component {
     const contentStateWithEntity = contentState.createEntity('LINK', 'MUTABLE', {url: url})
     const entityKey = contentStateWithEntity.getLastCreatedEntityKey()
     const newEditorState = EditorState.set(this.state.editorState, {currentContent: contentStateWithEntity})
-    this.setState({
-      editorState: RichUtils.toggleLink(newEditorState, newEditorState.getSelection(), entityKey),
-      linkModal: false, editUrl: '',
-    })
+    this.setState({linkModal: false, editUrl: ''})
+    this.onChange(RichUtils.toggleLink(newEditorState, newEditorState.getSelection(), entityKey))
   }
 
   removeLink () {
@@ -118,7 +116,7 @@ export default class Editor extends React.Component {
       selection = getEntitySelectionState(this.state.editorState.getCurrentContent(), selection)
     }
     if (selection) {
-      this.setState({editorState: RichUtils.toggleLink(this.state.editorState, selection, null)})
+      this.onChange(RichUtils.toggleLink(this.state.editorState, selection, null))
     }
   }
 
