@@ -674,7 +674,7 @@ async def test_image_existing_wrong_host(cli, url, factory: Factory, db_conn, lo
     assert r.status == 403, await r.text()
     assert None is await db_conn.fetchval('SELECT image FROM events')
     data = await r.json()
-    assert data == {'message': 'you may not edit this event'}
+    assert data == {'message': 'user is not the host of this event'}
 
     assert len(dummy_server.app['log']) == 1
 

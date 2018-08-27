@@ -66,8 +66,9 @@ def test_get_ip():
     ('with __bold__ here', 'with bold here'),
     ('with _italics_ here', 'with italics here'),
     ('with **bold** here', 'with bold here'),
+    ('with **bold**', 'with bold'),
+    ('**bold** here', 'bold here'),
     ('with *italics* here', 'with italics here'),
-    ('with * in a line', 'with * in a line'),
     ('including [a link](/foobar/)', 'including a link'),
     ('including a\n# title', 'including a title'),
     ('including a\n* bullet 1', 'including a bullet 1'),
@@ -78,3 +79,13 @@ def test_get_ip():
 ])
 def test_clean_markdown(input, output):
     assert clean_markdown(input) == output
+
+
+@pytest.mark.parametrize('input', [
+    'with *in a line',
+    'with **in a line',
+    'with **in* a line',
+    'with _italics* here',
+])
+def test_clean_markdown_unchanged(input):
+    assert clean_markdown(input) == input
