@@ -98,7 +98,7 @@ export class Form extends React.Component {
                     value={get_value(field)}
                     error={this.state.errors[field.name]}
                     disabled={this.state.disabled}
-                    set_value={v => this.onFieldChange(field.name, v)}/>
+                    onChange={v => this.onFieldChange(field.name, v)}/>
           ))}
         </div>
         <div className={this.props.form_footer_class || 'text-right'}>
@@ -122,14 +122,8 @@ export class StandaloneForm extends React.Component {
     this.state = {form_data: {}}
   }
 
-  onChange (form_data) {
-    this.setState({form_data})
-    // TODO remove this
-    this.props.onChange && this.props.onChange(form_data)
-  }
-
   render () {
-    return <Form {...this.props} form_data={this.state.form_data} onChange={this.onChange.bind(this)}/>
+    return <Form {...this.props} form_data={this.state.form_data} onChange={form_data => this.setState({form_data})}/>
   }
 }
 export const ModalForm = AsModal(StandaloneForm)

@@ -48,19 +48,19 @@ const TicketType = ({index, ticket_type, update_ticket, active_count}) => {
     <div className="border-bottom-2 py-1 mb-1">
       <Row>
         <Col md="4">
-          <Input field={name_field} value={ticket_type.name} set_value={v => update_ticket(index, 'name', v)}/>
+          <Input field={name_field} value={ticket_type.name} onChange={v => update_ticket(index, 'name', v)}/>
         </Col>
         <Col md="4">
-          <Input field={price_field} value={ticket_type.price} set_value={v => update_ticket(index, 'price', v)}/>
+          <Input field={price_field} value={ticket_type.price} onChange={v => update_ticket(index, 'price', v)}/>
         </Col>
         <Col md="4">
           <Input field={slots_field}
                 value={ticket_type.slots_used}
-                set_value={v => update_ticket(index, 'slots_used', v)}/>
+                onChange={v => update_ticket(index, 'slots_used', v)}/>
         </Col>
         <Col md="6">
           <Input field={active_field} value={ticket_type.active}
-                 set_value={v => update_ticket(index, 'active', v)}
+                 onChange={v => update_ticket(index, 'active', v)}
                  disabled={ticket_type.active && active_count <= 1}/>
         </Col>
         <Col md="6" className="text-right mb-1">

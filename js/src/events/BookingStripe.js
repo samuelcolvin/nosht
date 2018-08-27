@@ -131,7 +131,7 @@ class StripeBookingForm extends React.Component {
           field={f}
           value={this.state.terms_and_conditions}
           disabled={this.state.submitting}
-          set_value={v => this.setState({terms_and_conditions: v})}
+          onChange={v => this.setState({terms_and_conditions: v})}
         />
       )
     }
@@ -181,7 +181,7 @@ class StripeBookingForm extends React.Component {
           field={f}
           value={this.state.buy_offline}
           disabled={this.state.submitting || this.state.submitted}
-          set_value={v => this.setState({buy_offline: v})}
+          onChange={v => this.setState({buy_offline: v})}
         />
       )
     }

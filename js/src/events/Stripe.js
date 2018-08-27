@@ -207,17 +207,17 @@ class StripeForm_ extends React.Component {
           )}
           <Collapse isOpen={!payment_state.source_hash}>
             <Input field={name_field} value={payment_state.name} error={payment_state.name_error}
-                   set_value={v => this.setPaymentState({name: v, name_error: null})}/>
+                   onChange={v => this.setPaymentState({name: v, name_error: null})}/>
             <Input field={address_field} value={payment_state.address} error={payment_state.address_error}
-                   set_value={v => this.setPaymentState({address: v, address_error: null})}/>
+                   onChange={v => this.setPaymentState({address: v, address_error: null})}/>
             <Row>
               <Col md="6">
                 <Input field={city_field} value={payment_state.city} error={payment_state.city_error}
-                       set_value={v => this.setPaymentState({city: v, city_error: null})}/>
+                       onChange={v => this.setPaymentState({city: v, city_error: null})}/>
               </Col>
               <Col md="6">
                 <Input field={postcode_field} value={payment_state.postcode} error={payment_state.postcode_error}
-                       set_value={v => this.setPaymentState({postcode: v, postcode_error: null})}/>
+                       onChange={v => this.setPaymentState({postcode: v, postcode_error: null})}/>
               </Col>
             </Row>
             <FormGroup>

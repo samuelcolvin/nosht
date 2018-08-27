@@ -52,7 +52,7 @@ class RequestPasswordReset extends React.Component {
             <form onSubmit={this.submit.bind(this)} className="hide-form-label">
               <Input field={FIELD}
                     value={this.state.email}
-                    set_value={v => this.setState({email: v})}/>
+                    onChange={v => this.setState({email: v})}/>
               <button type="submit" id="submit-button" className="d-none">submit</button>
               <Button color="primary" className="width-100p my-1"
                       disabled={!this.state.enabled}>

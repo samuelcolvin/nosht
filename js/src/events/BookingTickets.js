@@ -98,7 +98,7 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
                 value={!ticket_info.first_name && index === 0 && user.first_name ?
                        user.first_name : ticket_info.first_name}
                 field={first_name_field}
-                set_value={v => set_ticket_state(key, 'first_name', v)}/>
+                onChange={v => set_ticket_state(key, 'first_name', v)}/>
         </Col>
         <Col lg="4" md="6">
           <Input className="my-0"
@@ -106,19 +106,19 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
                        user.last_name :
                         ticket_info.last_name}
                 field={last_name_field}
-                set_value={v => set_ticket_state(key, 'last_name', v)}/>
+                onChange={v => set_ticket_state(key, 'last_name', v)}/>
         </Col>
         <Col lg="4">
           <Input className="my-0"
                 value={ticket_info.email === undefined && index === 0 ? user.email : ticket_info.email}
                 field={email_field}
-                set_value={v => set_ticket_state(key, 'email', v)}/>
+                onChange={v => set_ticket_state(key, 'email', v)}/>
         </Col>
       </Row>
       {event.ticket_extra_title &&
         <Input value={ticket_info.extra_info}
                field={extra_field}
-               set_value={v => set_ticket_state(key, 'extra_info', v)}/>
+               onChange={v => set_ticket_state(key, 'extra_info', v)}/>
       }
     </div>
   )
@@ -219,13 +219,13 @@ const TicketForm = props => {
             {props.event.allow_marketing_message &&
               <Input value={state.ticket_0 && state.ticket_0.allow_marketing}
                      field={{name: 'allow_marketing', title: props.event.allow_marketing_message, type: 'bool'}}
-                     set_value={v => props.set_ticket_state('ticket_0', 'allow_marketing', v)}/>
+                     onChange={v => props.set_ticket_state('ticket_0', 'allow_marketing', v)}/>
             }
 
             {ticket_price && props.event.cover_costs_message && props.event.cover_costs_percentage !== null &&
               <Input value={state.ticket_0 && state.ticket_0.cover_costs}
                      field={{name: 'cover_costs', title: props.event.cover_costs_message, type: 'bool'}}
-                     set_value={v => props.set_ticket_state('ticket_0', 'cover_costs', v)}/>
+                     onChange={v => props.set_ticket_state('ticket_0', 'cover_costs', v)}/>
             }
           </Col>
         </Row>

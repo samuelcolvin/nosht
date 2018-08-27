@@ -141,10 +141,10 @@ class Signup extends React.Component {
               <form onSubmit={this.email_auth.bind(this)}>
                 <Input field={name_field}
                       value={this.state.name}
-                      set_value={v => this.setState({name: v})}/>
+                      onChange={v => this.setState({name: v})}/>
                 <Input field={email_field}
                       value={this.state.email}
-                      set_value={v => this.setState({email: v})}/>
+                      onChange={v => this.setState({email: v})}/>
                 <button type="submit" id="submit-button" className="d-none">submit</button>
               </form>
               {this.state.error && <FormFeedback className="d-block">{this.state.error}</FormFeedback>}

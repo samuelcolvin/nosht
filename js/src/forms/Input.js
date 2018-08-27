@@ -337,7 +337,7 @@ const Input = props => {
                     error={props.error}
                     value={value}
                     disabled={props.disabled}
-                    onChange={props.set_value}/>
+                    onChange={props.onChange}/>
 }
 
 export default Input
