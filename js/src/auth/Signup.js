@@ -87,11 +87,7 @@ class Signup extends React.Component {
     }
     const next = next_url(this.props.location)
     if (data._response_status === 470 && data.status === 'existing user') {
-      if (next) {
-        this.props.history.push('/login/?next=' + encodeURIComponent(next))
-      } else {
-        this.props.history.push('/login/')
-      }
+      this.props.history.push(next ? `/login/?next=${encodeURIComponent(next)}` : '/login/')
       this.props.ctx.setMessage({icon: 'user', message: 'User already exists - please login.'})
     } else if (data._response_status === 470) {
       this.setState({error: data.status})

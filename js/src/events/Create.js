@@ -34,7 +34,7 @@ export const EVENT_FIELDS = [
     default: true,
     help_text: 'Tick to make this event public so it will be visible to anyone on the site and ' +
         'appear in public search results. If your event is not public you will need to share the event link ' +
-        'with people for them to view this event.',
+        'with people for them to view and book this event.',
   },
   {
     name: 'date',
@@ -95,7 +95,7 @@ class CreateEvent extends React.Component {
     const m = this.props.location.search.match(/cat=(\d+)/)
     const cat_initial = m ? parseInt(m[1]) : null
     if (cat_initial) {
-      this.setState({form_data: Object.assign({}, this.state.form_data, {category: cat_initial})})
+      this.setState({form_data: {category: cat_initial}})
     }
   }
 
@@ -115,9 +115,8 @@ class CreateEvent extends React.Component {
   onChange (form_data) {
     if (form_data.category !== this.state.form_data.category && form_data.price === undefined) {
       const selected_cat = this.state.categories.find(c => c.id.toString() === form_data.category)
-      const suggested_price = selected_cat && selected_cat.suggested_price
-      if (suggested_price) {
-        form_data.price = suggested_price
+      if (selected_cat) {
+        form_data.price = selected_cat && selected_cat.suggested_price
       }
     }
     this.setState({form_data})

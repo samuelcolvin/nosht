@@ -22,11 +22,11 @@ const CAT_FIELDS = [
   {
     name: 'suggested_price', type: 'number', step: 0.01, min: 1, max: 1000,
     help_text: 'Default price set when hosts are creating events of this type, ' +
-        'leave blank for no suggested price/free.',
+               'leave blank for no suggested price/free.',
   },
   {
     name: 'description', type: 'textarea', required: true,
-    help_text: 'Public description of the category, keep this short and sweet.',
+    help_text: 'Public description of the category, shown on the front page, keep this short and sweet.',
   },
   {
     name: 'event_content', type: 'md',
@@ -42,7 +42,7 @@ const CAT_FIELDS = [
   },
   {
     name: 'cover_costs_message',
-    help_text: 'Title of the "cover our costs" checkbox shown to guests when they\'re booking an event.',
+    help_text: 'Title of the "cover costs" checkbox shown to guests when they\'re booking an event.',
   },
   {
     name: 'cover_costs_percentage', type: 'number', step: 0.01, min: 0.01, max: 100,
@@ -50,10 +50,10 @@ const CAT_FIELDS = [
   },
   {
     name: 'terms_and_conditions_message',
-    help_text: 'Message shown to guests when they agree to terms and conditions, ' +
-        'you can use markdown to include a link to your terms and conditions ' +
-        'in the format "[click here](http://www.example.com/terms-and-conditions.html)". ' +
-        'If blank guests won\'t be asked to agree to terms and conditions.',
+    help_text: 'Message shown to guests when they\'re requested to agree to terms and conditions, ' +
+               'you can use markdown to include a link to your terms and conditions page ' +
+               'in the format "[click here](http://www.example.com/terms-and-conditions.html)". ' +
+               'If blank guests won\'t be asked to agree to terms and conditions.',
   },
   {
     name: 'allow_marketing_message',
@@ -61,12 +61,12 @@ const CAT_FIELDS = [
   },
   {
     name: 'ticket_extra_title',
-    help_text: 'Title of text box where guests can provide extra information for each guest. ' +
-        'e.g. "Dietary requirements and other information".',
+    help_text: 'Title of text box where guests can provide extra information for each guest/ticket. ' +
+               'e.g. "Dietary requirements and other information".',
   },
   {
     name: 'ticket_extra_help_text',
-    help_text: 'Help text under the text box where guests can provide extra information for each guest.',
+    help_text: 'Help text under the text box where guests can provide extra information for each guest/ticket.',
   },
 ]
 
