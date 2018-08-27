@@ -85,14 +85,19 @@ class Signup extends React.Component {
       this.props.ctx.setError(error)
       return
     }
-    if (data._response_status === 470 && data.status === 'existing-user') {
-      this.props.history.push('/login/')
+    const next = next_url(this.props.location)
+    if (data._response_status === 470 && data.status === 'existing user') {
+      if (next) {
+        this.props.history.push('/login/?next=' + encodeURIComponent(next))
+      } else {
+        this.props.history.push('/login/')
+      }
       this.props.ctx.setMessage({icon: 'user', message: 'User already exists - please login.'})
     } else if (data._response_status === 470) {
-      this.setState({error: data.message})
+      this.setState({error: data.status})
     } else {
       this.props.ctx.setUser(data.user)
-      this.props.history.replace(next_url(this.props.location) || '/dashboard/events/')
+      this.props.history.replace(next || '/dashboard/events/')
       this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
     }
   }

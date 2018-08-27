@@ -10,8 +10,6 @@ import {
   looks_like_link
 } from './utils'
 
-const storage_key = 'raw_md_editor'
-
 export default class Editor extends React.Component {
   constructor (props) {
     super(props)
@@ -19,7 +17,7 @@ export default class Editor extends React.Component {
     let editorState = EditorState.createEmpty(decorator)
     let edit_raw = false
     let raw_content = ''
-    if (window.sessionStorage[storage_key] === 'true') {
+    if (window.sessionStorage.raw_md_editor === 'true') {
       edit_raw = true
       raw_content = this.props.value || ''
     } else if (this.props.value) {
@@ -151,7 +149,7 @@ export default class Editor extends React.Component {
 
   setRaw () {
     const edit_raw = !this.state.edit_raw
-    window.sessionStorage[storage_key] = edit_raw.toString()
+    window.sessionStorage.raw_md_editor = edit_raw.toString()
     const state_change = {edit_raw}
     if (edit_raw) {
       state_change.raw_content = to_markdown(this.state.editorState)

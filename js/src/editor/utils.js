@@ -85,8 +85,8 @@ export const LinkModal = ({close, isOpen, url, update, onChange}) => {
 
 export const looks_like_link = s => (
   !s.match(/ /) && (
-    s.match(/^(https?:\/\/|www\.)/) ||
-    s.match(/(\.com|\.co\.uk)($|\/)/)
+    s.match(/^(https?:|www\.)/) ||
+    s.match(/\.(com|org|edu|gov|uk|net|ca|de|jr|fr|au|us|ru)($|\/)/)
   )
 )
 

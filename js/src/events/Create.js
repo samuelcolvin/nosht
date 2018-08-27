@@ -67,7 +67,7 @@ export const EVENT_FIELDS = [
     title: 'Long Description',
     type: 'md',
     required: true,
-    help_text: 'Detailed description of the event (you can update this later if you have more information).',
+    help_text: 'Detailed description of the event; you can update this later if you have more information.',
     max_length: 5000,
     placeholder: 'Full description of the event with everything your guests need to know...'
   },
