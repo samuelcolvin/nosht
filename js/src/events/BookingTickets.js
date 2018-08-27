@@ -240,7 +240,9 @@ const TicketForm = props => {
           ))}
         </div>
       </ModalBody>
-      <ModalFooter finished={props.finished} disabled={ticket_types.length > 1 && !props.state.ticket_type}/>
+      <ModalFooter finished={props.finished}
+                   cancel_disabled={state.submitting_reservation}
+                   disabled={state.submitting_reservation || (ticket_types.length > 1 && !props.state.ticket_type)}/>
     </BootstrapForm>
   )
 }

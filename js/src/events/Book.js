@@ -16,6 +16,7 @@ class BookForm extends React.Component {
       got_booking_info: false,
       booking_info: null,
       reservation: null,
+      submitting_reservation: false,
       ticket_type: null
     }
     this.finished = this.finished.bind(this)
@@ -53,6 +54,7 @@ class BookForm extends React.Component {
 
   async reserve (e) {
     e.preventDefault()
+    this.setState({submitting_reservation: true})
     const tickets = [...Array(this.state.ticket_count).keys()]
       .map(index => this.state[`ticket_${index}`] || {})
       .map(t => ({
@@ -92,14 +94,14 @@ class BookForm extends React.Component {
       return
     }
     if (r._response_status === 470) {
-      this.setState({reservation_error: r.message})
+      this.setState({reservation_error: r.message, submitting_reservation: false})
       if (r.tickets_remaining) {
         const booking_info = Object.assign({}, this.state.booking_info, {tickets_remaining: r.tickets_remaining})
         this.setState({booking_info})
       }
     } else {
       delete r._response_status
-      this.setState({reservation: r})
+      this.setState({reservation: r, submitting_reservation: false})
       ReactGA.event({category: 'ticket-booking', action: 'ticket-booking-reserve', value: tickets.length})
     }
   }

@@ -24,6 +24,7 @@ class BookingLogin extends React.Component {
       email: '',
       siw_error: null,
       email_error: null,
+      submitting: false,
     }
     this.auth = this.auth.bind(this)
   }
@@ -33,24 +34,28 @@ class BookingLogin extends React.Component {
   }
 
   async google_auth () {
-    this.setState({siw_error: null})
+    this.setState({siw_error: null, submitting: true})
     const auth_data = await google_login(this.props.ctx.setError)
     if (auth_data) {
       await this.auth('google', auth_data)
+    } else {
+      this.setState({submitting: false})
     }
   }
 
   async facebook_auth () {
-    this.setState({siw_error: null})
+    this.setState({siw_error: null, submitting: true})
     const auth_data = await facebook_login(this.props.ctx.setError)
     if (auth_data) {
       await this.auth('facebook', auth_data)
+    } else {
+      this.setState({submitting: false})
     }
   }
 
   async email_auth (e) {
     e.preventDefault()
-    this.setState({email_error: null})
+    this.setState({email_error: null, submitting: true})
     if (this.state.email) {
       const error_msg = await this.auth('email', {email: this.state.email}, [200, 470])
       error_msg && this.setState({email_error: error_msg})
@@ -67,6 +72,7 @@ class BookingLogin extends React.Component {
       return
     }
     if (data._response_status !== 200) {
+      this.setState({submitting: false})
       return data.message
     } else {
       this.props.ctx.setUser(data.user)
@@ -80,13 +86,13 @@ class BookingLogin extends React.Component {
         <p className="text-center">{this.props.event.booking_trust_message}</p>
         <Row>
           <Col lg={{size: 4, offset: 2}} md="6" className="text-center text-md-left my-1">
-              <Button onClick={this.google_auth.bind(this)} color="primary">
+              <Button disabled={this.state.submitting} onClick={this.google_auth.bind(this)} color="primary">
                 <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
                 Signup with Google
               </Button>
           </Col>
           <Col lg="4" md="6" className="text-center text-md-right my-1">
-              <Button onClick={this.facebook_auth.bind(this)} color="primary">
+              <Button disabled={this.state.submitting} onClick={this.facebook_auth.bind(this)} color="primary">
                 <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
                 Signup with Facebook
               </Button>
@@ -101,11 +107,13 @@ class BookingLogin extends React.Component {
               <InputGroup>
                 <Input type="email"
                        invalid={!!this.state.email_error}
-                       required value={this.state.email}
+                       value={this.state.email}
+                       required={true}
+                       disabled={this.state.submitting}
                        onChange={e => this.setState({email: e.target.value})}/>
 
                 <InputGroupAddon addonType="append">
-                  <Button color="primary">Signin with Email</Button>
+                  <Button color="primary" disabled={this.state.submitting}>Signin with Email</Button>
                 </InputGroupAddon>
                 {this.state.email_error && <FormFeedback>{this.state.email_error}</FormFeedback>}
               </InputGroup>
