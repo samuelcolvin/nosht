@@ -5,13 +5,18 @@ marked.setOptions({
   gfm: true,
   sanitize: true,
   smartLists: true,
+  breaks: true,
 })
 
-export const to_markdown = t => {
-  if (t === null || t === undefined) {
-    return ''
+export const to_markdown = (t) => {
+  if (typeof t === 'string') {
+    return (
+      marked(t)
+      .replace(/<table>/g, '<table class="table">')
+      .replace(/<a href="http/g, '<a target="_blank" rel="noopener noreferrer" href="http')
+    )
   } else {
-    return marked(t).replace(/<table>/, '<table class="table">')
+    return null
   }
 }
 

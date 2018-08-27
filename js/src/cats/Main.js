@@ -46,7 +46,7 @@ class Category extends React.Component {
       return <NotFound location={this.props.location}/>
     }
     let create_link = `/create/?cat=${cat.id}`
-    if (!this.props.ctx.user) {
+    if (!this.props.ctx.user || this.props.ctx.user.role === 'guest') {
       create_link = `/signup/?next=${encodeURIComponent(create_link)}`
     }
     return (

@@ -302,7 +302,6 @@ export class EventsDetails extends RenderDetails {
       } : null,
       cat_id: null,
       link: null,
-      ticket_limit: null,
       host: null,
       host_name: props.ctx.user && props.ctx.user.role === 'admin' ? {
         render: (v, item) => <Link to={`/dashboard/users/${item.host}/`}>{v}</Link>,

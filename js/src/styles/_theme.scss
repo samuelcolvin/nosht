@@ -389,10 +389,10 @@ $waiting-time: 1s;
   .btn-link {
     color: $gray-500;
     &:hover {
-      color: $gray-800;
+      color: $gray-600;
     }
     &:disabled {
-      color: $gray-400;
+      color: $gray-200;
     }
     &.highlight {
       color: black;
@@ -422,6 +422,12 @@ $waiting-time: 1s;
   h2 {
     margin-top: 0.6rem;
     margin-bottom: 0.1rem;
+  }
+  textarea {
+    width: 100%;
+    height: calc(100% - 10px);
+    border: none;
+    font-family: Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New,monospace;
   }
 }
 

@@ -1,23 +1,36 @@
 import React from 'react'
-import {Editor as DraftEditor, EditorState, RichUtils, convertToRaw, convertFromRaw} from 'draft-js'
-import {draftToMarkdown, markdownToDraft} from 'markdown-draft-js'
-import {Buttons, LinkModal, decorator, getEntitySelectionState, looks_like_link} from './utils'
+import {Editor as DraftEditor, EditorState, RichUtils} from 'draft-js'
+import {
+  Buttons,
+  LinkModal,
+  decorator,
+  from_markdown,
+  to_markdown,
+  getEntitySelectionState,
+  looks_like_link
+} from './utils'
 
 export default class Editor extends React.Component {
   constructor (props) {
     super(props)
 
     let editorState = EditorState.createEmpty(decorator)
-    if (this.props.value) {
-      const content = convertFromRaw(markdownToDraft(this.props.value))
-      editorState = EditorState.createWithContent(content, decorator)
+    let edit_raw = false
+    let raw_content = ''
+    if (window.sessionStorage.raw_md_editor === 'true') {
+      edit_raw = true
+      raw_content = this.props.value || ''
+    } else if (this.props.value) {
+      editorState = from_markdown(this.props.value)
     }
 
     this.state = {
-      editorState,
       linkModal: false,
       editUrl: '',
       selectionState: {},
+      editorState,
+      edit_raw,
+      raw_content,
     }
 
     this.onChange = this.onChange.bind(this)
@@ -57,11 +70,7 @@ export default class Editor extends React.Component {
       }
     }
     this.setState({editorState, selectionState})
-    if (this.props.onChange) {
-      const raw = convertToRaw(editorState.getCurrentContent())
-      const md = draftToMarkdown(raw)
-      this.props.onChange(md)
-    }
+    this.props.onChange && this.props.onChange(to_markdown(editorState))
   }
 
   promptLink () {
@@ -95,10 +104,8 @@ export default class Editor extends React.Component {
     const contentStateWithEntity = contentState.createEntity('LINK', 'MUTABLE', {url: url})
     const entityKey = contentStateWithEntity.getLastCreatedEntityKey()
     const newEditorState = EditorState.set(this.state.editorState, {currentContent: contentStateWithEntity})
-    this.setState({
-      editorState: RichUtils.toggleLink(newEditorState, newEditorState.getSelection(), entityKey),
-      linkModal: false, editUrl: '',
-    })
+    this.setState({linkModal: false, editUrl: ''})
+    this.onChange(RichUtils.toggleLink(newEditorState, newEditorState.getSelection(), entityKey))
   }
 
   removeLink () {
@@ -107,7 +114,7 @@ export default class Editor extends React.Component {
       selection = getEntitySelectionState(this.state.editorState.getCurrentContent(), selection)
     }
     if (selection) {
-      this.setState({editorState: RichUtils.toggleLink(this.state.editorState, selection, null)})
+      this.onChange(RichUtils.toggleLink(this.state.editorState, selection, null))
     }
   }
 
@@ -128,7 +135,7 @@ export default class Editor extends React.Component {
     this.onChange(RichUtils.toggleInlineStyle(this.state.editorState, icon.toUpperCase()))
   }
 
-  applyHeading (icon) {
+  applyHeading () {
     const selection = this.state.editorState.getSelection()
     const block_type = this.state.editorState.getCurrentContent().getBlockForKey(selection.getFocusKey()).getType()
     const lookup = {'unstyled': 'header-one', 'header-one': 'header-two', 'header-two': 'unstyled'}
@@ -138,6 +145,24 @@ export default class Editor extends React.Component {
   applyBlockStyle (icon) {
     const lookup = {'list-ul': 'unordered-list-item', 'quote-right': 'blockquote'}
     this.onChange(RichUtils.toggleBlockType(this.state.editorState, lookup[icon]))
+  }
+
+  setRaw () {
+    const edit_raw = !this.state.edit_raw
+    window.sessionStorage.raw_md_editor = edit_raw.toString()
+    const state_change = {edit_raw}
+    if (edit_raw) {
+      state_change.raw_content = to_markdown(this.state.editorState)
+    } else {
+      state_change.editorState = from_markdown(this.state.raw_content)
+    }
+    this.setState(state_change)
+  }
+
+  onRawChange (e) {
+    const md = e.target.value
+    this.setState({raw_content: md})
+    this.props.onChange && this.props.onChange(md)
   }
 
   render () {
@@ -151,6 +176,7 @@ export default class Editor extends React.Component {
       {icon: 'quote-right', onClick: this.applyBlockStyle, highlight: ss.blockquote},
       {icon: 'link', title: 'convert selection to link', onClick: this.promptLink},
       {icon: 'unlink', title: 'remove link', onClick: this.removeLink},
+      {icon: 'code', title: 'edit raw markdown', onClick: this.setRaw.bind(this), highlight: this.state.edit_raw},
     ]
     return (
       <div className={`editor py-2 ${this.props.invalid ? 'invalid' :''}`}>
@@ -162,26 +188,49 @@ export default class Editor extends React.Component {
           onChange={e => this.setState({editUrl: e.target.value})}
         />
         <div className="d-flex justify-content-end">
-          <Buttons buttons={buttons}/>
+          <Buttons buttons={buttons} edit_raw={this.state.edit_raw}/>
         </div>
         <div className="editor-wrapper p-2">
           <div onClick={() => this.refs.editor.focus()} className="editor-scroll">
-            <DraftEditor
-              editorState={this.state.editorState}
-              handleKeyCommand={this.handleKeyCommand.bind(this)}
-              onChange={this.onChange}
-              placeholder={this.props.placeholder || 'Enter text...'}
-              ref="editor"
-              spellCheck={true}
-            />
+            {
+              this.state.edit_raw ?
+                <textarea
+                    value={this.state.raw_content}
+                    ref="editor"
+                    onChange={this.onRawChange.bind(this)}
+                />
+                :
+                <DraftEditor
+                    handleKeyCommand={this.handleKeyCommand.bind(this)}
+                    editorState={this.state.editorState}
+                    onChange={this.onChange}
+                    placeholder={this.props.placeholder || 'Enter text...'}
+                    ref="editor"
+                    spellCheck={true}
+                />
+            }
           </div>
         </div>
         <div className="mx-1" style={{height: 22}}>
           {
-            ss.url && <small>
-              <span className="text-muted mr-1">links to:</span>
-              <a href={ss.url} target="_blank">{ss.url}</a>
-            </small>
+            ss.url && (
+              <small>
+                <span className="text-muted mr-1">links to:</span>
+                <a href={ss.url} target="_blank" rel="noopener noreferrer">{ss.url}</a>
+              </small>
+            )
+          }
+          {
+            this.state.edit_raw && (
+              <small>
+                You're editing markdown, see&nbsp;
+                <a href="https://guides.github.com/features/mastering-markdown/"
+                   target="_blank" rel="noopener noreferrer">
+                  here
+                </a>
+                &nbsp;for more details.
+              </small>
+            )
           }
         </div>
       </div>

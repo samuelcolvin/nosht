@@ -32,8 +32,9 @@ export const EVENT_FIELDS = [
     title: 'Public Event',
     type: 'bool',
     default: true,
-    help_text: 'Whether or not this event will be visible to anyone on the site and in public search results. ' +
-                'If not public people will need a link to view this event.',
+    help_text: 'Tick to make this event public so it will be visible to anyone on the site and ' +
+        'appear in public search results. If your event is not public you will need to share the event link ' +
+        'with people for them to view and book this event.',
   },
   {
     name: 'date',
@@ -58,17 +59,17 @@ export const EVENT_FIELDS = [
     name: 'price',
     type: 'number',
     step: 0.01, min: 1, max: 1000,
-    help_text: "Price of standard tickets for the event. Leave blank if tickets are free. You can add more " +
-                "ticket types onces you've created the event.",
+    help_text: "Price of standard tickets for your event. Leave blank if tickets are free. " +
+               "You can add more ticket types once you've created the event.",
   },
   {
     name: 'long_description',
     title: 'Long Description',
     type: 'md',
     required: true,
-    help_text: 'Detailed description of the event.',
+    help_text: 'Detailed description of the event; you can update this later if you have more information.',
     max_length: 5000,
-    placeholder: 'Full description of the event with everything your guests might like to know...'
+    placeholder: 'Full description of the event with everything your guests need to know...'
   },
 ]
 
@@ -91,16 +92,19 @@ class CreateEvent extends React.Component {
       return
     }
     this.setState({categories: data.categories})
+    const m = this.props.location.search.match(/cat=(\d+)/)
+    const cat_initial = m ? parseInt(m[1]) : null
+    if (cat_initial) {
+      this.setState({form_data: {category: cat_initial}})
+    }
   }
 
   fields () {
-    const c = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
-    const m = this.props.location.search.match(/cat=(\d+)/)
-    const cat_default = m ? parseInt(m[1]) : null
+    const choices = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
     return (
       EVENT_FIELDS
       .filter(f => f.name !== 'short_description')
-      .map(f => f.name === 'category' ? Object.assign({}, f, {choices: c, default: cat_default}) : f)
+      .map(f => f.name === 'category' ? Object.assign({}, f, {choices}) : f)
     )
   }
 
@@ -108,30 +112,33 @@ class CreateEvent extends React.Component {
     this.props.history.push(r ? `/dashboard/events/${r.pk}/` : '/dashboard/events/')
   }
 
-  modify_form_data (d, field_name) {
-    if (field_name === 'category' && d.price === undefined) {
-      const suggested_price = this.state.categories.find(c => c.id.toString() === d.category).suggested_price
-      if (suggested_price) {
-        d.price = suggested_price
+  onChange (form_data) {
+    if (form_data.category !== this.state.form_data.category && form_data.price === undefined) {
+      const selected_cat = this.state.categories.find(c => c.id.toString() === form_data.category)
+      if (selected_cat) {
+        form_data.price = selected_cat && selected_cat.suggested_price
       }
     }
+    this.setState({form_data})
   }
 
   render () {
     const cat_id = this.state.form_data && this.state.form_data.category && parseInt(this.state.form_data.category)
-    const cat = cat_id && this.state.categories.find(c => c.id === cat_id)
+    const cat = cat_id && this.state.categories && this.state.categories.find(c => c.id === cat_id)
     return (
       <Row>
         <Col md={8}>
           <h1>Create Event</h1>
-          <Form fields={this.fields()}
-                action="/events/add/"
-                onChange={d => this.setState({form_data: d})}
-                modify_data={this.modify_form_data.bind(this)}
-                finished={this.finished.bind(this)}/>
+          <Form
+              fields={this.fields()}
+              action="/events/add/"
+              form_data={this.state.form_data}
+              onChange={this.onChange.bind(this)}
+              finished={this.finished.bind(this)}
+          />
         </Col>
         <Col md={4}>
-          {cat && <Markdown content={cat.host_advice}/>}
+          {cat && <Markdown className="sticky-top top-70" content={cat.host_advice}/>}
         </Col>
       </Row>
     )

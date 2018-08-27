@@ -5,8 +5,9 @@ import {
   FormGroup, Input
 } from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {CompositeDecorator, SelectionState} from 'draft-js'
+import {CompositeDecorator, convertFromRaw, convertToRaw, EditorState, SelectionState} from 'draft-js'
 import getRangesForDraftEntity from 'draft-js/lib/getRangesForDraftEntity'
+import {mdToDraftjs, draftjsToMd} from 'draftjs-md-converter'
 
 const find_link = (contentBlock, callback, contentState) => {
   contentBlock.findEntityRanges(
@@ -48,8 +49,8 @@ export const decorator = new CompositeDecorator([
   },
 ])
 
-export const Buttons = ({buttons}) => (
-  buttons.map(b => (
+export const Buttons = ({buttons, edit_raw}) => (
+  buttons.filter(b => b.icon === 'code' || !edit_raw).map(b => (
     <Button key={b.icon}
             color="link"
             title={b.disabled ? 'disabled' : b.title}
@@ -68,7 +69,7 @@ export const Buttons = ({buttons}) => (
 export const LinkModal = ({close, isOpen, url, update, onChange}) => {
   return (
     <Modal isOpen={isOpen} toggle={close}>
-      <ModalHeader toggle={close}>Edit Link</ModalHeader>
+      <ModalHeader toggle={close}>Insert Link</ModalHeader>
       <ModalBody>
         <FormGroup>
           <Input placeholder="www.example.com..." value={url} onChange={onChange}/>
@@ -84,7 +85,19 @@ export const LinkModal = ({close, isOpen, url, update, onChange}) => {
 
 export const looks_like_link = s => (
   !s.match(/ /) && (
-    s.match(/^(https?:\/\/|www\.)/) ||
-    s.match(/(\.com|\.co\.uk)($|\/)/)
+    s.match(/^(https?:|www\.)/) ||
+    s.match(/\.(com|org|edu|gov|uk|net|ca|de|jr|fr|au|us|ru)($|\/)/)
   )
+)
+
+export const from_markdown = md => (
+  EditorState.createWithContent(convertFromRaw(mdToDraftjs(md)), decorator)
+)
+
+const md_styles = {
+  BOLD: '**',
+}
+
+export const to_markdown = state => (
+  draftjsToMd(convertToRaw(state.getCurrentContent()), md_styles)
 )
