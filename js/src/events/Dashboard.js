@@ -20,7 +20,7 @@ import {EVENT_FIELDS} from './Create'
 export class EventsList extends RenderList {
   constructor (props) {
     super(props)
-    this.formats = {
+    this.state.formats = {
       start_ts: {
         title: 'Date',
         render: (v, item) => format_event_start(v, item.duration),
@@ -30,7 +30,7 @@ export class EventsList extends RenderList {
       },
       status: {render: as_title},
     }
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Create Event', link: '/create/'},
     ]
   }
@@ -81,14 +81,16 @@ const Progress = WithContext(({event, tickets, ticket_types, ctx}) => {
   )
 })
 
-const TicketTypeTable = WithContext(({ticket_types, uri, ctx}) => (
+const TicketTypeTable = WithContext(({ticket_types, uri, can_edit}) => (
   <div className="mb-5">
     <h4>
       Ticket Types
-      <Button tag={Link} to={uri + 'ticket-types/'} size="sm" className="ml-2">
-        <FontAwesomeIcon icon="pencil-alt" className="mr-1"/>
-        Edit
-      </Button>
+      {can_edit && (
+        <Button tag={Link} to={uri + 'ticket-types/'} size="sm" className="ml-2">
+          <FontAwesomeIcon icon="pencil-alt" className="mr-1"/>
+          Edit
+        </Button>
+      )}
     </h4>
     <Table striped>
       <thead>
@@ -262,73 +264,18 @@ export class EventsDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = `/dashboard/events/${this.id}/`
-    this.formats = {
-      start_ts: {
-        title: 'Date',
-        render: (v, item) => format_event_start(v, item.duration),
-      },
-      duration: {
-        render: format_event_duration
-      },
-      status: {
-        index: 1,
-        render: v => (
-          <span>
-            {as_title(v)}
-            {this.props.ctx.user.status === 'active' &&
-              <Button tag={Link} to={this.uri + 'set-status/'} size="sm" className="ml-2">Change Status</Button>
-            }
-          </span>
-        )
-      },
-      highlight: props.ctx.user && props.ctx.user.role === 'admin' ? {
-        render: v => {
-          return (
-            <span>
-              {render(v)}
-              <ButtonConfirm action={`/events/${this.id}/switch-highlight/`}
-                             modal_title="Switch Status"
-                             btn_text={v ? 'Mark as not highlighted' : 'Mark as highlight'}
-                             done={this.update}
-                             btn_size="sm"
-                             className="ml-2">
-                {v ?
-                  'Are you sure you want to remove this event from Highlights?'
-                  :
-                  'Are you sure you want to mark this event as a Highlights?'}
-              </ButtonConfirm>
-            </span>
-          )
-        }
-      } : null,
-      cat_id: null,
-      link: null,
-      host: null,
-      host_name: props.ctx.user && props.ctx.user.role === 'admin' ? {
-        render: (v, item) => <Link to={`/dashboard/users/${item.host}/`}>{v}</Link>,
-        title: 'Host',
-      } : null,
-      short_description: {index: 2},
-      long_description: {
-        index: 3,
-        wide: true,
-        render: v => <MarkdownPreview v={v}/>,
-      },
-      image: {
-        index: 4,
-        wide: true,
-        edit_link: this.uri + 'set-image/',
-        render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>,
-      },
-      location_lng: null,
-      location_name: null,
-      location_lat: {
-        render: (v, item) => <MiniMap lat={v} lng={item.location_lng} name={item.location_name}/>,
-        title: 'Location',
-        wide: true,
-        index: 5,
-      },
+    this.can_edit_event = this.can_edit_event.bind(this)
+  }
+
+  can_edit_event () {
+    const user = this.props.ctx.user
+    if (user && user.role === 'host') {
+      const event_start = this.state.item && new Date(this.state.item.start_ts)
+      if (event_start && event_start > (new Date())) {
+        return true
+      }
     }
+    return user && user.role === 'admin'
   }
 
   async got_data (data) {
@@ -344,16 +291,85 @@ export class EventsDetails extends RenderDetails {
       this.props.ctx.setError(error)
       return
     }
+    const user = this.props.ctx.user
+    const can_edit = this.can_edit_event()
     this.setState(
       {
         tickets: r[0].tickets,
         ticket_types: r[1].ticket_types,
         event_updates: r[2].event_updates,
         buttons: [
-          {name: 'Edit', link: this.uri + 'edit/'},
-          data.status === 'published' && {name: 'Send Update', link: this.uri + 'send-update/'},
+          can_edit && {name: 'Edit', link: this.uri + 'edit/'},
+          can_edit && data.status === 'published' && {name: 'Send Update', link: this.uri + 'send-update/'},
           {name: 'View Guest Page', link: data.link, disabled: data.status !== 'published'},
-        ]
+        ],
+        formats: {
+          start_ts: {
+            title: 'Date',
+            render: (v, item) => format_event_start(v, item.duration),
+          },
+          duration: {
+            render: format_event_duration
+          },
+          status: {
+            index: 1,
+            render: v => (
+              <span>
+                {as_title(v)}
+                {user.status === 'active' && can_edit &&
+                  <Button tag={Link} to={this.uri + 'set-status/'} size="sm" className="ml-2">Change Status</Button>
+                }
+              </span>
+            )
+          },
+          highlight: user && user.role === 'admin' ? {
+            render: v => {
+              return (
+                <span>
+                  {render(v)}
+                  <ButtonConfirm action={`/events/${this.id}/switch-highlight/`}
+                                 modal_title="Switch Status"
+                                 btn_text={v ? 'Mark as not highlighted' : 'Mark as highlight'}
+                                 done={this.update}
+                                 btn_size="sm"
+                                 className="ml-2">
+                    {v ?
+                      'Are you sure you want to remove this event from Highlights?'
+                      :
+                      'Are you sure you want to mark this event as a Highlights?'}
+                  </ButtonConfirm>
+                </span>
+              )
+            }
+          } : null,
+          cat_id: null,
+          link: null,
+          host: null,
+          host_name: user && user.role === 'admin' ? {
+            render: (v, item) => <Link to={`/dashboard/users/${item.host}/`}>{v}</Link>,
+            title: 'Host',
+          } : null,
+          short_description: {index: 2},
+          long_description: {
+            index: 3,
+            wide: true,
+            render: v => <MarkdownPreview v={v}/>,
+          },
+          image: {
+            index: 4,
+            wide: true,
+            edit_link: can_edit && this.uri + 'set-image/',
+            render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>,
+          },
+          location_lng: null,
+          location_name: null,
+          location_lat: {
+            render: (v, item) => <MiniMap lat={v} lng={item.location_lng} name={item.location_name}/>,
+            title: 'Location',
+            wide: true,
+            index: 5,
+          },
+        }
       }
     )
     this.props.ctx.setRootState({
@@ -420,7 +436,8 @@ export class EventsDetails extends RenderDetails {
     return [
       <Progress key="progress" event={event} ticket_types={this.state.ticket_types} tickets={this.state.tickets}/>,
       this.state.ticket_types ?
-        <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}/>
+        <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
+                         can_edit={this.can_edit_event()}/>
         : null,
       <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id}/>,
       <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,

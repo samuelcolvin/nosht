@@ -211,6 +211,8 @@ class EventBread(Bread):
         session = self.request['session']
         if session['role'] != 'admin':
             logic &= V('e.host') == session['user_id']
+            if self.method == Method.edit:
+                logic &= V('e.start_ts') > Func('now')
         return Where(logic)
 
     def prepare(self, data):
@@ -293,19 +295,23 @@ class EventBread(Bread):
                                 event_id=pk, subtype='edit-event')
 
 
-async def _check_event_host(request):
+async def _check_event_permissions(request, check_upcoming=False):
     event_id = int(request.match_info['id'])
-    host_id = await request['conn'].fetchval(
+    r = await request['conn'].fetchrow(
         """
-        SELECT host
+        SELECT host, start_ts
         FROM events AS e
         JOIN categories AS cat ON e.category = cat.id
         WHERE e.id=$1 AND cat.company=$2
         """, event_id, request['company_id'])
-    if not host_id:
+    if not r:
         raise JsonErrors.HTTPNotFound(message='event not found')
-    if request['session']['role'] != 'admin' and host_id != request['session']['user_id']:
-        raise JsonErrors.HTTPForbidden(message='user is not the host of this event')
+    host_id, start_ts = r
+    if request['session']['role'] != 'admin':
+        if host_id != request['session']['user_id']:
+            raise JsonErrors.HTTPForbidden(message='user is not the host of this event')
+        if check_upcoming and start_ts < datetime.utcnow():
+            raise JsonErrors.HTTPForbidden(message="you can't modify past events")
     return event_id
 
 
@@ -329,7 +335,7 @@ ORDER BY a.ts
 
 @is_admin_or_host
 async def event_tickets(request):
-    event_id = await _check_event_host(request)
+    event_id = await _check_event_permissions(request)
     not_admin = request['session']['role'] != 'admin'
     tickets = []
     settings = request.app['settings']
@@ -347,7 +353,7 @@ async def event_tickets(request):
 
 @is_admin_or_host
 async def event_tickets_export(request):
-    event_id = await _check_event_host(request)
+    event_id = await _check_event_permissions(request)
     not_admin = request['session']['role'] != 'admin'
     event_slug = await request['conn'].fetchval('SELECT slug FROM events WHERE id=$1', event_id)
     settings = request.app['settings']
@@ -404,14 +410,14 @@ FROM (
 
 @is_admin_or_host
 async def event_ticket_types(request):
-    event_id = await _check_event_host(request)
+    event_id = await _check_event_permissions(request)
     json_str = await request['conn'].fetchval(event_ticket_types_sql, event_id)
     return raw_json_response(json_str)
 
 
 @is_admin_or_host
 async def event_updates_sent(request):
-    event_id = await _check_event_host(request)
+    event_id = await _check_event_permissions(request)
     json_str = await request['conn'].fetchval(event_updates_sent_sql, event_id)
     return raw_json_response(json_str)
 
@@ -437,7 +443,7 @@ class SetTicketTypes(UpdateView):
         await check_session(self.request, 'admin', 'host')
 
     async def execute(self, m: Model):
-        event_id = await _check_event_host(self.request)
+        event_id = await _check_event_permissions(self.request, check_upcoming=True)
         existing = [tt for tt in m.ticket_types if tt.id]
         deleted_with_tickets = await self.conn.fetchval(
             """
@@ -491,21 +497,11 @@ WHERE co.id=$1 AND e.id=$2
 
 
 async def _delete_existing_image(request):
-    event_id = int(request.match_info['id'])
-
-    try:
-        host_id, image = await request['conn'].fetchrow(get_image_sql, request['company_id'], event_id)
-    except TypeError:
-        raise JsonErrors.HTTPNotFound(message='event not found')
-
-    if request['session']['role'] != 'admin' and host_id != request['session']['user_id']:
-        raise JsonErrors.HTTPForbidden(message='you may not edit this event')
-
+    event_id = await _check_event_permissions(request, check_upcoming=True)
+    image = await request['conn'].fetchval('SELECT image from events WHERE id=$1', event_id)
     # delete the image from S3 if it's set and isn't a category image option
     if image and '/option/' not in image:
         await delete_image(image, request.app['settings'])
-    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
-                        event_id=event_id, subtype='delete-image')
 
 
 slugs_sql = """
@@ -562,7 +558,7 @@ class SetEventStatus(UpdateView):
 
     async def check_permissions(self):
         await check_session(self.request, 'admin', 'host')
-        await _check_event_host(self.request)
+        await _check_event_permissions(self.request, check_upcoming=True)
         user_status = await self.conn.fetchrow('SELECT status FROM users WHERE id=$1', self.session['user_id'])
         if self.session['role'] != 'admin' and user_status != 'active':
             raise JsonErrors.HTTPForbidden(message='Host not active')
@@ -588,7 +584,7 @@ class EventUpdate(UpdateView):
 
     async def execute(self, m: Model):
         await check_grecaptcha(m, self.request)
-        event_id = await _check_event_host(self.request)
+        event_id = await _check_event_permissions(self.request, check_upcoming=True)
         action_id = await record_action_id(self.request, self.session['user_id'], ActionTypes.event_update,
                                            event_id=event_id, **m.dict(include={'subject', 'message'}))
         await self.app['email_actor'].send_event_update(action_id)
@@ -596,7 +592,7 @@ class EventUpdate(UpdateView):
 
 @is_admin
 async def switch_highlight(request):
-    event_id = await _check_event_host(request)
+    event_id = await _check_event_permissions(request)
     await request['conn'].execute('UPDATE events SET highlight=NOT highlight WHERE id=$1', event_id)
     await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
                         event_id=event_id, subtype='switch-highlight')

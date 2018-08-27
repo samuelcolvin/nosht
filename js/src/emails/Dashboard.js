@@ -30,7 +30,7 @@ const FIELDS = [
 export class EmailDefList extends RenderList {
   constructor (props) {
     super(props)
-    this.formats = {
+    this.state.formats = {
       trigger: {render: as_title},
     }
   }
@@ -44,7 +44,7 @@ export class EmailDefDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = `/dashboard/email-defs/${this.id}/`
-    this.formats = {
+    this.state.formats = {
       trigger: {render: as_title},
       body: {
         wide: true,

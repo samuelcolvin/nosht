@@ -195,8 +195,7 @@ async def request_image(request, *, expected_size=None):
 
 _simplify = [
     (re.compile(r'\<.*?\>', flags=re.S), ''),
-    (re.compile(r'_{1,2}(\S.*?\S)_{1,2}'), r'\1'),
-    (re.compile(r' \*{1,2}(\w.*?\w)\*{1,2} '), r' \1 '),
+    (re.compile(r'(^| )([_\*]{1,2})(\w.*?\w)\2($| )'), r'\1\3\4'),
     (re.compile(r'\[(.+?)\]\(:?.*?\)'), r'\1'),
     (re.compile(r'^#+ ', flags=re.M), ''),
     (re.compile(r'^ *[*\-] ', flags=re.M), ''),

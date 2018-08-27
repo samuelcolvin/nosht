@@ -45,10 +45,10 @@ export class UsersList extends RenderList {
   constructor (props) {
     super(props)
     this.uri = '/dashboard/users/'
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Create User', link: this.uri + 'add/'},
     ]
-    this.formats = {
+    this.state.formats = {
       active_ts: {
         title: 'Last Active',
         render: v => format_date(v, true),
@@ -123,10 +123,10 @@ class Actions extends React.Component {
 export class UsersDetails extends RenderDetails {
   constructor (props) {
     super(props)
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Edit', link: this.uri + 'edit/'},
     ]
-    this.formats = {
+    this.state.formats = {
       email: {index: -1},
       role_type: {render: as_title},
       status: {
