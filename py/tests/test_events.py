@@ -637,15 +637,28 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
 async def test_image_existing(cli, url, factory: Factory, db_conn, login, dummy_server):
     await factory.create_company()
     await factory.create_cat()
-    await factory.create_user()
+    await factory.create_user(role='host')
     await factory.create_event()
     await login()
+    assert len(dummy_server.app['log']) == 1
     r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
                             data={'image': 'https://testingbucket.example.org/testing.png'})
     assert r.status == 200, await r.text()
     assert 'https://testingbucket.example.org/testing.png' == await db_conn.fetchval('SELECT image FROM events')
 
     assert len(dummy_server.app['log']) == 1
+
+
+async def test_image_existing_past(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event(start_ts=datetime(2000, 1, 1))
+    await login()
+    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
+                            data={'image': 'https://testingbucket.example.org/testing.png'})
+    assert r.status == 403, await r.text()
+    assert {'message': "you can't modify past events"} == await r.json()
 
 
 async def test_image_existing_bad(cli, url, factory: Factory, db_conn, login, dummy_server):
@@ -925,6 +938,38 @@ async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_serve
             'ts': CloseToNow(),
         }
     ]}
+
+
+async def test_event_updates_past(cli, url, login, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event()
+    await login()
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.book_free(await factory.create_reservation(anne, None), anne)
+
+    data = dict(
+        grecaptcha_token='__ok__',
+        subject='This is a test email & whatever',
+        message='this is the **message**.'
+    )
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    assert len(dummy_server.app['emails']) == 1
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    assert len(dummy_server.app['emails']) == 2
+
+    await db_conn.execute("UPDATE events SET start_ts=now() - '1 hour'::interval")
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 403, await r.text()
+    assert {'message': "you can't modify past events"} == await r.json()
+    assert len(dummy_server.app['emails']) == 2
 
 
 async def test_send_event_update_wrong_user(cli, url, login, factory: Factory):

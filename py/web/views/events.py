@@ -498,15 +498,13 @@ async def _delete_existing_image(request):
     event_id = await _check_event_permissions(request, check_upcoming=True)
 
     try:
-        image = await request['conn'].fetchrow('SELECT image from events WHERE id=$1', event_id)
+        image = await request['conn'].fetchval('SELECT image from events WHERE id=$1', event_id)
     except TypeError:
         raise JsonErrors.HTTPNotFound(message='event not found')
 
     # delete the image from S3 if it's set and isn't a category image option
     if image and '/option/' not in image:
         await delete_image(image, request.app['settings'])
-    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
-                        event_id=event_id, subtype='delete-image')
 
 
 slugs_sql = """
