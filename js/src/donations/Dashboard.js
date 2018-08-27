@@ -28,10 +28,10 @@ export class DonationOptionsList extends RenderList {
   constructor (props) {
     super(props)
     this.uri = '/dashboard/donation-options/'
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Add Donation Option', link: this.uri + 'add/'},
     ]
-    this.formats = {
+    this.state.formats = {
       amount: {render: v => <Money>{v}</Money>},
       category_name: {title: 'Category'},
     }
@@ -128,7 +128,7 @@ export class DonationOptionDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = `/dashboard/donation-options/${this.id}/`
-    this.formats = {
+    this.state.formats = {
       amount: {render: v => <Money>{v}</Money>},
       category_name: {title: 'Category'},
       long_description: {wide: true, render: v => <MarkdownPreview v={v}/>},
@@ -139,7 +139,7 @@ export class DonationOptionDetails extends RenderDetails {
       },
       category: null,
     }
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Edit', link: this.uri + 'edit/'},
       {
         name: 'Delete Donation Option',

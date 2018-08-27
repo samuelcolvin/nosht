@@ -33,11 +33,11 @@ export default class CompanyDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = '/dashboard/company/'
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Edit', link: this.uri + 'edit/'},
     ]
     this.id = this.props.ctx.company.company.id
-    this.formats = {
+    this.state.formats = {
       image: {
         wide: true,
         edit_link: this.uri + 'set-image/',

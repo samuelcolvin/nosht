@@ -74,7 +74,7 @@ export class CategoriesList extends RenderList {
   constructor (props) {
     super(props)
     this.uri = '/dashboard/categories/'
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Add Category', link: this.uri + 'add/'},
     ]
   }
@@ -122,7 +122,7 @@ export class CategoriesDetails extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = `/dashboard/categories/${this.id}/`
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Edit', link: this.uri + 'edit/'},
       {name: 'Add Images', link: this.uri + 'add-image/'},
       {
@@ -133,7 +133,7 @@ export class CategoriesDetails extends RenderDetails {
         redirect_to: '/dashboard/categories/',
       }
     ]
-    this.formats = {
+    this.state.formats = {
       suggested_images: null,
       suggested_price: {
         render: v => v ? <Money>{v}</Money> : <Dash/>

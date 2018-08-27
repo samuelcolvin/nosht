@@ -73,7 +73,6 @@ export class RenderItem extends React.Component {
     this.update = this.update.bind(this)
     this.got_data = this.got_data.bind(this)
     this.get_uri = this.get_uri.bind(this)
-    this.formats = {}
   }
 
   get_uri () {
@@ -111,7 +110,7 @@ export class RenderItem extends React.Component {
   }
 
   render_key (key) {
-    const fmt = this.formats[key]
+    const fmt = this.state.formats[key]
     if (fmt && fmt.title) {
       return fmt.title
     }
@@ -121,7 +120,7 @@ export class RenderItem extends React.Component {
   extra () {}
 
   render_value (item, key) {
-    const fmt = this.formats[key]
+    const fmt = this.state.formats[key]
     const v = item[key]
     if (fmt && fmt.render) {
       return fmt.render(v, item)
@@ -140,6 +139,7 @@ export class RenderList extends RenderItem {
       count: null,
       pages: null,
       buttons: null,
+      formats: {},
     }
     this.get_page = this.get_page.bind(this)
   }
@@ -222,6 +222,7 @@ export class RenderDetails extends RenderItem {
   constructor (props) {
     super(props)
     this.state = {
+      formats: {},
       item: null,
       buttons: []
     }
@@ -248,9 +249,9 @@ export class RenderDetails extends RenderItem {
     }
     const keys = (
       Object.keys(this.state.item)
-      .filter(k => !['id', '_response_status', 'name'].includes(k) && this.formats[k] !== null)
-      .sort((a, b) => ((this.formats[a] || {}).wide || 0) - ((this.formats[b] || {}).wide || 0))
-      .sort((a, b) => ((this.formats[a] || {}).index || 0) - ((this.formats[b] || {}).index || 0))
+      .filter(k => !['id', '_response_status', 'name'].includes(k) && this.state.formats[k] !== null)
+      .sort((a, b) => ((this.state.formats[a] || {}).wide || 0) - ((this.state.formats[b] || {}).wide || 0))
+      .sort((a, b) => ((this.state.formats[a] || {}).index || 0) - ((this.state.formats[b] || {}).index || 0))
     )
     const pre = this.pre()
     return [
@@ -261,8 +262,8 @@ export class RenderDetails extends RenderItem {
         {keys.map(key => (
           <Detail key={key}
                   name={this.render_key(key)}
-                  wide={Boolean((this.formats[key] || {}).wide)}
-                  edit_link={(this.formats[key] || {}).edit_link}>
+                  wide={Boolean((this.state.formats[key] || {}).wide)}
+                  edit_link={(this.state.formats[key] || {}).edit_link}>
             {this.render_value(this.state.item, key)}
           </Detail>
         ))}

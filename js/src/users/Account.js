@@ -28,11 +28,11 @@ export default class Account extends RenderDetails {
   constructor (props) {
     super(props)
     this.uri = '/dashboard/account/'
-    this.state['buttons'] = [
+    this.state.buttons = [
       {name: 'Edit', link: this.uri + 'edit/'},
     ]
     this.id = this.props.ctx.user.id
-    this.formats = {
+    this.state.formats = {
       role_type: {render: as_title},
       status: {render: as_title},
       created_ts: {
