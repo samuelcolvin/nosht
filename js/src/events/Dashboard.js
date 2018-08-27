@@ -261,6 +261,7 @@ class EventUpdates extends React.Component {
 export class EventsDetails extends RenderDetails {
   constructor (props) {
     super(props)
+    this.uri = `/dashboard/events/${this.id}/`
     this.formats = {
       start_ts: {
         title: 'Date',
@@ -322,13 +323,12 @@ export class EventsDetails extends RenderDetails {
       location_lng: null,
       location_name: null,
       location_lat: {
-        render: (v, item) => <MiniMap lat={v} lng={item.location_lng}m name={item.location_name}/>,
+        render: (v, item) => <MiniMap lat={v} lng={item.location_lng} name={item.location_name}/>,
         title: 'Location',
         wide: true,
         index: 5,
       },
     }
-    this.uri = `/dashboard/events/${this.id}/`
   }
 
   async got_data (data) {
@@ -369,32 +369,44 @@ export class EventsDetails extends RenderDetails {
     }
     const start = new Date(event.start_ts)
     const now = new Date()
-    if (event.status === 'published' && start > now) {
-      return (
-        <Alert color="primary">
-          Event upcoming, share the following link for guests to book tickets:
-          <code className="d-block text-dark font-weight-bold mt-1">
-            {window.location.origin}{event.link}
-          </code>
+    const response = []
+    if (!event.image) {
+      response.push(
+        <Alert key="image" color="warning">
+          To really make your event stand out you should <Link to={this.uri + 'set-image/'}>add an image</Link>.
         </Alert>
       )
     }
-    const u = this.props.ctx.user
-    if (event.status === 'pending' && start > now) {
-      if (u.role === 'host' && u.status !== 'active') {
-        return (
-          <Alert color="danger">
-            Event pending until you confirm your email address.
-          </Alert>
-        )
-      } else {
-        return (
-          <Alert color="primary">
-            Event not yet published.
-          </Alert>
-        )
+    if (event.status === 'published' && start > now) {
+      response.push(
+        <div key="link" className="mb-4">
+          <div className="mb-2">Event upcoming, share the following link for guests to book tickets:</div>
+          <div className="text-center">
+            <Alert color="primary" className="d-inline-block font-weight-bold font-monospace">
+              {window.location.origin}{event.link}
+            </Alert>
+          </div>
+        </div>
+      )
+    } else {
+      const u = this.props.ctx.user
+      if (event.status === 'pending' && start > now) {
+        if (u.role === 'host' && u.status !== 'active') {
+          response.push(
+            <Alert key="pending" color="danger">
+              Event pending until you confirm your email address.
+            </Alert>
+          )
+        } else {
+          response.push(
+            <Alert key="published" color="primary">
+              Event not yet published.
+            </Alert>
+          )
+        }
       }
     }
+    return response
   }
 
   extra () {
