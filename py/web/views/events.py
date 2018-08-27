@@ -211,6 +211,8 @@ class EventBread(Bread):
         session = self.request['session']
         if session['role'] != 'admin':
             logic &= V('e.host') == session['user_id']
+            if self.method == Method.edit:
+                logic &= V('e.start_ts') > Func('now')
         return Where(logic)
 
     def prepare(self, data):
@@ -496,12 +498,7 @@ WHERE co.id=$1 AND e.id=$2
 
 async def _delete_existing_image(request):
     event_id = await _check_event_permissions(request, check_upcoming=True)
-
-    try:
-        image = await request['conn'].fetchval('SELECT image from events WHERE id=$1', event_id)
-    except TypeError:
-        raise JsonErrors.HTTPNotFound(message='event not found')
-
+    image = await request['conn'].fetchval('SELECT image from events WHERE id=$1', event_id)
     # delete the image from S3 if it's set and isn't a category image option
     if image and '/option/' not in image:
         await delete_image(image, request.app['settings'])

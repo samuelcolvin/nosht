@@ -418,7 +418,7 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
     await factory.create_event()
     await login()
 
-    event_id, ticket_limit, location_lat = await db_conn.fetchrow('SELECT id, ticket_limit, location_lat FROM events')
+    ticket_limit, location_lat = await db_conn.fetchrow('SELECT ticket_limit, location_lat FROM events')
     assert ticket_limit is None
     assert location_lat is None
     data = dict(
@@ -429,7 +429,7 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
             'lng': 1,
         }
     )
-    r = await cli.json_post(url('event-edit', pk=event_id), data=data)
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=data)
     assert r.status == 200, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     ticket_limit, location_lat = await db_conn.fetchrow('SELECT ticket_limit, location_lat FROM events')
@@ -456,6 +456,25 @@ async def test_edit_event_ticket_limit(cli, url, factory: Factory, login):
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data['details'][0]['msg'] == 'May not be less than the number of tickets already booked.'
+
+
+async def test_edit_past_event(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event()
+    await login()
+
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(ticket_limit=12))
+    assert r.status == 200, await r.text()
+    assert 12 == await db_conn.fetchval('SELECT ticket_limit FROM events')
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='edit-event'")
+
+    await db_conn.execute("UPDATE events SET start_ts=now() - '1 hour'::interval")
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(ticket_limit=100))
+    assert r.status == 404, await r.text()
+    assert 12 == await db_conn.fetchval('SELECT ticket_limit FROM events')
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='edit-event'")
 
 
 async def test_set_event_status(cli, url, db_conn, factory: Factory, login):
