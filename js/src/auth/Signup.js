@@ -93,8 +93,15 @@ class Signup extends React.Component {
       this.setState({error: data.status})
     } else {
       this.props.ctx.setUser(data.user)
+      let message
+      if (site === 'email') {
+        message = `Thanks for signing up as ${user_full_name(data.user)} - you'll receive an email asking you to ` +
+                  `confirm your email address and set your password.`
+      } else {
+        message = `Signed up successfully as ${user_full_name(data.user)}`
+      }
+      this.props.ctx.setMessage({icon: 'user', message})
       this.props.history.replace(next || '/dashboard/events/')
-      this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
     }
   }
 
