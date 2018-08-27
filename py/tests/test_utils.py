@@ -4,7 +4,7 @@ import pytest
 from aiohttp.test_utils import make_mocked_request
 
 from shared.utils import RequestError, format_duration
-from web.utils import get_ip, pretty_lenient_json, split_name
+from web.utils import clean_markdown, get_ip, pretty_lenient_json, split_name
 
 
 def test_pretty_json():
@@ -59,3 +59,22 @@ def test_split_name(input, first_name, last_name):
 def test_get_ip():
     req = make_mocked_request('GET', '/', headers={'X-Forwarded-For': ' 1.2.3.4, 5.6.7.8'})
     assert get_ip(req) == '1.2.3.4'
+
+
+@pytest.mark.parametrize('input,output', [
+    ('something <a href="/asdf/">with a link</a>', 'something with a link'),
+    ('with __bold__ here', 'with bold here'),
+    ('with _italics_ here', 'with italics here'),
+    ('with **bold** here', 'with bold here'),
+    ('with *italics* here', 'with italics here'),
+    ('with * in a line', 'with * in a line'),
+    ('including [a link](/foobar/)', 'including a link'),
+    ('including a\n# title', 'including a title'),
+    ('including a\n* bullet 1', 'including a bullet 1'),
+    ('including a\n- bullet 2', 'including a bullet 2'),
+    ('including an\n  * indented bullet', 'including an indented bullet'),
+    ('including a\n42. numbered list', 'including a 42. numbered list'),
+    ('including some `code`', 'including some code'),
+])
+def test_clean_markdown(input, output):
+    assert clean_markdown(input) == output
