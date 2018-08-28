@@ -24,7 +24,7 @@ yarn-debug.log*
 yarn-error.log*
 js/README.md
 js/src/styles/bootstrap-scss
-activate.dev.sh
+activate.*.sh
 /deploy-settings-*/
 /setup.cfg
 /TODO.md
