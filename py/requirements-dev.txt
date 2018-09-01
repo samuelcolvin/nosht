@@ -1,4 +1,4 @@
-aiohttp-devtools
+aiohttp-devtools==0.10.1
 devtools
 docker-compose
 pgcli
