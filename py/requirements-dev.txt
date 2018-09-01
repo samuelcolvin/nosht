@@ -3,4 +3,4 @@ devtools==0.3
 docker-compose==1.22.0
 pgcli==1.10.3
 ipython==6.5.0
-httpie
+httpie==0.9.9
