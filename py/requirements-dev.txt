@@ -1,5 +1,5 @@
 aiohttp-devtools==0.10.1
-devtools
+devtools==0.3
 docker-compose
 pgcli
 ipython
