@@ -1,6 +1,6 @@
-aiohttp-devtools==0.10.1
-devtools==0.3
-docker-compose==1.22.0
-pgcli==1.10.3
-ipython==6.5.0
-httpie==0.9.9
+aiohttp-devtools
+devtools
+docker-compose
+pgcli
+ipython
+httpie
