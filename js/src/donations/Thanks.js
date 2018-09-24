@@ -12,7 +12,7 @@ import DonateModal from './ModalForm'
 class Thanks extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {donation_options: null}
+    this.state = {donation_options: null, post_booking_message: null}
     this.props.register(this.get_data.bind(this))
   }
 
@@ -27,7 +27,7 @@ class Thanks extends React.Component {
       this.props.ctx.setError(error)
       return
     }
-    this.setState({donation_options: data.donation_options})
+    this.setState({donation_options: data.donation_options, post_booking_message: data.post_booking_message})
   }
 
   render () {
@@ -45,24 +45,19 @@ class Thanks extends React.Component {
           <Col>
             <h1>{this.props.event.name}</h1>
             <Link to={this.props.uri}>&lsaquo; Back to event details</Link>
-            <p className="lead">
-              {this.props.event.short_description}
-            </p>
           </Col>
         </Row>
 
-        {this.props.booking_complete && (
-          <Row className="text-muted mb-3 h5">
-            <Col md="auto">
-              <FontAwesomeIcon icon={['fas', 'check-circle']} className="mx-1 text-success"/>
-              Booking successful, please check your email for tickets and other details.
-            </Col>
-          </Row>
+        {this.props.booking_complete && this.state.post_booking_message && (
+          <div className="text-muted mt-2 mb-3 h5">
+            <FontAwesomeIcon icon={['fas', 'check-circle']} className="mx-1 text-success"/>
+            {this.state.post_booking_message}
+          </div>
         )}
 
         {this.state.donation_options.length ? [
-          <div key="p" className="h4">
-            While you're here, please consider making a donation to {this.props.ctx.company.company.name}...
+          <div key="p" className="lead">
+            Make a donation to {this.props.ctx.company.company.name}
           </div>,
           <Row key="g">
             {this.state.donation_options.map(opt => (

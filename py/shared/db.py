@@ -526,3 +526,11 @@ async def update_image_paths(conn, settings, **kwargs):
     logger.info('events: %s', v)
     v = await conn.execute("UPDATE donation_options SET image = image || '/main.jpg' WHERE image NOT LIKE '%/main%'")
     logger.info('donation_options: %s', v)
+
+
+@patch
+async def add_post_booking_message(conn, **kwargs):
+    """
+    add post_booking_message field
+    """
+    await conn.execute('ALTER TABLE categories ADD COLUMN post_booking_message TEXT')

@@ -60,6 +60,10 @@ const CAT_FIELDS = [
     help_text: "Message shown to guests when they're asked to consent to marketing. If blank they won't be asked.",
   },
   {
+    name: 'post_booking_message', type: 'textarea',
+    help_text: "Message shown to users after they've bought tickets on the donation page."
+  },
+  {
     name: 'ticket_extra_title',
     help_text: 'Title of text box where guests can provide extra information for each guest/ticket. ' +
                'e.g. "Dietary requirements and other information".',

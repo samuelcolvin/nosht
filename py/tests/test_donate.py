@@ -6,6 +6,37 @@ from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 from .conftest import Factory, create_image
 
 
+async def test_donation_options(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+
+    r = await cli.get(url('donation-options', cat_id=factory.category_id))
+    assert r.status == 200, await r.text()
+
+    data = await r.json()
+    assert data == {
+        'donation_options': [
+            {
+                'id': factory.donation_option_id,
+                'name': 'testing donation option',
+                'amount': 20.0,
+                'image': None,
+                'short_description': 'This is the short_description.',
+                'long_description': 'This is the long_description.',
+            },
+        ],
+        'post_booking_message': None,
+    }
+
+    await db_conn.execute("UPDATE categories SET post_booking_message='this is a test'")
+    r = await cli.get(url('donation-options', cat_id=factory.category_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['post_booking_message'] == 'this is a test'
+
+
 async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, login, db_conn):
     await factory.create_company()
     await factory.create_cat()

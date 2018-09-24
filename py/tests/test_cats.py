@@ -70,7 +70,7 @@ async def test_create_cat(cli, url, db_conn, factory: Factory, login):
         'allow_marketing_message': None,
         'ticket_extra_title': None,
         'ticket_extra_help_text': None,
-
+        'post_booking_message': None,
     }
 
 
@@ -226,6 +226,7 @@ async def test_cats_retrieve(cli, url, factory: Factory, login):
         'cover_costs_percentage': None,
         'terms_and_conditions_message': None,
         'allow_marketing_message': None,
+        'post_booking_message': None,
         'ticket_extra_title': None,
         'ticket_extra_help_text': None,
 

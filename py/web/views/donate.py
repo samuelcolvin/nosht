@@ -109,8 +109,16 @@ async def donation_image_upload(request):
 
 
 donation_options_sql = """
-SELECT json_build_object('donation_options', donation_options)
+SELECT json_build_object(
+  'donation_options', donation_options,
+  'post_booking_message', post_booking_message
+)
 FROM (
+  SELECT post_booking_message
+  FROM categories
+  WHERE company = $1 AND id = $2
+) AS post_booking_message,
+(
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS donation_options FROM (
     SELECT d.id, d.name, d.amount, d.image, d.short_description, d.long_description
     FROM donation_options AS d

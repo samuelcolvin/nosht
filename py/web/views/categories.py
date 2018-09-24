@@ -108,6 +108,7 @@ class CategoryBread(Bread):
         cover_costs_percentage: condecimal(ge=0, le=100, max_digits=5, decimal_places=2) = None
         terms_and_conditions_message: str = None
         allow_marketing_message: str = None
+        post_booking_message: str = None
         ticket_extra_title: constr(max_length=140) = None
         ticket_extra_help_text: str = None
 
@@ -137,6 +138,7 @@ class CategoryBread(Bread):
         'cover_costs_percentage',
         'terms_and_conditions_message',
         'allow_marketing_message',
+        'post_booking_message',
         'ticket_extra_title',
         'ticket_extra_help_text',
         'image',

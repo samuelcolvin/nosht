@@ -62,6 +62,7 @@ CREATE TABLE categories (
   host_advice TEXT,
   booking_trust_message TEXT,
   cover_costs_message TEXT,
+  post_booking_message TEXT,
   cover_costs_percentage NUMERIC(5, 2) CHECK (cover_costs_percentage > 0 AND cover_costs_percentage <= 100),
   terms_and_conditions_message TEXT,
   allow_marketing_message TEXT,
