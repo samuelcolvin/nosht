@@ -201,10 +201,17 @@ class CancelReservedTickets(UpdateView):
         booking_token: bytes
 
     async def execute(self, m: Model):
-        res = Reservation(**decrypt_json(self.app, m.booking_token, ttl=self.settings.ticket_ttl))
+        # no ttl since a user may try to cancel a reservation after it has expired
+        res = Reservation(**decrypt_json(self.app, m.booking_token))
         async with self.conn.transaction():
             user_id = await self.conn.fetchval('SELECT user_id FROM actions WHERE id=$1', res.action_id)
-            await self.conn.execute('DELETE FROM tickets WHERE reserve_action=$1', res.action_id)
+            v = await self.conn.execute(
+                "DELETE FROM tickets WHERE reserve_action=$1 AND status='reserved'",
+                res.action_id
+            )
+            if v == 'DELETE 0':
+                # no tickets were deleted
+                raise JsonErrors.HTTPBadRequest(message='no tickets deleted')
             await self.conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, self.settings.ticket_ttl)
             await record_action(self.request, user_id, ActionTypes.cancel_reserved_tickets, event_id=res.event_id)
 

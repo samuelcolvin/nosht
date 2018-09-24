@@ -478,6 +478,26 @@ async def test_cancel_reservation(cli, url, db_conn, factory: Factory):
     assert 0 == await db_conn.fetchval('SELECT tickets_taken FROM events')
 
 
+async def test_cancel_reservation_booked(cli, url, db_conn, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=12.5)
+
+    res = await factory.create_reservation()
+    await db_conn.execute("UPDATE tickets SET status='booked'")
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
+    assert 1 == await db_conn.fetchval('SELECT tickets_taken FROM events')
+
+    booking_token = encrypt_json(cli.app['main_app'], res.dict())
+    r = await cli.json_post(url('event-cancel-reservation'), data={'booking_token': booking_token})
+    assert r.status == 400, await r.text()
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
+    assert 1 == await db_conn.fetchval('SELECT tickets_taken FROM events')
+
+
 async def test_book_free(cli, url, dummy_server, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_cat()
