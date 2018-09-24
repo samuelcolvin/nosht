@@ -60,7 +60,8 @@ export default class Navbar extends React.Component {
       <NavbarBootstrap key="1" color="light" light fixed="top" expand="md">
         <div className="container">
           <NavbarBrand tag={Link} onClick={this.close} to="/">
-            {company.name || process.env.REACT_APP_SITE_NAME}
+            <img className="d-none d-md-block" src="/logo.png" alt={company.name || process.env.REACT_APP_SITE_NAME}/>
+            <span className="d-md-none">{company.name || process.env.REACT_APP_SITE_NAME}</span>
           </NavbarBrand>
           <NavbarToggler onClick={() => this.setState({is_open: !this.state.is_open})}/>
           <Collapse isOpen={this.state.is_open} navbar>

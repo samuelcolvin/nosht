@@ -12,7 +12,7 @@ const Event = ({event}) => (
       <Card>
         <CardImg top width="100%" src={image_thumb(event.image)} alt={event.name}/>
         <CardBody>
-          <CardTitle>{event.name}</CardTitle>
+          <CardTitle tag="h3">{event.name}</CardTitle>
           <CardSubtitle className="mb-1 text-muted">
             <FontAwesomeIcon icon={['far', 'clock']} className="mr-1"/>
             <When event={event}/>
