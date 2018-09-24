@@ -60,6 +60,7 @@ class Settings(BaseSettings):
 
     default_email_address: str = 'Nosht <nosht@scolvin.com>'
 
+    max_tickets = 20  # maximum number of tickets per purchase, needs to match MAX_TICKETS in BookingTickets.js
     ticket_ttl = 300
     ticket_reservation_precheck = True  # should only be set to false during a few specific tests
 

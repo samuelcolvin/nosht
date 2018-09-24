@@ -19,6 +19,8 @@ import {ModalFooter} from '../general/Modal'
 import {MoneyFree} from '../general/Money'
 import {PricingList} from './BookingStripe'
 
+const MAX_TICKETS = 20
+
 
 export class User extends React.Component {
   async logout () {
@@ -137,7 +139,7 @@ const TicketForm = props => {
       </div>
     )
   }
-  const max_tickets = Math.min(10, remaining || 10)
+  const max_tickets = Math.min(MAX_TICKETS, remaining || MAX_TICKETS)
   const change_count = props.change_ticket_count
 
   const ticket_price = ticket_types.length && (

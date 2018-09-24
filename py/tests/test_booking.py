@@ -442,6 +442,23 @@ async def test_reserve_tickets_none_left_no_precheck(cli, url, factory: Factory,
     }
 
 
+async def test_reserve_tickets_too_many(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=10)
+    await login()
+
+    data = {
+        'tickets': [{'t': True, 'email': f'foo{i}@example.org'} for i in range(30)],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Too many tickets reserved'}
+
+
 async def test_cancel_reservation(cli, url, db_conn, factory: Factory):
     await factory.create_company()
     await factory.create_cat()

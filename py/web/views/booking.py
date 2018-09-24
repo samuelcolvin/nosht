@@ -72,6 +72,10 @@ class ReserveTickets(UpdateViewAuth):
     async def execute(self, m: Model):
         event_id = int(self.request.match_info['id'])
         ticket_count = len(m.tickets)
+
+        if ticket_count > self.settings.max_tickets:
+            raise JsonErrors.HTTPBadRequest(message='Too many tickets reserved')
+
         user_id = self.session['user_id']
 
         status, event_name, cover_costs_percentage = await self.conn.fetchrow(
