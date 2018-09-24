@@ -531,6 +531,14 @@ async def update_image_paths(conn, settings, **kwargs):
 @patch
 async def add_post_booking_message(conn, **kwargs):
     """
-    add post_booking_message field
+    add post_booking_message field to categories
     """
     await conn.execute('ALTER TABLE categories ADD COLUMN post_booking_message TEXT')
+
+
+@patch
+async def add_footer_links(conn, **kwargs):
+    """
+    add footer_links field to companies
+    """
+    await conn.execute('ALTER TABLE companies ADD COLUMN footer_links JSONB')

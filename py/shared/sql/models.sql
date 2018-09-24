@@ -14,7 +14,8 @@ CREATE TABLE companies (
   logo VARCHAR(255),
   email_from VARCHAR(255),
   email_reply_to VARCHAR(255),
-  email_template TEXT
+  email_template TEXT,
+  footer_links JSONB
 );
 CREATE UNIQUE INDEX company_domain ON companies USING btree (domain);
 

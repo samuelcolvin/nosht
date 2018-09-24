@@ -46,6 +46,7 @@ async def test_root(cli, url, factory: Factory):
             'image': 'https://www.example.org/main.png',
             'currency': 'gbp',
             'stripe_public_key': 'stripe_key_xxx',
+            'footer_links': None,
         },
         'user': None,
     }
@@ -146,8 +147,28 @@ async def test_sitemap_none(cli, url, factory: Factory):
     )
 
 
-async def test_sitemap_error(cli, url, factory: Factory, db_conn):
+async def test_sitemap_error(cli, url, factory: Factory):
     await factory.create_company()
     r = await cli.get(url('sitemap'))
     text = await r.text()
     assert r.status == 200, text
+
+
+async def test_get_company_links(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+
+    v = '[{"title": "foo", "url": "https://www.example.com", "new_tab": true}]'
+    await db_conn.execute('UPDATE companies SET footer_links=$1', v)
+
+    r = await cli.get(url('index'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['company']['footer_links'] == [
+        {
+            'url': 'https://www.example.com',
+            'title': 'foo',
+            'new_tab': True,
+        },
+    ]

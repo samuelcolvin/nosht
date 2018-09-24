@@ -1,14 +1,16 @@
+import json
 from functools import partial
 from pathlib import Path
+from typing import List
 
 from buildpg import V
-from pydantic import BaseModel, NameEmail
+from pydantic import BaseModel, NameEmail, UrlStr
 
 from shared.images import delete_image, upload_background, upload_other
 from shared.utils import Currencies
 from web.auth import check_session, is_admin
 from web.bread import Bread
-from web.utils import JsonErrors, json_response, request_image
+from web.utils import JsonErrors, json_response, parse_request, request_image
 
 
 class CompanyBread(Bread):
@@ -40,6 +42,7 @@ class CompanyBread(Bread):
         'email_template',
         'image',
         'logo',
+        'footer_links',
     )
 
     async def check_permissions(self, method):
@@ -80,4 +83,22 @@ async def company_upload(request):
 
     if old_image:
         await delete_image(old_image, request.app['settings'])
+    return json_response(status='success')
+
+
+class LinkModel(BaseModel):
+    title: str
+    url: UrlStr
+    new_tab: bool = True
+
+
+class FooterLinksModel(BaseModel):
+    links: List[LinkModel]
+
+
+@is_admin
+async def company_set_footer_link(request):
+    m = await parse_request(request, FooterLinksModel)
+    v = json.dumps([l.dict() for l in m.links], separators=(',', ':'))
+    await request['conn'].execute('UPDATE companies SET footer_links=$1 WHERE id=$2', v, request['company_id'])
     return json_response(status='success')

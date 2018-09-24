@@ -1,3 +1,5 @@
+import json
+
 from aiohttp import FormData
 from pytest_toolbox.comparison import RegexStr
 
@@ -24,6 +26,7 @@ async def test_company_details(cli, url, login, factory: Factory):
         'email_template': None,
         'image': 'https://www.example.org/main.png',
         'logo': None,
+        'footer_links': None,
     }
 
 
@@ -120,3 +123,38 @@ async def test_upload_logo_too_small(cli, url, factory: Factory, db_conn, login,
     assert data == {'message': 'image too small: 100x300 < 256x256'}
     assert dummy_server.app['images'] == []
     assert None is await db_conn.fetchval('SELECT logo FROM companies')
+
+
+async def test_set_footer_links(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    assert None is await db_conn.fetchval('SELECT footer_links FROM companies')
+    data = {
+        'links': [
+            {
+                'title': 'Foo',
+                'url': 'https://www.example.com/testing/',
+                'new_tab': False,
+            },
+            {
+                'title': 'Bar',
+                'url': 'http://www.example.com/another/',
+            }
+        ]
+    }
+    r = await cli.json_post(url('company-footer-links'), data=data)
+    assert r.status == 200, await r.text()
+    links = json.loads(await db_conn.fetchval('SELECT footer_links FROM companies'))
+    assert links == [
+        {
+            'url': 'https://www.example.com/testing/',
+            'title': 'Foo',
+            'new_tab': False,
+        },
+        {
+            'url': 'http://www.example.com/another/',
+            'title': 'Bar',
+            'new_tab': True,
+        },
+    ]

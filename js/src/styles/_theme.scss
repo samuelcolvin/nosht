@@ -35,11 +35,14 @@ main.container {
 .footer {
   flex-shrink: 0;
   background-color: #3B4A59;
-  padding: 1rem 0 3rem;
+  padding: 1rem 0 1rem;
   color: white;
-  .footer-menu a {
-    display: block;
-    color: #b3e5fc;
+  min-height: 120px;
+  .footer-menu {
+    a {
+      color: #b3e5fc;
+      flex-grow: 0;
+    }
   }
 }
 

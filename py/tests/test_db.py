@@ -69,6 +69,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
             'image': RegexStr('http.*'),
             'currency': 'gbp',
             'stripe_public_key': 'pk_test_efpfygU2qxGIwgcjn5T5DTTI',
+            'footer_links': None,
         },
         'user': None,
     }

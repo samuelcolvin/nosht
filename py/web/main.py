@@ -22,7 +22,7 @@ from .views.auth import (authenticate_token, guest_signup, host_signup, login, l
 from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
 from .views.categories import (CategoryBread, category_add_image, category_delete_image, category_images,
                                category_public, category_set_image)
-from .views.company import CompanyBread, company_upload
+from .views.company import CompanyBread, company_set_footer_link, company_upload
 from .views.donate import Donate, DonationOptionBread, donation_image_upload, donation_options, opt_donations
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
 from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories, event_get,
@@ -126,6 +126,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
 
         *CompanyBread.routes('/companies/'),
         web.post('/companies/upload/{field:(image|logo)}/', company_upload, name='company-upload'),
+        web.post('/companies/footer-links/set/', company_set_footer_link, name='company-footer-links'),
 
         web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
         web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
