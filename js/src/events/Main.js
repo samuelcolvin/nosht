@@ -57,7 +57,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
           {ticket_types.map(tt => tt.price).filter(unique).map((p, i) => (
             <span key={i}>
               {i > 0 && <span className="px-1">/</span>}
-              <MoneyFree>{p}</MoneyFree>
+              <MoneyFree NoSymbol={i === 0}>{p}</MoneyFree>
             </span>
           ))}
       </Col>
