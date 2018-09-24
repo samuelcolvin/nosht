@@ -170,7 +170,7 @@ class App extends React.Component {
             }
           </main>
         </div>
-        <Footer user={this.state.user}/>
+        <Footer user={ctx.user} co_footer_links={ctx.company && ctx.company.company.footer_links}/>
       </GlobalContext.Provider>
     )
   }
