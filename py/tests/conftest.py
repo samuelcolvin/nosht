@@ -138,7 +138,7 @@ class Factory:
     async def create_company(self,
                              name='Testing',
                              slug=None,
-                             image='https://www.example.org/co.png',
+                             image='https://www.example.org/main.png',
                              domain='127.0.0.1',
                              stripe_public_key='stripe_key_xxx',
                              stripe_secret_key='stripe_secret_xxx',
@@ -187,7 +187,7 @@ class Factory:
                          company_id=None,
                          name='Supper Clubs',
                          slug=None,
-                         image='https://www.example.org/co.png',
+                         image='https://www.example.org/main.png',
                          **kwargs):
         cat_id = await self.conn.fetchval_b(
             'INSERT INTO categories (:values__names) VALUES :values RETURNING id',

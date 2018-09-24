@@ -20,8 +20,8 @@ from .views import index, sitemap
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout,
                          reset_password_request, set_password, unsubscribe)
 from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
-from .views.categories import (CategoryBread, category_add_image, category_default_image, category_delete_image,
-                               category_images, category_public)
+from .views.categories import (CategoryBread, category_add_image, category_delete_image, category_images,
+                               category_public, category_set_image)
 from .views.company import CompanyBread, company_upload
 from .views.donate import Donate, DonationOptionBread, donation_image_upload, donation_options, opt_donations
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
@@ -129,7 +129,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
 
         web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
         web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
-        web.post('/categories/{cat_id:\d+}/images/set-default/', category_default_image, name='categories-set-default'),
+        web.post('/categories/{cat_id:\d+}/images/set-default/', category_set_image, name='categories-set-image'),
         web.post('/categories/{cat_id:\d+}/images/delete/', category_delete_image, name='categories-delete-image'),
         *CategoryBread.routes('/categories/'),
 

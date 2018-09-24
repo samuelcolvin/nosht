@@ -21,7 +21,7 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'name': 'The Event Name',
                 'cat_slug': 'supper-clubs',
                 'slug': 'the-event-name',
-                'image': 'https://www.example.org/co.png',
+                'image': 'https://www.example.org/main.png',
                 'short_description': RegexStr('.*'),
                 'location_name': None,
                 'start_ts': '2020-01-28T19:00:00',
@@ -220,7 +220,7 @@ async def test_cats_retrieve(cli, url, factory: Factory, login):
         'suggested_price': None,
         'event_content': None,
         'host_advice': None,
-        'image': 'https://www.example.org/co.png',
+        'image': 'https://www.example.org/main.png',
         'booking_trust_message': None,
         'cover_costs_message': None,
         'cover_costs_percentage': None,
@@ -359,11 +359,64 @@ async def test_delete_image(cli, url, factory: Factory, login, dummy_server):
     await login()
     r = await cli.json_post(
         url('categories-delete-image', cat_id=factory.category_id),
-        data={'image': 'https://example.org/tests/testing/supper-clubs/option/whatever'},
+        data={'image': 'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png'},
     )
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        'DELETE aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/whatever/main.png',
-        'DELETE aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/whatever/thumb.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/co-slug/cat-slug/option/randomkey1/thumb.png',
+        'GET aws_endpoint_url/testingbucket.example.org',
     ]
+
+
+async def test_delete_image_default(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+
+    img = 'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png'
+    await db_conn.execute('UPDATE categories SET image=$1', img)
+    r = await cli.json_post(
+        url('categories-delete-image', cat_id=factory.category_id),
+        data={'image': img},
+    )
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'default image may not be be deleted'}
+
+
+async def test_set_default_image(cli, url, factory: Factory, login, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+
+    assert 'https://www.example.org/main.png' == await db_conn.fetchval('SELECT image FROM categories')
+    img = 'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png'
+    r = await cli.json_post(
+        url('categories-set-image', cat_id=factory.category_id),
+        data={'image': img},
+    )
+    assert r.status == 200, await r.text()
+    assert dummy_server.app['log'] == [
+        ('grecaptcha', '__ok__'),
+        'GET aws_endpoint_url/testingbucket.example.org',
+    ]
+    assert img == await db_conn.fetchval('SELECT image FROM categories')
+
+
+async def test_set_default_image_wrong(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await login()
+
+    assert 'https://www.example.org/main.png' == await db_conn.fetchval('SELECT image FROM categories')
+    r = await cli.json_post(
+        url('categories-set-image', cat_id=factory.category_id),
+        data={'image': 'https://testingbucket.example.org/foobar.jpg'},
+    )
+    assert r.status == 400, await r.text()
+    assert 'https://www.example.org/main.png' == await db_conn.fetchval('SELECT image FROM categories')

@@ -22,7 +22,7 @@ async def test_company_details(cli, url, login, factory: Factory):
         'email_from': None,
         'email_reply_to': None,
         'email_template': None,
-        'image': 'https://www.example.org/co.png',
+        'image': 'https://www.example.org/main.png',
         'logo': None,
     }
 
@@ -50,7 +50,7 @@ async def test_upload_image(cli, url, factory: Factory, login, db_conn, dummy_se
     await factory.create_company()
     await factory.create_user()
     await login()
-    assert 'https://www.example.org/co.png' == await db_conn.fetchval('SELECT image FROM companies')
+    assert 'https://www.example.org/main.png' == await db_conn.fetchval('SELECT image FROM companies')
     data = FormData()
     data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
     r = await cli.post(
@@ -64,8 +64,8 @@ async def test_upload_image(cli, url, factory: Factory, login, db_conn, dummy_se
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log'][1:]) == [
-        'DELETE aws_endpoint_url/testingbucket.example.org/co.png/main.png',
-        'DELETE aws_endpoint_url/testingbucket.example.org/co.png/thumb.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/main.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png',
         RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/co/image/\w+/main.png'),
         RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/co/image/\w+/thumb.png'),
     ]

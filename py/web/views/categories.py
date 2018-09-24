@@ -5,7 +5,7 @@ from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Where
 from pydantic import BaseModel, condecimal, constr
 
-from shared.images import delete_image, list_images, strip_domain, upload_background
+from shared.images import delete_image, list_images, upload_background
 from shared.utils import slugify
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread
@@ -67,14 +67,18 @@ async def category_images(request):
     return json_response(images=sorted(images))
 
 
-@is_admin
-async def category_default_image(request):
-    m = await parse_request(request, ImageModel)
-
+async def _check_image_exists(request, m: ImageModel):
     path = await _get_cat_img_path(request)
     images = await list_images(path, request.app['settings'])
     if m.image not in images:
         raise JsonErrors.HTTPBadRequest(message='image does not exist')
+
+
+@is_admin
+async def category_set_image(request):
+    m = await parse_request(request, ImageModel)
+    await _check_image_exists(request, m)
+
     cat_id = int(request.match_info['cat_id'])
     await request['conn'].execute('UPDATE categories SET image = $1 WHERE id = $2', m.image, cat_id)
     return json_response(status='success')
@@ -83,12 +87,12 @@ async def category_default_image(request):
 @is_admin
 async def category_delete_image(request):
     m = await parse_request(request, ImageModel)
+    await _check_image_exists(request, m)
+    cat_id = int(request.match_info['cat_id'])
 
-    # _get_cat_img_path is required to check the category is on the right company
-    path = request.app['settings'].s3_prefix / await _get_cat_img_path(request)
-
-    if not strip_domain(m.image).startswith(str(path)):
-        raise JsonErrors.HTTPBadRequest(message='image may not be deleted')
+    dft_image = await request['conn'].fetchval('SELECT image FROM categories WHERE id=$1', cat_id)
+    if dft_image == m.image:
+        raise JsonErrors.HTTPBadRequest(message='default image may not be be deleted')
 
     await delete_image(m.image, request.app['settings'])
     return json_response(status='success')

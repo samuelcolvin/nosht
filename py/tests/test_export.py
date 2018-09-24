@@ -104,7 +104,7 @@ async def test_cat_export(cli, url, login, factory: Factory):
             'ticket_extra_title': '',
             'ticket_extra_help_text': '',
             'suggested_price': '',
-            'image': 'https://www.example.org/co.png',
+            'image': 'https://www.example.org/main.png',
         },
     ]
 

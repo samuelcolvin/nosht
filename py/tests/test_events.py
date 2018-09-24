@@ -31,7 +31,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'id': factory.event_id,
             'category_id': factory.category_id,
             'name': 'The Event Name',
-            'image': 'https://www.example.org/co.png',
+            'image': 'https://www.example.org/main.png',
             'short_description': RegexStr('.*'),
             'long_description': RegexStr('.*'),
             'category_content': None,
@@ -725,7 +725,7 @@ async def test_image_existing_delete(cli, url, factory: Factory, db_conn, login,
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(image='https://testingbucket.example.org/foobar.png')
+    await factory.create_event(image='https://testingbucket.example.org/main.png')
     await login()
 
     r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
@@ -735,8 +735,8 @@ async def test_image_existing_delete(cli, url, factory: Factory, db_conn, login,
 
     assert len(dummy_server.app['log']) == 3
     assert set(dummy_server.app['log'][1:]) == {
-        'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/main.png',
-        'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/thumb.png'
+        'DELETE aws_endpoint_url/testingbucket.example.org/main.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png'
     }
 
 
@@ -744,7 +744,7 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(image='https://testingbucket.example.org/foobar.png')
+    await factory.create_event(image='https://testingbucket.example.org/main.png')
     await login()
 
     data = FormData()
@@ -767,8 +767,8 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
     assert len(dummy_server.app['log']) == 5
 
     log = sorted(dummy_server.app['log'][1:])
-    assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/main.png'
-    assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.org/foobar.png/thumb.png'
+    assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.org/main.png'
+    assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png'
     assert log[2] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
                               r'the-event-name/\w+?/main.png')
     assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'

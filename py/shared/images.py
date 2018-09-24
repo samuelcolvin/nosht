@@ -58,8 +58,8 @@ async def delete_image(image: str, settings: Settings):
     path = Path(strip_domain(image))
     async with create_s3_session(settings) as s3:
         await asyncio.gather(
-            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'main.png')),
-            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path / 'thumb.png')),
+            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path)),
+            s3.delete_object(Bucket=settings.s3_bucket, Key=str(path.with_name('thumb').with_suffix(path.suffix))),
         )
 
 
