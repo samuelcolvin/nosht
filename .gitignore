@@ -28,3 +28,4 @@ activate.*.sh
 /deploy-settings-*/
 /setup.cfg
 /TODO.md
+/js/public/logo.png

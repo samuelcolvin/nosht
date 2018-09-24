@@ -18,10 +18,20 @@ body {
 
 .navbar {
   flex-shrink: 0;
+  font-size: 1.2rem;
+  font-family: 'Source Sans Pro', sans-serif;
+}
+
+.navbar-brand img {
+  height: 75px;
+}
+
+h1, h2, h3 {
+  font-family: 'Source Sans Pro', sans-serif;
 }
 
 main.container {
-  background: white;
+  background: $main-back;
   min-height: 500px;
   padding: 30px 20px;
   box-sizing: border-box;
