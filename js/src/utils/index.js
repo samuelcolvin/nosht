@@ -15,7 +15,7 @@ const _add_script = (url, reject) => {
 
 export const load_script = url => {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${url}"`)) {
+    if (document.querySelector(`script[src="${url}"]`)) {
       // script already loaded
       resolve()
     } else {
