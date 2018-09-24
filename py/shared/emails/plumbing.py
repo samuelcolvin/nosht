@@ -227,6 +227,10 @@ class BaseEmailActor(Actor):
             ctx['markup_data'] = json.dumps(markup_data, separators=(',', ':'))
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
         e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
+        with open('invitation.ics', 'rb') as f:
+            content = f.read()
+            print('content:', content[:100])
+            e_msg.add_attachment(content, maintype='text', subtype='calendar', filename='invitation.ics')
 
         if self.send_via_aws and user_email.endswith('example.com'):
             logger.info('email not sent "%s" to "%s" because it ends "example.com"', subject, user_email)
