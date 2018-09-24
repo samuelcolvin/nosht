@@ -38,11 +38,9 @@ main.container {
   padding: 1rem 0 1rem;
   color: white;
   min-height: 120px;
-  .footer-menu {
-    a {
-      color: #b3e5fc;
-      flex-grow: 0;
-    }
+  .footer-menu a {
+    color: #b3e5fc;
+    flex-grow: 0;
   }
 }
 

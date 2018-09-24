@@ -53,15 +53,15 @@ class Footer extends React.Component {
                 Logged in as {user_full_name(user)} ({user.role})
               </div>}
               {menu.map((item, i) => (
-                <div>
-                  <Link key={i} to={item.to}>{item.name}</Link>
+                <div key={i}>
+                  <Link to={item.to}>{item.name}</Link>
                 </div>
               ))}
               {this.props.co_footer_links && this.props.co_footer_links.length ? (
                 <div className="mt-1">
                   {this.props.co_footer_links.map((link, i) => (
-                    <div>
-                      <a key={i} href={link.url} target={link.new_tab ? '_blank' : '_self'} rel="noopener noreferrer">
+                    <div key={i}>
+                      <a href={link.url} target={link.new_tab ? '_blank' : '_self'} rel="noopener noreferrer">
                         {link.title}
                         </a>
                     </div>
