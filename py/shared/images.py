@@ -3,7 +3,7 @@ import logging
 import re
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, Set
+from typing import List, Optional
 
 import aiobotocore
 from PIL import Image
@@ -42,16 +42,16 @@ def create_s3_session(settings: Settings):
     )
 
 
-async def list_images(path: Path, settings: Settings) -> Set[str]:
-    files = set()
+async def list_images(path: Path, settings: Settings) -> List[str]:
+    images = []
     async with create_s3_session(settings) as s3:
         paginator = s3.get_paginator('list_objects_v2')
         async for result in paginator.paginate(Bucket=settings.s3_bucket, Prefix=str(settings.s3_prefix / path)):
             for c in result.get('Contents', []):
-                p = re.sub(r'/(?:main|thumb)\.png$', '', c['Key'])
-                url = f'{settings.s3_domain}/{p}'
-                files.add(url)
-    return files
+                p = c['Key']
+                if re.search('main\.\w+$', p):
+                    images.append(f'{settings.s3_domain}/{p}')
+    return images
 
 
 async def delete_image(image: str, settings: Settings):

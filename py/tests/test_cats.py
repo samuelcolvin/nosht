@@ -345,8 +345,8 @@ async def test_list_images(cli, url, factory: Factory, login):
     data = await r.json()
     assert data == {
         'images': [
-            'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1',
-            'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey2',
+            'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png',
+            'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey2/main.png',
         ],
     }
 

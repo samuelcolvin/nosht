@@ -49,7 +49,7 @@ FROM (
            'lng', e.location_lng
          ) AS location,
          e.start_ts,
-         EXTRACT(epoch FROM e.duration)::int AS duration,
+         extract(epoch FROM e.duration)::int AS duration,
          CASE
            WHEN e.ticket_limit IS NULL THEN NULL
            WHEN e.ticket_limit - e.tickets_taken >= 10 THEN NULL
