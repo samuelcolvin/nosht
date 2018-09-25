@@ -112,8 +112,6 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
         'METHOD:PUBLISH\n'
         'BEGIN:VEVENT\n'
         'SUMMARY:The Event Name\n'
-        'DTSTART:20200128T000000Z\n'
-        'DTEND:20200129T000000Z\n'
     )
 
 

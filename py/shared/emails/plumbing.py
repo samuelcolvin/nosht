@@ -28,7 +28,7 @@ from ..utils import RequestError, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
 from .ical import ical_attachment
 
-logger = logging.getLogger('nosht.emails.plumbing')
+logger = logging.getLogger('nosht.emails')
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_EMAIL_TEMPLATE = (THIS_DIR / 'default_template.html').read_text()

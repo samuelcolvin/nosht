@@ -1,15 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from shared.settings import Settings
 
-PREFIX = (
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//nosht//events//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-)
 DT_FMT = '%Y%m%dT%H%M%S'
+DATE_FMT = '%Y%m%d'
 
 
 def _ical_escape(text):
@@ -28,7 +22,7 @@ def _ical_escape(text):
     )
 
 
-def _foldline(line, limit=75, fold_sep='\r\n '):
+def foldline(line, limit=75, fold_sep='\r\n '):
     """
     Make a string folded as defined in RFC5545
     Lines of text SHOULD NOT be longer than 75 octets, excluding the line
@@ -77,10 +71,12 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
         SELECT e.id, e.name, e.start_ts, e.duration, e.short_description,
           cat.slug || '/' || e.slug as ref,
           e.location_name, e.location_lat, e.location_lng,
-          event_link(cat.slug, e.slug, e.public, $3) as link, co.domain 
+          event_link(cat.slug, e.slug, e.public, $3) as link, co.domain,
+          full_name(host.first_name, host.last_name) AS host_name, co.name as company_name
         FROM events AS e
         JOIN categories AS cat ON e.category = cat.id
-        JOIN companies AS co on cat.company = co.id
+        JOIN companies AS co ON cat.company = co.id
+        JOIN users AS host ON e.host = host.id
         WHERE e.id = $1 AND co.id = $2
         """,
         event_id,
@@ -91,32 +87,39 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
         raise RuntimeError(f'event {event_id} on company {company_id} not found')
 
     url = 'https://{domain}{link}'.format(**data)
-    start, duration = data['start_ts'], data['duration']
-    if duration:
-        finish = start + duration
-    else:
-        start = start.date()
-        finish = start + timedelta(days=1)
-
-    lines = list(PREFIX) + [
+    lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//nosht//events//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
         'BEGIN:VEVENT',
-        _foldline('SUMMARY:' + _ical_escape(data['name'])),
-        'DTSTART:' + start.strftime(DT_FMT) + 'Z',
-        'DTEND:' + finish.strftime(DT_FMT) + 'Z',
+        foldline('SUMMARY:' + _ical_escape(data['name'])),
         'DTSTAMP:' + dt_stamp() + 'Z',
         'UID:@nosht|' + data['ref'],
-        _foldline('DESCRIPTION:' + _ical_escape('{name}\n\n{short_description}\n\n{url}'.format(url=url, **data))),
-        _foldline('URL:' + _ical_escape(url)),
+        foldline('DESCRIPTION:' + _ical_escape(
+            '{name}\n\n'
+            '{short_description}\n\n'
+            'Hosted by {host_name} on behalf of {company_name}\n\n'
+            'For more information: {url}'.format(url=url, **data)
+        )),
+        foldline('URL:' + _ical_escape(url)),
     ]
 
-    if data['location_name']:
-        location = data['location_name']
-        if data['location_lat'] and data['location_lng']:
-            location += ' ({location_lat:0.6f},{location_lng:0.6f})'.format(**data)
+    start, duration = data['start_ts'], data['duration']
+    if duration:
+        lines += [
+            'DTSTART:' + start.strftime(DT_FMT) + 'Z',
+            'DTEND:' + (start + duration).strftime(DT_FMT) + 'Z',
+        ]
+    else:
+        lines.append('DTSTART:' + start.date().strftime(DATE_FMT))
 
-        lines.append(
-            _foldline('LOCATION:' + _ical_escape(location))
-        )
+    if data['location_name']:
+        lines.append(foldline('LOCATION:' + _ical_escape(data['location_name'])))
+
+    if data['location_lat'] and data['location_lng']:
+        lines.append('GEO:{location_lat:0.6f};{location_lng:0.6f}'.format(**data))
 
     lines += [
         'END:VEVENT',
