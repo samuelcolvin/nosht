@@ -1,19 +1,19 @@
 import json
 import logging
-from datetime import date, timedelta
+from datetime import date
 from itertools import groupby
 from operator import itemgetter
-from typing import Optional
 
 from arq import concurrent, cron
 from buildpg import MultipleValues, Values
 
 from shared.emails.utils import start_tz_duration
+
 from ..actions import ActionTypes
-from ..utils import (display_cash, display_cash_free, format_duration, password_reset_link, static_map_link,
+from ..utils import (display_cash, display_cash_free, format_dt, format_duration, password_reset_link, static_map_link,
                      ticket_id_signed)
 from .defaults import Triggers
-from .plumbing import BaseEmailActor, UserEmail, date_fmt, datetime_fmt
+from .plumbing import BaseEmailActor, UserEmail
 
 logger = logging.getLogger('nosht.emails.main')
 
@@ -54,13 +54,12 @@ class EmailActor(BaseEmailActor):
                 """,
                 booked_action_id
             )
-            # start, duration = start_tz_duration(data)
-            duration: Optional[timedelta] = data['duration']
+            start, duration = start_tz_duration(data)
             ctx = {
                 'event_link': data['event_link'],
                 'event_name': data['name'],
                 'event_short_description': data['short_description'],
-                'event_start': data['start_ts'] if duration else data['start_ts'].date(),
+                'event_start': start,
                 'event_duration': duration or 'All day',
                 'event_location': data['location_name'],
                 'ticket_price': display_cash_free(price, data['currency']),
@@ -177,7 +176,7 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT a.company AS company_id, u.role AS host_role, u.id AS host_user_id,
                 full_name(u.first_name, u.last_name, u.email) AS host_name,
-                 e.id AS event_id, e.name AS event_name, 
+                 e.id AS event_id, e.name AS event_name,
                  (e.start_ts AT TIME ZONE e.timezone)::date AS event_date,
                  cat.name AS cat_name, cat.slug AS cat_slug,
                  event_link(cat.slug, e.slug, e.public, $2) AS event_link
@@ -210,7 +209,7 @@ class EmailActor(BaseEmailActor):
                 'event_link': data['event_link'],
                 'event_dashboard_link': link,
                 'event_name': data['event_name'],
-                'event_date': data['event_date'].strftime(date_fmt),
+                'event_date': format_dt(data['event_date']),
                 'category_name': data['cat_name'],
                 is_cat(data['cat_slug']): True,
             }
@@ -268,7 +267,7 @@ class EmailActor(BaseEmailActor):
             events = await conn.fetch(
                 """
                 SELECT
-                  e.id, e.name, e.short_description, e.start_ts, e.duration,
+                  e.id, e.name, e.short_description, e.start_ts, e.timezone, e.duration,
                   e.location_name, e.location_lat, e.location_lng,
                   cat.name AS cat_name, cat.slug AS cat_slug, cat.company AS company_id,
                   event_link(cat.slug, e.slug, e.public, $1) AS event_link,
@@ -321,15 +320,13 @@ class EmailActor(BaseEmailActor):
             event_users = users.get(d['id'])
             if not event_users:
                 continue
-            duration = d['duration']
+            start, duration = start_tz_duration(d)
             ctx = {
                 'event_link': d['event_link'],
                 'event_name': d['name'],
                 'host_name': d['host_name'],
                 'event_short_description': d['short_description'],
-                'event_start': (
-                    d['start_ts'].strftime(datetime_fmt) if duration else d['start_ts'].strftime(date_fmt)
-                ),
+                'event_start': format_dt(start),
                 'event_duration': format_duration(duration) if duration else 'All day',
                 'event_location': d['location_name'],
                 'category_name': d['cat_name'],
@@ -363,7 +360,7 @@ class EmailActor(BaseEmailActor):
             events = await conn.fetch(
                 """
                 SELECT
-                  e.id, e.name, e.start_ts::date AS event_date, e.host AS host_user_id,
+                  e.id, e.name, (e.start_ts AT TIME ZONE e.timezone)::date AS event_date, e.host AS host_user_id,
                   event_link(cat.slug, e.slug, e.public, $1) AS event_link,
                   cat.name AS cat_name, cat.slug AS cat_slug,
                   cat.company AS company_id, co.currency AS currency,
@@ -420,7 +417,7 @@ class EmailActor(BaseEmailActor):
                         'event_name': e['name'],
                         'ticket_limit': e['ticket_limit'],
                         'fully_booked': e['tickets_booked'] == e['ticket_limit'],
-                        'event_date': e['event_date'].strftime(date_fmt),
+                        'event_date': format_dt(e['event_date']),
                         'days_to_go': days_to_go,
                         'total_income': display_cash(e['total_income'], e['currency']) if e['total_income'] else None,
                         'tickets_booked': e['tickets_booked'] or 0,

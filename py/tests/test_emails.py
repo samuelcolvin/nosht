@@ -9,9 +9,9 @@ from pytest_toolbox.comparison import RegexStr
 from shared.actions import ActionTypes
 from shared.emails import EmailActor, Triggers, UserEmail
 from shared.settings import Settings
-from shared.utils import ticket_id_signed
+from shared.utils import format_dt, ticket_id_signed
 
-from .conftest import Factory
+from .conftest import Factory, london
 
 
 def offset_from_now(**kwargs):
@@ -80,8 +80,8 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(email='testing@scolvin.com')
-    await factory.create_event(price=10, location_name='The Location',
-                               location_lat=51.5, location_lng=-0.2, duration=None)
+    await factory.create_event(price=10, location_name='The Location', location_lat=51.5, location_lng=-0.2,
+                               start_ts=london.localize(datetime(2020, 6, 3)), duration=None)
 
     res = await factory.create_reservation(factory.user_id)
     booked_action_id, _ = await factory.buy_tickets(res)
@@ -106,6 +106,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     ) in html
     assert '<p>Extra Information: <strong>snap</strong></p>\n' in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
+    assert '<li>Start Time: <strong>3rd Jun 20</strong></li>\n' in html
     assert '<li>Duration: <strong>All day</strong></li>' in html
     attachment = email['part:text/calendar']
     assert attachment.startswith(
@@ -147,6 +148,7 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
     ) in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Duration: <strong>1 hour 30 mins</strong></li>' in html
+    assert '<li>Start Time: <strong>07:00pm, 28th Jun 20</strong></li>\n' in html
 
 
 async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, settings):
@@ -320,7 +322,7 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
         f'\n'
         f'Event:\n'
         f'\n'
-        f'* Start Time: **{offset_from_now(hours=12):%d %b %y}**\n'
+        f'* Start Time: **{format_dt(offset_from_now(hours=12).date())}**\n'
         f'* Duration: **All day**\n'
         f'* Location: **Tower Block**\n'
         f'\n'

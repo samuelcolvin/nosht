@@ -5,9 +5,9 @@ import json
 import random
 import re
 import string
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import urlencode
 
 import bcrypt
@@ -81,6 +81,20 @@ def static_map_link(lat, lng, *, settings: Settings, size=(500, 300), zoom=13):
         'key': settings.google_maps_static_key,
         'scale': 2,
     })
+
+
+date_fmt = '{day}{suffix} %b %y'
+datetime_fmt = '%I:%M%p, {day}{suffix} %b %y'
+
+
+def format_dt(dt: Union[datetime, date]):
+    if 4 <= dt.day <= 20 or 24 <= dt.day <= 30:
+        suffix = 'th'
+    else:
+        suffix = ['st', 'nd', 'rd'][dt.day % 10 - 1]
+    fmt = datetime_fmt if isinstance(dt, datetime) else date_fmt
+    fmt_ = fmt.format(suffix=suffix, day=dt.day)
+    return dt.strftime(fmt_)
 
 
 def format_duration(td: timedelta):

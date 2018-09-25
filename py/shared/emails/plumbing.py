@@ -24,7 +24,7 @@ from cryptography import fernet
 from misaka import HtmlRenderer, Markdown
 
 from ..settings import Settings
-from ..utils import RequestError, format_duration, unsubscribe_sig
+from ..utils import RequestError, format_dt, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
 from .ical import ical_attachment
 from .utils import Attachment
@@ -65,8 +65,6 @@ safe_markdown = Markdown(
     extensions=extensions
 )
 DEBUG_PRINT_REGEX = re.compile(r'{{ ?__debug_context__ ?}}')
-date_fmt = '%d %b %y'
-datetime_fmt = '%H:%M %d %b %y'
 
 
 class UserEmail(NamedTuple):
@@ -369,10 +367,8 @@ def clean_ctx(context, base_url):
             value = value or '/'
             assert value.startswith('/'), f'link field found which doesn\'t start "/". {key}: {value}'
             context[key] = base_url + value
-        elif isinstance(value, datetime.datetime):
-            context[key] = value.strftime(datetime_fmt)
-        elif isinstance(value, datetime.date):
-            context[key] = value.strftime(date_fmt)
+        elif isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
+            context[key] = format_dt(value)
         elif isinstance(value, datetime.timedelta):
             context[key] = format_duration(value)
         elif isinstance(value, dict):
