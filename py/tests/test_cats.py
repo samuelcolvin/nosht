@@ -25,7 +25,7 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'short_description': RegexStr('.*'),
                 'location_name': None,
                 'start_ts': '2020-01-28T19:00:00',
-                'duration': None,
+                'duration': 3600,
             },
         ],
     }

@@ -26,7 +26,7 @@ class EmailActor(BaseEmailActor):
         async with self.pg.acquire() as conn:
             data = await conn.fetchrow(
                 """
-                SELECT a.user_id,
+                SELECT a.user_id, e.id as event_id,
                   full_name(ub.first_name, ub.last_name) AS buyer_name,
                   full_name(uh.first_name, uh.last_name) AS host_name,
                   event_link(cat.slug, e.slug, e.public, $2) AS event_link, e.name, e.short_description,
@@ -108,9 +108,11 @@ class EmailActor(BaseEmailActor):
                     )
 
         if buyer_emails:
-            await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails)
+            await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails,
+                                          attached_event_id=data['event_id'])
         if other_emails:
-            await self.send_emails.direct(data['company'], Triggers.ticket_other, other_emails)
+            await self.send_emails.direct(data['company'], Triggers.ticket_other, other_emails,
+                                          attached_event_id=data['event_id'])
         return len(other_emails) + 1
 
     @concurrent
@@ -250,7 +252,8 @@ class EmailActor(BaseEmailActor):
             is_cat(data['cat_slug']): True,
         }
         users = [UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in user_tickets]
-        await self.send_emails.direct(data['company_id'], Triggers.event_update, users)
+        await self.send_emails.direct(data['company_id'], Triggers.event_update, users,
+                                      attached_event_id=data['event_id'])
 
     @cron(minute=30)
     async def send_event_reminders(self):
@@ -311,37 +314,40 @@ class EmailActor(BaseEmailActor):
             }
 
         user_emails = 0
-        for company_id, g in groupby(events, itemgetter('company_id')):
-            user_ctxs = []
-            for d in g:
-                event_users = users.get(d['id'])
-                if not event_users:
-                    continue
-                duration = d['duration']
-                ctx = {
-                    'event_link': d['event_link'],
-                    'event_name': d['name'],
-                    'host_name': d['host_name'],
-                    'event_short_description': d['short_description'],
-                    'event_start': (
-                        d['start_ts'].strftime(datetime_fmt) if duration else d['start_ts'].strftime(date_fmt)
-                    ),
-                    'event_duration': format_duration(duration) if duration else 'All day',
-                    'event_location': d['location_name'],
-                    'category_name': d['cat_name'],
-                    is_cat(d['cat_slug']): True,
-                }
-                lat, lng = d['location_lat'], d['location_lng']
-                if lat and lng:
-                    ctx.update(
-                        static_map=static_map_link(lat, lng, settings=self.settings),
-                        google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
-                    )
-                user_ctxs.extend([
-                    UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in event_users
-                ])
-            user_emails += len(user_ctxs)
-            await self.send_emails(company_id, Triggers.event_reminder.value, user_ctxs)
+        for d in events:
+            event_users = users.get(d['id'])
+            if not event_users:
+                continue
+            duration = d['duration']
+            ctx = {
+                'event_link': d['event_link'],
+                'event_name': d['name'],
+                'host_name': d['host_name'],
+                'event_short_description': d['short_description'],
+                'event_start': (
+                    d['start_ts'].strftime(datetime_fmt) if duration else d['start_ts'].strftime(date_fmt)
+                ),
+                'event_duration': format_duration(duration) if duration else 'All day',
+                'event_location': d['location_name'],
+                'category_name': d['cat_name'],
+                is_cat(d['cat_slug']): True,
+            }
+            lat, lng = d['location_lat'], d['location_lng']
+            if lat and lng:
+                ctx.update(
+                    static_map=static_map_link(lat, lng, settings=self.settings),
+                    google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
+                )
+            user_ctxs = [
+                UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in event_users
+            ]
+            await self.send_emails(
+                d['company_id'],
+                Triggers.event_reminder.value,
+                user_ctxs,
+                attached_event_id=d['id'],
+            )
+            user_emails += len(event_users)
         return user_emails
 
     @cron(hour=7, minute=30)

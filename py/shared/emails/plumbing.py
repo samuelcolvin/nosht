@@ -26,6 +26,7 @@ from misaka import HtmlRenderer, Markdown
 from ..settings import Settings
 from ..utils import RequestError, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
+from .ical import ical_attachment
 
 logger = logging.getLogger('nosht.emails.plumbing')
 
@@ -71,6 +72,12 @@ class UserEmail(NamedTuple):
     id: int
     ctx: Dict[str, Any] = {}
     ticket_id: int = None
+
+
+class Attachment(NamedTuple):
+    content: str
+    mime_type: str
+    filename: str
 
 
 class BaseEmailActor(Actor):
@@ -185,7 +192,8 @@ class BaseEmailActor(Actor):
                          template: str,
                          e_from: str,
                          reply_to: Optional[str],
-                         global_ctx: Dict[str, Any]):
+                         global_ctx: Dict[str, Any],
+                         attachment: Optional[Attachment]):
         base_url = global_ctx['base_url']
 
         full_name = '{first_name} {last_name}'.format(
@@ -227,10 +235,14 @@ class BaseEmailActor(Actor):
             ctx['markup_data'] = json.dumps(markup_data, separators=(',', ':'))
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
         e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
-        with open('invitation.ics', 'rb') as f:
-            content = f.read()
-            print('content:', content[:100])
-            e_msg.add_attachment(content, maintype='text', subtype='calendar', filename='invitation.ics')
+        if attachment:
+            maintype, subtype = attachment.mime_type.split('/')
+            e_msg.add_attachment(
+                attachment.content.encode(),
+                maintype=maintype,
+                subtype=subtype,
+                filename=attachment.filename,
+            )
 
         if self.send_via_aws and user_email.endswith('example.com'):
             logger.info('email not sent "%s" to "%s" because it ends "example.com"', subject, user_email)
@@ -242,11 +254,13 @@ class BaseEmailActor(Actor):
         logger.debug('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
 
     @concurrent
-    async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail], *, force_send=False):
+    async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail], *,
+                          force_send=False, attached_event_id=None):
         trigger = Triggers(trigger)
 
         dft = EMAIL_DEFAULTS[trigger]
         subject, title, body = dft['subject'], dft['title'], dft['body']
+        attachment = None
 
         async with self.pg.acquire() as conn:
             company_name, e_from, reply_to, template, company_logo, company_domain = await conn.fetchrow(
@@ -294,6 +308,9 @@ class BaseEmailActor(Actor):
                     )
                 }
 
+            if attached_event_id:
+                attachment = await ical_attachment(attached_event_id, company_id, conn=conn, settings=self.settings)
+
         global_ctx = dict(
             company_name=company_name,
             company_logo=company_logo,
@@ -324,6 +341,7 @@ class BaseEmailActor(Actor):
                     e_from=e_from,
                     reply_to=reply_to,
                     global_ctx=global_ctx,
+                    attachment=attachment,
                 )
             )
 

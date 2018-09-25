@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
 
+from shared.settings import Settings
+
 PREFIX = (
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//tutorcruncher.com//Appointments//EN',
+    'PRODID:-//nosht//events//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
 )
-SUFFIX = 'END:VCALENDAR\r\n'
 DT_FMT = '%Y%m%dT%H%M%S'
 
 
@@ -63,36 +64,67 @@ def _foldline(line, limit=75, fold_sep='\r\n '):
     return ''.join(ret_chars)
 
 
-async def ical_content(conn):
+def dt_stamp():
+    """
+    for easy mocking
+    """
+    return datetime.utcnow().strftime(DT_FMT)
 
+
+async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
     data = await conn.fetchrow(
         """
         SELECT e.id, e.name, e.start_ts, e.duration, e.short_description,
+          cat.slug || '/' || e.slug as ref,
           e.location_name, e.location_lat, e.location_lng,
-          event_link(cat.slug, e.slug, e.public, $2) as link, co.domain 
+          event_link(cat.slug, e.slug, e.public, $3) as link, co.domain 
         FROM events AS e
         JOIN categories AS cat ON e.category = cat.id
         JOIN companies AS co on cat.company = co.id
-        WHERE e.id=$1
-        """
+        WHERE e.id = $1 AND co.id = $2
+        """,
+        event_id,
+        company_id,
+        settings.auth_key,
     )
+    if not data:
+        raise RuntimeError(f'event {event_id} on company {company_id} not found')
+
     url = 'https://{domain}{link}'.format(**data)
     start, duration = data['start_ts'], data['duration']
     if duration:
         finish = start + duration
     else:
+        start = start.date()
         finish = start + timedelta(days=1)
+
     lines = list(PREFIX) + [
         'BEGIN:VEVENT',
         _foldline('SUMMARY:' + _ical_escape(data['name'])),
         'DTSTART:' + start.strftime(DT_FMT) + 'Z',
         'DTEND:' + finish.strftime(DT_FMT) + 'Z',
-        'DTSTAMP:' + datetime.utcnow().strftime(DT_FMT) + 'Z',
-        'UID:@nosht|{id}'.format(**data),
+        'DTSTAMP:' + dt_stamp() + 'Z',
+        'UID:@nosht|' + data['ref'],
         _foldline('DESCRIPTION:' + _ical_escape('{name}\n\n{short_description}\n\n{url}'.format(url=url, **data))),
         _foldline('URL:' + _ical_escape(url)),
-        _foldline('LOCATION:' + _ical_escape('{location_name} ({location_lat}, {location_lng})'.format(**data))),
-        'END:VEVENT',
-        SUFFIX,
     ]
-    return '\r\n'.join(lines)
+
+    if data['location_name']:
+        location = data['location_name']
+        if data['location_lat'] and data['location_lng']:
+            location += ' ({location_lat:0.6f},{location_lng:0.6f})'.format(**data)
+
+        lines.append(
+            _foldline('LOCATION:' + _ical_escape(location))
+        )
+
+    lines += [
+        'END:VEVENT',
+        'END:VCALENDAR\r\n',
+    ]
+    from .plumbing import Attachment
+    return Attachment(
+        content='\r\n'.join(lines),
+        mime_type='text/calendar',
+        filename='event.ics'
+    )

@@ -76,7 +76,8 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(email='testing@scolvin.com')
-    await factory.create_event(price=10, location_name='The Location', location_lat=51.5, location_lng=-0.2)
+    await factory.create_event(price=10, location_name='The Location',
+                               location_lat=51.5, location_lng=-0.2, duration=None)
 
     res = await factory.create_reservation(factory.user_id)
     booked_action_id, _ = await factory.buy_tickets(res)
@@ -102,6 +103,18 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     assert '<p>Extra Information: <strong>snap</strong></p>\n' in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Duration: <strong>All day</strong></li>' in html
+    attachment = email['part:text/calendar']
+    assert attachment.startswith(
+        'BEGIN:VCALENDAR\n'
+        'VERSION:2.0\n'
+        'PRODID:-//nosht//events//EN\n'
+        'CALSCALE:GREGORIAN\n'
+        'METHOD:PUBLISH\n'
+        'BEGIN:VEVENT\n'
+        'SUMMARY:The Event Name\n'
+        'DTSTART:20200128T000000Z\n'
+        'DTEND:20200129T000000Z\n'
+    )
 
 
 async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Factory, dummy_server):
@@ -274,6 +287,7 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
     await factory.create_user()
     await factory.create_event(
         start_ts=datetime.utcnow() + timedelta(hours=12),
+        duration=None,
         price=10,
         status='published',
         location_name='Tower Block',
