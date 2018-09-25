@@ -84,7 +84,7 @@ def static_map_link(lat, lng, *, settings: Settings, size=(500, 300), zoom=13):
 
 
 date_fmt = '{day}{suffix} %b %y'
-datetime_fmt = '%I:%M%p, {day}{suffix} %b %y'
+datetime_fmt = '%I:%M{ampm}, {day}{suffix} %b %y'
 
 
 def format_dt(dt: Union[datetime, date]):
@@ -93,7 +93,8 @@ def format_dt(dt: Union[datetime, date]):
     else:
         suffix = ['st', 'nd', 'rd'][dt.day % 10 - 1]
     fmt = datetime_fmt if isinstance(dt, datetime) else date_fmt
-    fmt_ = fmt.format(suffix=suffix, day=dt.day)
+    # ampm is an ugly fix for missing locales on travis
+    fmt_ = fmt.format(suffix=suffix, day=dt.day, ampm=f'{dt:%p}'.lower())
     return dt.strftime(fmt_)
 
 
