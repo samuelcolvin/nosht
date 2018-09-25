@@ -139,7 +139,7 @@ const NumberInput = props => (
 const DURATIONS = [
   {value: null, title: 'All Day'},
   {value: 1800, title: '30 mins'},
-  {value: 3600 * 1, title: '1 hour'},
+  {value: 3600, title: '1 hour'},
   {value: 3600 * 2, title: '2 hours'},
   {value: 3600 * 3, title: '3 hours'},
   {value: 3600 * 4, title: '4 hours'},
@@ -158,6 +158,7 @@ class DatetimeInput extends React.Component {
     const duration = this.props.value ? this.props.value.dur : 3600
     const dt = this.props.value ? this.props.value.dt : null
     const all_day = !duration
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
     // TODO could use native data picker if on_mobile
     return (
       <FormGroup className={this.props.className}>
@@ -166,7 +167,7 @@ class DatetimeInput extends React.Component {
           <DatePicker
             selected={dt && moment(dt)}
             disabled={this.props.disabled}
-            onChange={m => this.props.onChange({dt: m && m.format(), dur: duration})}
+            onChange={m => this.props.onChange({tz, dt: m && m.format(), dur: duration})}
             showTimeSelect={!all_day}
             timeFormat="LT"
             required={field.required}
@@ -185,7 +186,7 @@ class DatetimeInput extends React.Component {
                 <DropdownItem
                     key={i}
                     active={d.value === duration}
-                    onClick={() => this.props.onChange({dt: dt, dur: d.value})}>
+                    onClick={() => this.props.onChange({tz, dt: dt, dur: d.value})}>
                   {d.title}
                 </DropdownItem>
              ))}

@@ -542,3 +542,12 @@ async def add_footer_links(conn, **kwargs):
     add footer_links field to companies
     """
     await conn.execute('ALTER TABLE companies ADD COLUMN footer_links JSONB')
+
+
+@patch
+async def event_timezones(conn, **kwargs):
+    """
+    add timezone and alter start_ts fields on events
+    """
+    await conn.execute("ALTER TABLE events ADD COLUMN timezone VARCHAR(63) DEFAULT 'Europe/London'")
+    await conn.execute('ALTER TABLE events ALTER COLUMN start_ts TYPE TIMESTAMPTZ')

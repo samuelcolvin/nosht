@@ -1,18 +1,20 @@
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from secrets import compare_digest
 from textwrap import shorten
 from typing import List, Optional
 
+import pytz
 from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, condecimal, conint, constr, validator
+from pytz.tzinfo import BaseTzInfo
 
 from shared.images import delete_image, upload_background
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
@@ -48,7 +50,7 @@ FROM (
            'lat', e.location_lat,
            'lng', e.location_lng
          ) AS location,
-         e.start_ts,
+         iso_ts_tz(e.start_ts, e.timezone) AS start_ts,
          extract(epoch FROM e.duration)::int AS duration,
          CASE
            WHEN e.ticket_limit IS NULL THEN NULL
@@ -79,6 +81,19 @@ FROM (
   ) AS t
 ) AS ticket_types;
 """
+
+
+class TzInfo(BaseTzInfo):
+    @classmethod
+    def get_validators(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        try:
+            return pytz.timezone(v)
+        except KeyError:
+            raise ValueError('invalid timezone')
 
 
 async def check_event_sig(request):
@@ -139,8 +154,15 @@ class EventBread(Bread):
         public: bool = True
 
         class DateModel(BaseModel):
+            tz: TzInfo
             dt: datetime
             dur: Optional[int]
+
+            @validator('dt')
+            def apply_tz(cls, v, *, values, **kwargs):
+                tz = values.get('tz')
+                # debug(v, tz, tz.localize(v.replace(tzinfo=None)).astimezone(timezone.utc))
+                return tz and tz.localize(v.replace(tzinfo=None))
 
         date: DateModel
 
@@ -170,7 +192,7 @@ class EventBread(Bread):
         V('cat.name').as_('category'),
         'e.status',
         'e.highlight',
-        'e.start_ts',
+        Func('iso_ts_tz', V('e.start_ts'), V('e.timezone')).as_('start_ts'),
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
     retrieve_fields = browse_fields + (
@@ -184,6 +206,7 @@ class EventBread(Bread):
         'e.short_description',
         'e.long_description',
         'e.host',
+        'e.timezone',
         Func('full_name', V('uh.first_name'), V('uh.last_name'), V('uh.email')).as_('host_name'),
     )
 
@@ -220,9 +243,14 @@ class EventBread(Bread):
         if date:
             dt: datetime = date['dt']
             duration: Optional[int] = date['dur']
+            if duration:
+                duration = timedelta(seconds=duration)
+            else:
+                dt = datetime(dt.year, dt.month, dt.day)
             data.update(
-                start_ts=datetime(dt.year, dt.month, dt.day) if duration is None else dt.replace(tzinfo=None),
-                duration=duration and timedelta(seconds=duration),
+                start_ts=dt,
+                duration=duration,
+                timezone=str(date['tz'])
             )
 
         loc = data.pop('location', None)
@@ -310,7 +338,7 @@ async def _check_event_permissions(request, check_upcoming=False):
     if request['session']['role'] != 'admin':
         if host_id != request['session']['user_id']:
             raise JsonErrors.HTTPForbidden(message='user is not the host of this event')
-        if check_upcoming and start_ts < datetime.utcnow():
+        if check_upcoming and start_ts < datetime.utcnow().replace(tzinfo=timezone.utc):
             raise JsonErrors.HTTPForbidden(message="you can't modify past events")
     return event_id
 

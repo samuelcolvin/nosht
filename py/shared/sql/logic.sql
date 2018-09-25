@@ -67,3 +67,20 @@ CREATE OR REPLACE FUNCTION iso_ts(v TIMESTAMP) RETURNS VARCHAR(5) AS $$
   END;
 $$ LANGUAGE plpgsql;
 
+
+CREATE OR REPLACE FUNCTION iso_ts_tz(v TIMESTAMPTZ, tz VARCHAR(63)) RETURNS VARCHAR(5) AS $$
+  DECLARE
+  BEGIN
+    return to_char(v AT TIME ZONE tz, 'YYYY-MM-DD"T"HH24:MI:SS');
+  END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION iso_ts_with_tz(v TIMESTAMPTZ, tz VARCHAR(63)) RETURNS VARCHAR(5) AS $$
+  DECLARE
+  BEGIN
+    PERFORM set_config('timezone', tz, true);
+    return to_char(v, 'YYYY-MM-DD"T"HH24:MI:SSOF');
+  END;
+$$ LANGUAGE plpgsql;
+

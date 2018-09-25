@@ -6,7 +6,7 @@ import json
 import random
 import sys
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
@@ -207,7 +207,8 @@ class Factory:
                            host_user_id=None,
                            name='The Event Name',
                            slug=None,
-                           start_ts=datetime(2020, 1, 28, 19, 0),
+                           start_ts=datetime(2020, 1, 28, 19, 0, tzinfo=timezone.utc),
+                           timezone='Europe/London',
                            duration=timedelta(hours=1),
                            short_description=None,
                            long_description=None,
@@ -223,6 +224,7 @@ class Factory:
                 slug=slug or slugify(name),
                 long_description=long_description,
                 start_ts=start_ts,
+                timezone=timezone,
                 duration=duration,
                 short_description=(
                     short_description or

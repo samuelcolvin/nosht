@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -173,6 +173,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'status': 'published',
         'highlight': False,
         'start_ts': '2020-01-28T19:00:00',
+        'timezone': 'Europe/London',
         'duration': 3600,
         'cat_id': factory.category_id,
         'public': False,
@@ -264,6 +265,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         },
         date={
             'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'),
+            'tz': 'Europe/London',
             'dur': 7200,
         },
         long_description='# title\nI love to **party**'
@@ -287,7 +289,8 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'name': 'foobar',
         'slug': 'foobar',
         'highlight': False,
-        'start_ts': datetime(2020, 2, 1, 19, 0),
+        'start_ts': datetime(2020, 2, 1, 19, 0, tzinfo=timezone.utc),
+        'timezone': 'Europe/London',
         'duration': timedelta(seconds=7200),
         'short_description': 'title I love to party',
         'long_description': '# title\nI love to **party**',
@@ -336,6 +339,7 @@ async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login
         location={'lat': 50, 'lng': 0, 'name': 'London'},
         date={
             'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'),
+            'tz': 'Europe/London',
             'dur': None,
         },
         long_description='I love to party'
@@ -345,7 +349,7 @@ async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     public, start_ts, duration = await db_conn.fetchrow('SELECT public, start_ts, duration FROM events')
     assert public is False
-    assert start_ts == datetime(2020, 2, 1, 0, 0)
+    assert start_ts == datetime(2020, 2, 1, 0, 0, tzinfo=timezone.utc)
     assert duration is None
 
 
@@ -359,7 +363,7 @@ async def test_create_event_duplicate_slug(cli, url, db_conn, factory: Factory, 
         name='foobar',
         category=factory.category_id,
         long_description='I love to party',
-        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600, 'tz': 'Europe/London'},
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     r = await cli.json_post(url('event-add'), data=data)
@@ -385,13 +389,43 @@ async def test_create_event_host(cli, url, db_conn, factory: Factory, login):
         name='foobar',
         category=factory.category_id,
         long_description='I love to party',
-        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600, 'tz': 'Europe/London'},
     )
     r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 201, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     status = await db_conn.fetchval('SELECT status FROM events')
     assert status == 'pending'
+
+
+async def test_create_timezone(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        location={
+            'lat': 50,
+            'lng': 0,
+            'name': 'London',
+        },
+        date={
+            'dt': datetime(2020, 6, 1, 19, 0).strftime('%s'),
+            'tz': 'America/New_York',
+            'dur': 7200,
+        },
+        long_description='# title\nI love to **party**'
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 201, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+    data = await r.json()
+    start_ts, tz = await db_conn.fetchrow('SELECT start_ts, timezone FROM events WHERE id=$1', data['pk'])
+    assert tz == 'America/New_York'
+    assert start_ts == datetime(2020, 6, 1, 22, 0, tzinfo=timezone.utc)
 
 
 async def test_not_auth(cli, url, db_conn, factory: Factory):
