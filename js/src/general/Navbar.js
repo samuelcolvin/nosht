@@ -12,7 +12,7 @@ import {
 } from 'reactstrap'
 import {on_mobile, watch_scroll} from '../utils'
 
-const BACK_TOP_DEFAULT = 56
+const BACK_TOP_DEFAULT = 100
 let BACK_TOP = BACK_TOP_DEFAULT
 
 const ExtraMenu = ({message}) => (
