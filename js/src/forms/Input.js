@@ -151,12 +151,19 @@ class DatetimeInput extends React.Component {
   constructor (props) {
     super(props)
     this.state = {drop_open: false}
+    this.onDtChange = this.onDtChange.bind(this)
+  }
+
+  onDtChange (m, dur) {
+    if (m && !(dur !== null && m.hours() === 0 && m.minutes() === 0)) {
+      this.props.onChange({dt: m.format(), dur})
+    }
   }
 
   render () {
     const field = this.props.field
     const duration = this.props.value ? this.props.value.dur : 3600
-    const dt = this.props.value ? this.props.value.dt : null
+    const dt = this.props.value && this.props.value.dt ? moment(this.props.value.dt) : null
     const all_day = !duration
     // TODO could use native data picker if on_mobile
     return (
@@ -164,9 +171,11 @@ class DatetimeInput extends React.Component {
         <Label field={field}/>
         <InputGroup>
           <DatePicker
-            selected={dt && moment(dt)}
+            selected={dt}
             disabled={this.props.disabled}
-            onChange={m => this.props.onChange({dt: m && m.format(), dur: duration})}
+            onChange={m => this.onDtChange(m, duration)}
+            minTime={moment().hours(8).minutes(0)}
+            maxTime={moment().hours(23).minutes(0)}
             showTimeSelect={!all_day}
             timeFormat="LT"
             required={field.required}

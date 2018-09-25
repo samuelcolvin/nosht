@@ -158,6 +158,7 @@ async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Fact
         'Foo Bar not provided, please let the event host Frank Spencer know if you have any special requirements.\n'
 
     )
+    assert 'Card Charged' not in email['part:text/plain']
     tid = await db_conn.fetchval('SELECT id FROM tickets')
     ticket_id_s = ticket_id_signed(tid, settings)
     assert ticket_id_s.endswith(f'-{tid}')
