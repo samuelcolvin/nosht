@@ -545,9 +545,18 @@ async def add_footer_links(conn, **kwargs):
 
 
 @patch
-async def event_timezones(conn, **kwargs):
+async def use_timezones(conn, **kwargs):
     """
-    add timezone and alter start_ts fields on events
+    convert all TIMESTAMP fields to TIMESTAMPTZ
     """
-    await conn.execute("ALTER TABLE events ADD COLUMN timezone VARCHAR(63) DEFAULT 'Europe/London'")
+    await conn.execute("ALTER TABLE companies ADD COLUMN display_timezone VARCHAR(63) NOT NULL DEFAULT 'Europe/London'")
+
+    await conn.execute("ALTER TABLE events ADD COLUMN timezone VARCHAR(63) NOT NULL DEFAULT 'Europe/London'")
     await conn.execute('ALTER TABLE events ALTER COLUMN start_ts TYPE TIMESTAMPTZ')
+
+    await conn.execute('ALTER TABLE users ALTER COLUMN created_ts TYPE TIMESTAMPTZ')
+    await conn.execute('ALTER TABLE users ALTER COLUMN active_ts TYPE TIMESTAMPTZ')
+
+    await conn.execute('ALTER TABLE actions ALTER COLUMN ts TYPE TIMESTAMPTZ')
+
+    await conn.execute('ALTER TABLE tickets ALTER COLUMN created_ts TYPE TIMESTAMPTZ')

@@ -136,8 +136,8 @@ async def test_user_export(cli, url, login, factory: Factory):
             'stripe_customer_id': 'customer-id',
             'receive_emails': 'false',
             'allow_marketing': 'false',
-            'created_ts': RegexStr('\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'),
-            'active_ts': RegexStr('\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d'),
+            'created_ts': RegexStr(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00'),
+            'active_ts': RegexStr(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00'),
             'tickets': '2',
         },
     ]

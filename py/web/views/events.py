@@ -344,7 +344,8 @@ async def _check_event_permissions(request, check_upcoming=False):
 
 
 event_tickets_sql = """
-SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price, t.extra_donated::float AS extra_donated, t.extra_info,
+SELECT t.id, t.price::float AS price, t.extra_donated::float AS extra_donated, t.extra_info,
+  iso_ts(a.ts, co.display_timezone) AS booked_at,
   t.user_id AS guest_user_id, full_name(t.first_name, t.last_name) AS guest_name, ug.email AS guest_email,
   a.user_id as buyer_user_id,
   coalesce(full_name(tb.first_name, tb.last_name), full_name(ub.first_name, ub.last_name)) AS buyer_name,
@@ -353,6 +354,7 @@ SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price, t.extra_donated
 FROM tickets AS t
 LEFT JOIN users AS ug ON t.user_id = ug.id
 JOIN actions AS a ON t.booked_action = a.id
+JOIN companies AS co ON a.company = co.id
 LEFT JOIN tickets AS tb ON (a.user_id = tb.user_id AND a.id = tb.booked_action)
 JOIN users AS ub ON a.user_id = ub.id
 JOIN ticket_types AS tt ON t.ticket_type = tt.id

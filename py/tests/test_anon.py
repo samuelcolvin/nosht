@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 from buildpg import Values
 from pytest_toolbox.comparison import RegexStr
@@ -65,7 +65,7 @@ async def test_sitemap(cli, url, factory: Factory, db_conn):
             user_id=factory.user_id,
             type=ActionTypes.edit_event,
             event=factory.event_id,
-            ts=datetime(2032, 6, 1)
+            ts=datetime(2032, 6, 1, tzinfo=timezone.utc)
         )
     )
 
@@ -78,7 +78,7 @@ async def test_sitemap(cli, url, factory: Factory, db_conn):
             user_id=factory.user_id,
             type=ActionTypes.create_event,
             event=e2,
-            ts=datetime(2031, 1, 1)
+            ts=datetime(2031, 1, 1, tzinfo=timezone.utc)
         )
     )
 

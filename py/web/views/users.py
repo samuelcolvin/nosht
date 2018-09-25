@@ -123,8 +123,9 @@ user_actions_sql = """
 SELECT json_build_object('actions', tickets)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS tickets FROM (
-    SELECT id, ts, type, extra
-    FROM actions
+    SELECT a.id, iso_ts(a.ts, co.display_timezone) AS ts, a.type, a.extra
+    FROM actions AS a
+    JOIN companies AS co ON a.company = co.id
     WHERE user_id=$1 AND company=$2
     ORDER BY ts DESC
     LIMIT 100

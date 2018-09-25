@@ -10,6 +10,7 @@ CREATE TABLE companies (
   stripe_public_key VARCHAR(63),
   stripe_secret_key VARCHAR(63),
   currency CURRENCY NOT NULL DEFAULT 'gbp',
+  display_timezone VARCHAR(63) NOT NULL DEFAULT 'Europe/London',
   image VARCHAR(255),
   logo VARCHAR(255),
   email_from VARCHAR(255),
@@ -35,8 +36,8 @@ CREATE TABLE users (
   stripe_customer_id VARCHAR(31),
   receive_emails BOOLEAN DEFAULT TRUE,
   allow_marketing BOOLEAN DEFAULT FALSE,
-  created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  active_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  active_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX user_email ON users USING btree (company, email);
 CREATE INDEX user_role ON users USING btree (role);
@@ -87,7 +88,7 @@ CREATE TABLE events (
   slug VARCHAR(63),
   highlight BOOLEAN NOT NULL DEFAULT FALSE,
   start_ts TIMESTAMPTZ NOT NULL,
-  timezone VARCHAR(63) DEFAULT 'Europe/London',
+  timezone VARCHAR(63) NOT NULL DEFAULT 'Europe/London',
   duration INTERVAL,
   short_description VARCHAR(140),
   long_description TEXT,
@@ -136,7 +137,7 @@ CREATE TABLE actions (
   company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
   user_id INT REFERENCES users ON DELETE CASCADE,
   event INT REFERENCES events ON DELETE SET NULL,
-  ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   type ACTION_TYPES NOT NULL,
   extra JSONB
 );
@@ -171,7 +172,7 @@ CREATE TABLE tickets (
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   booked_action INT REFERENCES actions ON DELETE CASCADE,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',
-  created_ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   extra_info TEXT
 );
 CREATE INDEX ticket_event ON tickets USING btree (event);

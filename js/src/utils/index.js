@@ -1,4 +1,4 @@
-import format from 'date-fns/format'
+import moment from 'moment'
 
 export const unique = (value, index, array) => array.indexOf(value) === index
 
@@ -67,8 +67,8 @@ const DF = 'Do MMM'
 const DFY = 'Do MMM YYYY'
 const DTF = 'Do MMM, h:mma'
 
-export const format_date = (ts, y) => format(new Date(ts), y ? DFY : DF)
-export const format_datetime = ts => format(new Date(ts), DTF)
+export const format_date = (ts, y) => moment(ts).format(y ? DFY : DF)
+export const format_datetime = ts => moment(ts).format(DTF)
 
 export const format_event_start = (ts, duration) => duration === null ? format_date(ts) : format_datetime(ts)
 export const format_event_duration = duration => duration === null ? 'All day' : format_duration(duration)
