@@ -50,7 +50,7 @@ FROM (
            'lat', e.location_lat,
            'lng', e.location_lng
          ) AS location,
-         iso_ts_tz(e.start_ts, e.timezone) AS start_ts,
+         e.start_ts AT TIME ZONE e.timezone AS start_ts,
          extract(epoch FROM e.duration)::int AS duration,
          CASE
            WHEN e.ticket_limit IS NULL THEN NULL
@@ -192,7 +192,7 @@ class EventBread(Bread):
         V('cat.name').as_('category'),
         'e.status',
         'e.highlight',
-        Func('iso_ts_tz', V('e.start_ts'), V('e.timezone')).as_('start_ts'),
+        Func('as_time_zone', V('e.start_ts'), V('e.timezone')).as_('start_ts'),
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
     retrieve_fields = browse_fields + (
@@ -299,7 +299,7 @@ class EventBread(Bread):
             )
             action_id = await record_action_id(self.request, self.request['session']['user_id'],
                                                ActionTypes.create_event, event_id=pk)
-            await self.app['email_actor'].send_event_created(action_id)
+        await self.app['email_actor'].send_event_created(action_id)
         return pk
 
     async def edit_execute(self, pk, **data):

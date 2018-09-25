@@ -8,6 +8,7 @@ from typing import Optional
 from arq import concurrent, cron
 from buildpg import MultipleValues, Values
 
+from shared.emails.utils import start_tz_duration
 from ..actions import ActionTypes
 from ..utils import (display_cash, display_cash_free, format_duration, password_reset_link, static_map_link,
                      ticket_id_signed)
@@ -33,7 +34,7 @@ class EmailActor(BaseEmailActor):
                   cat.name AS cat_name, cat.slug AS cat_slug,
                   cat.ticket_extra_title AS ticket_extra_title,
                   e.location_name, e.location_lat, e.location_lng,
-                  e.start_ts, e.duration, cat.company, co.currency, a.extra
+                  e.start_ts, e.duration, e.timezone, cat.company, co.currency, a.extra
                 FROM actions AS a
                 JOIN users AS ub ON a.user_id = ub.id
                 JOIN events AS e ON a.event = e.id
@@ -53,6 +54,7 @@ class EmailActor(BaseEmailActor):
                 """,
                 booked_action_id
             )
+            # start, duration = start_tz_duration(data)
             duration: Optional[timedelta] = data['duration']
             ctx = {
                 'event_link': data['event_link'],
@@ -175,7 +177,8 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT a.company AS company_id, u.role AS host_role, u.id AS host_user_id,
                 full_name(u.first_name, u.last_name, u.email) AS host_name,
-                 e.id AS event_id, e.name AS event_name, e.start_ts::date AS event_date,
+                 e.id AS event_id, e.name AS event_name, 
+                 (e.start_ts AT TIME ZONE e.timezone)::date AS event_date,
                  cat.name AS cat_name, cat.slug AS cat_slug,
                  event_link(cat.slug, e.slug, e.public, $2) AS event_link
                 FROM actions AS a

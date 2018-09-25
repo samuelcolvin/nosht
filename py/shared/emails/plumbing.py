@@ -27,6 +27,7 @@ from ..settings import Settings
 from ..utils import RequestError, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
 from .ical import ical_attachment
+from .utils import Attachment
 
 logger = logging.getLogger('nosht.emails')
 
@@ -72,12 +73,6 @@ class UserEmail(NamedTuple):
     id: int
     ctx: Dict[str, Any] = {}
     ticket_id: int = None
-
-
-class Attachment(NamedTuple):
-    content: str
-    mime_type: str
-    filename: str
 
 
 class BaseEmailActor(Actor):

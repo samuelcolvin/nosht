@@ -6,7 +6,7 @@ import json
 import random
 import sys
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
@@ -14,6 +14,7 @@ from textwrap import shorten
 import aiodns
 import lorem
 import pytest
+import pytz
 from aiohttp.test_utils import teardown_test_loop
 from aioredis import create_redis
 from async_timeout import timeout
@@ -122,6 +123,9 @@ async def create_demo_data(db_conn, settings):
     await _create_demo_data(db_conn, settings, company_host='127.0.0.1')
 
 
+london = pytz.timezone('Europe/London')
+
+
 class Factory:
     def __init__(self, conn, app):
         self.conn = conn
@@ -207,7 +211,7 @@ class Factory:
                            host_user_id=None,
                            name='The Event Name',
                            slug=None,
-                           start_ts=datetime(2020, 1, 28, 19, 0, tzinfo=timezone.utc),
+                           start_ts=london.localize(datetime(2020, 6, 28, 19, 0)),
                            timezone='Europe/London',
                            duration=timedelta(hours=1),
                            short_description=None,

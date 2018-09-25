@@ -24,7 +24,7 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'image': 'https://www.example.org/main.png',
                 'short_description': RegexStr('.*'),
                 'location_name': None,
-                'start_ts': '2020-01-28T19:00:00',
+                'start_ts': '2020-06-28T19:00:00',
                 'duration': 3600,
             },
         ],

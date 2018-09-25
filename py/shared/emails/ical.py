@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from shared.settings import Settings
+from .utils import Attachment, start_tz_duration
 
 DT_FMT = '%Y%m%dT%H%M%S'
 DATE_FMT = '%Y%m%d'
@@ -66,9 +67,13 @@ def dt_stamp():
 
 
 async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
+    """
+    Generate iCal data for an event, see https://tools.ietf.org/html/rfc5545.
+    """
     data = await conn.fetchrow(
         """
-        SELECT e.id, e.name, e.start_ts, e.duration, e.short_description,
+        SELECT e.id, e.name, e.duration, e.short_description,
+          e.start_ts, e.timezone,
           cat.slug || '/' || e.slug as ref,
           e.location_name, e.location_lat, e.location_lng,
           event_link(cat.slug, e.slug, e.public, $3) as link, co.domain,
@@ -106,14 +111,22 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
         foldline('URL:' + _ical_escape(url)),
     ]
 
-    start, duration = data['start_ts'], data['duration']
+    start, duration = start_tz_duration(data)
     if duration:
-        lines += [
-            'DTSTART:' + start.strftime(DT_FMT) + 'Z',
-            'DTEND:' + (start + duration).strftime(DT_FMT) + 'Z',
-        ]
+        tz = data['timezone']
+        finish = start + duration
+        if data['timezone'] in {'GMT', 'UTC'}:
+            lines += [
+                f'DTSTART:{start.strftime(DT_FMT)}Z',
+                f'DTEND:{finish.strftime(DT_FMT)}Z',
+            ]
+        else:
+            lines += [
+                f'DTSTART;TZID={tz}:{start.strftime(DT_FMT)}',
+                f'DTEND;TZID={tz}:{finish.strftime(DT_FMT)}',
+            ]
     else:
-        lines.append('DTSTART:' + start.date().strftime(DATE_FMT))
+        lines.append('DTSTART:' + start.strftime(DATE_FMT))
 
     if data['location_name']:
         lines.append(foldline('LOCATION:' + _ical_escape(data['location_name'])))
@@ -125,7 +138,6 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
         'END:VEVENT',
         'END:VCALENDAR\r\n',
     ]
-    from .plumbing import Attachment
     return Attachment(
         content='\r\n'.join(lines),
         mime_type='text/calendar',

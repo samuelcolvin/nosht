@@ -1,4 +1,7 @@
+from datetime import datetime
+
 import pytest
+import pytz
 
 from shared.emails.ical import ical_attachment
 
@@ -9,7 +12,10 @@ async def test_simple(factory: Factory, db_conn, settings, mock):
     await factory.create_company(domain='events.example.com')
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(short_description='This is the event short description')
+    await factory.create_event(
+        short_description='This is the event short description',
+        start_ts=pytz.timezone('Europe/London').localize(datetime(2020, 6, 1, 10, 0)),
+    )
 
     m = mock.patch('shared.emails.ical.dt_stamp')
     m.return_value = '20200101T212233'
@@ -32,8 +38,8 @@ async def test_simple(factory: Factory, db_conn, settings, mock):
         ' d by Frank Spencer on behalf of Testing\\n\\nFor more information: https://e\r\n'
         ' vents.example.com/supper-clubs/the-event-name/\r\n'
         'URL:https://events.example.com/supper-clubs/the-event-name/\r\n'
-        'DTSTART:20200128T190000Z\r\n'
-        'DTEND:20200128T200000Z\r\n'
+        'DTSTART;TZID=Europe/London:20200601T100000\r\n'
+        'DTEND;TZID=Europe/London:20200601T110000\r\n'
         'END:VEVENT\r\n'
         'END:VCALENDAR\r\n'
     )
@@ -60,6 +66,23 @@ async def test_with_partial_location(factory: Factory, db_conn, settings):
     assert 'LOCATION:The House\\, Testing Street\r\n' in attachment.content
 
 
+async def test_utc(factory: Factory, db_conn, settings):
+    await factory.create_company(domain='events.example.com')
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(
+        short_description='This is the event short description',
+        start_ts=pytz.utc.localize(datetime(2020, 6, 1, 10, 0)),
+        timezone=str(pytz.utc),
+    )
+
+    attachment = await ical_attachment(factory.event_id, factory.company_id, conn=db_conn, settings=settings)
+    assert (
+        'DTSTART:20200601T100000Z\r\n'
+        'DTEND:20200601T110000Z\r\n'
+    ) in attachment.content
+
+
 async def test_no_duration(factory: Factory, db_conn, settings):
     await factory.create_company()
     await factory.create_cat()
@@ -67,7 +90,7 @@ async def test_no_duration(factory: Factory, db_conn, settings):
     await factory.create_event(duration=None)
 
     attachment = await ical_attachment(factory.event_id, factory.company_id, conn=db_conn, settings=settings)
-    assert 'DTSTART:20200128\r\n' in attachment.content
+    assert 'DTSTART:20200628\r\n' in attachment.content
     assert 'DTEND' not in attachment.content
 
 
