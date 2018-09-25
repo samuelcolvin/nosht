@@ -41,6 +41,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
                 'lng': -0.5,
             },
             'start_ts': '2020-06-28T19:00:00',
+            'tz': 'BST',
             'duration': 3600,
             'tickets_available': None,
             'host_id': factory.user_id,
@@ -426,6 +427,40 @@ async def test_create_timezone(cli, url, db_conn, factory: Factory, login):
     start_ts, tz = await db_conn.fetchrow('SELECT start_ts, timezone FROM events WHERE id=$1', data['pk'])
     assert tz == 'America/New_York'
     assert start_ts == datetime(2020, 6, 1, 22, 0, tzinfo=timezone.utc)
+
+
+async def test_create_bad_timezone(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        date={
+            'dt': datetime(2020, 6, 1, 19, 0).strftime('%s'),
+            'tz': 'foobar',
+            'dur': 7200,
+        },
+        long_description='# title\nI love to **party**'
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'Invalid Data',
+        'details': [
+            {
+                'loc': [
+                    'date',
+                    'tz',
+                ],
+                'msg': 'invalid timezone',
+                'type': 'value_error',
+            },
+        ],
+    }
 
 
 async def test_not_auth(cli, url, db_conn, factory: Factory):

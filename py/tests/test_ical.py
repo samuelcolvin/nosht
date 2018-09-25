@@ -5,7 +5,7 @@ import pytz
 
 from shared.emails.ical import ical_attachment
 
-from .conftest import Factory
+from .conftest import Factory, london
 
 
 async def test_simple(factory: Factory, db_conn, settings, mock):
@@ -14,7 +14,7 @@ async def test_simple(factory: Factory, db_conn, settings, mock):
     await factory.create_user()
     await factory.create_event(
         short_description='This is the event short description',
-        start_ts=pytz.timezone('Europe/London').localize(datetime(2020, 6, 1, 10, 0)),
+        start_ts=london.localize(datetime(2020, 6, 1, 10, 0)),
     )
 
     m = mock.patch('shared.emails.ical.dt_stamp')

@@ -146,6 +146,7 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
         '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n'
         '</div>\n'
     ) in html
+    print(html)
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Duration: <strong>1 hour 30 mins</strong></li>' in html
     assert '<li>Start Time: <strong>07:00pm, 28th Jun 20</strong></li>\n' in html

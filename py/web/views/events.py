@@ -51,6 +51,7 @@ FROM (
            'lng', e.location_lng
          ) AS location,
          e.start_ts AT TIME ZONE e.timezone AS start_ts,
+         tz_abbrev(e.start_ts, e.timezone) as tz,
          extract(epoch FROM e.duration)::int AS duration,
          CASE
            WHEN e.ticket_limit IS NULL THEN NULL
@@ -161,7 +162,6 @@ class EventBread(Bread):
             @validator('dt')
             def apply_tz(cls, v, *, values, **kwargs):
                 tz = values.get('tz')
-                # debug(v, tz, tz.localize(v.replace(tzinfo=None)).astimezone(timezone.utc))
                 return tz and tz.localize(v.replace(tzinfo=None))
 
         date: DateModel
