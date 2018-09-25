@@ -414,7 +414,7 @@ async def test_create_timezone(cli, url, db_conn, factory: Factory, login):
             'name': 'London',
         },
         date={
-            'dt': datetime(2020, 6, 1, 19, 0).strftime('%s'),
+            'dt': datetime(2020, 6, 1, 19, 0).isoformat(),
             'tz': 'America/New_York',
             'dur': 7200,
         },
@@ -426,7 +426,7 @@ async def test_create_timezone(cli, url, db_conn, factory: Factory, login):
     data = await r.json()
     start_ts, tz = await db_conn.fetchrow('SELECT start_ts, timezone FROM events WHERE id=$1', data['pk'])
     assert tz == 'America/New_York'
-    assert start_ts == datetime(2020, 6, 1, 22, 0, tzinfo=timezone.utc)
+    assert start_ts == datetime(2020, 6, 1, 23, 0, tzinfo=timezone.utc)
 
 
 async def test_create_bad_timezone(cli, url, factory: Factory, login):
