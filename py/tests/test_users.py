@@ -8,7 +8,7 @@ from .conftest import Factory
 
 
 async def test_user_list(cli, url, login, factory: Factory):
-    await factory.create_company()
+    await factory.create_company(display_timezone='utc')
     await factory.create_user()
     await login()
 
@@ -32,7 +32,7 @@ async def test_user_list(cli, url, login, factory: Factory):
 
 
 async def test_user_details(cli, url, login, factory: Factory):
-    await factory.create_company()
+    await factory.create_company(display_timezone='utc')
     await factory.create_user()
     await login()
 

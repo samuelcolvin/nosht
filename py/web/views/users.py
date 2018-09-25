@@ -1,7 +1,7 @@
 from enum import Enum
 
 from buildpg import Func, V
-from buildpg.clauses import Where
+from buildpg.clauses import Join, Where
 from pydantic import BaseModel, EmailStr
 
 from web.actions import ActionTypes, record_action
@@ -33,24 +33,25 @@ class UserBread(Bread):
 
     model = Model
     table = 'users'
-    browse_order_by_fields = V('active_ts').desc(), V('id').asc()
+    table_as = 'u'
+    browse_order_by_fields = V('u.active_ts').desc(), V('id').asc()
     browse_fields = (
-        'id',
-        Func('full_name', V('first_name'), V('last_name'), V('email')).as_('name'),
-        V('role').as_('role_type'),
-        'status',
-        'email',
-        'active_ts',
+        'u.id',
+        Func('full_name', V('u.first_name'), V('u.last_name'), V('u.email')).as_('name'),
+        V('u.role').as_('role_type'),
+        'u.status',
+        'u.email',
+        Func('as_time_zone', V('u.active_ts'), V('co.display_timezone')).as_('active_ts'),
     )
     retrieve_fields = browse_fields + (
-        'status',
-        'phone_number',
-        'created_ts',
-        'active_ts',
-        'receive_emails',
-        'allow_marketing',
-        'first_name',
-        'last_name',
+        'u.status',
+        'u.phone_number',
+        Func('as_time_zone', V('u.created_ts'), V('co.display_timezone')).as_('created_ts'),
+        'u.active_ts',
+        'u.receive_emails',
+        'u.allow_marketing',
+        'u.first_name',
+        'u.last_name',
     )
 
     async def check_permissions(self, method):
@@ -58,6 +59,9 @@ class UserBread(Bread):
 
     def where(self):
         return Where(V('company') == self.request['company_id'])
+
+    def join(self):
+        return Join(V('companies').as_('co').on(V('u.company') == V('co.id')))
 
     async def prepare_add_data(self, data):
         role_type = data.pop('role_type')
