@@ -24,10 +24,12 @@ from cryptography import fernet
 from misaka import HtmlRenderer, Markdown
 
 from ..settings import Settings
-from ..utils import RequestError, format_duration, unsubscribe_sig
+from ..utils import RequestError, format_dt, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
+from .ical import ical_attachment
+from .utils import Attachment
 
-logger = logging.getLogger('nosht.emails.plumbing')
+logger = logging.getLogger('nosht.emails')
 
 THIS_DIR = Path(__file__).parent
 DEFAULT_EMAIL_TEMPLATE = (THIS_DIR / 'default_template.html').read_text()
@@ -63,8 +65,6 @@ safe_markdown = Markdown(
     extensions=extensions
 )
 DEBUG_PRINT_REGEX = re.compile(r'{{ ?__debug_context__ ?}}')
-date_fmt = '%d %b %y'
-datetime_fmt = '%H:%M %d %b %y'
 
 
 class UserEmail(NamedTuple):
@@ -185,7 +185,8 @@ class BaseEmailActor(Actor):
                          template: str,
                          e_from: str,
                          reply_to: Optional[str],
-                         global_ctx: Dict[str, Any]):
+                         global_ctx: Dict[str, Any],
+                         attachment: Optional[Attachment]):
         base_url = global_ctx['base_url']
 
         full_name = '{first_name} {last_name}'.format(
@@ -227,6 +228,14 @@ class BaseEmailActor(Actor):
             ctx['markup_data'] = json.dumps(markup_data, separators=(',', ':'))
         html_body = chevron.render(template, data=ctx, partials_dict={'title': title})
         e_msg.add_alternative(html_body, subtype='html', cte='quoted-printable')
+        if attachment:
+            maintype, subtype = attachment.mime_type.split('/')
+            e_msg.add_attachment(
+                attachment.content.encode(),
+                maintype=maintype,
+                subtype=subtype,
+                filename=attachment.filename,
+            )
 
         if self.send_via_aws and user_email.endswith('example.com'):
             logger.info('email not sent "%s" to "%s" because it ends "example.com"', subject, user_email)
@@ -238,11 +247,13 @@ class BaseEmailActor(Actor):
         logger.debug('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
 
     @concurrent
-    async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail], *, force_send=False):
+    async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail], *,
+                          force_send=False, attached_event_id=None):
         trigger = Triggers(trigger)
 
         dft = EMAIL_DEFAULTS[trigger]
         subject, title, body = dft['subject'], dft['title'], dft['body']
+        attachment = None
 
         async with self.pg.acquire() as conn:
             company_name, e_from, reply_to, template, company_logo, company_domain = await conn.fetchrow(
@@ -290,6 +301,9 @@ class BaseEmailActor(Actor):
                     )
                 }
 
+            if attached_event_id:
+                attachment = await ical_attachment(attached_event_id, company_id, conn=conn, settings=self.settings)
+
         global_ctx = dict(
             company_name=company_name,
             company_logo=company_logo,
@@ -320,6 +334,7 @@ class BaseEmailActor(Actor):
                     e_from=e_from,
                     reply_to=reply_to,
                     global_ctx=global_ctx,
+                    attachment=attachment,
                 )
             )
 
@@ -352,10 +367,8 @@ def clean_ctx(context, base_url):
             value = value or '/'
             assert value.startswith('/'), f'link field found which doesn\'t start "/". {key}: {value}'
             context[key] = base_url + value
-        elif isinstance(value, datetime.datetime):
-            context[key] = value.strftime(datetime_fmt)
-        elif isinstance(value, datetime.date):
-            context[key] = value.strftime(date_fmt)
+        elif isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
+            context[key] = format_dt(value)
         elif isinstance(value, datetime.timedelta):
             context[key] = format_duration(value)
         elif isinstance(value, dict):

@@ -1,18 +1,20 @@
 import hashlib
 import hmac
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from secrets import compare_digest
 from textwrap import shorten
 from typing import List, Optional
 
+import pytz
 from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, condecimal, conint, constr, validator
+from pytz.tzinfo import BaseTzInfo
 
 from shared.images import delete_image, upload_background
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
@@ -48,7 +50,8 @@ FROM (
            'lat', e.location_lat,
            'lng', e.location_lng
          ) AS location,
-         e.start_ts,
+         e.start_ts AT TIME ZONE e.timezone AS start_ts,
+         tz_abbrev(e.start_ts, e.timezone) as tz,
          extract(epoch FROM e.duration)::int AS duration,
          CASE
            WHEN e.ticket_limit IS NULL THEN NULL
@@ -79,6 +82,19 @@ FROM (
   ) AS t
 ) AS ticket_types;
 """
+
+
+class TzInfo(BaseTzInfo):
+    @classmethod
+    def get_validators(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        try:
+            return pytz.timezone(v)
+        except KeyError:
+            raise ValueError('invalid timezone')
 
 
 async def check_event_sig(request):
@@ -139,8 +155,14 @@ class EventBread(Bread):
         public: bool = True
 
         class DateModel(BaseModel):
+            tz: TzInfo
             dt: datetime
             dur: Optional[int]
+
+            @validator('dt')
+            def apply_tz(cls, v, *, values, **kwargs):
+                tz = values.get('tz')
+                return tz and tz.localize(v.replace(tzinfo=None))
 
         date: DateModel
 
@@ -170,7 +192,7 @@ class EventBread(Bread):
         V('cat.name').as_('category'),
         'e.status',
         'e.highlight',
-        'e.start_ts',
+        Func('as_time_zone', V('e.start_ts'), V('e.timezone')).as_('start_ts'),
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
     retrieve_fields = browse_fields + (
@@ -184,6 +206,7 @@ class EventBread(Bread):
         'e.short_description',
         'e.long_description',
         'e.host',
+        'e.timezone',
         Func('full_name', V('uh.first_name'), V('uh.last_name'), V('uh.email')).as_('host_name'),
     )
 
@@ -220,9 +243,14 @@ class EventBread(Bread):
         if date:
             dt: datetime = date['dt']
             duration: Optional[int] = date['dur']
+            if duration:
+                duration = timedelta(seconds=duration)
+            else:
+                dt = datetime(dt.year, dt.month, dt.day)
             data.update(
-                start_ts=datetime(dt.year, dt.month, dt.day) if duration is None else dt.replace(tzinfo=None),
-                duration=duration and timedelta(seconds=duration),
+                start_ts=dt,
+                duration=duration,
+                timezone=str(date['tz'])
             )
 
         loc = data.pop('location', None)
@@ -271,7 +299,7 @@ class EventBread(Bread):
             )
             action_id = await record_action_id(self.request, self.request['session']['user_id'],
                                                ActionTypes.create_event, event_id=pk)
-            await self.app['email_actor'].send_event_created(action_id)
+        await self.app['email_actor'].send_event_created(action_id)
         return pk
 
     async def edit_execute(self, pk, **data):
@@ -310,13 +338,14 @@ async def _check_event_permissions(request, check_upcoming=False):
     if request['session']['role'] != 'admin':
         if host_id != request['session']['user_id']:
             raise JsonErrors.HTTPForbidden(message='user is not the host of this event')
-        if check_upcoming and start_ts < datetime.utcnow():
+        if check_upcoming and start_ts < datetime.utcnow().replace(tzinfo=timezone.utc):
             raise JsonErrors.HTTPForbidden(message="you can't modify past events")
     return event_id
 
 
 event_tickets_sql = """
-SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price, t.extra_donated::float AS extra_donated, t.extra_info,
+SELECT t.id, t.price::float AS price, t.extra_donated::float AS extra_donated, t.extra_info,
+  iso_ts(a.ts, co.display_timezone) AS booked_at,
   t.user_id AS guest_user_id, full_name(t.first_name, t.last_name) AS guest_name, ug.email AS guest_email,
   a.user_id as buyer_user_id,
   coalesce(full_name(tb.first_name, tb.last_name), full_name(ub.first_name, ub.last_name)) AS buyer_name,
@@ -325,6 +354,7 @@ SELECT t.id, iso_ts(a.ts) AS booked_at, t.price::float AS price, t.extra_donated
 FROM tickets AS t
 LEFT JOIN users AS ug ON t.user_id = ug.id
 JOIN actions AS a ON t.booked_action = a.id
+JOIN companies AS co ON a.company = co.id
 LEFT JOIN tickets AS tb ON (a.user_id = tb.user_id AND a.id = tb.booked_action)
 JOIN users AS ub ON a.user_id = ub.id
 JOIN ticket_types AS tt ON t.ticket_type = tt.id

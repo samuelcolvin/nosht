@@ -60,10 +60,27 @@ CREATE OR REPLACE FUNCTION boolstr(v BOOLEAN) RETURNS VARCHAR(5) AS $$
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION iso_ts(v TIMESTAMP) RETURNS VARCHAR(5) AS $$
+CREATE OR REPLACE FUNCTION iso_ts(v TIMESTAMPTZ, tz VARCHAR(63)) RETURNS VARCHAR(63) AS $$
   DECLARE
   BEGIN
-    return to_char(v, 'YYYY-MM-DD"T"HH24:MI:SS');
+    PERFORM set_config('timezone', tz, true);
+    return to_char(v, 'YYYY-MM-DD"T"HH24:MI:SSOF');
   END;
 $$ LANGUAGE plpgsql;
 
+
+CREATE OR REPLACE FUNCTION tz_abbrev(v TIMESTAMPTZ, tz VARCHAR(63)) RETURNS VARCHAR(8) AS $$
+  DECLARE
+  BEGIN
+    PERFORM set_config('timezone', tz, true);
+    return to_char(v, 'TZ');
+  END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION as_time_zone(v TIMESTAMPTZ, tz VARCHAR(63)) RETURNS TIMESTAMP AS $$
+  DECLARE
+  BEGIN
+    return v AT TIME ZONE tz;
+  END;
+$$ LANGUAGE plpgsql;

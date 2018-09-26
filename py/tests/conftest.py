@@ -3,10 +3,11 @@ import base64
 import hashlib
 import hmac
 import json
+import locale
 import random
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
@@ -14,6 +15,7 @@ from textwrap import shorten
 import aiodns
 import lorem
 import pytest
+import pytz
 from aiohttp.test_utils import teardown_test_loop
 from aioredis import create_redis
 from async_timeout import timeout
@@ -86,6 +88,7 @@ replaced_url_fields = (
 
 @pytest.fixture(name='settings')
 def _fix_settings(dummy_server, request, tmpdir):
+    locale.setlocale(locale.LC_ALL, 'en_GB.utf8')
     # alter stripe_root_url if the real_stripe_test decorator is applied
     real_stripe = any('REAL_STRIPE_TESTS' in m.kwargs.get('reason', '') for m in request.keywords.get('pytestmark', []))
     fields = set(replaced_url_fields)
@@ -120,6 +123,9 @@ def db_pool(db_conn):
 @pytest.fixture
 async def create_demo_data(db_conn, settings):
     await _create_demo_data(db_conn, settings, company_host='127.0.0.1')
+
+
+london = pytz.timezone('Europe/London')
 
 
 class Factory:
@@ -207,7 +213,9 @@ class Factory:
                            host_user_id=None,
                            name='The Event Name',
                            slug=None,
-                           start_ts=datetime(2020, 1, 28, 19, 0),
+                           start_ts=london.localize(datetime(2020, 6, 28, 19, 0)),
+                           timezone='Europe/London',
+                           duration=timedelta(hours=1),
                            short_description=None,
                            long_description=None,
                            price=None,
@@ -222,6 +230,8 @@ class Factory:
                 slug=slug or slugify(name),
                 long_description=long_description,
                 start_ts=start_ts,
+                timezone=timezone,
+                duration=duration,
                 short_description=(
                     short_description or
                     shorten(long_description, width=random.randint(100, 140), placeholder='...')

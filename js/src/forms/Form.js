@@ -4,8 +4,9 @@ import {grecaptcha_execute} from '../utils'
 import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import Input from './Input'
+import WithContext from '../utils/context'
 
-export class Form extends React.Component {
+class _Form extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -115,6 +116,7 @@ export class Form extends React.Component {
     )
   }
 }
+export const Form = WithContext(_Form)
 
 export class StandaloneForm extends React.Component {
   constructor (props) {

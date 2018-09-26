@@ -12,7 +12,7 @@ EXPORTS = {
     'events': """
 SELECT
   e.id, e.name, e.slug, e.status,
-  iso_ts(e.start_ts) AS start_time,
+  iso_ts(e.start_ts, e.timezone) AS start_time, e.timezone,
   to_char(extract(epoch from e.duration)/3600, 'FM9999990.00') AS duration_hours,
   e.short_description, e.long_description, boolstr(e.public) AS is_public, e.location_name,
   to_char(e.location_lat, 'FM990.0000000') AS location_lat,
@@ -43,8 +43,8 @@ ORDER BY id
 SELECT
   u.id, u.role, u.status, u.first_name, u.last_name, u.email, u.phone_number, u.stripe_customer_id,
   boolstr(u.receive_emails) AS receive_emails, boolstr(u.allow_marketing) AS allow_marketing,
-  iso_ts(u.created_ts) AS created_ts,
-  iso_ts(u.active_ts) AS active_ts,
+  iso_ts(u.created_ts, 'UTC') AS created_ts,
+  iso_ts(u.active_ts, 'UTC') AS active_ts,
   count(t.id) AS tickets
 FROM users AS u
 LEFT JOIN tickets AS t ON u.id = t.user_id
@@ -56,7 +56,7 @@ ORDER BY u.id
 SELECT
   t.id, t.first_name AS ticket_first_name, t.last_name AS ticket_last_name, t.status, a.type AS booking_action,
   to_char(t.price, 'FM9999990.00') AS price, to_char(t.extra_donated, 'FM9999990.00') AS extra_donated,
-  iso_ts(t.created_ts) AS created_ts, t.extra_info,
+  iso_ts(t.created_ts, 'UTC') AS created_ts, t.extra_info,
   tt.id AS ticket_type_id, tt.name AS ticket_type_name,
   e.id AS event_id, e.slug AS event_slug,
   t.user_id AS guest_user_id, u.first_name AS guest_first_name, u.last_name AS guest_last_name,
@@ -75,7 +75,7 @@ SELECT
   d.id, to_char(d.amount, 'FM9999990.00') AS amount,
   d.first_name, d.last_name, d.address, d.city, d.postcode, boolstr(d.gift_aid) AS gift_aid,
   u.email AS user_email, u.first_name AS user_first_name, u.last_name AS user_last_name,
-  iso_ts(a.ts) AS timestamp, a.event,
+  iso_ts(a.ts, 'UTC') AS timestamp, a.event,
   opts.id AS donation_option_id, opts.name AS donation_option_name,
   cat.id AS category_id, cat.name AS category_name
 FROM donations AS d
