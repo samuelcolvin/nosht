@@ -53,7 +53,9 @@ class Category extends React.Component {
       <div>
         <div>
           <h1 className="d-inline-block mr-3">{cat.name}</h1>
-          {this.state.events && <Link to={create_link} color="link">Host your own {single_name(cat.name)}</Link>}
+          {this.state.events && <Link to={create_link} color="link">
+            Host your own {single_name(cat.name)} event
+          </Link>}
         </div>
         <div className="card-grid">
           {this.state.events ? (
