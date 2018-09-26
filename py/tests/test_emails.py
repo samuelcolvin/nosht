@@ -176,6 +176,7 @@ async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Fact
         'Foo Bar not provided, please let the event host Frank Spencer know if you have any special requirements.\n'
 
     )
+    assert 'Card Charged' not in email['part:text/plain']
     tid = await db_conn.fetchval('SELECT id FROM tickets')
     ticket_id_s = ticket_id_signed(tid, settings)
     assert ticket_id_s.endswith(f'-{tid}')
@@ -311,6 +312,7 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
     email = dummy_server.app['emails'][0]
     assert email['To'] == 'Cat Dog <guest@example.org>'
     text = email['part:text/plain']
+    start_time = format_dt((datetime.now() + timedelta(hours=12)).date())
     assert text.startswith(
         f'Hi Cat,\n'
         f'\n'
@@ -323,11 +325,11 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
         f'\n'
         f'Event:\n'
         f'\n'
-        f'* Start Time: **{format_dt(offset_from_now(hours=12).date())}**\n'
+        f'* Start Time: **{start_time}**\n'
         f'* Duration: **All day**\n'
         f'* Location: **Tower Block**\n'
         f'\n'
-    ), text
+    ), text + '___' + start_time
     assert 'www.google.com/maps' in text
     a = await db_conn.fetchrow("SELECT company, user_id, event FROM actions WHERE type='event-guest-reminder'")
     assert a == (factory.company_id, None, factory.event_id)

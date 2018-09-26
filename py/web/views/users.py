@@ -73,7 +73,7 @@ class UserBread(Bread):
         )
         return data
 
-    async def prepare_edit_data(self, data):
+    async def prepare_edit_data(self, pk, data):
         role_type = data.pop('role_type', None)
         if role_type:
             data['role'] = role_type

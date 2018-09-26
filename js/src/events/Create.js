@@ -3,6 +3,7 @@ import {Row, Col} from 'reactstrap'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {Form} from '../forms/Form'
+import timezones from '../forms/timezones'
 import Markdown from '../general/Markdown'
 
 export const EVENT_FIELDS = [
@@ -45,6 +46,12 @@ export const EVENT_FIELDS = [
                 'details about exact timings in the description below.',
   },
   {
+    name: 'timezone',
+    type: 'select',
+    choices: timezones,
+    required: true,
+  },
+  {
     name: 'location',
     type: 'geolocation',
     help_text: 'Drag the marker to set the exact event location.',
@@ -84,6 +91,7 @@ class CreateEvent extends React.Component {
   }
 
   async componentDidMount () {
+    const form_data = {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone}
     let data
     try {
       data = await requests.get('/events/categories/')
@@ -95,15 +103,16 @@ class CreateEvent extends React.Component {
     const m = this.props.location.search.match(/cat=(\d+)/)
     const cat_initial = m ? parseInt(m[1]) : null
     if (cat_initial) {
-      this.setState({form_data: {category: cat_initial}})
+      form_data['category'] = cat_initial
     }
+    this.setState({form_data})
   }
 
   fields () {
     const choices = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
     return (
       EVENT_FIELDS
-      .filter(f => f.name !== 'short_description')
+      .filter(f => f.name !== 'short_description' && f.name !== 'timezone')
       .map(f => f.name === 'category' ? Object.assign({}, f, {choices}) : f)
     )
   }

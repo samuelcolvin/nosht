@@ -52,7 +52,7 @@ Event:
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
 {{/static_map}}
 
-**This is your ticket**, please bring the email (and particularly the ticket reference above)
+**This is your ticket**, please bring the email (and particularly the ticket reference above) \
 to the event.
 
 Payment:
@@ -61,8 +61,9 @@ Payment:
 * Tickets Purchased: **{{ ticket_count }}**
 * Total Amount Charged: **{{ total_price }}**
 
-
+{{#card_details}}
 _(Card Charged: {{ card_details }})_
+{{/card_details}}
 """
     },
     Triggers.ticket_other: {
@@ -95,7 +96,7 @@ Event:
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
 {{/static_map}}
 
-**This is your ticket**, please bring the email (and particularly the ticket reference above)
+**This is your ticket**, please bring the email (and particularly the ticket reference above) \
 to the event.
 """
     },
