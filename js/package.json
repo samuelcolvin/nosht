@@ -39,7 +39,7 @@
     "react-scripts": "2.0.0-next.66cc7a90",
     "react-stripe-elements": "^2.0.0",
     "react-test-renderer": "^16.4.2",
-    "reactstrap": "6.2.0"
+    "reactstrap": "^6.4.0"
   },
   "scripts": {
     "start": "react-scripts start",
