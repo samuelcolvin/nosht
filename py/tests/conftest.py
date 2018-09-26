@@ -464,11 +464,11 @@ def _fix_signed_fb_request(settings):
     return f
 
 
-def create_image(width=2000, height=1200):
+def create_image(width=2000, height=1200, mode='RGB', format='JPEG'):
     stream = BytesIO()
-    image = Image.new('RGB', (width, height), (50, 100, 150))
+    image = Image.new(mode, (width, height), (50, 100, 150))
     ImageDraw.Draw(image).line((0, 0) + image.size, fill=128)
-    image.save(stream, format='JPEG', optimize=True)
+    image.save(stream, format=format, optimize=True)
     return stream.getvalue()
 
 

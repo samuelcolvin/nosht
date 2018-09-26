@@ -135,6 +135,8 @@ async def upload_background(image_data: bytes, upload_path: Path, settings: Sett
 
 async def upload_other(image_data: bytes, *, upload_path: Path, settings: Settings, req_size, thumb=False) -> str:
     img = Image.open(BytesIO(image_data))
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
 
     req_width, req_height = req_size
     assert img.width >= req_width and img.height >= req_height, 'image too small'
@@ -149,7 +151,7 @@ async def upload_other(image_data: bytes, *, upload_path: Path, settings: Settin
 
     main_img = img.resize(resize_to, Image.ANTIALIAS)
     main_stream = BytesIO()
-    main_img.save(main_stream, 'PNG', optimize=True, quality=95)
+    main_img.save(main_stream, format='PNG', optimize=True, quality=95)
 
     thumb_bytes = None
     if thumb:

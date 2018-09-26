@@ -125,6 +125,25 @@ async def test_upload_logo_too_small(cli, url, factory: Factory, db_conn, login,
     assert None is await db_conn.fetchval('SELECT logo FROM companies')
 
 
+async def test_upload_logo_convert(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+    assert None is await db_conn.fetchval('SELECT logo FROM companies')
+    data = FormData()
+    data.add_field('image', create_image(mode='CMYK'), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('company-upload', field='logo'),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 200, await r.text()
+    assert None is not await db_conn.fetchval('SELECT logo FROM companies')
+
+
 async def test_set_footer_links(cli, url, factory: Factory, db_conn, login):
     await factory.create_company()
     await factory.create_user()
