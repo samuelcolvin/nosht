@@ -13,7 +13,7 @@ import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import Input from '../forms/Input'
 
-const FooterLinks = ({index, link, update_link, count}) => {
+const FooterLinkEdit = ({index, link, update_link, count}) => {
   const title_field = {
     name: `type_${index}_title`,
     title: 'Link Title',
@@ -60,11 +60,11 @@ const FooterLinks = ({index, link, update_link, count}) => {
   )
 }
 
-class FooterLinkss extends React.Component {
+class FooterLinks extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
-      links: props.links.length > 0 ? props.links: [{}],
+      links: props.links && props.links.length > 0 ? props.links: [{}],
       savable: false,
     }
   }
@@ -105,7 +105,7 @@ class FooterLinkss extends React.Component {
         <ModalBody key="1">
           <div>
             {this.state.links.map((l, i) => (
-              <FooterLinks key={i} index={i} link={l} count={count} update_link={this.update_link.bind(this)}/>
+              <FooterLinkEdit key={i} index={i} link={l} count={count} update_link={this.update_link.bind(this)}/>
             ))}
           </div>
           <div className="text-right mt-4">
@@ -130,4 +130,4 @@ class FooterLinkss extends React.Component {
   }
 }
 
-export default AsModal(FooterLinkss)
+export default AsModal(FooterLinks)

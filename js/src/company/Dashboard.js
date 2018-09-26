@@ -52,7 +52,7 @@ const LinksTable = WithContext(({links, uri}) => (
         </tr>
       </thead>
       <tbody>
-        {links.map((link, i) => (
+        {links && links.map((link, i) => (
           <tr key={i}>
             <td>{link.title}</td>
             <td>
