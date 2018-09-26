@@ -1,24 +1,165 @@
 nosht
-========
+=====
 
 [![Build Status](https://travis-ci.com/samuelcolvin/nosht.svg?branch=master)](https://travis-ci.com/samuelcolvin/nosht)
 [![codecov](https://codecov.io/gh/samuelcolvin/nosht/branch/master/graph/badge.svg)](https://codecov.io/gh/samuelcolvin/nosht)
 
 
-To set up for a new instance:
-* facebook login via facebook developer
-* google maps key and google oauth 2.0 key both form google developer console
-* AWS, see below
+# Summary
 
-Stripe doesn't need any env var setup, just the api keys on the company
+Nosht is an event ticketing platform originally built for [The Hands Up Foundation](https://handsupfoundation.org/)
+which is available under an open source license (MIT) for use by anyone.
 
+If you have any questions please create an issue on github.
 
-## AWS setup
+# Technical Summary
 
-Create an S3 bucket, you'll need to name it the same as the domain you want to access it from.
+The platform is built using the following tools:
+* the server side is built using **aiohttp** web framework and **python 3**
+* the main database is **postgres** with **redis** as a cache and queuing system
+* the front end use **react** and "create react app"
+* the system is deployed at present using **heroku**'s container runtime although nothing in the system should rely
+  on heroku
+* **AWS SES** is used to send emails
+* **AWS S3** is used to store user uploaded images
+* **Cloudflare** is used as a reverse-proxy and CDN for all traffic including S3
+* **sentry/raven** to collect error reports
+* **Stripe** for taking payments
+
+# Deployment & Setup
+
+Install the following:
+* python3.6
+* [heroku cli](https://devcenter.heroku.com/articles/heroku-cli)
+* [docker](https://docs.docker.com/cs-engine/1.12/)
+
+## Heroku Setup
+
+Create an app on heroku (make sure to choose the most appropriate region), add the following add-ons
+* Heroku Postgres - choose a size appropriate for your needs
+* Redis Cloud - the free 30MB option should be sufficient
+* Papertail - the smallest option should be sufficient
+
+Export an environment variable identifying your heroku app:
+
+```bash
+export HEROKU_APP=<name of your app>
+```
+
+Make sure your heroku CLI can connect to heroku:
+
+```bash
+heroku ps -a $HEROKU_APP
+```
+
+(you won't see much but the command should pass)
+
+You'll need to set the following config (environment) variables in heroku:
+* `APP_AUTH_KEY` can be set by simply running `make heroku-set-auth-key`
+* `APP_AWS_ACCESS_KEY` key from AWS, see "AWS Setup" below
+* `APP_AWS_SECRET_KEY` key from AWS, see "AWS Setup" below
+* `APP_S3_BUCKET` name of the S3 bucket your using eg. `events-images.example.org`, see "AWS Setup" below
+* `APP_S3_DOMAIN` root url for the S3 bucket eg. `https://events-images.example.org`, see "AWS Setup" below
+* `APP_S3_PREFIX` prefix to use for all files in S3, eg. `prod`
+* `APP_FACEBOOK_SIW_APP_SECRET` key from facebook, see "Facebook Setup" below
+* `APP_GOOGLE_MAPS_STATIC_KEY` key for google maps, see "Google Setup" below
+* `APP_GOOGLE_SIW_CLIENT_KEY` google signin with key, see "Google Setup" below
+* `APP_GRECAPTCHA_SECRET` google recaptcha key, see "Google Setup" below
+* `RAVEN_DSN` DSN from sentry/raven, see "Sentry Setup" below
+
+## Build and Deploy
+
+With Heroku's container runtime you build docker images for you app locally, push them to heroku, then deploy those
+images.
+
+First of all, clone the nosht code
+
+    git clone git@github.com:samuelcolvin/nosht.git
+    cd nosht
+
+Before you can build the image you'll need to create a few static files which are built into the images:
+
+these files are kept in a directory named `deploy-settings-<heroku-app-name>`, eg. if your app on heroku is called
+`example-events`, the directory should be called `deploy-settings-example-events`
+
+It should look like
+
+```
+deploy-settings-example-events/
+├── .env.production
+└── favicons
+    ├── android-chrome-192x192.png
+    ├── android-chrome-256x256.png
+    ├── apple-touch-icon.png
+    ├── browserconfig.xml
+    ├── favicon-16x16.png
+    ├── favicon-32x32.png
+    ├── favicon.ico
+    ├── logo.png
+    ├── mstile-150x150.png
+    ├── safari-pinned-tab.svg
+    └── site.webmanifest
+```
+
+You can generate most of the files for `favicons/` using [this helpful service](https://realfavicongenerator.net/).
+The only exception is `logo.png` which should be a 380x150px logo for your service.
+
+`.env.production` provides production settings for "create react apps" build, it should contain the following
+
+```
+REACT_APP_SITE_NAME='<the name of your service/company>'
+REACT_APP_THEME_COLOUR='company hex colour, should match favicons/browserconfig.xml, eg. "016997"'
+REACT_APP_COPYRIGHT_STATEMENT='© copyright statement for the footer'
+REACT_APP_CSP_IMAGE='https://events-images.example.org'
+REACT_APP_GOOGLE_MAPS_KEY='<public google maps key, see below>'
+REACT_APP_GOOGLE_SIW_CLIENT_KEY='<google signin with client key, see below>'
+REACT_APP_FACEBOOK_SIW_APP_ID='<facebook signin with app id, see below>'
+REACT_APP_CSP_SOURCE_EXTRA=''
+REACT_APP_CSP_CONNECT='https://sentry.io'
+REACT_APP_RECAPTCHA_KEY='<google recaptcah public key>'
+REACT_APP_SENTRY_DSN='<sentry dsn for js error tracking>'
+REACT_APP_GA_TRACKING_ID='<tracking id for google analytics>'
+```
+
+With `deploy-settings-<heroku-app-name>` setup, you can build and deploy your images:
+
+    make heroku-push
+    
+will build the docker images and push them to heroku,
+
+   make heroku-release
+   
+will release those images, the following should now show you both the work and web dyno's running
+
+```bash
+heroku ps -a $HEROKU_APP
+```
+
+However you'll likely get a 500 error if you try to go to your site.
+
+To create database tables run
+
+```bash
+heroku run "./run.py reset_database" --type=worker -a $HEROKU_APP
+```
+
+and to create a company:
+
+```bash
+heroku run "./run.py patch create_new_company --live" --type=worker -a $HEROKU_APP
+```
+
+You can see other commands available by runing just `./run.py` or `./run.py patch`.
+
+## Third Party Providers
+
+### AWS Setup
+
+Create an S3 bucket, you'll need to name it the same as the domain you want to access it from. Eg. name
+the bucket `event-images.example.org` to a access files at `https://event-images.example.org/...`.
 
 Create an IAM role with the following policy 
-**(remember to change the bucket name from `bucketname.example.com` to your bucket name)**.
+**(remember to change the bucket name from `bucketname.example.org` to your bucket name)**.
 
 ```json
 {
@@ -30,7 +171,7 @@ Create an IAM role with the following policy
                 "s3:ListBucket"
             ],
             "Resource": [
-                "arn:aws:s3:::bucketname.example.com"
+                "arn:aws:s3:::bucketname.example.org"
             ]
         },
         {
@@ -43,7 +184,7 @@ Create an IAM role with the following policy
                 "s3:PutObjectAcl"
             ],
             "Resource": [
-                "arn:aws:s3:::bucketname.example.com/*"
+                "arn:aws:s3:::bucketname.example.org/*"
             ]
         },
         {
@@ -60,6 +201,137 @@ Create an IAM role with the following policy
 Go to SES and setup a sending domain. You either need to set it up in the `eu-west-1` region
 or change the region `aws_region` setting.
 
+To set from AWS:
 
-    heroku addons:create heroku-postgresql:hobby-dev -a $HEROKU_APP
-    heroku addons:create rediscloud:30 -a $HEROKU_APP
+* heroku config `APP_AWS_ACCESS_KEY`
+* heroku config `APP_AWS_SECRET_KEY`
+* heroku config `APP_S3_BUCKET`
+* heroku config `APP_S3_DOMAIN`
+
+### Cloudflare Setup
+
+Add a CNAME record for the main system (probably `events.`)
+
+    CNAME    events          events.example.org.herokudns.com
+
+(or whatever domain heroku gives you)
+
+Add a CNAME record for the S3 subdomain, eg.
+
+    CNAME    event-images    events-images.example.org.s3.amazonaws.com
+
+### Facebook Setup
+
+Search for "facebook developer dashboard", wade through their horrible interface until you've created an app
+to "Let people log in with their Facebook account", you can then go to settings > basic to get the 
+"App ID" and "App Secret". 
+
+To set from Facebook:
+
+* heroku config `APP_FACEBOOK_SIW_APP_SECRET`
+* `.env.production` > `REACT_APP_FACEBOOK_SIW_APP_ID`
+
+### Google Setup
+
+Lots of keys need for different bits of google's integration:
+
+Go to https://console.developers.google.com, make sure your on the right project, or create a new one, 
+go to credentials:
+* set up an "API Key" with permission for "Maps Static API" and "Maps JavaScript API", 
+  restrict it to your domain, use this for `APP_GOOGLE_MAPS_STATIC_KEY` and `REACT_APP_GOOGLE_MAPS_KEY`.
+* set up an "OAuth client ID", set the authorised origin, set `REACT_APP_GOOGLE_SIW_CLIENT_KEY` to the Client ID
+  and `APP_GOOGLE_SIW_CLIENT_KEY` to the "Client secret".
+  
+Search "google recaptcha" and setup a V3 key (**note:** this must be the V3 type of key) for your site, set the
+allowed domains, set `REACT_APP_RECAPTCHA_KEY` to the "Site key", set `APP_GRECAPTCHA_SECRET` to the "Secret key".
+
+Go to google analytics, set up a new property, take the tracking ID and copy it into `REACT_APP_GA_TRACKING_ID`.
+
+To set from Google:
+
+* heroku config `APP_GOOGLE_MAPS_STATIC_KEY`
+* heroku config `APP_GOOGLE_SIW_CLIENT_KEY`
+* heroku config `APP_GRECAPTCHA_SECRET`
+* `.env.production` > `REACT_APP_GOOGLE_MAPS_KEY`
+* `.env.production` > `REACT_APP_GOOGLE_SIW_CLIENT_KEY`
+* `.env.production` > `REACT_APP_RECAPTCHA_KEY`
+* `.env.production` > `REACT_APP_GA_TRACKING_ID`
+
+### Sentry Setup
+
+Go to https://sentry.io, create a new account, organisation or project and copy the DSN.
+
+To set from Sentry:
+
+* heroku config `RAVEN_DSN`
+* `.env.production` > `REACT_APP_SENTRY_DSN`
+
+
+# Setting up a local testing environment
+
+You'll need to run something like the following and use your initiative if things fail, add an issue to github
+if you get confused
+
+```bash
+pwd  # should be /.../nosht
+virtualenv -p `which python3.6` env
+source env/bin/active
+make install
+cd js/
+yarn
+cd ..
+```
+
+To run tests locally, you should be able to simply run
+
+```bash
+make
+```
+
+## Development Mode
+
+(Requires the same dependencies as above as well as postgresql and redis, and of course for the code to be cloned.)
+
+To run the front end in development mode
+
+```bash
+cd js/
+yarn start
+```
+
+The js dev server will proxy requests through to the backend so you'll also need to run the server at the
+same time in a different window.
+
+Before running this you'll probaly need to set up some of the environment variables mentioned above for the system
+to run properly.
+
+```bash
+cd nosht/
+source env/bin/activate
+cd py/
+./run.py web
+```
+
+(or change the last command to `adev runserver web/main.py` to reload the system on file changes.)
+
+If you want the worker running as well you'll also run (from another terminal)
+
+```bash
+cd nosht/
+source env/bin/activate
+cd py/
+./run.py worker
+```
+
+## Docker Testing
+
+Instead of running each process/component independently you can also develop using docker to run your application,
+this will result in a much slower feedback but may be easier in some circumstances:
+
+Simply run
+
+```bash
+make docker-dev
+```
+
+And then `make docker-dev-stop` once you've finished to stop the server.
