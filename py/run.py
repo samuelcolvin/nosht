@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.6
 import asyncio
+import locale
 import logging.config
 import sys
 
@@ -17,6 +18,7 @@ logger = logging.getLogger('nosht.run')
 def main():
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     logging_client = setup_logging()
+    locale.setlocale(locale.LC_ALL, 'en_GB.utf8')
     try:
         settings = Settings()
         try:

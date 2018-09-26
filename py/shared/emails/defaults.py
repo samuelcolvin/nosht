@@ -200,7 +200,7 @@ Great news - you've set up your {{ category_name }} in support of {{ company_nam
 Thank you, we're thrilled that you're getting involved.
 
 You can access all information, including tickets sold, guest lists etc... \
-related to your event at any time by using the following link
+related to your event at any time by using the following link:
 
 {{ primary_button(Event Dashboard | {{ event_dashboard_link }}) }}
 """

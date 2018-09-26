@@ -8,7 +8,7 @@ from .conftest import Factory
 
 
 async def test_user_list(cli, url, login, factory: Factory):
-    await factory.create_company()
+    await factory.create_company(display_timezone='utc')
     await factory.create_user()
     await login()
 
@@ -32,7 +32,7 @@ async def test_user_list(cli, url, login, factory: Factory):
 
 
 async def test_user_details(cli, url, login, factory: Factory):
-    await factory.create_company()
+    await factory.create_company(display_timezone='utc')
     await factory.create_user()
     await login()
 
@@ -298,7 +298,7 @@ async def test_user_tickets(cli, url, login, factory: Factory):
                 'event_name': 'The Event Name',
                 'extra_info': None,
                 'price': 123.0,
-                'event_start': '2020-01-28T19:00:00',
+                'event_start': '2020-06-28T19:00:00',
                 'guest_name': 'Frank Spencer',
                 'buyer_name': 'Frank Spencer',
             },

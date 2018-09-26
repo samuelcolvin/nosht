@@ -14,6 +14,7 @@ google-auth==1.5.1
 libsass==0.14.5
 misaka==2.1.0
 pydantic[email]==0.13
+pytz==2018.5
 Pillow==5.2.0
 raven==6.9.0
 raven-aiohttp==0.7.0

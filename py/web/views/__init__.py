@@ -25,7 +25,8 @@ FROM (
 (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS highlight_events FROM (
     SELECT e.id, e.name, c.slug as cat_slug, e.slug, coalesce(e.image, c.image) AS image, e.short_description,
-      e.start_ts, e.location_name, EXTRACT(epoch FROM e.duration)::int AS duration
+      e.start_ts AT TIME ZONE e.timezone AS start_ts, e.location_name,
+      extract(epoch FROM e.duration)::int AS duration
     FROM events AS e
     JOIN categories as c on e.category = c.id
     WHERE c.company=$1 AND status='published' AND public=TRUE AND e.highlight IS TRUE AND e.start_ts > now()
