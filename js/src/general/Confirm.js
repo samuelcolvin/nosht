@@ -58,7 +58,8 @@ export class ButtonConfirm extends React.Component {
           <Button color="secondary" onClick={close} disabled={!this.state.enabled}>
             {this.props.close_label || 'Close'}
           </Button>
-          <Button color="primary" onClick={this.fire.bind(this)} disabled={!this.state.enabled}>
+          <Button color={this.props.btn_color || 'primary'}
+                  onClick={this.fire.bind(this)} disabled={!this.state.enabled}>
             {this.props.confirm_label || 'Confirm'}
           </Button>
         </ModalFooter>

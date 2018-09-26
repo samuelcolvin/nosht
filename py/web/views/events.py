@@ -176,6 +176,7 @@ class EventBread(Bread):
     retrieve_enabled = True
     add_enabled = True
     edit_enabled = True
+    delete_enabled = True
 
     model = Model
     table = 'events'
@@ -206,7 +207,10 @@ class EventBread(Bread):
     )
 
     async def check_permissions(self, method):
-        await check_session(self.request, 'admin', 'host')
+        if method == Method.delete:
+            await check_session(self.request, 'admin')
+        else:
+            await check_session(self.request, 'admin', 'host')
 
     def select(self) -> Select:
         if self.method == Method.retrieve:

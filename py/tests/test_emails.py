@@ -350,7 +350,8 @@ async def test_event_reminder_many(email_actor: EmailActor, factory: Factory, du
 
     e2 = await factory.create_event(start_ts=offset_from_now(hours=12), price=10,
                                     status='published', name='event2', slug='event2')
-    await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e2), charlie)
+    tt = await db_conn.fetchval('SELECT id FROM ticket_types WHERE event=$1', e2)
+    await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e2, ticket_type_id=tt), charlie)
 
     await factory.create_event(start_ts=offset_from_now(hours=12), price=10,
                                status='published', name='event3', slug='event3')

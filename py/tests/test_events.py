@@ -1178,3 +1178,43 @@ async def test_event_switch_status(previous_status, cli, url, login, factory: Fa
 
     h = await db_conn.fetchval('SELECT highlight FROM events')
     assert h == (not previous_status)
+
+
+async def test_delete_event(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    await factory.create_reservation()
+
+    event2 = await factory.create_event(slug='event2')
+    ticket_type = await db_conn.fetchval('SELECT id FROM ticket_types WHERE event=$1', event2)
+    await factory.create_reservation(event_id=event2, ticket_type_id=ticket_type)
+
+    assert 2 == await db_conn.fetchval('SELECT count(*) FROM events')
+    assert 2 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
+    assert 2 == await db_conn.fetchval('SELECT count(*) FROM tickets')
+
+    r = await cli.json_post(url('event-delete', pk=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert 1 == await db_conn.fetchval('SELECT count(*) FROM events')
+    assert 1 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
+    assert 1 == await db_conn.fetchval('SELECT count(*) FROM tickets')
+
+
+async def test_delete_event_host(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event()
+    await login()
+    await factory.create_reservation()
+
+    assert 1 == await db_conn.fetchval('SELECT count(*) FROM events')
+
+    r = await cli.json_post(url('event-delete', pk=factory.event_id))
+    assert r.status == 403, await r.text()
+
+    assert 1 == await db_conn.fetchval('SELECT count(*) FROM events')

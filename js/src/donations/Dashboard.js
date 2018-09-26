@@ -144,7 +144,8 @@ export class DonationOptionDetails extends RenderDetails {
       {
         name: 'Delete Donation Option',
         action: `/donation-options/${this.id}/delete/`,
-        confirm_msg: 'Are you sure you want to delete this donation option? This cannot be undone.',
+        btn_color: 'danger',
+        confirm_msg: 'Are you sure you want to permanently delete this donation option? This cannot be undone.',
         success_msg: 'Category deleted.',
         redirect_to: '/dashboard/donation-options/',
       }

@@ -17,6 +17,7 @@ To update:
 * validate that data
 * SQL update with put data only via dict(include_fields=request_data.keys())
 """
+import logging
 import re
 from enum import Enum
 from functools import update_wrapper, wraps
@@ -31,6 +32,8 @@ from pydantic import BaseModel
 
 from web.utils import (JsonErrors, get_offset, json_response, parse_request, parse_request_ignore_missing,
                        raw_json_response)
+
+logger = logging.getLogger('nosht.bread')
 
 
 class Method(str, Enum):
@@ -364,6 +367,7 @@ class Bread(ReadBread):
         pass
 
     async def delete_execute(self, pk):
+        logger.info('%s %s=%d deleted by user %s', self.table, self.pk_field, pk, self.request['session']['user_id'])
         await self.conn.execute_b(
             self.delete_sql,
             table=Var(self.table),

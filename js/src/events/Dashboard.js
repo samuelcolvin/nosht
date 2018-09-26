@@ -302,6 +302,25 @@ export class EventsDetails extends RenderDetails {
           can_edit && {name: 'Edit', link: this.uri + 'edit/'},
           can_edit && data.status === 'published' && {name: 'Send Update', link: this.uri + 'send-update/'},
           {name: 'View Guest Page', link: data.link, disabled: data.status !== 'published'},
+          user && user.role === 'admin' && {
+            name: 'Delete Event',
+            action: `/events/${this.id}/delete/`,
+            btn_color: 'danger',
+            confirm_msg: (
+              <div>
+                <p>
+                  Are you sure you want to <b>permanently delete</b> this event?
+                  All Tickets and Ticket Types will be deleted. (If you just want to hide the event from
+                  guests you can simply mark it as suspended.)
+                </p>
+                <p className="font-weight-bold">
+                  This cannot be undone!
+                </p>
+              </div>
+            ),
+            success_msg: 'Event deleted.',
+            redirect_to: '/dashboard/events/',
+          }
         ],
         formats: {
           start_ts: {

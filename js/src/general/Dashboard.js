@@ -37,6 +37,7 @@ const Buttons = ({buttons, ctx}) => (
                          redirect_to={b.redirect_to}
                          success_msg={b.success_msg}
                          done={b.done}
+                         btn_color={b.btn_color}
                          btn_size="sm"
                          className="ml-2">
             {b.confirm_msg}
