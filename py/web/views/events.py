@@ -153,16 +153,11 @@ class EventBread(Bread):
         name: constr(max_length=63)
         category: int
         public: bool = True
+        timezone: TzInfo
 
         class DateModel(BaseModel):
-            tz: TzInfo
             dt: datetime
             dur: Optional[int]
-
-            @validator('dt')
-            def apply_tz(cls, v, *, values, **kwargs):
-                tz = values.get('tz')
-                return tz and tz.localize(v.replace(tzinfo=None))
 
         date: DateModel
 
@@ -240,8 +235,11 @@ class EventBread(Bread):
 
     def prepare(self, data):
         date = data.pop('date', None)
+        timezone: TzInfo = data.pop('timezone', None)
+        if timezone:
+            data['timezone'] = str(timezone)
         if date:
-            dt: datetime = date['dt']
+            dt: datetime = timezone.localize(date['dt'].replace(tzinfo=None))
             duration: Optional[int] = date['dur']
             if duration:
                 duration = timedelta(seconds=duration)
@@ -250,7 +248,6 @@ class EventBread(Bread):
             data.update(
                 start_ts=dt,
                 duration=duration,
-                timezone=str(date['tz'])
             )
 
         loc = data.pop('location', None)
@@ -277,8 +274,21 @@ class EventBread(Bread):
             data['status'] = 'published'
         return data
 
-    async def prepare_edit_data(self, data):
-        return self.prepare(data)
+    async def prepare_edit_data(self, pk, data):
+        timezone: TzInfo = data.get('timezone')
+        if not timezone and 'date' in data:
+            # timezone is needed when date is being updated
+            tz = await self.conn.fetchval('SELECT timezone FROM events WHERE id=$1', pk)
+            data['timezone'] = pytz.timezone(tz)
+
+        data = self.prepare(data)
+
+        if timezone and 'start_ts' not in data:
+            # timezone has changed but not start_ts, need to update start_ts to account for timezone change
+            dt = await self.conn.fetchval("SELECT start_ts AT TIME ZONE timezone FROM events WHERE id=$1", pk)
+            data['start_ts'] = timezone.localize(dt)
+
+        return data
 
     add_sql = """
     INSERT INTO :table (:values__names) VALUES :values

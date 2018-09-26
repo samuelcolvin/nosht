@@ -146,18 +146,28 @@ const DURATIONS = [
   {value: 3600 * 6, title: '6 hours'},
   {value: 3600 * 8, title: '8 hours'},
 ]
+const browse_tz = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 class DatetimeInput extends React.Component {
   constructor (props) {
     super(props)
     this.state = {drop_open: false}
     this.onDtChange = this.onDtChange.bind(this)
+    this.onDurChange = this.onDurChange.bind(this)
   }
 
-  onDtChange (m, dur, tz) {
-    if (m && !(dur !== null && m.hours() === 0 && m.minutes() === 0)) {
-      this.props.onChange({dt: m.format(), dur, tz})
+  onDtChange (dt, dur) {
+    if (dt && !(dur !== null && dt.hours() === 0 && dt.minutes() === 0)) {
+      this.props.onChange({dt: dt.format(), dur, tz: browse_tz})
     }
+  }
+
+  onDurChange (dt, dur) {
+    console.log('onDurChange', [dt, dt.format()])
+    if (dur !== null && dt && dt.hours() === 0 && dt.minutes() === 0) {
+      dt = dt.hours(moment().hours())
+    }
+    this.props.onChange({dt: dt.format(), dur, tz: browse_tz})
   }
 
   render () {
@@ -165,7 +175,6 @@ class DatetimeInput extends React.Component {
     const duration = this.props.value ? this.props.value.dur : 3600
     const dt = this.props.value && this.props.value.dt ? moment(this.props.value.dt) : null
     const all_day = !duration
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
     // TODO could use native data picker if on_mobile
     return (
       <FormGroup className={this.props.className}>
@@ -174,7 +183,7 @@ class DatetimeInput extends React.Component {
           <DatePicker
             selected={dt}
             disabled={this.props.disabled}
-            onChange={m => this.onDtChange(m, duration, tz)}
+            onChange={m => this.onDtChange(m, duration)}
             minTime={moment().hours(8).minutes(0)}
             maxTime={moment().hours(23).minutes(0)}
             showTimeSelect={!all_day}
@@ -195,7 +204,7 @@ class DatetimeInput extends React.Component {
                 <DropdownItem
                     key={i}
                     active={d.value === duration}
-                    onClick={() => this.props.onChange({tz, dt: dt, dur: d.value})}>
+                    onClick={() => this.onDurChange(dt, d.value)}>
                   {d.title}
                 </DropdownItem>
              ))}
@@ -330,13 +339,13 @@ class GeoLocation extends React.Component {
 }
 
 const INPUT_LOOKUP = {
-  'md': MdInput,
-  'bool': Checkbox,
-  'select': Select,
-  'datetime': DatetimeInput,
-  'integer': IntegerInput,
-  'number': NumberInput,
-  'geolocation': GeoLocation,
+  md: MdInput,
+  bool: Checkbox,
+  select: Select,
+  datetime: DatetimeInput,
+  integer: IntegerInput,
+  number: NumberInput,
+  geolocation: GeoLocation,
 }
 
 const Input = props => {

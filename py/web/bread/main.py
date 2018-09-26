@@ -333,7 +333,7 @@ class Bread(ReadBread):
         if not v:
             raise JsonErrors.HTTPNotFound(message=f'{self.meta["single_title"]} not found')
 
-    async def prepare_edit_data(self, data):
+    async def prepare_edit_data(self, pk, data):
         return data
 
     async def edit_execute(self, pk, **data):
@@ -349,7 +349,7 @@ class Bread(ReadBread):
         await self.check_item_permissions(pk)
         m, raw_data = await parse_request_ignore_missing(self.request, self.model)
 
-        data = await self.prepare_edit_data(m.dict(include=raw_data.keys()))
+        data = await self.prepare_edit_data(pk, m.dict(include=raw_data.keys()))
         if not data:
             raise JsonErrors.HTTPBadRequest(message=f'no data to save')
 

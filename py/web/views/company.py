@@ -50,7 +50,7 @@ class CompanyBread(Bread):
         if int(self.request.match_info['pk']) != self.request['company_id']:
             raise JsonErrors.HTTPForbidden(message='wrong company')
 
-    async def prepare_edit_data(self, data):
+    async def prepare_edit_data(self, pk, data):
         if 'email_from' in data:
             data['email_from'] = str(data['email_from'])
         if 'email_reply_to' in data:
