@@ -312,7 +312,8 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
     email = dummy_server.app['emails'][0]
     assert email['To'] == 'Cat Dog <guest@example.org>'
     text = email['part:text/plain']
-    start_time = format_dt((datetime.now() + timedelta(hours=12)).date())
+    now = datetime.utcnow().replace(tzinfo=timezone.utc).astimezone(london)
+    start_time = format_dt((now + timedelta(hours=12)).date())
     assert text.startswith(
         f'Hi Cat,\n'
         f'\n'
