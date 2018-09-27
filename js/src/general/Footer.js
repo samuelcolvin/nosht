@@ -61,7 +61,7 @@ class Footer extends React.Component {
           {this.props.co_footer_links && this.props.co_footer_links.length ? (
             <div className="d-flex justify-content-center my-1 custom-footer">
               {this.props.co_footer_links.map((link, i) => (
-                <div key={i}>
+                <div key={i} className="mx-2">>
                   <a href={link.url} target={link.new_tab ? '_blank' : '_self'} rel="noopener noreferrer">
                     {link.title}
                     </a>
