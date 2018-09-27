@@ -1,7 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {Row, Col} from 'reactstrap'
 import Raven from 'raven-js'
 import {user_full_name} from '../utils'
 
@@ -43,33 +42,33 @@ class Footer extends React.Component {
     return (
       <footer className="footer">
         <div className="container">
-          <Row>
-            <Col>
-              {process.env.REACT_APP_COPYRIGHT_STATEMENT}
-            </Col>
-            <Col className="text-right footer-menu">
-              {user && <div>
+          <div className="d-flex justify-content-center my-1">
+            {user &&
+              <div className="mx-2">
                 <FontAwesomeIcon icon="user" className="mr-1"/>
                 Logged in as {user_full_name(user)} ({user.role})
-              </div>}
-              {menu.map((item, i) => (
+              </div>
+            }
+            {menu.map((item, i) => (
+              <div key={i} className="mx-2">
+                <Link to={item.to}>{item.name}</Link>
+              </div>
+            ))}
+          </div>
+          <div className="d-flex justify-content-center my-1">
+            {process.env.REACT_APP_COPYRIGHT_STATEMENT}
+          </div>
+          {this.props.co_footer_links && this.props.co_footer_links.length ? (
+            <div className="d-flex justify-content-center my-1 custom-footer">
+              {this.props.co_footer_links.map((link, i) => (
                 <div key={i}>
-                  <Link to={item.to}>{item.name}</Link>
+                  <a href={link.url} target={link.new_tab ? '_blank' : '_self'} rel="noopener noreferrer">
+                    {link.title}
+                    </a>
                 </div>
               ))}
-              {this.props.co_footer_links && this.props.co_footer_links.length ? (
-                <div className="mt-1">
-                  {this.props.co_footer_links.map((link, i) => (
-                    <div key={i}>
-                      <a href={link.url} target={link.new_tab ? '_blank' : '_self'} rel="noopener noreferrer">
-                        {link.title}
-                        </a>
-                    </div>
-                  ))}
-                </div>
-              ): null}
-            </Col>
-          </Row>
+            </div>
+          ): null}
         </div>
       </footer>
     )

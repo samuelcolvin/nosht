@@ -43,14 +43,13 @@ main.container {
 }
 
 .footer {
-  flex-shrink: 0;
-  background-color: #3B4A59;
+  background-color: $footer-colour;
+  font-size: 0.9rem;
   padding: 1rem 0 1rem;
-  color: white;
+  color: #333;
   min-height: 120px;
-  .footer-menu a {
-    color: #b3e5fc;
-    flex-grow: 0;
+  .custom-footer a {
+    color: #ff6443;
   }
 }
 
