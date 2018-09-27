@@ -191,7 +191,7 @@ class EmailActor(BaseEmailActor):
 
             link = f'/dashboard/events/{data["event_id"]}/'
             ctx = dict(
-                summary='Event Created',
+                summary='{host_name} created an event "{event_name}"'.format(**data),
                 details=(
                     'Event "{event_name}" ({cat_name}) created by "{host_name}" ({host_role}), '
                     'click the link below to view the event.'

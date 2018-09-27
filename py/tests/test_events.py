@@ -315,7 +315,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
     # debug(email)
-    assert email['Subject'] == 'Update: Event Created'
+    assert email['Subject'] == 'Update: Frank Spencer created an event "foobar"'
     assert email['part:text/plain'] == (
         'Testing update:\n'
         '\n'
