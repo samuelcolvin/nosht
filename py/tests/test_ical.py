@@ -8,7 +8,7 @@ from shared.emails.ical import ical_attachment
 from .conftest import Factory, london
 
 
-async def test_simple(factory: Factory, db_conn, settings, mock):
+async def test_ical(factory: Factory, db_conn, settings, mock):
     await factory.create_company(domain='events.example.com')
     await factory.create_cat()
     await factory.create_user()
@@ -38,6 +38,7 @@ async def test_simple(factory: Factory, db_conn, settings, mock):
         ' d by Frank Spencer on behalf of Testing\\n\\nFor more information: https://e\r\n'
         ' vents.example.com/supper-clubs/the-event-name/\r\n'
         'URL:https://events.example.com/supper-clubs/the-event-name/\r\n'
+        'ORGANIZER;CN=Frank Spencer on behalf of Testing:MAILTO:nosht@scolvin.com\r\n'
         'DTSTART;TZID=Europe/London:20200601T100000\r\n'
         'DTEND;TZID=Europe/London:20200601T110000\r\n'
         'END:VEVENT\r\n'
@@ -46,7 +47,7 @@ async def test_simple(factory: Factory, db_conn, settings, mock):
 
 
 async def test_with_location(factory: Factory, db_conn, settings):
-    await factory.create_company()
+    await factory.create_company(email_reply_to='foobar@example.com')
     await factory.create_cat()
     await factory.create_user()
     await factory.create_event(location_name='The House, Testing Street', location_lat=12.3, location_lng=45.6)
@@ -64,6 +65,7 @@ async def test_with_partial_location(factory: Factory, db_conn, settings):
 
     attachment = await ical_attachment(factory.event_id, factory.company_id, conn=db_conn, settings=settings)
     assert 'LOCATION:The House\\, Testing Street\r\n' in attachment.content
+    assert 'ORGANIZER;CN=Frank Spencer on behalf of Testing:MAILTO:nosht@scolvin.com\r\n' in attachment.content
 
 
 async def test_utc(factory: Factory, db_conn, settings):

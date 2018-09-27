@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from shared.settings import Settings
@@ -78,7 +79,8 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
           cat.slug || '/' || e.slug as ref,
           e.location_name, e.location_lat, e.location_lng,
           event_link(cat.slug, e.slug, e.public, $3) as link, co.domain,
-          full_name(host.first_name, host.last_name) AS host_name, co.name as company_name
+          full_name(host.first_name, host.last_name) AS host_name,
+          co.name as company_name, coalesce(co.email_reply_to, co.email_from) as company_email
         FROM events AS e
         JOIN categories AS cat ON e.category = cat.id
         JOIN companies AS co ON cat.company = co.id
@@ -93,6 +95,13 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
         raise RuntimeError(f'event {event_id} on company {company_id} not found')
 
     url = 'https://{domain}{link}'.format(**data)
+    email = data['company_email'] or settings.default_email_address
+
+    extra_email = re.search('<(.*?)>', email)
+    if extra_email:
+        email = extra_email.group(1)
+
+    hosted_by = '{host_name} on behalf of {company_name}'.format(**data)
     lines = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
@@ -106,10 +115,11 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
         foldline('DESCRIPTION:' + _ical_escape(
             '{name}\n\n'
             '{short_description}\n\n'
-            'Hosted by {host_name} on behalf of {company_name}\n\n'
-            'For more information: {url}'.format(url=url, **data)
+            'Hosted by {hosted_by}\n\n'
+            'For more information: {url}'.format(url=url, hosted_by=hosted_by, **data)
         )),
         foldline('URL:' + _ical_escape(url)),
+        foldline(f'ORGANIZER;CN={_ical_escape(hosted_by)}:MAILTO:{email}'),
     ]
 
     start, duration = start_tz_duration(data)
