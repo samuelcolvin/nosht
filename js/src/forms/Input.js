@@ -163,7 +163,6 @@ class DatetimeInput extends React.Component {
   }
 
   onDurChange (dt, dur) {
-    console.log('onDurChange', [dt, dt.format()])
     if (dur !== null && dt && dt.hours() === 0 && dt.minutes() === 0) {
       dt = dt.hours(moment().hours())
     }
