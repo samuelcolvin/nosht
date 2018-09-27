@@ -235,13 +235,14 @@ To set from Facebook:
 
 Lots of keys need for different bits of google's integration:
 
-Go to https://console.developers.google.com, make sure your on the right project, or create a new one, 
-go to credentials:
-* set up an "API Key" with permission for "Maps Static API" and "Maps JavaScript API", 
-  restrict it to your domain, use this for `APP_GOOGLE_MAPS_STATIC_KEY` and `REACT_APP_GOOGLE_MAPS_KEY`.
+Go to https://console.developers.google.com, make sure your on the right project, or create a new one
+(you'll need billing to be setup for all the keys to work correctly), go to credentials:
+* set up an "API Key" with permission for "Maps JavaScript API" and "Geocoding API", 
+  restrict it to your domain using "HTTP referres", use this for `REACT_APP_GOOGLE_MAPS_KEY`.
+* set up an "API Key" with permission for "Maps Static API", use this for `APP_GOOGLE_MAPS_STATIC_KEY`.
 * set up an "OAuth client ID", set the authorised origin, set `REACT_APP_GOOGLE_SIW_CLIENT_KEY` to the Client ID
   and `APP_GOOGLE_SIW_CLIENT_KEY` to the "Client secret".
-  
+
 Search "google recaptcha" and setup a V3 key (**note:** this must be the V3 type of key) for your site, set the
 allowed domains, set `REACT_APP_RECAPTCHA_KEY` to the "Site key", set `APP_GRECAPTCHA_SECRET` to the "Secret key".
 
