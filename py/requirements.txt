@@ -11,7 +11,7 @@ cchardet==2.1.4
 chevron==0.12.2
 cryptography==2.3.1
 google-auth==1.5.1
-libsass==0.14.5
+libsass==0.15.1
 misaka==2.1.0
 pydantic[email]==0.13
 pytz==2018.5
