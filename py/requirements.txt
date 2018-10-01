@@ -1,7 +1,7 @@
 aiobotocore==0.9.4
 aiodns==1.1.1
 aiohttp==3.4.4
-aiohttp-session==2.5.1
+aiohttp-session==2.6.0
 arq==0.14
 asyncpg==0.17.0
 async-timeout==3.0.0
