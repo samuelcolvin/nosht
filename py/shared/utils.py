@@ -83,8 +83,8 @@ def static_map_link(lat, lng, *, settings: Settings, size=(500, 300), zoom=13):
     })
 
 
-date_fmt = '{day}{suffix} %b %y'
-datetime_fmt = '%I:%M{ampm}, {day}{suffix} %b %y'
+date_fmt = '{day}{suffix} %b %Y'
+datetime_fmt = '%I:%M{ampm}, {day}{suffix} %b %Y'
 
 
 def format_dt(dt: Union[datetime, date]):

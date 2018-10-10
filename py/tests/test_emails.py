@@ -106,7 +106,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     ) in html
     assert '<p>Extra Information: <strong>snap</strong></p>\n' in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
-    assert '<li>Start Time: <strong>3rd Jun 20</strong></li>\n' in html
+    assert '<li>Start Time: <strong>3rd Jun 2020</strong></li>\n' in html
     assert '<li>Duration: <strong>All day</strong></li>' in html
     attachment = email['part:text/calendar']
     assert attachment.startswith(
@@ -149,7 +149,7 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
     print(html)
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Duration: <strong>1 hour 30 mins</strong></li>' in html
-    assert '<li>Start Time: <strong>07:00pm, 28th Jun 20</strong></li>\n' in html
+    assert '<li>Start Time: <strong>07:00pm, 28th Jun 2020</strong></li>\n' in html
 
 
 async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, settings):
