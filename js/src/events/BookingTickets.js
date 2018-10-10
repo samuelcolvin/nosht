@@ -194,6 +194,8 @@ const TicketForm = props => {
             </Row>
             <div className="text-muted text-center small">
               Select which type of ticket you wish to purchase.
+              Please note that you can only buy one ticket type at a time. If you wish to buy different ticket types,
+              return to "book now" after your initial ticket is booked.
             </div>
           </div>
         }
