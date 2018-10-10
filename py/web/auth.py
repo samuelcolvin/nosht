@@ -104,7 +104,7 @@ class GrecaptchaModel(BaseModel):
     grecaptcha_token: str
 
 
-class GoogleSiwModel(GrecaptchaModel):
+class GoogleSiwModel(BaseModel):
     id_token: str
 
 
@@ -132,7 +132,7 @@ async def google_get_details(m: GoogleSiwModel, app):
     }
 
 
-class FacebookSiwModel(GrecaptchaModel):
+class FacebookSiwModel(BaseModel):
     signed_request: bytes
     access_token: str
     user_id: str

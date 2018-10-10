@@ -31,7 +31,7 @@
         <label for="password">Password</label>
       </div>
 
-      <button id="submit-btn" class="btn btn-lg btn-primary btn-block" type="submit" disabled>Log in</button>
+      <button id="submit-btn" class="btn btn-lg btn-primary btn-block" type="submit">Log in</button>
     </form>
     <script>
       const form = document.getElementById('login-form')
@@ -44,7 +44,7 @@
       window.addEventListener('message', function (event) {
         if (event.origin === origin) {
           grecaptcha_token = event.data
-          document.getElementById('submit-btn').disabled = false
+          user_error.innerText = ''
         }
       }, false)
 
@@ -68,11 +68,17 @@
         password_el.readOnly = true
         user_error.innerText = ''
 
+        if (!grecaptcha_token) {
+          user_error.innerText = 'Captcha required.'
+          return
+        }
+
         const data = JSON.stringify({
           email: email_el.value,
           password: password_el.value,
           grecaptcha_token,
         })
+        grecaptcha_token = null
 
         const xhr = new XMLHttpRequest()
         xhr.open(form.method, form.action)

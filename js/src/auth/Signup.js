@@ -66,6 +66,7 @@ class Signup extends React.Component {
     if (this.state.email) {
       ReactGA.event({category: 'auth', action: 'auth-signup', label: 'email'})
       await this.auth('email', {email: this.state.email, name: this.state.name})
+      window.grecaptcha.reset()
     }
   }
 
@@ -155,14 +156,14 @@ class Signup extends React.Component {
               </Button>
               <form onSubmit={this.email_auth.bind(this)}>
                 <Input field={name_field}
-                      value={this.state.name}
-                      onChange={v => this.setState({name: v})}/>
+                       value={this.state.name}
+                       onChange={v => this.setState({name: v})}/>
                 <Input field={email_field}
-                      value={this.state.email}
-                      onChange={v => this.setState({email: v})}/>
+                       value={this.state.email}
+                       onChange={v => this.setState({email: v})}/>
 
                 <Row className="justify-content-center mb-2">
-                  <Recaptcha callback={grecaptcha_token => this.setState({grecaptcha_token})}/>
+                  <Recaptcha callback={grecaptcha_token => this.setState({grecaptcha_token, error: null})}/>
                 </Row>
                 <button type="submit" id="submit-button" className="d-none">submit</button>
               </form>
