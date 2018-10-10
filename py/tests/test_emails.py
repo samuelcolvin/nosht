@@ -85,7 +85,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
 
     res = await factory.create_reservation(factory.user_id)
     booked_action_id, _ = await factory.buy_tickets(res)
-    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET extra_info='snap'")
+    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET extra_info='snip snap '")
 
     await email_actor.send_event_conf(booked_action_id)
 
@@ -104,7 +104,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
         '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n'
         '</div>\n'
     ) in html
-    assert '<p>Extra Information: <strong>snap</strong></p>\n' in html
+    assert '<p>Extra Information: <strong>snip snap</strong></p>\n' in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Start Time: <strong>3rd Jun 2020</strong></li>\n' in html
     assert '<li>Duration: <strong>All day</strong></li>' in html
