@@ -28,13 +28,11 @@ async def grecaptcha(request):
     data = await request.post()
     request.app['log'][-1] = ('grecaptcha', data['response'])
     if data['response'] == '__ok__':
-        return json_response(dict(success=True, score=1, action='testing', hostname='127.0.0.1'))
-    elif data['response'] == '__low_score__':
-        return json_response(dict(success=True, score=0.1))
+        return json_response(dict(success=True, hostname='127.0.0.1'))
     elif data['response'] == '__400__':
         return json_response({}, status=400)
     else:
-        return json_response(dict(success=False))
+        return json_response(dict(success=False, hostname='127.0.0.1'))
 
 
 async def google_siw(request):

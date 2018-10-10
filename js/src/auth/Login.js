@@ -1,12 +1,13 @@
 import React from 'react'
 import {Row, Col, Button, FormFeedback} from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
+import ReactGA from 'react-ga'
 import {Link} from 'react-router-dom'
+import Recaptcha from '../general/Recaptcha'
 import requests from '../utils/requests'
 import WithContext from '../utils/context'
-import {grecaptcha_execute, user_full_name} from '../utils'
+import {user_full_name} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
-import ReactGA from 'react-ga'
 import IFrame from '../general/IFrame'
 
 export const next_url = location => {
@@ -27,6 +28,8 @@ export async function authenticate (data) {
   this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
   window.sessionStorage.clear()
 }
+const recaptcha_callback = t => document.getElementById('login-iframe').contentWindow.postMessage(t, '*')
+
 
 class Login extends React.Component {
   constructor (props) {
@@ -41,9 +44,8 @@ class Login extends React.Component {
     if (event.origin !== 'null') {
       return
     }
-    if (event.data === 'grecaptcha_token_request') {
-      const grecaptcha_token = await grecaptcha_execute('login_password')
-      document.getElementById('login-iframe').contentWindow.postMessage(grecaptcha_token, '*')
+    if (event.data === 'grecaptcha-reset') {
+      window.grecaptcha.reset()
       return
     }
 
@@ -69,7 +71,6 @@ class Login extends React.Component {
 
   async login_with (site, login_data) {
     ReactGA.event({category: 'auth', action: 'auth-login', label: site})
-    login_data.grecaptcha_token = await grecaptcha_execute(`login_with_${site}`)
     let data
     try {
       data = await requests.post(`/login/${site}/`, login_data, {expected_statuses: [200, 470]})
@@ -141,6 +142,9 @@ class Login extends React.Component {
             <FormFeedback className="d-block">{this.state.error}</FormFeedback>
           </div>
         }
+        <Row className="justify-content-center mt-4">
+          <Recaptcha callback={recaptcha_callback}/>
+        </Row>
         <Row className="justify-content-center">
           <Col xl="4" lg="6" md="8" className="login">
             <IFrame id="login-iframe" title="Login" src="/iframes/login.html"/>

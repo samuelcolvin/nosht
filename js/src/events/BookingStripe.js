@@ -6,7 +6,6 @@ import {
   Row,
 } from 'reactstrap'
 import requests from '../utils/requests'
-import {grecaptcha_execute} from '../utils'
 import {ModalFooter} from '../general/Modal'
 import {Money, MoneyFree} from '../general/Money'
 import Markdown from '../general/Markdown'
@@ -102,11 +101,10 @@ class StripeBookingForm extends React.Component {
 
   async book_free (book_action) {
     this.setState({submitted: true})
-    const grecaptcha_token = await grecaptcha_execute(book_action.replace(/-/g, '_'))
 
     try {
       await requests.post('events/book-free/',
-          {booking_token: this.props.reservation.booking_token, book_action, grecaptcha_token})
+          {booking_token: this.props.reservation.booking_token, book_action})
     } catch (error) {
       this.props.ctx.setError(error)
       return

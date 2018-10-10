@@ -6,7 +6,7 @@ from buildpg.clauses import Join, Where
 from pydantic import BaseModel, condecimal, constr
 
 from shared.images import delete_image, upload_other
-from web.auth import check_grecaptcha, check_session, is_admin
+from web.auth import check_session, is_admin
 from web.bread import Bread
 from web.stripe import StripeDonateModel, stripe_donate
 from web.utils import JsonErrors, json_response, raw_json_response, request_image
@@ -20,7 +20,6 @@ class Donate(UpdateViewAuth):
     Model = StripeDonateModel
 
     async def execute(self, m: StripeDonateModel):
-        await check_grecaptcha(m, self.request)
         action_id, source_hash = await stripe_donate(m, self.request['company_id'], self.session['user_id'],
                                                      self.app, self.conn)
         await self.app['email_actor'].send_donation_thanks(action_id)

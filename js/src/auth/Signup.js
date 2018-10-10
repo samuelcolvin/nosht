@@ -11,10 +11,11 @@ import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import ReactGA from 'react-ga'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {grecaptcha_execute, user_full_name} from '../utils'
+import {user_full_name} from '../utils'
 import Input from '../forms/Input'
 import {setup_siw, facebook_login, google_login} from './login_with'
 import {next_url} from './Login'
+import Recaptcha from '../general/Recaptcha'
 
 const name_field = {
   name: 'name',
@@ -65,19 +66,27 @@ class Signup extends React.Component {
     if (this.state.email) {
       ReactGA.event({category: 'auth', action: 'auth-signup', label: 'email'})
       await this.auth('email', {email: this.state.email, name: this.state.name})
+      window.grecaptcha.reset()
     }
   }
 
   email_button () {
     if (this.state.email_form) {
-      document.getElementById('submit-button').click()
+      if (this.state.grecaptcha_token) {
+        this.setState({error: null})
+        document.getElementById('submit-button').click()
+      } else {
+        this.setState({error: 'Captcha required'})
+      }
     } else {
       this.setState({email_form: true})
     }
   }
 
   async auth (site, post_data) {
-    post_data.grecaptcha_token = await grecaptcha_execute('host_signup')
+    if (this.state.grecaptcha_token) {
+      post_data.grecaptcha_token = this.state.grecaptcha_token
+    }
     let data
     try {
       data = await requests.post(`/signup/host/${site}/`, post_data, {expected_statuses: [200, 470]})
@@ -147,11 +156,15 @@ class Signup extends React.Component {
               </Button>
               <form onSubmit={this.email_auth.bind(this)}>
                 <Input field={name_field}
-                      value={this.state.name}
-                      onChange={v => this.setState({name: v})}/>
+                       value={this.state.name}
+                       onChange={v => this.setState({name: v})}/>
                 <Input field={email_field}
-                      value={this.state.email}
-                      onChange={v => this.setState({email: v})}/>
+                       value={this.state.email}
+                       onChange={v => this.setState({email: v})}/>
+
+                <Row className="justify-content-center mb-2">
+                  <Recaptcha callback={grecaptcha_token => this.setState({grecaptcha_token, error: null})}/>
+                </Row>
                 <button type="submit" id="submit-button" className="d-none">submit</button>
               </form>
               {this.state.error && <FormFeedback className="d-block">{this.state.error}</FormFeedback>}

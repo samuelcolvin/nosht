@@ -244,7 +244,7 @@ async def test_send_ticket_not_buyer(email_actor: EmailActor, factory: Factory, 
     assert r.status == 200, await r.text()
     data = await r.json()
 
-    data = dict(booking_token=data['booking_token'], grecaptcha_token='__ok__', book_action='book-free-tickets')
+    data = dict(booking_token=data['booking_token'], book_action='book-free-tickets')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
@@ -382,7 +382,6 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
     await factory.buy_tickets(await factory.create_reservation(anne, None), anne)
 
     data = dict(
-        grecaptcha_token='__ok__',
         subject='This is a test email & whatever',
         message='this is the **message**.'
     )

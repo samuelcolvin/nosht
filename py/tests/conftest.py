@@ -317,7 +317,6 @@ class Factory:
                 card_ref='4242-32-01',
             ),
             booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
-            grecaptcha_token='__ok__',
         )
         return await stripe_buy(m, self.company_id, user_id or self.user_id, self.app, self.conn)
 
@@ -325,7 +324,6 @@ class Factory:
         m = BookFreeModel(
             booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
             book_action='book-free-tickets',
-            grecaptcha_token='__ok__',
         )
         return await book_free(m, self.company_id, {'user_id': user_id or self.user_id}, self.app, self.conn)
 

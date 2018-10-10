@@ -9,7 +9,7 @@ import {fab} from '@fortawesome/free-brands-svg-icons'
 
 import {GlobalContext} from './utils/context'
 import requests from './utils/requests'
-import {sleep, load_script_callback, window_property, get_tmp_name} from './utils'
+import {sleep, get_tmp_name} from './utils'
 import {Error, NotFound, Loading} from './general/Errors'
 import Navbar from './general/Navbar'
 import Footer from './general/Footer'
@@ -62,7 +62,6 @@ class App extends React.Component {
       active_page: null,
       error: null,
       message: null,
-      grecaptcha_ready: false,
     }
     this.setMessage = this.setMessage.bind(this)
     this.setError = this.setError.bind(this)
@@ -85,15 +84,6 @@ class App extends React.Component {
     } catch (err) {
       this.setState({error: err})
     }
-    await load_script_callback('https://www.google.com/recaptcha/api.js?onload=<callback-function>&render=onload')
-    const grecaptcha = await window_property('grecaptcha')
-    grecaptcha.render({
-      sitekey: process.env.REACT_APP_RECAPTCHA_KEY,
-      badge: 'bottomleft',
-    })
-    grecaptcha.ready(() => {
-      this.setState({grecaptcha_ready: true})
-    })
   }
 
   componentDidUpdate (prevProps) {

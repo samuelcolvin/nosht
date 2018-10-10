@@ -1048,7 +1048,6 @@ async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_serve
     await factory.buy_tickets(await factory.create_reservation(anne, None), anne)
 
     data = dict(
-        grecaptcha_token='__ok__',
         subject='This is a test email & whatever',
         message='this is the **message**.'
     )
@@ -1081,7 +1080,6 @@ async def test_event_updates_past(cli, url, login, factory: Factory, dummy_serve
     await factory.book_free(await factory.create_reservation(anne, None), anne)
 
     data = dict(
-        grecaptcha_token='__ok__',
         subject='This is a test email & whatever',
         message='this is the **message**.'
     )
@@ -1111,7 +1109,6 @@ async def test_send_event_update_wrong_user(cli, url, login, factory: Factory):
     await login()
 
     data = dict(
-        grecaptcha_token='__ok__',
         subject='This is a test email & whatever',
         message='this is the **message**.'
     )
@@ -1127,7 +1124,6 @@ async def test_send_event_update_no_event(cli, url, login, factory: Factory):
     await login()
 
     data = dict(
-        grecaptcha_token='__ok__',
         subject='This is a test email & whatever',
         message='this is the **message**.'
     )

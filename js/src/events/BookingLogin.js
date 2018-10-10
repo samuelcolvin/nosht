@@ -2,26 +2,38 @@ import React from 'react'
 import {
   Button,
   Col,
+  Collapse,
   FormFeedback,
-  Input,
-  InputGroup,
-  InputGroupAddon,
   ModalBody,
   Row,
 } from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {grecaptcha_execute} from '../utils'
+import Input from '../forms/Input'
 import {setup_siw, facebook_login, google_login} from '../auth/login_with'
+import Recaptcha from '../general/Recaptcha'
 import {ModalFooter} from '../general/Modal'
 
+const first_name_field = {
+  name: 'first_name',
+  required: true,
+}
+const last_name_field = {
+  name: 'last_name',
+  required: true,
+}
+const email_field = {
+  name: 'email',
+  type: 'email',
+  required: true,
+}
 
 class BookingLogin extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
-      email: '',
+      email: null,
       siw_error: null,
       email_error: null,
       submitting: false,
@@ -57,13 +69,19 @@ class BookingLogin extends React.Component {
     e.preventDefault()
     this.setState({email_error: null, submitting: true})
     if (this.state.email) {
-      const error_msg = await this.auth('email', {email: this.state.email}, [200, 470])
+      const data = {
+        first_name: this.state.first_name,
+        last_name: this.state.last_name,
+        email: this.state.email,
+        grecaptcha_token: this.state.grecaptcha_token,
+      }
+      const error_msg = await this.auth('email', data, [200, 470])
       error_msg && this.setState({email_error: error_msg})
+      window.grecaptcha.reset()
     }
   }
 
   async auth (site, login_data, status) {
-    login_data.grecaptcha_token = await grecaptcha_execute('guest_signup')
     let data
     try {
       data = await requests.post(`/signup/guest/${site}/`, login_data, {expected_statuses: status || 200})
@@ -80,46 +98,71 @@ class BookingLogin extends React.Component {
     }
   }
 
+  email_button () {
+    if (this.state.email_form) {
+      if (this.state.grecaptcha_token) {
+        this.setState({email_error: null})
+        document.getElementById('submit-button').click()
+      } else {
+        this.setState({email_error: 'Captcha required'})
+      }
+    } else {
+      this.setState({email_form: true})
+    }
+  }
+
   render () {
     return [
       <ModalBody key="1">
         <p className="text-center">{this.props.event.booking_trust_message}</p>
-        <Row>
-          <Col lg={{size: 4, offset: 2}} md="6" className="text-center text-md-left my-1">
-              <Button disabled={this.state.submitting} onClick={this.google_auth.bind(this)} color="primary">
-                <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
-                Signup with Google
+
+        <Row className="justify-content-center">
+          <Col md="6">
+
+            <Button disabled={this.state.email_form || this.state.submitting}
+                    onClick={this.google_auth.bind(this)}
+                    color="primary"
+                    className="width-100p my-1">
+              <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
+              Signup with Google
+            </Button>
+            <Button disabled={this.state.email_form || this.state.submitting}
+                    onClick={this.facebook_auth.bind(this)}
+                    color="primary"
+                    className="width-100p my-1">
+              <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
+              Signup with Facebook
+            </Button>
+            <Collapse isOpen={this.state.email_form}>
+              <Button onClick={() => this.setState({email_form: false})}
+                      color="link" size="sm">
+                Close
               </Button>
-          </Col>
-          <Col lg="4" md="6" className="text-center text-md-right my-1">
-              <Button disabled={this.state.submitting} onClick={this.facebook_auth.bind(this)} color="primary">
-                <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
-                Signup with Facebook
-              </Button>
+              <form onSubmit={this.email_auth.bind(this)}>
+                <Input field={first_name_field}
+                       value={this.state.first_name}
+                       onChange={v => this.setState({first_name: v})}/>
+                <Input field={last_name_field}
+                       value={this.state.last_name}
+                       onChange={v => this.setState({last_name: v})}/>
+                <Input field={email_field}
+                       value={this.state.email}
+                       onChange={v => this.setState({email: v})}/>
+
+                <Row className="justify-content-center mb-2">
+                  <Recaptcha callback={grecaptcha_token => this.setState({grecaptcha_token, email_error: null})}/>
+                </Row>
+                <button type="submit" id="submit-button" className="d-none">submit</button>
+              </form>
+              {this.state.email_error && <FormFeedback className="d-block">{this.state.email_error}</FormFeedback>}
+            </Collapse>
+            <Button onClick={this.email_button.bind(this)} color="primary" className="width-100p my-1"
+                    disabled={this.state.submitting}>
+              <FontAwesomeIcon icon="at" className="mr-2"/>
+              Signup with Email
+            </Button>
           </Col>
         </Row>
-        <div className="text-center text-muted my-1">
-          <small>Or</small>
-        </div>
-        <form onSubmit={this.email_auth.bind(this)}>
-          <Row className="justify-content-center my-1">
-            <Col lg="8">
-              <InputGroup>
-                <Input type="email"
-                       invalid={!!this.state.email_error}
-                       value={this.state.email}
-                       required={true}
-                       disabled={this.state.submitting}
-                       onChange={e => this.setState({email: e.target.value})}/>
-
-                <InputGroupAddon addonType="append">
-                  <Button color="primary" disabled={this.state.submitting}>Signin with Email</Button>
-                </InputGroupAddon>
-                {this.state.email_error && <FormFeedback>{this.state.email_error}</FormFeedback>}
-              </InputGroup>
-            </Col>
-          </Row>
-        </form>
       </ModalBody>,
       <ModalFooter key="2" finished={this.props.finished} disabled={true}/>
     ]

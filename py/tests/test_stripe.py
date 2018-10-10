@@ -34,7 +34,6 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
             card_ref='4242-32-01',
         ),
         booking_token=encrypt_json(app, res.dict()),
-        grecaptcha_token='__ok__',
     )
     await db_conn.execute('SELECT check_tickets_remaining($1, 10)', res.event_id)
     customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
@@ -111,7 +110,6 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
             card_ref='{last4}-{exp_year}-{exp_month}'.format(**customer['sources']['data'][0]),
         ),
         booking_token=encrypt_json(app, res.dict()),
-        grecaptcha_token='__ok__',
     )
 
     await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
@@ -154,7 +152,6 @@ async def test_stripe_saved_card(cli, db_conn, factory: Factory):
             source_hash=source_hash,
         ),
         booking_token=encrypt_json(app, res.dict()),
-        grecaptcha_token='__ok__',
     )
 
     action_id, new_source_hash = await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
@@ -181,14 +178,12 @@ async def test_pay_cli(cli, url, dummy_server, factory: Factory, db_conn):
             card_ref='4242-32-01',
         ),
         booking_token=encrypt_json(app, res.dict()),
-        grecaptcha_token='__ok__',
     )
 
     r = await cli.json_post(url('event-buy-tickets'), data=data)
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
         (
@@ -214,13 +209,11 @@ async def test_pay_declined(cli, url, dummy_server, factory: Factory, db_conn):
             card_ref='4242-32-01',
         ),
         booking_token=encrypt_json(app, res.dict()),
-        grecaptcha_token='__ok__',
     )
 
     r = await cli.json_post(url('event-buy-tickets'), data=data)
     assert r.status == 402, await r.text()
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
     ]
@@ -242,14 +235,12 @@ async def test_existing_customer_fake(cli, url, dummy_server, factory: Factory):
             card_ref='4242-32-01',
         ),
         booking_token=encrypt_json(app, res.dict()),
-        grecaptcha_token='__ok__',
     )
 
     r = await cli.json_post(url('event-buy-tickets'), data=data)
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         'GET stripe_root_url/customers/xxx/sources',
         'POST stripe_root_url/customers/xxx/sources',
         'POST stripe_root_url/charges',
@@ -275,7 +266,6 @@ async def test_pay_no_price(cli, url, factory: Factory):
             card_ref='4242-32-01',
         ),
         booking_token=encrypt_json(app, res.dict()),
-        grecaptcha_token='__ok__',
     )
 
     r = await cli.json_post(url('event-buy-tickets'), data=data)
@@ -301,7 +291,6 @@ async def test_request_cancelled(cli, url, dummy_server, factory: Factory, db_co
             card_ref='4242-32-01',
         ),
         booking_token=encrypt_json(app, res.dict()),
-        grecaptcha_token='__ok__',
     )
 
     t = loop.create_task(cli.json_post(url('event-buy-tickets'), data=data))
@@ -310,7 +299,6 @@ async def test_request_cancelled(cli, url, dummy_server, factory: Factory, db_co
 
     await sleep(0.4)
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
         (

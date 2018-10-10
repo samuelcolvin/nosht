@@ -1,7 +1,7 @@
 import React from 'react'
 import {Row, Col, Button} from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {grecaptcha_execute} from '../utils'
+import Recaptcha from '../general/Recaptcha'
 import requests from '../utils/requests'
 import WithContext from '../utils/context'
 import Input from '../forms/Input'
@@ -16,7 +16,7 @@ const FIELD = {
 class RequestPasswordReset extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {enabled: true, email: null}
+    this.state = {enabled: false, email: null, grecaptcha_token: null}
   }
 
   componentDidMount () {
@@ -26,9 +26,8 @@ class RequestPasswordReset extends React.Component {
   async submit (e) {
     e.preventDefault()
     this.setState({enabled: false})
-    const grecaptcha_token = await grecaptcha_execute('reset_password')
     try {
-      await requests.post('reset-password/', {email: this.state.email, grecaptcha_token})
+      await requests.post('reset-password/', {email: this.state.email, grecaptcha_token: this.state.grecaptcha_token})
     } catch (error) {
       this.props.ctx.setError(error)
       return
@@ -50,10 +49,10 @@ class RequestPasswordReset extends React.Component {
         <Row className="justify-content-center">
           <Col xl="4" lg="6" md="8">
             <form onSubmit={this.submit.bind(this)} className="hide-form-label">
-              <Input field={FIELD}
-                    value={this.state.email}
-                    onChange={v => this.setState({email: v})}/>
-              <button type="submit" id="submit-button" className="d-none">submit</button>
+              <Row className="justify-content-center mb-2">
+                <Recaptcha callback={grecaptcha_token => this.setState({grecaptcha_token, enabled: true})}/>
+              </Row>
+              <Input field={FIELD} value={this.state.email} onChange={email => this.setState({email})}/>
               <Button color="primary" className="width-100p my-1"
                       disabled={!this.state.enabled}>
                 <FontAwesomeIcon icon="unlock-alt" className="mr-2"/>

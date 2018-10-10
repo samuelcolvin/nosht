@@ -104,7 +104,7 @@ class GrecaptchaModel(BaseModel):
     grecaptcha_token: str
 
 
-class GoogleSiwModel(GrecaptchaModel):
+class GoogleSiwModel(BaseModel):
     id_token: str
 
 
@@ -132,7 +132,7 @@ async def google_get_details(m: GoogleSiwModel, app):
     }
 
 
-class FacebookSiwModel(GrecaptchaModel):
+class FacebookSiwModel(BaseModel):
     signed_request: bytes
     access_token: str
     user_id: str
@@ -181,7 +181,7 @@ async def facebook_get_details(m: FacebookSiwModel, app):
     }
 
 
-async def check_grecaptcha(m: GrecaptchaModel, request, *, threshold=None, error_headers=None) -> float:
+async def check_grecaptcha(m: GrecaptchaModel, request, *, error_headers=None):
     settings: Settings = request.app['settings']
     client_ip = get_ip(request)
     post_data = {
@@ -194,10 +194,8 @@ async def check_grecaptcha(m: GrecaptchaModel, request, *, threshold=None, error
             raise RequestError(r.status, settings.grecaptcha_url, text=await r.text())
         data = await r.json()
 
-    threshold = threshold or settings.grecaptcha_threshold
-    if data['success'] and data['score'] > threshold and remove_port(request.host) == data['hostname']:
-        logger.info('grecaptcha success, score=%0.3f action=%s', data['score'], data['action'])
-        return data['score']
+    if data['success'] and remove_port(request.host) == data['hostname']:
+        logger.info('grecaptcha success')
     else:
         logger.warning('grecaptcha failure, path="%s" ip=%s response=%s', request.path, client_ip, data,
                        extra={'data': {'grecaptcha_response': data}})

@@ -36,7 +36,7 @@ def successful_login(user, app, headers_=None):
 
 async def login(request):
     m = await parse_request(request, LoginModel, headers_=HEADER_CROSS_ORIGIN)
-    await check_grecaptcha(m, request, threshold=0.8, error_headers=HEADER_CROSS_ORIGIN)
+    await check_grecaptcha(m, request, error_headers=HEADER_CROSS_ORIGIN)
 
     if m.password != request.app['settings'].dummy_password:
         r = await request['conn'].fetchrow(LOGIN_USER_SQL, request['company_id'], m.email)
@@ -66,7 +66,6 @@ LOGIN_MODELS = {
 async def login_with(request):
     model, siw_method = LOGIN_MODELS[request.match_info['site']]
     m: GrecaptchaModel = await parse_request(request, model)
-    await check_grecaptcha(m, request)
     details = await siw_method(m, app=request.app)
 
     email = details['email']
@@ -194,20 +193,22 @@ RETURNING id, status
 async def guest_signup(request):
     signin_method = request.match_info['site']
     model, siw_method = SIGNIN_MODELS[signin_method]
-    m: GrecaptchaModel = await parse_request(request, model)
-    score = await check_grecaptcha(m, request)
+    m: BaseModel = await parse_request(request, model)
+
+    siw_used = signin_method in {'facebook', 'google'}
+    if not siw_used:
+        await check_grecaptcha(m, request)
+
     details = await siw_method(m, app=request.app)
 
-    name_confirmed = signin_method in {'facebook', 'google'}
-    company_id = request['company_id']
     user_email = details['email'].lower()
     user_id, status = await request['conn'].fetchrow_b(
         CREATE_USER_SQL,
         values=Values(
-            company=company_id,
+            company=request['company_id'],
             role='guest',
             email=user_email,
-            status='active' if name_confirmed else 'pending',
+            status='active' if siw_used else 'pending',
             first_name=details.get('first_name'),
             last_name=details.get('last_name'),
         )
@@ -219,7 +220,7 @@ async def guest_signup(request):
     session.update({'user_id': user_id, 'role': 'guest', 'last_active': int(time())})
 
     await record_action(request, user_id, ActionTypes.guest_signin,
-                        signin_method=signin_method, grecaptcha_score=score)
+                        signin_method=signin_method)
 
     return json_response(
         user=dict(
@@ -256,8 +257,9 @@ SIGNUP_MODELS = {
 async def host_signup(request):
     signin_method = request.match_info['site']
     model, siw_method = SIGNUP_MODELS[signin_method]
-    m: GrecaptchaModel = await parse_request(request, model)
-    score = await check_grecaptcha(m, request)
+    m: BaseModel = await parse_request(request, model)
+    if signin_method == 'email':
+        await check_grecaptcha(m, request)
     details = await siw_method(m, app=request.app)
 
     company_id = request['company_id']
@@ -294,7 +296,7 @@ async def host_signup(request):
                     'last_active': int(time()), 'status': user_status})
 
     await record_action(request, user_id, ActionTypes.host_signup,
-                        existing_user=bool(existing_role), signin_method=signin_method, grecaptcha_score=score)
+                        existing_user=bool(existing_role), signin_method=signin_method)
 
     await request.app['email_actor'].send_account_created(user_id)
     json_str = await request['conn'].fetchval(

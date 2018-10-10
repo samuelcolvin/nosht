@@ -2,39 +2,18 @@ import moment from 'moment'
 
 export const unique = (value, index, array) => array.indexOf(value) === index
 
-export const grecaptcha_execute = action => window.grecaptcha.execute(0, {action})
-
-const _add_script = (url, reject) => {
-  const script = document.createElement('script')
-  script.src = url
-  script.onerror = e => reject(e)
-  document.body.appendChild(script)
-  setTimeout(() => reject(`script "${url}" timed out`), 8000)
-  return script
-}
-
 export const load_script = url => {
   return new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${url}"]`)) {
       // script already loaded
       resolve()
     } else {
-      const script = _add_script(url, reject)
+      const script = document.createElement('script')
+      script.src = url
+      script.onerror = e => reject(e)
+      document.body.appendChild(script)
+      setTimeout(() => reject(`script "${url}" timed out`), 8000)
       script.onload = () => resolve()
-    }
-  })
-}
-
-export const load_script_callback = url => {
-  const callback_name = '_load_script_complete_' + btoa(url).substr(0, 10)
-  return new Promise((resolve, reject) => {
-    url = url.replace('<callback-function>', callback_name)
-    if (document.querySelector(`script[src="${url}"]`)) {
-      // script already loaded, but wait to resolve to make sure the callback has been called
-      setTimeout(() => resolve(), 100)
-    } else {
-      window[callback_name] = () => resolve()
-      _add_script(url, reject)
     }
   })
 }

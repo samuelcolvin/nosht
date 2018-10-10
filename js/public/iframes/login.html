@@ -6,7 +6,7 @@
     <title>Login Form</title>
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'none';
-      script-src 'sha256-AvmxzdAGVLt95rnuaTQQo6xantcz92NFmE5CcpPGPx0=';
+      script-src 'sha256-1FdPcRpGkkVM77/flDFG/SLQ0aUu5l/0L1JA5VDdEfA=';
       style-src http://localhost:3000 https://fonts.googleapis.com/ https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/;
       connect-src http://localhost:3000;
       font-src data: https://fonts.gstatic.com;
@@ -40,6 +40,14 @@
       const email_el = document.getElementById('email')
       const password_el = document.getElementById('password')
 
+      let grecaptcha_token = null
+      window.addEventListener('message', function (event) {
+        if (event.origin === origin) {
+          grecaptcha_token = event.data
+          user_error.innerText = ''
+        }
+      }, false)
+
       function on_error (msg, xhr, details) {
         console.warn('Error:', msg, xhr, details, form)
         window.parent.postMessage(JSON.stringify({
@@ -59,23 +67,18 @@
         email_el.readOnly = true
         password_el.readOnly = true
         user_error.innerText = ''
-        window.parent.postMessage('grecaptcha_token_request', origin)
-      }
-      form.addEventListener('submit', on_submit, true)
 
-      let g = null
-      window.addEventListener('message', function (event) {
-        if (event.origin === origin) {
-          submit_form(event.data)
+        if (!grecaptcha_token) {
+          user_error.innerText = 'Captcha required.'
+          return
         }
-      }, false)
 
-      function submit_form(grecaptcha_token) {
         const data = JSON.stringify({
           email: email_el.value,
           password: password_el.value,
           grecaptcha_token,
         })
+        grecaptcha_token = null
 
         const xhr = new XMLHttpRequest()
         xhr.open(form.method, form.action)
@@ -93,6 +96,7 @@
             email_el.readOnly = false
             password_el.readOnly = false
             password_el.value = ''
+            window.parent.postMessage('grecaptcha-reset', origin)
           } else if (xhr.status === 200) {
             window.parent.postMessage(JSON.stringify(data), origin)
           } else {
@@ -102,6 +106,7 @@
         xhr.onerror = function (e) {on_error('Network Error', xhr, e)}
         xhr.send(data)
       }
+      form.addEventListener('submit', on_submit, true)
     </script>
   </body>
 </html>
