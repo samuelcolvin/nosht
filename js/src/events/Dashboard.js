@@ -34,6 +34,15 @@ export class EventsList extends RenderList {
       {name: 'Create Event', link: '/create/'},
     ]
   }
+
+  no_items_msg () {
+    return (
+      <div>
+        Thank you for signing up - click "Create Event" to get started.
+        You may need to confirm your email address, so please check your emails and spam.
+      </div>
+    )
+  }
 }
 
 const EVENT_STATUS_FIELDS = [

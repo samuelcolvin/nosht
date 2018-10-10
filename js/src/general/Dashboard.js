@@ -158,6 +158,10 @@ export class RenderList extends RenderItem {
     return `${item.id}/`
   }
 
+  no_items_msg () {
+    return `No ${as_title(this.props.page.name)} found`
+  }
+
   render () {
     if (!this.state.items) {
       return <Loading/>
@@ -165,7 +169,7 @@ export class RenderList extends RenderItem {
       return [
         <Buttons key="b" buttons={this.state.buttons}/>,
         <div key="f" className="text-muted text-center h5 mt-4">
-          No {as_title(this.props.page.name)} found
+          {this.no_items_msg()}
         </div>,
         <div key="e">
           {this.extra()}
