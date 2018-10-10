@@ -487,7 +487,6 @@ export class EventsDetails extends RenderDetails {
                  success_msg='Event Update Sent'
                  initial={{status: event.status}}
                  update={this.update}
-                 grecaptcha_name="send_event_update"
                  action={`/events/${this.id}/updates/send/`}
                  fields={EVENT_EMAIL_UPDATE_FIELDS}/>,
       <SetImage key="set-image"

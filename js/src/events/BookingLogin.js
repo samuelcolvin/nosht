@@ -12,7 +12,6 @@ import {
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
-import {grecaptcha_execute} from '../utils'
 import {setup_siw, facebook_login, google_login} from '../auth/login_with'
 import {ModalFooter} from '../general/Modal'
 
@@ -63,7 +62,6 @@ class BookingLogin extends React.Component {
   }
 
   async auth (site, login_data, status) {
-    login_data.grecaptcha_token = await grecaptcha_execute('guest_signup')
     let data
     try {
       data = await requests.post(`/signup/guest/${site}/`, login_data, {expected_statuses: status || 200})

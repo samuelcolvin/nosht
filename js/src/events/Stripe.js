@@ -9,7 +9,7 @@ import {
 } from 'reactstrap'
 import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-elements'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {get_component_name, grecaptcha_execute, load_script, window_property} from '../utils'
+import {get_component_name, load_script, window_property} from '../utils'
 import WithContext from '../utils/context'
 import Input from '../forms/Input'
 import {Waiting} from '../general/Errors'
@@ -76,8 +76,6 @@ export async function stripe_pay (post_url, request_data) {
     }
   }
   this.setState({submitted: true})
-
-  request_data.grecaptcha_token = await grecaptcha_execute('stripe_pay')
 
   let response_data
   try {

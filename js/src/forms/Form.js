@@ -1,6 +1,5 @@
 import React from 'react'
 import {Button, ButtonGroup, Form as BootstrapForm} from 'reactstrap'
-import {grecaptcha_execute} from '../utils'
 import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import Input from './Input'
@@ -55,9 +54,6 @@ class _Form extends React.Component {
     this.setState({disabled: true, errors: {}, form_error: null})
     let r
     const data = Object.assign({}, this.props.form_data)
-    if (this.props.grecaptcha_name) {
-      data.grecaptcha_token = await grecaptcha_execute(this.props.grecaptcha_name)
-    }
     try {
       r = await requests.post(this.props.action, data, {expected_statuses: [200, 201, 400, 409]})
     } catch (error) {

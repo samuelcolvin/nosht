@@ -36,7 +36,7 @@ def successful_login(user, app, headers_=None):
 
 async def login(request):
     m = await parse_request(request, LoginModel, headers_=HEADER_CROSS_ORIGIN)
-    await check_grecaptcha(m, request, threshold=0.8, error_headers=HEADER_CROSS_ORIGIN)
+    await check_grecaptcha(m, request, error_headers=HEADER_CROSS_ORIGIN)
 
     if m.password != request.app['settings'].dummy_password:
         r = await request['conn'].fetchrow(LOGIN_USER_SQL, request['company_id'], m.email)
