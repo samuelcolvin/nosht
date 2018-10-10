@@ -17,14 +17,14 @@ If you have any questions please create an issue on github.
 The platform is built using the following tools:
 * the server side is built using **aiohttp** web framework and **python 3**
 * the main database is **postgres** with **redis** as a cache and queuing system
-* the front end use **react** and "create react app"
+* the front end uses **react** and "create react app"
 * the system is deployed at present using **heroku**'s container runtime although nothing in the system should rely
   on heroku
 * **AWS SES** is used to send emails
 * **AWS S3** is used to store user uploaded images
 * **Cloudflare** is used as a reverse-proxy and CDN for all traffic including S3
-* **sentry/raven** to collect error reports
-* **Stripe** for taking payments
+* **sentry/raven** collects error reports
+* **Stripe** does card payments
 
 # Deployment & Setup
 
@@ -38,7 +38,7 @@ Install the following:
 Create an app on heroku (make sure to choose the most appropriate region), add the following add-ons
 * Heroku Postgres - choose a size appropriate for your needs
 * Redis Cloud - the free 30MB option should be sufficient
-* Papertail - the smallest option should be sufficient
+* Papertail - the smallest (free) option should be sufficient
 
 Export an environment variable identifying your heroku app:
 
@@ -55,7 +55,7 @@ heroku ps -a $HEROKU_APP
 (you won't see much but the command should pass)
 
 You'll need to set the following config (environment) variables in heroku:
-* `APP_AUTH_KEY` can be set by simply running `make heroku-set-auth-key`
+* `APP_AUTH_KEY` can be set by simply running `make heroku-set-auth-key`, random key, keep is secret
 * `APP_AWS_ACCESS_KEY` key from AWS, see "AWS Setup" below
 * `APP_AWS_SECRET_KEY` key from AWS, see "AWS Setup" below
 * `APP_S3_BUCKET` name of the S3 bucket your using eg. `events-images.example.org`, see "AWS Setup" below
@@ -104,7 +104,7 @@ deploy-settings-example-events/
 You can generate most of the files for `favicons/` using [this helpful service](https://realfavicongenerator.net/).
 The only exception is `logo.png` which should be a 380x150px logo for your service.
 
-`.env.production` provides production settings for "create react apps" build, it should contain the following
+`.env.production` provides production settings for the "create react apps" build, it should contain the following
 
 ```
 REACT_APP_SITE_NAME='<the name of your service/company>'
@@ -121,15 +121,19 @@ REACT_APP_SENTRY_DSN='<sentry dsn for js error tracking>'
 REACT_APP_GA_TRACKING_ID='<tracking id for google analytics>'
 ```
 
+Log in to heroku's container registry
+
+    heroku container:login
+
 With `deploy-settings-<heroku-app-name>` setup, you can build and deploy your images:
 
     make heroku-push
-    
+
 will build the docker images and push them to heroku,
 
-   make heroku-release
-   
-will release those images, the following should now show you both the work and web dyno's running
+    make heroku-release
+
+will release those images, the following should now show you both the worker and web dyno's running
 
 ```bash
 heroku ps -a $HEROKU_APP
@@ -149,7 +153,7 @@ and to create a company:
 heroku run "./run.py patch create_new_company --live" --type=worker -a $HEROKU_APP
 ```
 
-You can see other commands available by runing just `./run.py` or `./run.py patch`.
+You can see other commands available by running just `./run.py` or `./run.py patch`.
 
 ## Third Party Providers
 
@@ -243,8 +247,8 @@ Go to https://console.developers.google.com, make sure your on the right project
 * set up an "OAuth client ID", set the authorised origin, set `REACT_APP_GOOGLE_SIW_CLIENT_KEY` to the Client ID
   and `APP_GOOGLE_SIW_CLIENT_KEY` to the "Client secret".
 
-Search "google recaptcha" and setup a V3 key (**note:** this must be the V3 type of key) for your site, set the
-allowed domains, set `REACT_APP_RECAPTCHA_KEY` to the "Site key", set `APP_GRECAPTCHA_SECRET` to the "Secret key".
+Search "google recaptcha" and setup a V2 key for your site, set the allowed domains, 
+set `REACT_APP_RECAPTCHA_KEY` to the "Site key", set `APP_GRECAPTCHA_SECRET` to the "Secret key".
 
 Go to google analytics, set up a new property, take the tracking ID and copy it into `REACT_APP_GA_TRACKING_ID`.
 
