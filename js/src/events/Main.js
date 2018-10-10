@@ -83,7 +83,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
       </div>
     )}
     <div className="pt-3">
-      <h2>About {event.name}</h2>
+      <h2>About</h2>
       <Markdown content={event.long_description}/>
     </div>
   </div>
