@@ -6,7 +6,7 @@
     <title>Login Form</title>
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'none';
-      script-src 'unsafe-inline';
+      script-src 'sha256-1FdPcRpGkkVM77/flDFG/SLQ0aUu5l/0L1JA5VDdEfA=';
       style-src http://localhost:3000 https://fonts.googleapis.com/ https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/;
       connect-src http://localhost:3000;
       font-src data: https://fonts.gstatic.com;
@@ -31,7 +31,7 @@
         <label for="password">Password</label>
       </div>
 
-      <button id="submit-btn" class="btn btn-lg btn-primary btn-block" type="submit">Log in</button>
+      <button class="btn btn-lg btn-primary btn-block" type="submit">Log in</button>
     </form>
     <script>
       const form = document.getElementById('login-form')

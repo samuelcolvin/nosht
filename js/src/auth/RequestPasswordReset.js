@@ -52,10 +52,7 @@ class RequestPasswordReset extends React.Component {
               <Row className="justify-content-center mb-2">
                 <Recaptcha callback={grecaptcha_token => this.setState({grecaptcha_token, enabled: true})}/>
               </Row>
-              <Input field={FIELD}
-                    value={this.state.email}
-                    onChange={v => this.setState({email: v})}/>
-              <button type="submit" id="submit-button" className="d-none">submit</button>
+              <Input field={FIELD} value={this.state.email} onChange={email => this.setState({email})}/>
               <Button color="primary" className="width-100p my-1"
                       disabled={!this.state.enabled}>
                 <FontAwesomeIcon icon="unlock-alt" className="mr-2"/>

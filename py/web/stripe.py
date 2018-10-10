@@ -13,7 +13,6 @@ from pydantic import BaseModel, MissingError, constr, validator
 
 from shared.settings import Settings
 from shared.utils import RequestError, pseudo_random_str
-from web.auth import GrecaptchaModel
 
 from .actions import ActionTypes
 from .utils import JsonErrors, decrypt_json
@@ -36,7 +35,7 @@ class Donation(BaseModel):
     donation_option_name: str
 
 
-class BookingModel(GrecaptchaModel):
+class BookingModel(BaseModel):
     booking_token: bytes
 
 
@@ -59,7 +58,7 @@ class StripeOldCard(BaseModel):
     source_hash: str
 
 
-class StripeModel(GrecaptchaModel):
+class StripeModel(BaseModel):
     stripe: Union[StripeNewCard, StripeOldCard]
 
 

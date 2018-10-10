@@ -3,6 +3,7 @@ import {load_script} from '../utils'
 
 export default class Recaptcha extends React.Component {
   componentDidMount () {
+    window._grecaptcha_click_callback = t => this.props.callback(t)
     if (window._grecaptcha_load_callback) {
       // recaptcha has already been loaded
       window._grecaptcha_load_callback()
@@ -14,7 +15,6 @@ export default class Recaptcha extends React.Component {
           callback: '_grecaptcha_click_callback'
         })
       }
-      window._grecaptcha_click_callback = t => this.props.callback && this.props.callback(t)
       load_script('https://www.google.com/recaptcha/api.js?onload=_grecaptcha_load_callback&render=explicit')
     }
   }

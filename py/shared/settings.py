@@ -48,7 +48,8 @@ class Settings(BaseSettings):
     facebook_siw_url = 'https://graph.facebook.com/v3.0/me'
 
     grecaptcha_url = 'https://www.google.com/recaptcha/api/siteverify'
-    grecaptcha_secret = 'xxx'
+    # from https://developers.google.com/recaptcha/docs/faq
+    grecaptcha_secret = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe'
 
     # static key for map images in emails
     google_maps_static_key = 'AIzaSyBu9cMA2IpeeIDRu5gu54n2-BZ_fGon4P4'

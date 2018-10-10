@@ -19,7 +19,7 @@ from pytz.tzinfo import BaseTzInfo
 from shared.images import delete_image, upload_background
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
-from web.auth import GrecaptchaModel, check_grecaptcha, check_session, is_admin, is_admin_or_host
+from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread, Method, UpdateView
 from web.utils import (ImageModel, JsonErrors, clean_markdown, json_response, parse_request, raw_json_response,
                        request_image)
@@ -619,7 +619,7 @@ class SetEventStatus(UpdateView):
 
 
 class EventUpdate(UpdateView):
-    class Model(GrecaptchaModel):
+    class Model(BaseModel):
         subject: constr(max_length=200)
         message: str
 
@@ -627,7 +627,6 @@ class EventUpdate(UpdateView):
         await check_session(self.request, 'admin', 'host')
 
     async def execute(self, m: Model):
-        await check_grecaptcha(m, self.request)
         event_id = await _check_event_permissions(self.request, check_upcoming=True)
         action_id = await record_action_id(self.request, self.session['user_id'], ActionTypes.event_update,
                                            event_id=event_id, **m.dict(include={'subject', 'message'}))

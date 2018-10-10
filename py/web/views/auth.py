@@ -257,8 +257,9 @@ SIGNUP_MODELS = {
 async def host_signup(request):
     signin_method = request.match_info['site']
     model, siw_method = SIGNUP_MODELS[signin_method]
-    m: GrecaptchaModel = await parse_request(request, model)
-    score = await check_grecaptcha(m, request)
+    m: BaseModel = await parse_request(request, model)
+    if signin_method == 'email':
+        await check_grecaptcha(m, request)
     details = await siw_method(m, app=request.app)
 
     company_id = request['company_id']
@@ -295,7 +296,7 @@ async def host_signup(request):
                     'last_active': int(time()), 'status': user_status})
 
     await record_action(request, user_id, ActionTypes.host_signup,
-                        existing_user=bool(existing_role), signin_method=signin_method, grecaptcha_score=score)
+                        existing_user=bool(existing_role), signin_method=signin_method)
 
     await request.app['email_actor'].send_account_created(user_id)
     json_str = await request['conn'].fetchval(

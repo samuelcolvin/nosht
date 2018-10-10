@@ -61,7 +61,6 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
         address='Testing Street',
         city='Testingville',
         postcode='TE11 0ST',
-        grecaptcha_token='__ok__',
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
 
@@ -69,7 +68,6 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         ('grecaptcha', '__ok__'),
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
@@ -139,7 +137,6 @@ async def test_donate_no_gift_aid(cli, url, dummy_server, factory: Factory, logi
         donation_option_id=factory.donation_option_id,
         event_id=factory.event_id,
         gift_aid=False,
-        grecaptcha_token='__ok__',
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
 
@@ -147,7 +144,6 @@ async def test_donate_no_gift_aid(cli, url, dummy_server, factory: Factory, logi
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         ('grecaptcha', '__ok__'),
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',

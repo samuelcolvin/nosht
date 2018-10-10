@@ -510,13 +510,11 @@ async def test_book_free(cli, url, dummy_server, factory: Factory, db_conn):
     data = dict(
         booking_token=encrypt_json(app, res.dict()),
         book_action='book-free-tickets',
-        grecaptcha_token='__ok__',
     )
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         (
             'email_send_endpoint',
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
@@ -538,7 +536,6 @@ async def test_book_free_with_price(cli, url, factory: Factory):
     data = dict(
         booking_token=encrypt_json(app, res.dict()),
         book_action='book-free-tickets',
-        grecaptcha_token='__ok__',
     )
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 400, await r.text()
@@ -563,13 +560,11 @@ async def test_buy_offline(cli, url, dummy_server, factory: Factory, login, db_c
     data = dict(
         booking_token=encrypt_json(app, res.dict()),
         book_action='buy-tickets-offline',
-        grecaptcha_token='__ok__',
     )
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         ('grecaptcha', '__ok__'),
         (
             'email_send_endpoint',
@@ -595,13 +590,11 @@ async def test_buy_offline_other_admin(cli, url, dummy_server, factory: Factory,
     data = dict(
         booking_token=encrypt_json(app, res.dict()),
         book_action='buy-tickets-offline',
-        grecaptcha_token='__ok__',
     )
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         ('grecaptcha', '__ok__'),
         (
             'email_send_endpoint',
@@ -627,14 +620,12 @@ async def test_buy_offline_other_not_admin(cli, url, dummy_server, factory: Fact
     data = dict(
         booking_token=encrypt_json(app, res.dict()),
         book_action='buy-tickets-offline',
-        grecaptcha_token='__ok__',
     )
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 400, await r.text()
     assert {'message': 'to buy tickets offline you must be the host or an admin'} == await r.json()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         ('grecaptcha', '__ok__'),
     ]
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
