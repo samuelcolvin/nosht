@@ -17,8 +17,8 @@ from shared.utils import mk_password
 
 from .middleware import csrf_middleware, error_middleware, pg_middleware, user_middleware
 from .views import index, sitemap
-from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_with, logout,
-                         reset_password_request, set_password, unsubscribe)
+from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_captcha_required, login_with,
+                         logout, reset_password_request, set_password, unsubscribe)
 from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
 from .views.categories import (CategoryBread, category_add_image, category_delete_image, category_images,
                                category_public, category_set_image)
@@ -114,6 +114,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
         web.post('/donate/', Donate.view(), name='donate'),
 
         web.post('/login/', login, name='login'),
+        web.get('/login/captcha/', login_captcha_required, name='login-captcha-required'),
         web.post('/login/{site:(google|facebook)}/', login_with, name='login-google-facebook'),
         web.post('/auth-token/', authenticate_token, name='auth-token'),
         web.post('/reset-password/', reset_password_request, name='reset-password-request'),

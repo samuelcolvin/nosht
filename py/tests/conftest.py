@@ -376,8 +376,10 @@ async def factory(db_conn, cli):
 
 @pytest.fixture
 def login(cli, url):
-    async def f(email='frank@example.org', password='testing'):
-        data = dict(email=email, password=password, grecaptcha_token='__ok__')
+    async def f(email='frank@example.org', password='testing', captcha=False):
+        data = dict(email=email, password=password)
+        if captcha:
+            data['grecaptcha_token'] = '__ok__'
         r = await cli.json_post(url('login'), data=data, origin_null=True)
         assert r.status == 200, await r.text()
         data = await r.json()

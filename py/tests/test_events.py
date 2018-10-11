@@ -770,13 +770,13 @@ async def test_image_existing(cli, url, factory: Factory, db_conn, login, dummy_
     await factory.create_user(role='host')
     await factory.create_event()
     await login()
-    assert len(dummy_server.app['log']) == 1
+    assert dummy_server.app['log'] == []
     r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
                             data={'image': 'https://testingbucket.example.org/testing.png'})
     assert r.status == 200, await r.text()
     assert 'https://testingbucket.example.org/testing.png' == await db_conn.fetchval('SELECT image FROM events')
 
-    assert len(dummy_server.app['log']) == 1
+    assert dummy_server.app['log'] == []
 
 
 async def test_image_existing_past(cli, url, factory: Factory, login):
@@ -802,7 +802,7 @@ async def test_image_existing_bad(cli, url, factory: Factory, db_conn, login, du
     assert r.status == 400, await r.text()
     assert None is await db_conn.fetchval('SELECT image FROM events')
 
-    assert len(dummy_server.app['log']) == 1
+    assert dummy_server.app['log'] == []
 
 
 async def test_image_existing_wrong_host(cli, url, factory: Factory, db_conn, login, dummy_server):
@@ -819,7 +819,7 @@ async def test_image_existing_wrong_host(cli, url, factory: Factory, db_conn, lo
     data = await r.json()
     assert data == {'message': 'user is not the host of this event'}
 
-    assert len(dummy_server.app['log']) == 1
+    assert dummy_server.app['log'] == []
 
 
 async def test_image_existing_wrong_id(cli, url, factory: Factory, login, dummy_server):
@@ -829,7 +829,7 @@ async def test_image_existing_wrong_id(cli, url, factory: Factory, login, dummy_
     r = await cli.json_post(url('event-set-image-existing', id=1),
                             data={'image': 'https://testingbucket.example.org/testing.png'})
     assert r.status == 404, await r.text()
-    assert len(dummy_server.app['log']) == 1
+    assert dummy_server.app['log'] == []
 
 
 async def test_image_existing_delete(cli, url, factory: Factory, db_conn, login, dummy_server):
@@ -844,8 +844,7 @@ async def test_image_existing_delete(cli, url, factory: Factory, db_conn, login,
     assert r.status == 200, await r.text()
     assert 'https://testingbucket.example.org/testing.png' == await db_conn.fetchval('SELECT image FROM events')
 
-    assert len(dummy_server.app['log']) == 3
-    assert set(dummy_server.app['log'][1:]) == {
+    assert set(dummy_server.app['log']) == {
         'DELETE aws_endpoint_url/testingbucket.example.org/main.png',
         'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png'
     }
@@ -875,15 +874,14 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
                                 r'supper-clubs/the-event-name/\w+/main.png')
 
     # debug(dummy_server.app['log'])
-    assert len(dummy_server.app['log']) == 5
-
-    log = sorted(dummy_server.app['log'][1:])
-    assert log[0] == 'DELETE aws_endpoint_url/testingbucket.example.org/main.png'
-    assert log[1] == 'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png'
-    assert log[2] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
-                              r'the-event-name/\w+?/main.png')
-    assert log[3] == RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
-                              r'the-event-name/\w+?/thumb.png')
+    assert sorted(dummy_server.app['log']) == [
+        'DELETE aws_endpoint_url/testingbucket.example.org/main.png',
+        'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png',
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
+                 r'the-event-name/\w+?/main.png'),
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
+                 r'the-event-name/\w+?/thumb.png'),
+    ]
 
 
 async def test_add_ticket_type(cli, url, factory: Factory, db_conn, login):

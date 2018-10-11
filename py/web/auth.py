@@ -184,6 +184,10 @@ async def facebook_get_details(m: FacebookSiwModel, app):
 async def check_grecaptcha(m: GrecaptchaModel, request, *, error_headers=None):
     settings: Settings = request.app['settings']
     client_ip = get_ip(request)
+    if not m.grecaptcha_token:
+        logger.warning('grecaptcha not provided, path="%s" ip=%s', request.path, client_ip)
+        raise JsonErrors.HTTPBadRequest(message='No recaptcha value', headers_=error_headers)
+
     post_data = {
         'secret': settings.grecaptcha_secret,
         'response': m.grecaptcha_token,

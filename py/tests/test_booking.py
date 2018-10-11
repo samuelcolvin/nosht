@@ -565,7 +565,6 @@ async def test_buy_offline(cli, url, dummy_server, factory: Factory, login, db_c
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         (
             'email_send_endpoint',
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
@@ -595,7 +594,6 @@ async def test_buy_offline_other_admin(cli, url, dummy_server, factory: Factory,
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         (
             'email_send_endpoint',
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <other@example.org>"',
@@ -625,8 +623,6 @@ async def test_buy_offline_other_not_admin(cli, url, dummy_server, factory: Fact
     assert r.status == 400, await r.text()
     assert {'message': 'to buy tickets offline you must be the host or an admin'} == await r.json()
 
-    assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
-    ]
+    assert dummy_server.app['log'] == []
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")

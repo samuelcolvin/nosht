@@ -111,10 +111,6 @@ async def test_create_user(cli, url, login, factory: Factory, db_conn, dummy_ser
     }
     assert dummy_server.app['log'] == [
         (
-            'grecaptcha',
-            '__ok__',
-        ),
-        (
             'email_send_endpoint',
             'Subject: "Testing Account Created (Action required)", To: "foo <foobar@example.org>"',
         ),

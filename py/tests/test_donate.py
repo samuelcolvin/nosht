@@ -68,7 +68,6 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "other person <other.person@example.org>"')
@@ -144,7 +143,6 @@ async def test_donate_no_gift_aid(cli, url, dummy_server, factory: Factory, logi
     assert r.status == 200, await r.text()
 
     assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"')

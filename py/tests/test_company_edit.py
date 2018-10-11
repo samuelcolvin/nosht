@@ -66,7 +66,7 @@ async def test_upload_image(cli, url, factory: Factory, login, db_conn, dummy_se
     )
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
-    assert sorted(dummy_server.app['log'][1:]) == [
+    assert sorted(dummy_server.app['log']) == [
         'DELETE aws_endpoint_url/testingbucket.example.org/main.png',
         'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png',
         RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/co/image/\w+/main.png'),

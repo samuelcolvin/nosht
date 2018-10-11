@@ -12,13 +12,14 @@ from shared.utils import mk_password, password_reset_link, unsubscribe_sig
 from web.auth import (ActionTypes, FacebookSiwModel, GoogleSiwModel, GrecaptchaModel, check_grecaptcha,
                       facebook_get_details, google_get_details, invalidate_session, is_auth, record_action,
                       validate_email)
-from web.utils import (HEADER_CROSS_ORIGIN, JsonErrors, decrypt_json, encrypt_json, json_response, parse_request,
-                       raw_json_response, request_root, split_name)
+from web.utils import (HEADER_CROSS_ORIGIN, JsonErrors, decrypt_json, encrypt_json, get_ip, json_response,
+                       parse_request, raw_json_response, request_root, split_name)
 
 
-class LoginModel(GrecaptchaModel):
+class LoginModel(BaseModel):
     email: EmailStr
     password: constr(max_length=100)
+    grecaptcha_token: str = None
 
 
 LOGIN_USER_SQL = """
@@ -36,7 +37,12 @@ def successful_login(user, app, headers_=None):
 
 async def login(request):
     m = await parse_request(request, LoginModel, headers_=HEADER_CROSS_ORIGIN)
-    await check_grecaptcha(m, request, error_headers=HEADER_CROSS_ORIGIN)
+
+    repeat_cache_key = f'login-attempt:{get_ip(request)}'
+    login_attempted = await request.app['redis'].get(repeat_cache_key)
+
+    if login_attempted:
+        await check_grecaptcha(m, request, error_headers=HEADER_CROSS_ORIGIN)
 
     if m.password != request.app['settings'].dummy_password:
         r = await request['conn'].fetchrow(LOGIN_USER_SQL, request['company_id'], m.email)
@@ -53,8 +59,15 @@ async def login(request):
         if bcrypt.checkpw(m.password.encode(), password_hash.encode()):
             return successful_login(user, request.app, HEADER_CROSS_ORIGIN)
 
+    await request.app['redis'].setex(repeat_cache_key, 60, b'1')
     return json_response(status='invalid', message='invalid email or password',
                          headers_=HEADER_CROSS_ORIGIN, status_=470)
+
+
+async def login_captcha_required(request):
+    repeat_cache_key = f'login-attempt:{get_ip(request)}'
+    attempted = await request.app['redis'].get(repeat_cache_key)
+    return json_response(captcha_required=bool(attempted))
 
 
 LOGIN_MODELS = {

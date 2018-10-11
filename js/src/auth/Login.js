@@ -6,7 +6,7 @@ import {Link} from 'react-router-dom'
 import Recaptcha from '../general/Recaptcha'
 import requests from '../utils/requests'
 import WithContext from '../utils/context'
-import {user_full_name} from '../utils'
+import {user_full_name, sleep} from '../utils'
 import {setup_siw, facebook_login, google_login} from './login_with'
 import IFrame from '../general/IFrame'
 
@@ -28,13 +28,15 @@ export async function authenticate (data) {
   this.props.ctx.setMessage({icon: 'user', message: `Logged in successfully as ${user_full_name(data.user)}`})
   window.sessionStorage.clear()
 }
-const recaptcha_callback = t => document.getElementById('login-iframe').contentWindow.postMessage(t, '*')
+const recaptcha_callback = grecaptcha_token => (
+  document.getElementById('login-iframe').contentWindow.postMessage(JSON.stringify({grecaptcha_token}), '*')
+)
 
 
 class Login extends React.Component {
   constructor (props) {
     super(props)
-    this.state = {error: null}
+    this.state = {error: null, recaptcha_shown: false}
     this.on_message = this.on_message.bind(this)
     this.authenticate = authenticate.bind(this)
     this.login_with = this.login_with.bind(this)
@@ -45,7 +47,12 @@ class Login extends React.Component {
       return
     }
     if (event.data === 'grecaptcha-reset') {
-      window.grecaptcha.reset()
+      if (this.state.recaptcha_shown) {
+        window.grecaptcha.reset()
+      } else {
+        this.setState({recaptcha_shown: true})
+        document.getElementById('login-iframe').contentWindow.postMessage('{"grecaptcha_required": true}', '*')
+      }
       return
     }
 
@@ -63,6 +70,18 @@ class Login extends React.Component {
     this.props.ctx.setUser(null)
     this.props.ctx.setRootState({active_page: 'login'})
     await setup_siw()
+
+    let r
+    try {
+      r = await requests.get('/login/captcha/')
+    } catch (error) {
+      this.props.ctx.setError(error)
+    }
+    if (r.captcha_required) {
+      this.setState({recaptcha_shown: true})
+      await sleep(2000)
+      document.getElementById('login-iframe').contentWindow.postMessage('{"grecaptcha_required": true}', '*')
+    }
   }
 
   componentWillUnmount () {
@@ -142,9 +161,13 @@ class Login extends React.Component {
             <FormFeedback className="d-block">{this.state.error}</FormFeedback>
           </div>
         }
-        <Row className="justify-content-center mt-4">
-          <Recaptcha callback={recaptcha_callback}/>
-        </Row>
+
+        {this.state.recaptcha_shown && (
+          <Row className="justify-content-center mt-4">
+            <Recaptcha callback={recaptcha_callback}/>
+          </Row>
+        )}
+
         <Row className="justify-content-center">
           <Col xl="4" lg="6" md="8" className="login">
             <IFrame id="login-iframe" title="Login" src="/iframes/login.html"/>

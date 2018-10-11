@@ -249,8 +249,7 @@ async def test_upload_image(cli, url, factory: Factory, login, dummy_server):
         }
     )
     assert r.status == 200, await r.text()
-    # debug(dummy_server.app['log'])
-    assert sorted(dummy_server.app['log'][1:]) == [
+    assert sorted(dummy_server.app['log']) == [
         RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/\w+/main.png'),
         RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/option/\w+/thumb.png'),
     ]
@@ -363,7 +362,7 @@ async def test_delete_image(cli, url, factory: Factory, login, dummy_server):
     )
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
-    assert sorted(dummy_server.app['log'][1:]) == [
+    assert sorted(dummy_server.app['log']) == [
         'DELETE aws_endpoint_url/testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png',
         'DELETE aws_endpoint_url/testingbucket.example.org/co-slug/cat-slug/option/randomkey1/thumb.png',
         'GET aws_endpoint_url/testingbucket.example.org',
@@ -400,10 +399,7 @@ async def test_set_default_image(cli, url, factory: Factory, login, dummy_server
         data={'image': img},
     )
     assert r.status == 200, await r.text()
-    assert dummy_server.app['log'] == [
-        ('grecaptcha', '__ok__'),
-        'GET aws_endpoint_url/testingbucket.example.org',
-    ]
+    assert dummy_server.app['log'] == ['GET aws_endpoint_url/testingbucket.example.org']
     assert img == await db_conn.fetchval('SELECT image FROM categories')
 
 

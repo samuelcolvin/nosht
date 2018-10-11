@@ -23,7 +23,6 @@ async def test_login_successful(cli, url, factory: Factory):
     data = dict(
         email='frank@example.org',
         password='testing',
-        grecaptcha_token='__ok__',
     )
     r = await cli.json_post(url('login'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
@@ -527,7 +526,7 @@ async def test_set_password(cli, url, factory: Factory, db_conn, login):
     }
     pw_after = await db_conn.fetchval('SELECT password_hash FROM users WHERE id=$1', factory.user_id)
     assert pw_after != pw_before
-    await login(password='testing-new-password')
+    await login(password='testing-new-password', captcha=True)
 
 
 async def test_set_password_reuse_token(cli, url, factory: Factory):
@@ -662,3 +661,43 @@ async def test_session_updated(cli, url, factory: Factory, login, mocker):
     r = await cli.get(url('event-categories'))
     assert r.status == 200, await r.text()
     assert 'Set-Cookie' in r.headers
+
+
+async def test_login_captcha_required(cli, url, factory: Factory):
+    await factory.create_company()
+
+    r = await cli.get(url('login-captcha-required'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {'captcha_required': False}
+
+    r = await cli.json_post(url('login'), data=dict(email='frank@example.org', password='wrong'), origin_null=True)
+    assert r.status == 470, await r.text()
+
+    r = await cli.get(url('login-captcha-required'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {'captcha_required': True}
+
+
+async def test_captcha_required(cli, url, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_user()
+
+    r = await cli.json_post(url('login'), data=dict(email='frank@example.org', password='wrong'), origin_null=True)
+    assert r.status == 470, await r.text()
+
+    r = await cli.json_post(url('login'), data=dict(email='frank@example.org', password='testing'), origin_null=True)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'No recaptcha value'}
+    assert dummy_server.app['log'] == []
+
+    data = dict(
+        email='frank@example.org',
+        password='testing',
+        grecaptcha_token='__ok__',
+    )
+    r = await cli.json_post(url('login'), data=data, origin_null=True)
+    assert r.status == 200, await r.text()
+    assert dummy_server.app['log'] == [('grecaptcha', '__ok__')]
