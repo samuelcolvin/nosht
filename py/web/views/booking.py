@@ -185,15 +185,14 @@ class ReserveTickets(UpdateViewAuth):
             """,
             values=MultipleValues(*user_values)
         )
-
-        async def user_email():
-            return await self.conn.fetchval('SELECT email FROM users WHERE id=$1', self.request['session']['user_id'])
-
-        if tickets[0].allow_marketing is not None and tickets[0].email == await user_email():
+        if tickets[0].allow_marketing is not None and tickets[0].email == await self._user_email():
             await self.conn.execute(
                 'UPDATE users SET allow_marketing=$1 WHERE id=$2',
                 tickets[0].allow_marketing, self.request['session']['user_id']
             )
+
+    async def _user_email(self):
+        return await self.conn.fetchval('SELECT email FROM users WHERE id=$1', self.request['session']['user_id'])
 
 
 class CancelReservedTickets(UpdateView):

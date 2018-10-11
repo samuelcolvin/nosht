@@ -434,6 +434,8 @@ async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
     data = {
         'email': 'testing@gmail.com',
+        'first_name': 'Tes',
+        'last_name': 'Ting',
         'grecaptcha_token': '__ok__',
     }
     r = await cli.json_post(url('signup-guest', site='email'), data=data)
@@ -442,8 +444,8 @@ async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
     assert response_data == {
         'user': {
             'id': await db_conn.fetchval('SELECT id FROM users'),
-            'first_name': None,
-            'last_name': None,
+            'first_name': 'Tes',
+            'last_name': 'Ting',
             'email': 'testing@gmail.com',
             'role': 'guest',
         },
@@ -451,8 +453,8 @@ async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
     user = dict(await db_conn.fetchrow('SELECT first_name, last_name, email, role, status, company FROM users'))
     assert user == {
-        'first_name': None,
-        'last_name': None,
+        'first_name': 'Tes',
+        'last_name': 'Ting',
         'email': 'testing@gmail.com',
         'role': 'guest',
         'status': 'pending',

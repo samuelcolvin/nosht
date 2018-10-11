@@ -181,7 +181,7 @@ export class RenderList extends RenderItem {
     const current_page = this.get_page()
     return [
       <Buttons key="b" buttons={this.state.buttons}/>,
-      <table key="t" className="table">
+      <table key="t" className="table dashboard">
         <thead>
           <tr>
             {keys.map((key, i) => (

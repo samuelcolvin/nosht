@@ -181,6 +181,11 @@ class EmailModel(GrecaptchaModel):
     email: EmailStr
 
 
+class GuestModel(EmailModel):
+    first_name: constr(min_length=2, max_length=100)
+    last_name: constr(min_length=2, max_length=100)
+
+
 async def check_email(m: EmailModel, app):
     if await validate_email(m.email, app.loop):
         return m.dict()
@@ -189,7 +194,7 @@ async def check_email(m: EmailModel, app):
 
 
 SIGNIN_MODELS = {
-    'email': (EmailModel, check_email),
+    'email': (GuestModel, check_email),
     'facebook': (FacebookSiwModel, facebook_get_details),
     'google': (GoogleSiwModel, google_get_details),
 }
