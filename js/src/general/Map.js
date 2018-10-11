@@ -32,6 +32,8 @@ export default class Map extends React.Component {
         center: loc,
         zoom: loc.zoom || 14,
         fullscreenControl: false,
+        mapTypeControl: false,
+        streetViewControl: false,
       })
       this.marker = new google.maps.Marker({
         position: loc,
