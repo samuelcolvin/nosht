@@ -317,6 +317,7 @@ async def host_signup(request):
                         existing_user=bool(existing_role), signin_method=signin_method)
 
     await request.app['email_actor'].send_account_created(user_id)
+    await request.app['donorfy_actor'].host_signuped(user_id)
     json_str = await request['conn'].fetchval(
         """
         SELECT json_build_object('user', row_to_json(user_data))

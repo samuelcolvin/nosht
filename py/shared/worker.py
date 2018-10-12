@@ -1,12 +1,13 @@
 from arq import BaseWorker, DatetimeJob
 
+from .donorfy import DonorfyActor
 from .emails import EmailActor
 from .settings import Settings
 
 
 class Worker(BaseWorker):
     job_class = DatetimeJob
-    shadows = [EmailActor]
+    shadows = [DonorfyActor, EmailActor]
 
     def __init__(self, **kwargs):  # pragma: no cover
         self.settings = Settings()

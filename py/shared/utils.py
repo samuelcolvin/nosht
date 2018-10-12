@@ -138,3 +138,12 @@ def ticket_id_signed(ticket_id, settings: Settings):
     h = hmac.new(settings.auth_key.encode(), b'%d' % ticket_id, digestmod=hashlib.md5)
     check = base64.urlsafe_b64encode(h.digest()).decode().lower()
     return f'{check:.7}-{ticket_id}'
+
+
+def lenient_json(v):
+    if isinstance(v, (str, bytes)):
+        try:
+            return json.loads(v)
+        except (ValueError, TypeError):
+            pass
+    return v

@@ -65,6 +65,10 @@ class Settings(BaseSettings):
 
     custom_static_dir: Path = None  # for tests only
 
+    donorfy_api_root = 'https://data.donorfy.com/api/v1/'
+    donorfy_api_key: str = None
+    donorfy_access_key: str = None
+
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):
         return v or 'DYNO' in os.environ

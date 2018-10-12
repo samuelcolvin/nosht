@@ -1,5 +1,4 @@
 import contextlib
-import json
 import logging
 import re
 from time import time
@@ -11,19 +10,11 @@ from aiohttp.web_response import Response
 from aiohttp_session import get_session
 from asyncpg import PostgresError
 
+from shared.utils import lenient_json
 from .auth import remove_port
 from .utils import HEADER_CROSS_ORIGIN, JSON_CONTENT_TYPE, JsonErrors, get_ip, request_root
 
 logger = logging.getLogger('nosht.middleware')
-
-
-def lenient_json(v):
-    if isinstance(v, (str, bytes)):
-        try:
-            return json.loads(v)
-        except (ValueError, TypeError):
-            pass
-    return v
 
 
 def exc_extra(exc):

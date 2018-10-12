@@ -411,6 +411,14 @@ async def post_startup_app(app):
     inner_app = app['main_app']
     inner_app['email_actor'].pg = inner_app['pg']
     inner_app['email_actor']._concurrency_enabled = False
+    inner_app['donorfy_actor'].pg = inner_app['pg']
+    inner_app['donorfy_actor']._concurrency_enabled = False
+    await inner_app['donorfy_actor'].startup()
+
+
+async def pre_cleanup(app):
+    inner_app = app['main_app']
+    await inner_app['donorfy_actor'].client.close()
 
 
 @pytest.fixture(name='cli')
@@ -419,6 +427,7 @@ async def _fix_cli(settings, db_conn, aiohttp_client, redis):
     app['test_conn'] = db_conn
     app.on_startup.insert(0, pre_startup_app)
     app.on_startup.append(post_startup_app)
+    app.on_cleanup.insert(0, pre_cleanup)
     cli = await aiohttp_client(app)
 
     def json_post(url, *, data=None, headers=None, origin_null=False):
