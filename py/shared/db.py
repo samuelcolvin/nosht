@@ -118,6 +118,9 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
 class SimplePgPool:
     def __init__(self, conn):
         self.conn = conn
+        self.fetchval = conn.fetchval
+        self.fetchrow = conn.fetchrow
+        self.fetch = conn.fetch
 
     def acquire(self):
         return self

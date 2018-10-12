@@ -1,11 +1,7 @@
-import logging
-
 from arq import Actor, DatetimeJob
 from buildpg import asyncpg
 
 from .settings import Settings
-
-logger = logging.getLogger('nosht.actor')
 
 
 class BaseActor(Actor):
