@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from time import time
@@ -8,6 +9,7 @@ from aiohttp import BasicAuth, ClientSession, ClientResponse, ClientTimeout
 from aiohttp.hdrs import METH_GET, METH_POST
 from arq import concurrent
 
+from .actions import ActionTypes
 from .utils import RequestError, lenient_json, display_cash
 from .settings import Settings
 from .actor import BaseActor
@@ -86,28 +88,7 @@ class DonorfyActor(BaseActor):
         if not self.client:
             return
 
-        first_name, last_name, email = await self.pg.fetchrow(
-            'select first_name, last_name, email from users where id=$1', user_id
-        )
-        constituent_id = await self._get_constituent(email=email)
-        if not constituent_id:
-            r = await self.client.post(
-                '/constituents',
-                data=dict(
-                    FirstName=first_name,
-                    LastName=last_name,
-                    EmailAddress=email,
-                    ConstituentType='Individual',
-                    AllowNameSwap=False,
-                    NoGiftAid=False,
-                    ExternalKey=f'nosht_{user_id}',
-                    RecruitmentCampaign='Events.HUF',
-                    JobTitle='host',
-                    EmailFormat='HTML'
-                )
-            )
-            data = await r.json()
-            constituent_id = data['ConstituentId']
+        constituent_id = await self._get_or_create_constituent(user_id)
 
         await self.client.post(
             f'/constituents/{constituent_id}/AddActiveTags', data='Hosting and helper volunteers_host'
@@ -140,7 +121,6 @@ class DonorfyActor(BaseActor):
         evt = dict(evt)
         evt['price_text'] = ', '.join(display_cash(r[0], evt['currency']) for r in prices) or 'free'
         data = dict(
-            ExistingConstituentId=123,
             ActivityType='Event Hosted',
             ActivityDate=format_dt(start_ts),
             Campaign='Events.HUF',
@@ -168,7 +148,84 @@ class DonorfyActor(BaseActor):
 
     @concurrent
     async def tickets_booked(self, action_id):
-        pass
+        async with self.pg.acquire() as conn:
+            buyer_user_id = await self.pg.fetchval('select user_id from actions where id=$1', action_id)
+
+            action_ts, event_ts, duration, action_type, ref, currency = await conn.fetchrow(
+                """
+                select a.ts as action_ts, e.start_ts, e.duration, type, e.slug || '/' || e.category, currency
+                from actions a
+                join events as e on a.event = e.id
+                join categories cat on e.category = cat.id
+                join companies co on cat.company = co.id
+                where a.id=$1
+                """,
+                action_id
+            )
+            if not duration:
+                event_ts = event_ts.date()
+
+            tickets = await conn.fetch(
+                """
+                select 
+                  u.id as user_id, u.email, 
+                  coalesce(t.first_name, u.first_name) as first_name,
+                  coalesce(t.last_name, u.last_name) as last_name,
+                  t.extra_info,
+                  t.price
+                from tickets t
+                join users u on t.user_id = u.id
+                where booked_action = $1
+                """,
+                action_id
+            )
+        ticket_count = len(tickets)
+
+        async def create_ticket_constituent(row):
+            user_id, email, first_name, last_name, extra_info, price = row
+            constituent_id = await self._get_constituent(email=email)
+            constituent_id = constituent_id or await self._create_constituent(user_id, email, first_name, last_name)
+
+            await self.client.post('/activities', data=dict(
+                ExistingConstituentId=constituent_id,
+                ActivityType='Event Booked',
+                ActivityDate=format_dt(action_ts),
+                Campaign='Events.HUF',
+                Notes=extra_info,
+                Code1=buyer_user_id,
+                Number1=price,
+                Number2=ticket_count,
+                YesNo1=user_id == buyer_user_id,
+                Date1=format_dt(event_ts)
+            ))
+            return user_id, constituent_id
+
+        con_lookup = dict(await asyncio.gather(*[create_ticket_constituent(r) for r in tickets]))
+
+        if action_type == ActionTypes.book_free_tickets:
+            return
+
+        buyer_constituent_id = con_lookup.get(buyer_user_id) or await self._get_or_create_constituent(buyer_user_id)
+
+        price, extra = await self.pg.fetchrow(
+            'select sum(price), sum(extra_donated) from tickets where booked_action = $1',
+            action_id,
+        )
+        r = await self.client.post('/transactions', data=dict(
+            ConnectedConstituentId=buyer_constituent_id,
+            ExistingConstituentId=buyer_constituent_id,
+            Channel='nosht',
+            Currency=currency,
+            Campaign='Events.HUF',
+            PaymentMethod='payment via stripe' if action_type == ActionTypes.buy_tickets else 'offline payment',
+            Department='200 Fund Raising Income',
+            BankAccount='Unrestricted Account',
+            DatePaid=format_dt(action_ts),
+            Amount=price + extra,
+            # Acknowledgement=f'{ref} Ticket Thanks',
+            # AcknowledgementText ?
+            Reference=f'nosht:{ref}',
+        ))
 
     async def _get_constituent(self, user_id=None, email=None):
         assert user_id or email, 'either the user_id or email argument are required'
@@ -180,3 +237,31 @@ class DonorfyActor(BaseActor):
         if r.status == 404:
             constituents_data = await r.json()
             return constituents_data[0]['ConstituentId']
+
+    async def _create_constituent(self, user_id, email, first_name, last_name):
+        r = await self.client.post(
+            '/constituents',
+            data=dict(
+                FirstName=first_name,
+                LastName=last_name,
+                EmailAddress=email,
+                ConstituentType='Individual',
+                AllowNameSwap=False,
+                NoGiftAid=False,
+                ExternalKey=f'nosht_{user_id}',
+                RecruitmentCampaign='Events.HUF',
+                JobTitle='host',
+                EmailFormat='HTML'
+            )
+        )
+        data = await r.json()
+        return data['ConstituentId']
+
+    async def _get_or_create_constituent(self, user_id, *, link_via='email'):
+        email, first_name, last_name = await self.pg.fetchrow(
+            'select email, first_name, last_name from users where id=$1', user_id
+        )
+
+        kw = dict(email=email) if link_via == 'email' else dict(user_id=user_id)
+        constituent_id = await self._get_constituent(**kw)
+        return constituent_id or await self._create_constituent(user_id, email, first_name, last_name)
