@@ -5,14 +5,14 @@ from time import time
 from typing import Sequence, Union
 
 import pytz
-from aiohttp import BasicAuth, ClientSession, ClientResponse, ClientTimeout
-from aiohttp.hdrs import METH_GET, METH_POST
+from aiohttp import BasicAuth, ClientResponse, ClientSession, ClientTimeout
+from aiohttp.hdrs import METH_DELETE, METH_GET, METH_POST
 from arq import concurrent
 
 from .actions import ActionTypes
-from .utils import RequestError, lenient_json, display_cash
-from .settings import Settings
 from .actor import BaseActor
+from .settings import Settings
+from .utils import RequestError, display_cash, lenient_json
 
 logger = logging.getLogger('nosht.donorfy')
 
@@ -67,7 +67,7 @@ class DonorfyClient:
                 'response_content': lenient_json(response_text),
                 'time_taken': time_taken,
             }
-            debug(data)
+            # debug(data)
             raise RequestError(r.status, full_path)
         else:
             logger.info('successful request %s %s > %d (%0.2fs)', method, path, r.status, time_taken)
@@ -99,7 +99,7 @@ class DonorfyActor(BaseActor):
         async with self.pg.acquire() as conn:
             evt = await conn.fetchrow(
                 """
-                select 
+                select
                   start_ts, duration, cat.slug, location_name, ticket_limit, short_description, long_description,
                   event_link(cat.slug, e.slug, e.public, $2) AS link, host, co.currency
                 from events e
@@ -167,8 +167,8 @@ class DonorfyActor(BaseActor):
 
             tickets = await conn.fetch(
                 """
-                select 
-                  u.id as user_id, u.email, 
+                select
+                  u.id as user_id, u.email,
                   coalesce(t.first_name, u.first_name) as first_name,
                   coalesce(t.last_name, u.last_name) as last_name,
                   t.extra_info,
@@ -211,7 +211,7 @@ class DonorfyActor(BaseActor):
             'select sum(price), sum(extra_donated) from tickets where booked_action = $1',
             action_id,
         )
-        r = await self.client.post('/transactions', data=dict(
+        await self.client.post('/transactions', data=dict(
             ConnectedConstituentId=buyer_constituent_id,
             ExistingConstituentId=buyer_constituent_id,
             Channel='nosht',

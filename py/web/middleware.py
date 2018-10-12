@@ -11,6 +11,7 @@ from aiohttp_session import get_session
 from asyncpg import PostgresError
 
 from shared.utils import lenient_json
+
 from .auth import remove_port
 from .utils import HEADER_CROSS_ORIGIN, JSON_CONTENT_TYPE, JsonErrors, get_ip, request_root
 
