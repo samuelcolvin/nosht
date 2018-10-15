@@ -98,11 +98,10 @@ class DonorfyActor(BaseActor):
         if not self.client:
             return
 
-        constituent_id = await self._get_or_create_constituent(user_id)
+        constituent_id = await self._get_or_create_constituent(user_id, 'Events.HUF')
 
-        await self.client.post(
-            f'/constituents/{constituent_id}/AddActiveTags', data='Hosting and helper volunteers_host'
-        )
+        await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
+                               data='Hosting and helper volunteers_host')
 
     @concurrent
     async def event_created(self, event_id):
@@ -114,7 +113,7 @@ class DonorfyActor(BaseActor):
                 """
                 select
                   start_ts, duration, cat.slug, location_name, ticket_limit, short_description, long_description,
-                  event_link(cat.slug, e.slug, e.public, $2) AS link, co.currency, 
+                  event_link(cat.slug, e.slug, e.public, $2) AS link, cat.slug as cat_slug, co.currency, 
                   host as host_user_id, host_user.email as host_email
                 from events e
                 join categories cat on e.category = cat.id
@@ -138,7 +137,7 @@ class DonorfyActor(BaseActor):
         data = dict(
             ActivityType='Event Hosted',
             ActivityDate=format_dt(start_ts),
-            Campaign='Events.HUF',
+            Campaign=evt['cat_slug'] + '-host',
             Notes=(
                 'URL: {link}\n'
                 'location: {location_name}\n'
@@ -171,7 +170,7 @@ class DonorfyActor(BaseActor):
 
             action_ts, event_ts, duration, action_type, cat_name, cat_slug, event_slug, currency = await conn.fetchrow(
                 """
-                select a.ts as action_ts, e.start_ts, e.duration, type, cat.name, cat.slug, e.slug, currency
+                select a.ts as action_ts, e.start_ts, e.duration, a.type, cat.name, cat.slug, e.slug, currency
                 from actions a
                 join events as e on a.event = e.id
                 join categories cat on e.category = cat.id
@@ -200,18 +199,21 @@ class DonorfyActor(BaseActor):
         ticket_count = len(tickets)
 
         async def create_ticket_constituent(row):
-            user_id, email, first_name, last_name, extra_info, price = row
+            user_id, email, first_name, last_name, extra_info, ticket_price = row
             constituent_id = await self._get_constituent(user_id=user_id, email=email)
-            constituent_id = constituent_id or await self._create_constituent(user_id, email, first_name, last_name)
+            constituent_id = (
+                constituent_id or
+                await self._create_constituent(user_id, email, first_name, last_name, f'{cat_slug}-guest')
+            )
 
             await self.client.post('/activities', data=dict(
                 ExistingConstituentId=constituent_id,
                 ActivityType='Event Booked',
                 ActivityDate=format_dt(action_ts),
-                Campaign='Events.HUF',
+                Campaign=f'{cat_slug}-guest',
                 Notes=extra_info,
                 Code1=buyer_user_id,
-                Number1=float(price),
+                Number1=float(ticket_price),
                 Number2=ticket_count,
                 YesNo1=user_id == buyer_user_id,
                 Date1=format_dt(event_ts)
@@ -223,7 +225,10 @@ class DonorfyActor(BaseActor):
         if action_type == ActionTypes.book_free_tickets:
             return
 
-        buyer_constituent_id = con_lookup.get(buyer_user_id) or await self._get_or_create_constituent(buyer_user_id)
+        buyer_constituent_id = (
+                con_lookup.get(buyer_user_id) or
+                await self._get_or_create_constituent(buyer_user_id, f'{cat_slug}-guest')
+        )
 
         price, extra = await self.pg.fetchrow(
             'select sum(price), sum(extra_donated) from tickets where booked_action = $1',
@@ -236,7 +241,7 @@ class DonorfyActor(BaseActor):
             ExistingConstituentId=buyer_constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=currency,
-            Campaign='Events.HUF',
+            Campaign=f'{cat_slug}-guest',
             PaymentMethod='Payment Card via Stripe' if action_type == ActionTypes.buy_tickets else 'Offline Payment',
             Product='Event Ticket(s)',
             Fund='Unrestricted General',
@@ -248,6 +253,7 @@ class DonorfyActor(BaseActor):
             AcknowledgementText=f'{cat_name} Donation Thanks',
             Reference=f'Events.HUF:{cat_slug} {event_slug}',
             AddGiftAidDeclaration=False,
+            GiftAidClaimed=False,
         ))
         trans_id = (await r.json())['Id']
         if not extra:
@@ -266,7 +272,7 @@ class DonorfyActor(BaseActor):
             AllocationDate=format_dt(action_ts),
             CanRecoverTax=False,
             Comments=f'{cat_slug} {event_slug}',
-            BeneficiaryConstituentId=buyer_constituent_id
+            BeneficiaryConstituentId=buyer_constituent_id,
         )
         add_data = dict(
             Product='Donation',
@@ -277,13 +283,61 @@ class DonorfyActor(BaseActor):
             AllocationDate=format_dt(action_ts),
             CanRecoverTax=False,
             Comments=f'{cat_slug} {event_slug}',
-            BeneficiaryConstituentId=buyer_constituent_id
+            BeneficiaryConstituentId=buyer_constituent_id,
         )
         # PUT request seems to be currently broken and returns 405
         await asyncio.gather(
             self.client.put(f'/transactions/{trans_id}/Allocation/{allocation_id}', data=update_data),
             self.client.post(f'/transactions/{trans_id}/AddAllocation', data=add_data),
         )
+
+    @concurrent
+    async def donation(self, action_id):
+        if not self.client:
+            return
+
+        d = await self.pg.fetchrow(
+            """
+            select a.ts as action_ts, a.user_id, d.amount, 
+              d.gift_aid, d.first_name, d.last_name, d.address, d.city, d.postcode,
+              donopt.id as donopt,
+              cat.name as cat_name, cat.slug as cat_slug, currency
+            from actions a
+            join donations d on a.id = d.action
+            join donation_options donopt on d.donation_option = donopt.id
+            join categories cat on donopt.category = cat.id
+            join companies co on cat.company = co.id
+            where a.id=$1
+            """,
+            action_id
+        )
+        cat_slug = d['cat_slug']
+        campaign = f'{cat_slug}-guest'
+        constituent_id = await self._get_or_create_constituent(d['user_id'], campaign)
+        await self.client.post('/transactions', data=dict(
+            ConnectedConstituentId=constituent_id,
+            ExistingConstituentId=constituent_id,
+            Channel=f'nosht-{cat_slug}',
+            Currency=d['currency'],
+            Campaign=campaign,
+            PaymentMethod='Payment Card via Stripe',
+            Product='Donation',
+            Fund='Unrestricted General',
+            Department='200 Fund Raising Income',
+            BankAccount='Main Account',
+            DatePaid=format_dt(d['action_ts']),
+            Amount=float(d['amount']),
+            Acknowledgement=f'{cat_slug}-thanks',
+            AcknowledgementText=f'{d["cat_name"]} Donation Thanks',
+            Reference=f'Events.HUF:{cat_slug} donation {d["donopt"]}',
+            AddGiftAidDeclaration=d['gift_aid'],
+            GiftAidClaimed=d['gift_aid'],
+            FirstName=d['first_name'],
+            LastName=d['last_name'],
+            AddressLine1=d['address'],
+            Town=d['city'],
+            PostalCode=d['postcode'],
+        ))
 
     async def _get_constituent(self, *, user_id, email, check_email=True):
         r = await self.client.get(f'/constituents/ExternalKey/nosht_{user_id}', allowed_statuses=(200, 404))
@@ -294,7 +348,7 @@ class DonorfyActor(BaseActor):
             constituents_data = await r.json()
             return constituents_data[0]['ConstituentId']
 
-    async def _create_constituent(self, user_id, email, first_name, last_name):
+    async def _create_constituent(self, user_id, email, first_name, last_name, campaign):
         r = await self.client.post(
             '/constituents',
             data=dict(
@@ -305,7 +359,7 @@ class DonorfyActor(BaseActor):
                 AllowNameSwap=False,
                 NoGiftAid=False,
                 ExternalKey=f'nosht_{user_id}',
-                RecruitmentCampaign='Events.HUF',
+                RecruitmentCampaign=campaign,
                 JobTitle='host',
                 EmailFormat='HTML'
             )
@@ -313,10 +367,10 @@ class DonorfyActor(BaseActor):
         data = await r.json()
         return data['ConstituentId']
 
-    async def _get_or_create_constituent(self, user_id):
+    async def _get_or_create_constituent(self, user_id, campaign):
         email, first_name, last_name = await self.pg.fetchrow(
             'select email, first_name, last_name from users where id=$1', user_id
         )
 
         constituent_id = await self._get_constituent(user_id=user_id, email=email)
-        return constituent_id or await self._create_constituent(user_id, email, first_name, last_name)
+        return constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)

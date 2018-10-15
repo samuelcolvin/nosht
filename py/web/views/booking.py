@@ -222,7 +222,7 @@ class BuyTickets(UpdateView):
         booked_action_id, source_hash = await stripe_buy(m, self.request['company_id'], self.session.get('user_id'),
                                                          self.app, self.conn)
         await self.app['donorfy_actor'].tickets_booked(booked_action_id)
-        # await self.app['email_actor'].send_event_conf(booked_action_id)
+        await self.app['email_actor'].send_event_conf(booked_action_id)
         return {'source_hash': source_hash}
 
 

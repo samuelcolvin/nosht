@@ -22,6 +22,7 @@ class Donate(UpdateViewAuth):
     async def execute(self, m: StripeDonateModel):
         action_id, source_hash = await stripe_donate(m, self.request['company_id'], self.session['user_id'],
                                                      self.app, self.conn)
+        await self.app['donorfy_actor'].donation(action_id)
         await self.app['email_actor'].send_donation_thanks(action_id)
         return {'source_hash': source_hash}
 

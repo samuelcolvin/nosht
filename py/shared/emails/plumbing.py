@@ -161,7 +161,7 @@ class BaseEmailActor(BaseActor):
 
             print('=' * 80)
         else:
-            print(f'"{email_msg["subject"]}" {e_from} -> {to}')
+            logger.info('"%s" %s -> %s', email_msg["subject"], e_from, to)
         return '-'
 
     async def send_email(self,
