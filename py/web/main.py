@@ -17,7 +17,7 @@ from shared.settings import Settings
 from shared.utils import mk_password
 
 from .middleware import csrf_middleware, error_middleware, pg_middleware, user_middleware
-from .views import index, sitemap
+from .views import index, sitemap, ses_webhook
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_captcha_required, login_with,
                          logout, reset_password_request, set_password, unsubscribe)
 from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
@@ -87,6 +87,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
     app.add_routes([
         web.get('/', index, name='index'),
         web.get('/sitemap.xml', sitemap, name='sitemap'),
+        web.get('/ses-webhook/', ses_webhook, name='ses-webhook'),
 
         web.get('/cat/{category}/', category_public, name='category'),
 

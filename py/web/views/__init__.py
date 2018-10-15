@@ -1,7 +1,11 @@
+import base64
+import json
 import logging
 from datetime import date
 
-from aiohttp.web_response import StreamResponse
+from aiohttp.web_exceptions import HTTPUnauthorized
+from aiohttp.web_response import Response, StreamResponse
+from websocket._handshake import compare_digest
 
 from web.utils import raw_json_response
 
@@ -119,3 +123,28 @@ async def sitemap(request):
 
     await response.write(b'</urlset>\n')
     return response
+
+
+async def ses_webhook(request):
+    pw = request.app['settings'].ses_webhook_auth
+    if b':' not in pw:
+        pw += b':'
+    auth_header = f'Basic {base64.b64encode(pw).decode()}'
+
+    if not compare_digest(auth_header, request.headers.get('Authorization', '')):
+        logger.warning('invalid auth header: "%s"', auth_header)
+        raise HTTPUnauthorized(text='invalid auth header')
+
+    # content type is plain text for SNS, so we have to decode json manually
+    data = json.loads(await request.text())
+    sns_type = data['Type']
+    if sns_type == 'SubscriptionConfirmation':
+        logger.info('confirming aws Subscription')
+        async with request.app['stripe_client'].head(data['SubscribeURL']) as r:
+            assert r.status == 200, r.status
+    else:
+        assert sns_type == 'Notification', sns_type
+        message = json.loads(data.get('Message'))
+        logger.warning('unknown aws webhooks: "%s"', message['notificationType'],
+                       extra={'data': {'message': message, 'raw_webhook': data}})
+    return Response(status=204)
