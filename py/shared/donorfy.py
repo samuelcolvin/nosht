@@ -96,6 +96,9 @@ class DonorfyActor(BaseActor):
 
     @concurrent
     async def event_created(self, event_id):
+        if not self.client:
+            return
+
         async with self.pg.acquire() as conn:
             evt = await conn.fetchrow(
                 """
@@ -148,6 +151,9 @@ class DonorfyActor(BaseActor):
 
     @concurrent
     async def tickets_booked(self, action_id):
+        if not self.client:
+            return
+
         async with self.pg.acquire() as conn:
             buyer_user_id = await self.pg.fetchval('select user_id from actions where id=$1', action_id)
 

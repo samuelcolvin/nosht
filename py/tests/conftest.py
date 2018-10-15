@@ -417,8 +417,9 @@ async def post_startup_app(app):
 
 
 async def pre_cleanup(app):
-    inner_app = app['main_app']
-    await inner_app['donorfy_actor'].client.close()
+    donorfy_actor = app['main_app']['donorfy_actor']
+    if donorfy_actor.client:
+        await donorfy_actor.client.close()
 
 
 @pytest.fixture(name='cli')
