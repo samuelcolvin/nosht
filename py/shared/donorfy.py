@@ -73,7 +73,7 @@ class DonorfyClient:
                 'response_content': lenient_json(response_text),
                 'time_taken': time_taken,
             }
-            # debug(data)
+            debug(data)
             logger.warning('%s %s > %d unexpected response', method, r.request_info.real_url, r.status, extra={
                 'fingerprint': ['donorfy', r.request_info.real_url, str(r.status)],
                 'data': data
@@ -339,9 +339,46 @@ class DonorfyActor(BaseActor):
             PostalCode=d['postcode'],
         ))
 
-    async def _get_constituent(self, *, user_id, email, check_email=True):
+    @concurrent
+    async def update_user(self, user_id, update_user=True, update_marketing=True):
+        if not self.client:
+            return
+        constituent_id = await self._get_constituent(user_id=user_id)
+        if not constituent_id:
+            return
+        first_name, last_name, email, allow_marketing = await self.pg.fetchrow(
+            'select first_name, last_name, email, allow_marketing from users where id=$1', user_id)
+
+        requests = []
+        if update_user:
+            requests.append(
+                self.client.put(f'/constituents/{constituent_id}', data=dict(
+                    FirstName=first_name,
+                    LastName=last_name,
+                    EmailAddress=email,
+                ))
+            )
+
+        if update_marketing:
+            requests.append(
+                self.client.post(f'/constituents/{constituent_id}/Preferences', data=dict(
+                    ConsentStatement='Events.HUF website',
+                    Reason='Updated in Events.HUF booking',
+                    PreferredChannel='Email',
+                    PreferencesList=[
+                        {
+                            'PreferenceType': 'Channel',
+                            'PreferenceName': 'Email',
+                            'PreferenceAllowed': allow_marketing
+                        }
+                    ]
+                ))
+            )
+        requests and await asyncio.gather(*requests)
+
+    async def _get_constituent(self, *, user_id, email=None):
         r = await self.client.get(f'/constituents/ExternalKey/nosht_{user_id}', allowed_statuses=(200, 404))
-        if check_email and r.status == 404:
+        if email is not None:
             r = await self.client.get(f'/constituents/EmailAddress/{email}', allowed_statuses=(200, 404))
 
         if r.status != 404:
@@ -360,7 +397,6 @@ class DonorfyActor(BaseActor):
                 NoGiftAid=False,
                 ExternalKey=f'nosht_{user_id}',
                 RecruitmentCampaign=campaign,
-                JobTitle='host',
                 EmailFormat='HTML'
             )
         )

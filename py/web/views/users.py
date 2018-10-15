@@ -84,6 +84,10 @@ class UserBread(Bread):
         await self.app['email_actor'].send_account_created(pk, created_by_admin=True)
         return pk
 
+    async def edit_execute(self, pk, **data):
+        await super().edit_execute(pk, **data)
+        await self.app['donorfy_actor'].update_user(pk, update_marketing='allow_marketing' in data)
+
 
 class UserSelfBread(Bread):
     class Model(BaseModel):
@@ -121,6 +125,7 @@ class UserSelfBread(Bread):
     async def edit_execute(self, pk, **data):
         await super().edit_execute(pk, **data)
         await record_action(self.request, self.request['session']['user_id'], ActionTypes.edit_profile, changes=data)
+        await self.app['donorfy_actor'].update_user(pk, update_marketing='allow_marketing' in data)
 
 
 user_actions_sql = """
