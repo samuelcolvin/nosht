@@ -17,11 +17,6 @@ from .utils import RequestError, display_cash, lenient_json
 logger = logging.getLogger('nosht.donorfy')
 
 
-def format_dt(dt: datetime):
-    assert not hasattr(dt, 'utcoffset') or dt.utcoffset().total_seconds() == 0, dt.utcoffset()
-    return f'{dt:%Y-%m-%dT%H:%M:%SZ}'
-
-
 class DonorfyClient:
     def __init__(self, settings: Settings, loop):
         self._settings = settings
@@ -146,8 +141,8 @@ class DonorfyActor(BaseActor):
             Date1=format_dt(created),
             Date2=format_dt(start_ts),
         )
-        for i, r in enumerate(prices, start=1):
-            data[f'Number{i}'] = r[0]
+        for i, r in enumerate(prices, start=2):
+            data[f'Number{i}'] = float(r[0])
 
         constituent_id = await self._get_constituent(user_id=evt['host_user_id'], email=evt['host_email'])
         if constituent_id:
@@ -204,12 +199,9 @@ class DonorfyActor(BaseActor):
             else:
                 constituent_id = await self._get_constituent(user_id=user_id, email=email)
 
-            if not user_id and not constituent_id:
+            if not constituent_id:
                 return
 
-            constituent_id = (
-                constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)
-            )
             await self.client.post('/activities', data=dict(
                 ExistingConstituentId=constituent_id,
                 ActivityType='Event Booked',
@@ -374,6 +366,14 @@ class DonorfyActor(BaseActor):
             )
         requests and await asyncio.gather(*requests)
 
+    async def _get_or_create_constituent(self, user_id, campaign):
+        email, first_name, last_name = await self.pg.fetchrow(
+            'select email, first_name, last_name from users where id=$1', user_id
+        )
+
+        constituent_id = await self._get_constituent(user_id=user_id, email=email)
+        return constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)
+
     async def _get_constituent(self, *, user_id, email=None):
         ext_key = f'nosht_{user_id}'
         r = await self.client.get(f'/constituents/ExternalKey/{ext_key}', allowed_statuses=(200, 404))
@@ -409,10 +409,6 @@ class DonorfyActor(BaseActor):
         data = await r.json()
         return data['ConstituentId']
 
-    async def _get_or_create_constituent(self, user_id, campaign):
-        email, first_name, last_name = await self.pg.fetchrow(
-            'select email, first_name, last_name from users where id=$1', user_id
-        )
 
-        constituent_id = await self._get_constituent(user_id=user_id, email=email)
-        return constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)
+def format_dt(dt: datetime):
+    return f'{dt:%Y-%m-%dT%H:%M:%SZ}'

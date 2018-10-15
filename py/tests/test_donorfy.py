@@ -57,6 +57,21 @@ async def test_create_event(donorfy: DonorfyActor, factory: Factory, dummy_serve
     ]
 
 
+async def test_create_event_no_user(donorfy: DonorfyActor, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10, duration=None)
+    donorfy.settings.donorfy_api_key = 'no-users'
+
+    await donorfy.event_created(factory.event_id)
+    assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/no-users/constituents/EmailAddress/frank@example.org',
+        f'POST donorfy_api_root/no-users/activities',
+    ]
+
+
 async def test_book_tickets(donorfy: DonorfyActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_user()
@@ -89,6 +104,35 @@ async def test_book_tickets_free(donorfy: DonorfyActor, factory: Factory, dummy_
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         f'POST donorfy_api_root/standard/activities',
     ]
+
+
+async def test_book_tickets_multiple(donorfy: DonorfyActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(duration=None)
+    donorfy.settings.donorfy_api_key = 'no-users'
+
+    ben = await factory.create_user(first_name='ben', email='ben@example.org')
+    charlie = await factory.create_user(first_name='charlie', email='charlie@example.org')
+    danial = await factory.create_user(first_name='danial', email='danial@example.org')
+    res = await factory.create_reservation(factory.user_id, ben, charlie, danial)
+    action_id = await factory.book_free(res)
+    v = await db_conn.execute('update tickets set user_id=null where user_id=$1', danial)
+    assert v == 'UPDATE 1'
+
+    await donorfy.tickets_booked(action_id)
+    assert set(dummy_server.app['log']) == {
+        f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/no-users/constituents/EmailAddress/frank@example.org',
+        f'POST donorfy_api_root/no-users/constituents',
+        f'POST donorfy_api_root/no-users/activities',
+
+        f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{ben}',
+        f'GET donorfy_api_root/no-users/constituents/EmailAddress/charlie@example.org',
+        f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{charlie}',
+        f'GET donorfy_api_root/no-users/constituents/EmailAddress/ben@example.org',
+    }
 
 
 async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy_server, db_conn):
