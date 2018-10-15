@@ -178,6 +178,63 @@ async def s3_demo_image(request):
     return Response(body=stream.getvalue())
 
 
+async def donorfy_201(request):
+    return Response(status=201)
+
+
+async def donorfy_200(request):
+    return Response(status=200)
+
+
+async def donorfy_get_con_ext_id(request):
+    if request.match_info['api_key'] == 'standard':
+        return json_response([{
+            'ConstituentId': '123456',
+            'ExternalKey': request.match_info['ext_key'],
+        }])
+    else:
+        return Response(status=404)
+
+
+async def donorfy_get_con_email(request):
+    if request.match_info['api_key'] == 'no-users':
+        return Response(status=404)
+
+    ext_id = 'nosht_9999'
+    if request.match_info['api_key'] == 'no-ext-id':
+        ext_id = None
+    elif request.match_info['api_key'] == 'wrong-ext-id':
+        ext_id = 'foobar'
+    return json_response([{
+        'ConstituentId': '456789',
+        'ExternalKey': ext_id,
+    }])
+
+
+async def donorfy_create_user(request):
+    data = await request.json()
+    return json_response({
+        'ConstituentId': '456789',
+        'ExternalKey': data['ExternalKey'],
+    })
+
+
+async def donorfy_transactions(request):
+    return json_response({
+        'Id': 'trans_123',
+    }, status=201)
+
+
+async def donorfy_allocations(requests):
+    return json_response({
+        'AllocationsList': [
+            {
+                'AllocationId': '123'
+            }
+        ]
+    })
+
+
 @middleware
 async def log_middleware(request, handler):
     request.app['log'].append(request.method + ' ' + request.path.strip('/'))
@@ -199,6 +256,20 @@ async def create_dummy_server(loop, create_server):
 
         web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
         web.get('/s3_demo_image_url/{image:.*}', s3_demo_image),
+
+        web.get('/donorfy_api_root/{api_key}/constituents/ExternalKey/{ext_key}', donorfy_get_con_ext_id),
+        web.get('/donorfy_api_root/{api_key}/constituents/EmailAddress/{email}', donorfy_get_con_email),
+        web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/AddActiveTags', donorfy_201),
+        web.put('/donorfy_api_root/{api_key}/constituents/{const_id}', donorfy_200),
+        web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/Preferences', donorfy_201),
+        web.post('/donorfy_api_root/{api_key}/constituents', donorfy_create_user),
+
+        web.post('/donorfy_api_root/{api_key}/activities', donorfy_201),
+
+        web.post('/donorfy_api_root/{api_key}/transactions', donorfy_transactions),
+        web.get('/donorfy_api_root/{api_key}/transactions/{trans_id}/Allocations', donorfy_allocations),
+        web.put('/donorfy_api_root/{api_key}/transactions/{trans_id}/Allocation/{alloc}', donorfy_200),
+        web.post('/donorfy_api_root/{api_key}/transactions/{trans_id}/AddAllocation', donorfy_201),
     ])
     server = await create_server(app)
     app.update(

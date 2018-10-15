@@ -85,6 +85,7 @@ replaced_url_fields = (
     'stripe_root_url',
     'aws_endpoint_url',
     's3_demo_image_url',
+    'donorfy_api_root',
 )
 
 

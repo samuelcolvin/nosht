@@ -2,11 +2,11 @@ import asyncio
 import logging
 from datetime import datetime
 from time import time
-from typing import Sequence, Union
+from typing import Sequence
 
 import pytz
 from aiohttp import BasicAuth, ClientResponse, ClientSession, ClientTimeout
-from aiohttp.hdrs import METH_DELETE, METH_GET, METH_POST, METH_PUT
+from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
 from arq import concurrent
 
 from .actions import ActionTypes
@@ -18,51 +18,45 @@ logger = logging.getLogger('nosht.donorfy')
 
 
 def format_dt(dt: datetime):
-    if hasattr(dt, 'utcoffset'):
-        assert dt.utcoffset().total_seconds() == 0, dt.utcoffset()
+    assert not hasattr(dt, 'utcoffset') or dt.utcoffset().total_seconds() == 0, dt.utcoffset()
     return f'{dt:%Y-%m-%dT%H:%M:%SZ}'
 
 
 class DonorfyClient:
     def __init__(self, settings: Settings, loop):
+        self._settings = settings
         self._client = ClientSession(
             timeout=ClientTimeout(total=30),
             loop=loop,
             auth=BasicAuth('nosht', settings.donorfy_access_key),
         )
-        self._root = settings.donorfy_api_root + settings.donorfy_api_key
 
     async def close(self):
         await self._client.close()
 
-    async def get(self, path, *, allowed_statuses: Union[int, Sequence[int]]=200, data=None, params=None):
+    async def get(self, path, *, allowed_statuses: Sequence[int]=(200,), data=None, params=None):
         return await self._request(METH_GET, path, allowed_statuses, data, params)
 
-    async def put(self, path, *, allowed_statuses: Union[int, Sequence[int]]=200, data=None):
+    async def put(self, path, *, allowed_statuses: Sequence[int]=(200,), data=None):
         return await self._request(METH_PUT, path, allowed_statuses, data)
 
-    async def post(self, path, *, allowed_statuses: Union[int, Sequence[int]]=(200, 201), data=None):
+    async def post(self, path, *, allowed_statuses: Sequence[int]=(200, 201), data=None):
         return await self._request(METH_POST, path, allowed_statuses, data)
-
-    async def delete(self, path, *, allowed_statuses: Union[int, Sequence[int]]=200, data=None):
-        return await self._request(METH_DELETE, path, allowed_statuses, data)
 
     async def _request(self, method, path, allowed_statuses, data, params=None) -> ClientResponse:
         assert path.startswith('/'), path
-        full_path = self._root + path
+        full_path = self._settings.donorfy_api_root + self._settings.donorfy_api_key + path
         start = time()
         try:
             async with self._client.request(method, full_path, params=params, json=data) as r:
                 response_text = await r.text()
-        except TimeoutError:
+        except TimeoutError:  # pragma: no cover
             logger.warning('timeout %s %s', method, path)
             raise
 
         time_taken = time() - start
 
-        if isinstance(allowed_statuses, int):
-            allowed_statuses = allowed_statuses,
-        if allowed_statuses != '*' and r.status not in allowed_statuses:
+        if r.status not in allowed_statuses:
             data = {
                 'request_real_url': str(r.request_info.real_url),
                 'request_headers': dict(r.request_info.headers),
@@ -204,7 +198,12 @@ class DonorfyActor(BaseActor):
             user_id, email, first_name, last_name, extra_info, ticket_price = row
             if not user_id and not email:
                 return
-            constituent_id = await self._get_constituent(user_id=user_id, email=email)
+
+            if user_id == buyer_user_id:
+                constituent_id = buyer_constituent_id
+            else:
+                constituent_id = await self._get_constituent(user_id=user_id, email=email)
+
             if not user_id and not constituent_id:
                 return
 
@@ -378,7 +377,7 @@ class DonorfyActor(BaseActor):
     async def _get_constituent(self, *, user_id, email=None):
         ext_key = f'nosht_{user_id}'
         r = await self.client.get(f'/constituents/ExternalKey/{ext_key}', allowed_statuses=(200, 404))
-        if email is not None:
+        if email is not None and r.status == 404:
             r = await self.client.get(f'/constituents/EmailAddress/{email}', allowed_statuses=(200, 404))
 
         if r.status != 404:
