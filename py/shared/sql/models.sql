@@ -129,7 +129,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'event-update',
   'edit-event',
   'edit-profile',
-  'edit-other',
+  'edit-other',https://data.donorfy.com/help/index#!/Transaction/Transaction_UpdateAllocation
   'unsubscribe'
 );
 CREATE TABLE actions (

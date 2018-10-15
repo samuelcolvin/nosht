@@ -143,22 +143,25 @@ class BaseEmailActor(BaseActor):
         return msg_id + f'@{self.settings.aws_region}.amazonses.com'
 
     async def print_email(self, *, e_from: str, email_msg: EmailMessage, to: List[str]):  # pragma: no cover
-        d = dict(email_msg)
-        d['AWS-Source'] = e_from
-        d['AWS-To'] = ', '.join(to)
+        if self.settings.print_emails_verbose:
+            d = dict(email_msg)
+            d['AWS-Source'] = e_from
+            d['AWS-To'] = ', '.join(to)
 
-        print('=' * 80)
-        for f in ('AWS-Source', 'AWS-To', 'Subject', 'From', 'To', 'List-Unsubscribe'):
-            print(f'{f:>30}: {d[f]}')
+            print('=' * 80)
+            for f in ('AWS-Source', 'AWS-To', 'Subject', 'From', 'To', 'List-Unsubscribe'):
+                print(f'{f:>30}: {d[f]}')
 
-        for part in email_msg.walk():
-            payload = part.get_payload(decode=True)
-            if payload:
-                print('-' * 80)
-                print(f'{part.get_content_type()}:')
-                print(payload.decode().replace('\r\n', '\n').strip(' \n'))
+            for part in email_msg.walk():
+                payload = part.get_payload(decode=True)
+                if payload:
+                    print('-' * 80)
+                    print(f'{part.get_content_type()}:')
+                    print(payload.decode().replace('\r\n', '\n').strip(' \n'))
 
-        print('=' * 80)
+            print('=' * 80)
+        else:
+            print(f'"{email_msg["subject"]}" {e_from} -> {to}')
         return '-'
 
     async def send_email(self,

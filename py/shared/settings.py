@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     aws_ses_host = 'email.{region}.amazonaws.com'
     aws_ses_endpoint = 'https://{host}/'
     print_emails = False
+    print_emails_verbose = False
 
     google_siw_client_key = '315422204069-no6540693ciica79g07rs43v705d348g.apps.googleusercontent.com'
     google_siw_url = _GOOGLE_OAUTH2_CERTS_URL
