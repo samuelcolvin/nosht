@@ -235,4 +235,5 @@ class BookFreeTickets(UpdateView):
 
     async def execute(self, m: BookFreeModel):
         booked_action_id = await book_free(m, self.request['company_id'], self.session, self.app, self.conn)
+        await self.app['donorfy_actor'].tickets_booked(booked_action_id)
         await self.app['email_actor'].send_event_conf(booked_action_id)

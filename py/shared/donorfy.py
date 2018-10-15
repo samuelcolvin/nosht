@@ -73,7 +73,7 @@ class DonorfyClient:
                 'response_content': lenient_json(response_text),
                 'time_taken': time_taken,
             }
-            debug(data)
+            # debug(data)
             logger.warning('%s %s > %d unexpected response', method, r.request_info.real_url, r.status, extra={
                 'fingerprint': ['donorfy', r.request_info.real_url, str(r.status)],
                 'data': data
@@ -113,7 +113,7 @@ class DonorfyActor(BaseActor):
                 """
                 select
                   start_ts, duration, cat.slug, location_name, ticket_limit, short_description, long_description,
-                  event_link(cat.slug, e.slug, e.public, $2) AS link, cat.slug as cat_slug, co.currency, 
+                  event_link(cat.slug, e.slug, e.public, $2) AS link, cat.slug as cat_slug, co.currency,
                   host as host_user_id, host_user.email as host_email
                 from events e
                 join categories cat on e.category = cat.id
@@ -191,44 +191,43 @@ class DonorfyActor(BaseActor):
                   t.extra_info,
                   t.price
                 from tickets t
-                join users u on t.user_id = u.id
+                left join users u on t.user_id = u.id
                 where t.booked_action = $1
                 """,
                 action_id
             )
         ticket_count = len(tickets)
+        campaign = f'{cat_slug}-guest'
+        buyer_constituent_id = await self._get_or_create_constituent(buyer_user_id, campaign)
 
         async def create_ticket_constituent(row):
             user_id, email, first_name, last_name, extra_info, ticket_price = row
+            if not user_id and not email:
+                return
             constituent_id = await self._get_constituent(user_id=user_id, email=email)
-            constituent_id = (
-                constituent_id or
-                await self._create_constituent(user_id, email, first_name, last_name, f'{cat_slug}-guest')
-            )
+            if not user_id and not constituent_id:
+                return
 
+            constituent_id = (
+                constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)
+            )
             await self.client.post('/activities', data=dict(
                 ExistingConstituentId=constituent_id,
                 ActivityType='Event Booked',
                 ActivityDate=format_dt(action_ts),
-                Campaign=f'{cat_slug}-guest',
+                Campaign=campaign,
                 Notes=extra_info,
                 Code1=buyer_user_id,
-                Number1=float(ticket_price),
+                Number1=float(ticket_price or 0),
                 Number2=ticket_count,
                 YesNo1=user_id == buyer_user_id,
                 Date1=format_dt(event_ts)
             ))
-            return user_id, constituent_id
 
-        con_lookup = dict(await asyncio.gather(*[create_ticket_constituent(r) for r in tickets]))
+        await asyncio.gather(*[create_ticket_constituent(r) for r in tickets])
 
         if action_type == ActionTypes.book_free_tickets:
             return
-
-        buyer_constituent_id = (
-                con_lookup.get(buyer_user_id) or
-                await self._get_or_create_constituent(buyer_user_id, f'{cat_slug}-guest')
-        )
 
         price, extra = await self.pg.fetchrow(
             'select sum(price), sum(extra_donated) from tickets where booked_action = $1',
@@ -298,7 +297,7 @@ class DonorfyActor(BaseActor):
 
         d = await self.pg.fetchrow(
             """
-            select a.ts as action_ts, a.user_id, d.amount, 
+            select a.ts as action_ts, a.user_id, d.amount,
               d.gift_aid, d.first_name, d.last_name, d.address, d.city, d.postcode,
               donopt.id as donopt,
               cat.name as cat_name, cat.slug as cat_slug, currency
@@ -377,13 +376,21 @@ class DonorfyActor(BaseActor):
         requests and await asyncio.gather(*requests)
 
     async def _get_constituent(self, *, user_id, email=None):
-        r = await self.client.get(f'/constituents/ExternalKey/nosht_{user_id}', allowed_statuses=(200, 404))
+        ext_key = f'nosht_{user_id}'
+        r = await self.client.get(f'/constituents/ExternalKey/{ext_key}', allowed_statuses=(200, 404))
         if email is not None:
             r = await self.client.get(f'/constituents/EmailAddress/{email}', allowed_statuses=(200, 404))
 
         if r.status != 404:
-            constituents_data = await r.json()
-            return constituents_data[0]['ConstituentId']
+            constituent_data = (await r.json())[0]
+            constituent_id = constituent_data['ConstituentId']
+            if constituent_data['ExternalKey'] is None:
+                await self.client.put(f'/constituents/{constituent_id}', data=dict(ExternalKey=ext_key))
+            elif constituent_data['ExternalKey'] != ext_key:
+                logger.warning('user with matching email but different external key %s: %r != %r',
+                               constituent_id, constituent_data['ExternalKey'], ext_key)
+                return None
+            return constituent_id
 
     async def _create_constituent(self, user_id, email, first_name, last_name, campaign):
         r = await self.client.post(

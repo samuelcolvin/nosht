@@ -54,6 +54,8 @@ settings_args = dict(
     print_emails=False,
     s3_prefix='tests',
     max_request_size=1024**2,
+    donorfy_api_key=None,
+    donorfy_access_key=None,
 )
 
 
