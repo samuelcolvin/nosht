@@ -141,7 +141,7 @@ class BaseEmailActor(BaseActor):
             text = await r.text()
         if r.status != 200:
             raise RequestError(r.status, self._endpoint, text=text)
-        return re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
+        return re.search('<MessageId>(.+?)</MessageId>', text).group(1)
 
     async def print_email(self, *, e_from: str, email_msg: EmailMessage, to: List[str]):  # pragma: no cover
         if self.settings.print_emails_verbose:

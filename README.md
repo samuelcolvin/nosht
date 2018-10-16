@@ -60,6 +60,7 @@ You'll need to set the following config (environment) variables in heroku:
 * `APP_AWS_SECRET_KEY` key from AWS, see "AWS Setup" below
 * `APP_S3_BUCKET` name of the S3 bucket your using eg. `events-images.example.org`, see "AWS Setup" below
 * `APP_S3_DOMAIN` root url for the S3 bucket eg. `https://events-images.example.org`, see "AWS Setup" below
+* `APP_AWS_SES_WEBHOOK_AUTH` basic auth password for SES webhooks
 * `APP_S3_PREFIX` prefix to use for all files in S3, eg. `prod`
 * `APP_FACEBOOK_SIW_APP_SECRET` key from facebook, see "Facebook Setup" below
 * `APP_GOOGLE_MAPS_STATIC_KEY` key for google maps, see "Google Setup" below
@@ -205,12 +206,32 @@ Create an IAM role with the following policy
 Go to SES and setup a sending domain. You either need to set it up in the `eu-west-1` region
 or change the region `aws_region` setting.
 
+#### SES webhooks
+
+Notifications of email events (delivery, opening, clicks etc.) are recorded in nosht via webhooks from SES.
+
+To setup these webhooks:
+1. log into AWS > SES > Configuration Sets
+1. Create a Configuration Set called exactly `nosht`.
+1. Add a destination of type "SNS", call it something like `nosht-cloudwatch` and check all Event types,
+  choose "Create an SNS topic" and call it `nosht-emails` or similar.
+1. Move in the AWS console to SNS, go to topics and you should see the topic you just created.
+1. Hit "create subscription", choose the type as "https" and enter the url as 
+  `https://{APP_AWS_SES_WEBHOOK_AUTH}@events.example.org/api/ses-webhook/`, where `APP_AWS_SES_WEBHOOK_AUTH` is
+  is the basic auth username and password which will also be set in Heroku, it needs a colon in, eg.
+  `user:randompassword`.
+1. If the platform is up and running when you create the subscription (and you've done it right) it should get approved
+  immediately, if not you'll need to create another one or retry once the platform is running
+1. Currently emails and email events aren't displayed anywhere in the system, but they're saved to the database
+  for manual checking or future display.
+
 To set from AWS:
 
 * heroku config `APP_AWS_ACCESS_KEY`
 * heroku config `APP_AWS_SECRET_KEY`
 * heroku config `APP_S3_BUCKET`
 * heroku config `APP_S3_DOMAIN`
+* heroku config `APP_AWS_SES_WEBHOOK_AUTH`
 
 ### Cloudflare Setup
 
