@@ -596,7 +596,4 @@ async def email_logging(conn, settings, **kwargs):
     models_sql = settings.models_sql
     m = re.search('-- { email change(.*)-- } email change', models_sql, flags=re.DOTALL)
     sql = m.group(1).strip(' \n')
-    print('running:')
-    print(sql)
-    print('----------------')
     await conn.execute(sql)

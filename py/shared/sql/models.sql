@@ -246,14 +246,16 @@ CREATE TABLE IF NOT EXISTS emails (
   company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
   user_id INT REFERENCES users ON DELETE SET NULL,
   ext_id VARCHAR(255) NOT NULL,
-  ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  send_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   status VARCHAR(63) NOT NULL DEFAULT 'pending',
   trigger EMAIL_TRIGGERS NOT NULL,
   subject VARCHAR(255),
   address VARCHAR(255)
 );
 CREATE INDEX IF NOT EXISTS email_ext_id ON emails USING btree (ext_id);
-CREATE INDEX IF NOT EXISTS email_ts ON emails USING btree (ts);
+CREATE INDEX IF NOT EXISTS email_send_ts ON emails USING btree (send_ts);
+CREATE INDEX IF NOT EXISTS email_update_ts ON emails USING btree (update_ts);
 CREATE INDEX IF NOT EXISTS email_status ON emails USING btree (status);
 CREATE INDEX IF NOT EXISTS email_trigger ON emails USING btree (trigger);
 CREATE INDEX IF NOT EXISTS email_address ON emails USING btree (address);

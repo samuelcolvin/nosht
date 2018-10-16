@@ -6,7 +6,6 @@ from operator import itemgetter
 
 from arq import concurrent, cron
 from buildpg import MultipleValues, Values
-from pydantic.datetime_parse import parse_datetime
 
 from shared.emails.utils import start_tz_duration
 
@@ -489,80 +488,6 @@ class EmailActor(BaseEmailActor):
                         user_emails += len(user_ctxs)
                         await self.send_emails.direct(company_id, Triggers.event_host_final_update.value, user_ctxs)
         return user_emails
-
-    @concurrent('low')
-    async def record_email_event(self, raw_message: str):
-        """
-        record email events
-        """
-        message = json.loads(raw_message)
-        msg_id = message['mail']['messageId']
-        r = await self.pg.fetchrow('select id, user_id from emails where ext_id=$1', msg_id)
-        if not r:
-            return
-        email_id, user_id = r
-
-        event_type = message.get('eventType')
-        extra = None
-        ts = None
-        if event_type == 'Send':
-            ts = parse_datetime(message['mail']['timestamp'])
-        elif event_type == 'Delivery':
-            v = message['delivery']
-            ts = parse_datetime(v['timestamp'])
-            extra = {
-                'delivery_time': v.get('processingTimeMillis'),
-            }
-        elif event_type == 'Open':
-            v = message['open']
-            ts = parse_datetime(v['timestamp'])
-            extra = {
-                'ip': v.get('ipAddress'),
-                'ua': v.get('userAgent'),
-            }
-        elif event_type == 'Click':
-            v = message['click']
-            ts = parse_datetime(v['timestamp'])
-            extra = {
-                'link': v.get('link'),
-                'ip': v.get('ipAddress'),
-                'ua': v.get('userAgent'),
-            }
-        elif event_type == 'Bounce':
-            v = message['bounce']
-            ts = parse_datetime(v['timestamp'])
-            extra = {
-                'bounceType': v.get('bounceType'),
-                'bounceSubType': v.get('bounceSubType'),
-                'reportingMTA': v.get('reportingMTA'),
-                'feedbackId': v.get('feedbackId'),
-                'unsubscribe': v['bounceType'] == 'Permanent',
-            }
-        elif event_type == 'Complaint':
-            v = message['complaint']
-            ts = parse_datetime(v['timestamp'])
-            extra = {
-                'complaintFeedbackType': v.get('complaintFeedbackType'),
-                'feedbackId': v.get('feedbackId'),
-                'ua': v.get('userAgent'),
-                'unsubscribe': True
-            }
-        else:
-            logger.warning('unknown aws webhooks %s', event_type,
-                           extra={'data': {'message': message, 'raw_webhook': data}})
-
-        values = dict(email=email_id, status=event_type)
-        if ts:
-            values['ts'] = ts
-        if extra:
-            values['extra'] = json.dumps(extra)
-
-        async with self.pg.acquire() as conn:
-            await conn.execute_b('insert into email_events (:values__names) values :values', values=Values(**values))
-            if extra and extra.get('unsubscribe'):
-                await conn.execute('update users set receive_emails=false where id=$1', user_id)
-
-        return event_type
 
 
 def is_cat(slug):

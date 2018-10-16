@@ -19,8 +19,10 @@ import chevron
 import sass
 from aiohttp import ClientSession, ClientTimeout
 from arq import concurrent
+from buildpg import Values
 from cryptography import fernet
 from misaka import HtmlRenderer, Markdown
+from pydantic.datetime_parse import parse_datetime
 
 from ..actor import BaseActor
 from ..utils import RequestError, format_dt, format_duration, unsubscribe_sig
@@ -346,6 +348,77 @@ class BaseEmailActor(BaseActor):
         await asyncio.gather(*coros)
         logger.info('%d emails sent for trigger %s, company %s (%d)',
                     len(user_data), trigger, company_domain, company_id)
+
+    @concurrent('low')
+    async def record_email_event(self, raw_message: str):
+        """
+        record email events
+        """
+        message = json.loads(raw_message)
+        msg_id = message['mail']['messageId']
+        r = await self.pg.fetchrow('select id, user_id, update_ts from emails where ext_id=$1', msg_id)
+        if not r:
+            return
+        email_id, user_id, last_updated = r
+
+        event_type = message.get('eventType')
+        extra = None
+        data = message.get(event_type.lower()) or {}
+        if event_type == 'Send':
+            data = message['mail']
+        elif event_type == 'Delivery':
+            extra = {
+                'delivery_time': data.get('processingTimeMillis'),
+            }
+        elif event_type == 'Open':
+            extra = {
+                'ip': data.get('ipAddress'),
+                'ua': data.get('userAgent'),
+            }
+        elif event_type == 'Click':
+            extra = {
+                'link': data.get('link'),
+                'ip': data.get('ipAddress'),
+                'ua': data.get('userAgent'),
+            }
+        elif event_type == 'Bounce':
+            extra = {
+                'bounceType': data.get('bounceType'),
+                'bounceSubType': data.get('bounceSubType'),
+                'reportingMTA': data.get('reportingMTA'),
+                'feedbackId': data.get('feedbackId'),
+                'unsubscribe': data.get('bounceType') == 'Permanent',
+            }
+        elif event_type == 'Complaint':
+            extra = {
+                'complaintFeedbackType': data.get('complaintFeedbackType'),
+                'feedbackId': data.get('feedbackId'),
+                'ua': data.get('userAgent'),
+                'unsubscribe': True
+            }
+        else:
+            logger.warning('unknown aws webhooks %s', event_type, extra={'data': {'message': message}})
+
+        values = dict(email=email_id, status=event_type)
+        ts = None
+        if data.get('timestamp'):
+            ts = parse_datetime(data['timestamp'])
+            values['ts'] = ts
+        if extra:
+            values['extra'] = json.dumps(extra)
+
+        async with self.pg.acquire() as conn:
+            await conn.execute_b('insert into email_events (:values__names) values :values', values=Values(**values))
+            if not ts:
+                await conn.execute('update emails set status=$1, update_ts=$2 where id=$3', event_type, ts, email_id)
+            elif last_updated < ts:
+                await conn.execute('update emails set status=$1, update_ts=CURRENT_TIMESTAMP where id=$2',
+                                   event_type, email_id)
+
+            if extra and extra.get('unsubscribe'):
+                await conn.execute('update users set receive_emails=false where id=$1', user_id)
+
+        return event_type
 
 
 strip_markdown_re = [
