@@ -12,7 +12,7 @@ from arq import concurrent
 from .actions import ActionTypes
 from .actor import BaseActor
 from .settings import Settings
-from .utils import RequestError, display_cash, lenient_json
+from .utils import RequestError, display_cash, lenient_json, ticket_id_signed
 
 logger = logging.getLogger('nosht.donorfy')
 
@@ -178,7 +178,8 @@ class DonorfyActor(BaseActor):
                   coalesce(t.first_name, u.first_name) as first_name,
                   coalesce(t.last_name, u.last_name) as last_name,
                   t.extra_info,
-                  t.price
+                  t.price,
+                  t.id as ticket_id
                 from tickets t
                 left join users u on t.user_id = u.id
                 where t.booked_action = $1
@@ -188,14 +189,17 @@ class DonorfyActor(BaseActor):
         ticket_count = len(tickets)
         campaign = f'{cat_slug}-guest'
         buyer_constituent_id = await self._get_or_create_constituent(buyer_user_id, campaign)
+        ticket_id = None
 
         async def create_ticket_constituent(row):
-            user_id, email, first_name, last_name, extra_info, ticket_price = row
+            user_id, email, first_name, last_name, extra_info, ticket_price, _ticket_id = row
+            nonlocal ticket_id
             if not user_id and not email:
                 return
 
             if user_id == buyer_user_id:
                 constituent_id = buyer_constituent_id
+                ticket_id = _ticket_id
             else:
                 constituent_id = await self._get_constituent(user_id=user_id, email=email)
 
@@ -226,6 +230,7 @@ class DonorfyActor(BaseActor):
         )
         price = float(price)
         extra = float(extra or 0)
+        ticket_id = ticket_id or tickets[0]['ticket_id']
         r = await self.client.post('/transactions', data=dict(
             ConnectedConstituentId=buyer_constituent_id,
             ExistingConstituentId=buyer_constituent_id,
@@ -240,7 +245,7 @@ class DonorfyActor(BaseActor):
             DatePaid=format_dt(action_ts),
             Amount=price + extra,
             Acknowledgement=f'{cat_slug}-thanks',
-            AcknowledgementText=f'{cat_name} Donation Thanks',
+            AcknowledgementText=f'Ticket ID: {ticket_id_signed(ticket_id, self.settings)}',
             Reference=f'Events.HUF:{cat_slug} {event_slug}',
             AddGiftAidDeclaration=False,
             GiftAidClaimed=False,
