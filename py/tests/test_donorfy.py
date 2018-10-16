@@ -154,7 +154,7 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
         f'POST donorfy_api_root/standard/transactions',
         f'GET donorfy_api_root/standard/transactions/trans_123/Allocations',
         f'POST donorfy_api_root/standard/transactions/trans_123/AddAllocation',
-        f'PUT donorfy_api_root/standard/transactions/trans_123/Allocation/123',
+        f'PUT donorfy_api_root/standard/transactions/Allocation/123',
     }
 
 

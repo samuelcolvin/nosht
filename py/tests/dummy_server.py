@@ -268,7 +268,7 @@ async def create_dummy_server(loop, create_server):
 
         web.post('/donorfy_api_root/{api_key}/transactions', donorfy_transactions),
         web.get('/donorfy_api_root/{api_key}/transactions/{trans_id}/Allocations', donorfy_allocations),
-        web.put('/donorfy_api_root/{api_key}/transactions/{trans_id}/Allocation/{alloc}', donorfy_200),
+        web.put('/donorfy_api_root/{api_key}/transactions/Allocation/{alloc}', donorfy_200),
         web.post('/donorfy_api_root/{api_key}/transactions/{trans_id}/AddAllocation', donorfy_201),
     ])
     server = await create_server(app)

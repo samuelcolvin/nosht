@@ -277,7 +277,7 @@ class DonorfyActor(BaseActor):
         )
         # PUT request seems to be currently broken and returns 405
         await asyncio.gather(
-            self.client.put(f'/transactions/{trans_id}/Allocation/{allocation_id}', data=update_data),
+            self.client.put(f'/transactions/Allocation/{allocation_id}', data=update_data),
             self.client.post(f'/transactions/{trans_id}/AddAllocation', data=add_data),
         )
 
