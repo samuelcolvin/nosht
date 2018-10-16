@@ -563,7 +563,7 @@ async def use_timezones(conn, **kwargs):
 
 
 @patch
-async def add_footer_links(conn, **kwargs):
+async def add_donation_title(conn, **kwargs):
     """
     add title field to donations
     """
