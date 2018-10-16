@@ -64,6 +64,7 @@ class BookForm extends React.Component {
         email: t.email || null,
         extra_info: t.extra_info || null,
         cover_costs: t.cover_costs || null,
+        allow_marketing: t.allow_marketing || null,
       }))
 
     tickets[0].first_name = tickets[0].first_name || this.props.ctx.user.first_name

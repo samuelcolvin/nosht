@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     aws_ses_host = 'email.{region}.amazonaws.com'
     aws_ses_endpoint = 'https://{host}/'
     print_emails = False
+    print_emails_verbose = False
 
     google_siw_client_key = '315422204069-no6540693ciica79g07rs43v705d348g.apps.googleusercontent.com'
     google_siw_url = _GOOGLE_OAUTH2_CERTS_URL
@@ -64,6 +65,10 @@ class Settings(BaseSettings):
     ticket_reservation_precheck = True  # should only be set to false during a few specific tests
 
     custom_static_dir: Path = None  # for tests only
+
+    donorfy_api_root = 'https://data.donorfy.com/api/v1/'
+    donorfy_api_key: str = None
+    donorfy_access_key: str = None
 
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):

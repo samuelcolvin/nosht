@@ -18,12 +18,11 @@ from urllib.parse import urlencode
 import chevron
 import sass
 from aiohttp import ClientSession, ClientTimeout
-from arq import Actor, DatetimeJob, concurrent
-from buildpg import asyncpg
+from arq import concurrent
 from cryptography import fernet
 from misaka import HtmlRenderer, Markdown
 
-from ..settings import Settings
+from ..actor import BaseActor
 from ..utils import RequestError, format_dt, format_duration, unsubscribe_sig
 from .defaults import EMAIL_DEFAULTS, Triggers
 from .ical import ical_attachment
@@ -73,27 +72,14 @@ class UserEmail(NamedTuple):
     ticket_id: int = None
 
 
-class BaseEmailActor(Actor):
-    job_class = DatetimeJob
-
-    def __init__(self, *, settings: Settings, http_client=None, pg=None, **kwargs):
-        self.redis_settings = settings.redis_settings
+class BaseEmailActor(BaseActor):
+    def __init__(self, *, http_client=None, **kwargs):
         super().__init__(**kwargs)
-        self.settings = settings
-        self.client = http_client or ClientSession(timeout=ClientTimeout(total=10), loop=kwargs.get('loop'))
-        self.pg = pg
-
+        self.client = http_client or ClientSession(timeout=ClientTimeout(total=10), loop=self.loop)
         self._host = self.settings.aws_ses_host.format(region=self.settings.aws_region)
         self._endpoint = self.settings.aws_ses_endpoint.format(host=self._host)
         self.auth_fernet = fernet.Fernet(self.settings.auth_key)
         self.send_via_aws = self.settings.aws_access_key and not self.settings.print_emails
-
-    async def startup(self):
-        self.pg = self.pg or await asyncpg.create_pool_b(dsn=self.settings.pg_dsn, min_size=2)
-
-    async def shutdown(self):
-        await self.client.close()
-        await self.pg.close()
 
     def _aws_headers(self, data):
         n = datetime.datetime.utcnow()
@@ -157,22 +143,25 @@ class BaseEmailActor(Actor):
         return msg_id + f'@{self.settings.aws_region}.amazonses.com'
 
     async def print_email(self, *, e_from: str, email_msg: EmailMessage, to: List[str]):  # pragma: no cover
-        d = dict(email_msg)
-        d['AWS-Source'] = e_from
-        d['AWS-To'] = ', '.join(to)
+        if self.settings.print_emails_verbose:
+            d = dict(email_msg)
+            d['AWS-Source'] = e_from
+            d['AWS-To'] = ', '.join(to)
 
-        print('=' * 80)
-        for f in ('AWS-Source', 'AWS-To', 'Subject', 'From', 'To', 'List-Unsubscribe'):
-            print(f'{f:>30}: {d[f]}')
+            print('=' * 80)
+            for f in ('AWS-Source', 'AWS-To', 'Subject', 'From', 'To', 'List-Unsubscribe'):
+                print(f'{f:>30}: {d[f]}')
 
-        for part in email_msg.walk():
-            payload = part.get_payload(decode=True)
-            if payload:
-                print('-' * 80)
-                print(f'{part.get_content_type()}:')
-                print(payload.decode().replace('\r\n', '\n').strip(' \n'))
+            for part in email_msg.walk():
+                payload = part.get_payload(decode=True)
+                if payload:
+                    print('-' * 80)
+                    print(f'{part.get_content_type()}:')
+                    print(payload.decode().replace('\r\n', '\n').strip(' \n'))
 
-        print('=' * 80)
+            print('=' * 80)
+        else:
+            logger.info('"%s" %s -> %s', email_msg["subject"], e_from, to)
         return '-'
 
     async def send_email(self,

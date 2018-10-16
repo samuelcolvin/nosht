@@ -114,7 +114,7 @@ class ReserveTickets(UpdateViewAuth):
 
         try:
             async with self.conn.transaction():
-                await self.create_users(m.tickets)
+                update_user_preferences = await self.create_users(m.tickets)
 
                 action_id = await record_action_id(self.request, user_id, ActionTypes.reserve_tickets,
                                                    event_id=event_id)
@@ -160,6 +160,9 @@ class ReserveTickets(UpdateViewAuth):
             ticket_count=ticket_count,
             event_name=event_name,
         )
+        if update_user_preferences:
+            # has to happen after the transactions is finished
+            await self.app['donorfy_actor'].update_user(self.request['session']['user_id'], update_user=False)
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
             'ticket_count': ticket_count,
@@ -190,6 +193,7 @@ class ReserveTickets(UpdateViewAuth):
                 'UPDATE users SET allow_marketing=$1 WHERE id=$2',
                 tickets[0].allow_marketing, self.request['session']['user_id']
             )
+            return True
 
     async def _user_email(self):
         return await self.conn.fetchval('SELECT email FROM users WHERE id=$1', self.request['session']['user_id'])
@@ -221,6 +225,7 @@ class BuyTickets(UpdateView):
     async def execute(self, m: StripeBuyModel):
         booked_action_id, source_hash = await stripe_buy(m, self.request['company_id'], self.session.get('user_id'),
                                                          self.app, self.conn)
+        await self.app['donorfy_actor'].tickets_booked(booked_action_id)
         await self.app['email_actor'].send_event_conf(booked_action_id)
         return {'source_hash': source_hash}
 
@@ -230,4 +235,5 @@ class BookFreeTickets(UpdateView):
 
     async def execute(self, m: BookFreeModel):
         booked_action_id = await book_free(m, self.request['company_id'], self.session, self.app, self.conn)
+        await self.app['donorfy_actor'].tickets_booked(booked_action_id)
         await self.app['email_actor'].send_event_conf(booked_action_id)
