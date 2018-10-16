@@ -191,6 +191,7 @@ class EventBread(Bread):
         Func('as_time_zone', V('e.start_ts'), V('e.timezone')).as_('start_ts'),
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
+    browse_order_by_fields = V('e.start_ts').desc(),
     retrieve_fields = browse_fields + (
         V('cat.id').as_('cat_id'),
         'e.public',

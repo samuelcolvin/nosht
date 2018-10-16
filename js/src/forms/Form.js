@@ -100,10 +100,13 @@ class _Form extends React.Component {
         </div>
         <div className={this.props.form_footer_class || 'text-right'}>
           <ButtonGroup>
-            <Button type="button" color="secondary" onClick={() => this.props.finished && this.props.finished()}>
+            <Button type="button"
+                    color="secondary"
+                    disabled={this.state.disabled}
+                    onClick={() => this.props.finished && this.props.finished()}>
               {this.props.cancel || 'Cancel'}
             </Button>
-            <Button type="submit" color="primary">
+            <Button type="submit" color="primary" disabled={this.state.disabled}>
               {this.props.save || 'Save'}
             </Button>
           </ButtonGroup>

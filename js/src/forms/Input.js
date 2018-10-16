@@ -147,6 +147,7 @@ const DURATIONS = [
   {value: 3600 * 8, title: '8 hours'},
 ]
 const browse_tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+const midnight = dt => dt && dt.hours() === 0 && dt.minutes() === 0
 
 class DatetimeInput extends React.Component {
   constructor (props) {
@@ -157,16 +158,19 @@ class DatetimeInput extends React.Component {
   }
 
   onDtChange (dt, dur) {
-    if (dt && !(dur !== null && dt.hours() === 0 && dt.minutes() === 0)) {
+    if (dt) {
+      if (midnight(dt)) {
+        dt = dt.hours(moment().hours())
+      }
       this.props.onChange({dt: dt.format(), dur, tz: browse_tz})
     }
   }
 
   onDurChange (dt, dur) {
-    if (dur !== null && dt && dt.hours() === 0 && dt.minutes() === 0) {
+    if (dur !== null && midnight(dt)) {
       dt = dt.hours(moment().hours())
     }
-    this.props.onChange({dt: dt.format(), dur, tz: browse_tz})
+    this.props.onChange({dt: dt && dt.format(), dur, tz: browse_tz})
   }
 
   render () {
