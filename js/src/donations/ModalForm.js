@@ -46,6 +46,8 @@ class DonateForm extends React.Component {
     }
     const stored_card = get_card(this.props.ctx.user)
     this.setState({
+      title: this.props.ctx.user.title,
+      title_error: null,
       first_name: this.props.ctx.user.first_name,
       first_name_error: null,
       last_name: this.props.ctx.user.last_name,
@@ -66,6 +68,7 @@ class DonateForm extends React.Component {
       donation_option_id: this.props.donation_option.id,
       gift_aid: this.state.gift_aid,
       event_id: this.props.event.id,
+      title: this.state.title,
       first_name: this.state.first_name,
       last_name: this.state.last_name,
       address: this.state.address,
@@ -91,6 +94,7 @@ class DonateForm extends React.Component {
     }
     const can_submit = !this.state.submitting && (this.state.payment.complete || this.state.payment.source_hash)
 
+    const title_field = {name: 'title', required: this.state.gift_aid, max_length: 10}
     const first_name_field = {name: 'first_name', required: this.state.gift_aid}
     const last_name_field = {name: 'last_name', required: this.state.gift_aid}
     const address_field = {name: 'address', required: this.state.gift_aid}
@@ -120,6 +124,13 @@ class DonateForm extends React.Component {
                      onChange={gift_aid => this.setState({gift_aid})}/>
 
               <Collapse isOpen={this.state.gift_aid}>
+                <Row>
+                  <Col md="6">
+                    <Input field={title_field} value={this.state.title} error={this.state.title_error}
+                           disabled={this.state.submitted || this.state.submitting}
+                           onChange={v => this.setState({title: v, title_error: null})}/>
+                  </Col>
+                </Row>
                 <Row>
                   <Col md="6">
                     <Input field={first_name_field} value={this.state.first_name} error={this.state.first_name_error}

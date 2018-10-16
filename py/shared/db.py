@@ -560,3 +560,11 @@ async def use_timezones(conn, **kwargs):
     await conn.execute('ALTER TABLE actions ALTER COLUMN ts TYPE TIMESTAMPTZ')
 
     await conn.execute('ALTER TABLE tickets ALTER COLUMN created_ts TYPE TIMESTAMPTZ')
+
+
+@patch
+async def add_donation_title(conn, **kwargs):
+    """
+    add title field to donations
+    """
+    await conn.execute('ALTER TABLE donations ADD COLUMN title VARCHAR(31)')
