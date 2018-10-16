@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     # set here so they can be overridden during tests
     aws_ses_host = 'email.{region}.amazonaws.com'
     aws_ses_endpoint = 'https://{host}/'
+    aws_ses_webhook_auth = b'pw:testing'
     print_emails = False
     print_emails_verbose = False
 

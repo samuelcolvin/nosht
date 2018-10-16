@@ -238,3 +238,35 @@ CREATE INDEX IF NOT EXISTS don_donation_option ON donations USING btree (donatio
 CREATE INDEX IF NOT EXISTS don_gift_aid ON donations USING btree (gift_aid);
 CREATE INDEX IF NOT EXISTS don_action ON donations USING btree (action);
 -- } donations change
+
+
+-- { email change
+CREATE TABLE IF NOT EXISTS emails (
+  id SERIAL PRIMARY KEY,
+  company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
+  user_id INT REFERENCES users ON DELETE SET NULL,
+  ext_id VARCHAR(255) NOT NULL,
+  ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(63) NOT NULL DEFAULT 'pending',
+  trigger EMAIL_TRIGGERS NOT NULL,
+  subject VARCHAR(255),
+  address VARCHAR(255)
+);
+CREATE INDEX IF NOT EXISTS email_ext_id ON emails USING btree (ext_id);
+CREATE INDEX IF NOT EXISTS email_ts ON emails USING btree (ts);
+CREATE INDEX IF NOT EXISTS email_status ON emails USING btree (status);
+CREATE INDEX IF NOT EXISTS email_trigger ON emails USING btree (trigger);
+CREATE INDEX IF NOT EXISTS email_address ON emails USING btree (address);
+CREATE INDEX IF NOT EXISTS email_user ON emails USING btree (user_id);
+
+CREATE TABLE IF NOT EXISTS email_events (
+  id SERIAL PRIMARY KEY,
+  email INT NOT NULL REFERENCES emails ON DELETE CASCADE,
+  ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(63) NOT NULL,
+  extra JSONB
+);
+CREATE INDEX IF NOT EXISTS email_event_status ON email_events USING btree (status);
+CREATE INDEX IF NOT EXISTS email_event_email ON email_events USING btree (email);
+CREATE INDEX IF NOT EXISTS email_event_ts ON email_events USING btree (ts);
+-- } email change

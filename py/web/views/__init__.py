@@ -126,13 +126,11 @@ async def sitemap(request):
 
 
 async def ses_webhook(request):
-    pw = request.app['settings'].ses_webhook_auth + b':'
+    pw = request.app['settings'].aws_ses_webhook_auth
     expected_auth_header = f'Basic {base64.b64encode(pw).decode()}'
     actual_auth_header = request.headers.get('Authorization', '')
-
     if not compare_digest(expected_auth_header, actual_auth_header):
-        logger.warning('invalid auth header for SES webhook: %r != %r', expected_auth_header, actual_auth_header)
-        raise HTTPUnauthorized(text='invalid auth header')
+        raise HTTPUnauthorized(text='Invalid basic auth', headers={'WWW-Authenticate': 'Basic'})
 
     # content type is plain text for SNS, so we have to decode json manually
     data = json.loads(await request.text())
@@ -143,7 +141,5 @@ async def ses_webhook(request):
             assert r.status == 200, r.status
     else:
         assert sns_type == 'Notification', sns_type
-        message = json.loads(data.get('Message'))
-        logger.warning('unknown aws webhooks: "%s"', message['notificationType'],
-                       extra={'data': {'message': message, 'raw_webhook': data}})
+        await request.app['email_actor'].record_email_event(data)
     return Response(status=204)

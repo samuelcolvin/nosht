@@ -84,3 +84,14 @@ CREATE OR REPLACE FUNCTION as_time_zone(v TIMESTAMPTZ, tz VARCHAR(63)) RETURNS T
     return v AT TIME ZONE tz;
   END;
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION update_email_status() RETURNS trigger AS $$
+  BEGIN
+    UPDATE emails SET status=NEW.status WHERE id=NEW.email;
+    return NULL;
+  END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_email_status ON email_events;
+CREATE TRIGGER update_email_status AFTER INSERT ON email_events FOR EACH ROW EXECUTE PROCEDURE update_email_status();

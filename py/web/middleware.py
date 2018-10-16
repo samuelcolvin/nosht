@@ -29,12 +29,13 @@ def exc_extra(exc):
             return lenient_json(v)
 
 
-async def log_extra(start, request, response=None, **more):
+async def log_extra(request, response=None, **more):
     request_text = response_text = None
     with contextlib.suppress(Exception):  # UnicodeDecodeError or HTTPRequestEntityTooLarge maybe other things too
         request_text = await request.text()
     with contextlib.suppress(Exception):  # UnicodeDecodeError
         response_text = lenient_json(getattr(response, 'text', None))
+    start = request.get('start_time') or time()
     data = dict(
         request_duration=f'{(time() - start) * 1000:0.2f}ms',
         request=dict(
@@ -84,10 +85,10 @@ async def log_extra(start, request, response=None, **more):
     )
 
 
-async def log_warning(start, request, response):
+async def log_warning(request, response):
     logger.warning('%s %d', request.rel_url, response.status, extra={
         'fingerprint': [request.rel_url, str(response.status)],
-        **await log_extra(start, request, response)
+        **await log_extra(request, response)
     })
 
 
@@ -104,24 +105,22 @@ def get_request_start(request):
 
 @middleware
 async def error_middleware(request, handler):
-    start = get_request_start(request)
+    request['start_time'] = get_request_start(request)
     try:
         r = await handler(request)
     except HTTPException as e:
-        import traceback
-        traceback.print_exc()
         if should_warn(e):
-            await log_warning(start, request, e)
+            await log_warning(request, e)
         raise
     except Exception as exc:
         logger.exception('%s: %s', exc.__class__.__name__, exc, extra={
             'fingerprint': [exc.__class__.__name__, str(exc)],
-            **await log_extra(start, request, exception_extra=exc_extra(exc))
+            **await log_extra(request, exception_extra=exc_extra(exc))
         })
         raise HTTPInternalServerError()
     else:
         if should_warn(r):
-            await log_warning(start, request, r)
+            await log_warning(request, r)
     return r
 
 
@@ -162,6 +161,9 @@ async def user_middleware(request, handler):
     return await handler(request)
 
 
+NO_CHECKS = {
+    '/api/ses-webhook/',
+}
 UPLOAD_PATHS = (
     re.compile(r'/api/companies/upload/(?:image|logo)/'),
     re.compile(r'/api/categories/\d+/add-image/'),
@@ -178,6 +180,10 @@ def csrf_checks(request):
     """
     content-type, origin and referrer checks for CSRF
     """
+    if request.path in NO_CHECKS:
+        yield True
+        return
+
     ct = request.headers.get('Content-Type')
     if any(p.fullmatch(request.path) for p in UPLOAD_PATHS):
         yield ct.startswith('multipart/form-data; boundary')

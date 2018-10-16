@@ -176,7 +176,8 @@ class BaseEmailActor(BaseActor):
                          reply_to: Optional[str],
                          global_ctx: Dict[str, Any],
                          attachment: Optional[Attachment],
-                         tags: Dict[str, str]):
+                         tags: Dict[str, str],
+                         company_id: int):
         base_url = global_ctx['base_url']
 
         full_name = '{first_name} {last_name}'.format(
@@ -236,7 +237,13 @@ class BaseEmailActor(BaseActor):
         send_method = self.aws_send if self.send_via_aws else self.print_email
         msg_id = await send_method(e_from=e_from, to=[user_email], email_msg=e_msg)
 
-        logger.debug('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
+        await self.pg.execute(
+            """
+            insert into emails (company, user_id, ext_id, trigger, subject, address)
+            values ($1, $2, $3, $4, $5, $6)
+            """,
+            company_id, user['id'], msg_id, tags['trigger'], subject, user_email
+        )
 
     @concurrent
     async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail], *,
@@ -333,6 +340,7 @@ class BaseEmailActor(BaseActor):
                     global_ctx=global_ctx,
                     attachment=attachment,
                     tags=tags,
+                    company_id=company_id
                 )
             )
 
