@@ -126,13 +126,12 @@ async def sitemap(request):
 
 
 async def ses_webhook(request):
-    pw = request.app['settings'].ses_webhook_auth
-    if b':' not in pw:
-        pw += b':'
-    auth_header = f'Basic {base64.b64encode(pw).decode()}'
+    pw = request.app['settings'].ses_webhook_auth + b':'
+    expected_auth_header = f'Basic {base64.b64encode(pw).decode()}'
+    actual_auth_header = request.headers.get('Authorization', '')
 
-    if not compare_digest(auth_header, request.headers.get('Authorization', '')):
-        logger.warning('invalid auth header: "%s"', auth_header)
+    if not compare_digest(expected_auth_header, actual_auth_header):
+        logger.warning('invalid auth header for SES webhook: %r != %r', expected_auth_header, actual_auth_header)
         raise HTTPUnauthorized(text='invalid auth header')
 
     # content type is plain text for SNS, so we have to decode json manually
