@@ -289,7 +289,7 @@ class DonorfyActor(BaseActor):
         d = await self.pg.fetchrow(
             """
             select a.ts as action_ts, a.user_id, d.amount,
-              d.gift_aid, d.first_name, d.last_name, d.address, d.city, d.postcode,
+              d.gift_aid, d.title, d.first_name, d.last_name, d.address, d.city, d.postcode,
               donopt.id as donopt,
               cat.name as cat_name, cat.slug as cat_slug, currency
             from actions a
@@ -322,6 +322,7 @@ class DonorfyActor(BaseActor):
             Reference=f'Events.HUF:{cat_slug} donation {d["donopt"]}',
             AddGiftAidDeclaration=d['gift_aid'],
             GiftAidClaimed=d['gift_aid'],
+            Title=d['title'],
             FirstName=d['first_name'],
             LastName=d['last_name'],
             AddressLine1=d['address'],

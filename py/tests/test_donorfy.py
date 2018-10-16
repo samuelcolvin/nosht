@@ -171,6 +171,7 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
         donation_option_id=factory.donation_option_id,
         event_id=factory.event_id,
         gift_aid=True,
+        title='Ms',
         first_name='Joe',
         last_name='Blogs',
         address='Testing Street',
