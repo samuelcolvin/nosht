@@ -141,5 +141,5 @@ async def ses_webhook(request):
             assert r.status == 200, r.status
     else:
         assert sns_type == 'Notification', sns_type
-        await request.app['email_actor'].record_email_event(data)
+        await request.app['email_actor'].record_email_event(data.get('Message'))
     return Response(status=204)

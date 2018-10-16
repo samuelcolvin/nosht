@@ -139,8 +139,7 @@ class BaseEmailActor(BaseActor):
             text = await r.text()
         if r.status != 200:
             raise RequestError(r.status, self._endpoint, text=text)
-        msg_id = re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
-        return msg_id + f'@{self.settings.aws_region}.amazonses.com'
+        return re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
 
     async def print_email(self, *, e_from: str, email_msg: EmailMessage, to: List[str]):  # pragma: no cover
         if self.settings.print_emails_verbose:

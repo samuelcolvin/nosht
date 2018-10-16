@@ -490,49 +490,63 @@ class EmailActor(BaseEmailActor):
                         await self.send_emails.direct(company_id, Triggers.event_host_final_update.value, user_ctxs)
         return user_emails
 
-    @concurrent
-    async def record_email_event(self, data: dict):
+    @concurrent('low')
+    async def record_email_event(self, raw_message: str):
         """
         record email events
         """
-        msg_id = data['MessageId']
+        message = json.loads(raw_message)
+        msg_id = message['mail']['messageId']
         r = await self.pg.fetchrow('select id, user_id from emails where ext_id=$1', msg_id)
         if not r:
             return
         email_id, user_id = r
 
-        message = json.loads(data.get('Message'))
         event_type = message.get('eventType')
         extra = None
         ts = None
-        unsubscribe = False
         if event_type == 'Send':
             ts = parse_datetime(message['mail']['timestamp'])
         elif event_type == 'Delivery':
-            ts = parse_datetime(message['delivery']['timestamp'])
-            extra = {'delivery_time': message['delivery']['processingTimeMillis']}
-        elif event_type == 'Open':
-            ts = parse_datetime(message['open']['timestamp'])
-            extra = {'ip': message['open']['ip'], 'ua': message['open']['userAgent']}
-        elif event_type == 'Click':
-            c = message['click']
-            ts = parse_datetime(c['timestamp'])
+            v = message['delivery']
+            ts = parse_datetime(v['timestamp'])
             extra = {
-                'link': c['link'],
-                'ip': c['ipAddress'],
-                'ua': c['userAgent']
+                'delivery_time': v.get('processingTimeMillis'),
+            }
+        elif event_type == 'Open':
+            v = message['open']
+            ts = parse_datetime(v['timestamp'])
+            extra = {
+                'ip': v.get('ipAddress'),
+                'ua': v.get('userAgent'),
+            }
+        elif event_type == 'Click':
+            v = message['click']
+            ts = parse_datetime(v['timestamp'])
+            extra = {
+                'link': v.get('link'),
+                'ip': v.get('ipAddress'),
+                'ua': v.get('userAgent'),
             }
         elif event_type == 'Bounce':
-            ts = parse_datetime(message['bounce']['timestamp'])
-            unsubscribe = message['bounce']['bounceType'] == 'Permanent'
+            v = message['bounce']
+            ts = parse_datetime(v['timestamp'])
             extra = {
-                'bounceType': message['bounce']['bounceType'],
-                'bounceSubType': message['bounce']['bounceSubType'],
-                'reportingMTA': message['bounce']['reportingMTA'],
+                'bounceType': v.get('bounceType'),
+                'bounceSubType': v.get('bounceSubType'),
+                'reportingMTA': v.get('reportingMTA'),
+                'feedbackId': v.get('feedbackId'),
+                'unsubscribe': v['bounceType'] == 'Permanent',
             }
         elif event_type == 'Complaint':
-            ts = parse_datetime(message['complaint']['timestamp'])
-            unsubscribe = True
+            v = message['complaint']
+            ts = parse_datetime(v['timestamp'])
+            extra = {
+                'complaintFeedbackType': v.get('complaintFeedbackType'),
+                'feedbackId': v.get('feedbackId'),
+                'ua': v.get('userAgent'),
+                'unsubscribe': True
+            }
         else:
             logger.warning('unknown aws webhooks %s', event_type,
                            extra={'data': {'message': message, 'raw_webhook': data}})
@@ -544,8 +558,8 @@ class EmailActor(BaseEmailActor):
             values['extra'] = json.dumps(extra)
 
         async with self.pg.acquire() as conn:
-            await conn.execute_b('insert into actions (:values__names) values :values', Values(**values))
-            if unsubscribe:
+            await conn.execute_b('insert into email_events (:values__names) values :values', values=Values(**values))
+            if extra and extra.get('unsubscribe'):
                 await conn.execute('update users set receive_emails=false where id=$1', user_id)
 
         return event_type
