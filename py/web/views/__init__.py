@@ -2,10 +2,10 @@ import base64
 import json
 import logging
 from datetime import date
+from secrets import compare_digest
 
 from aiohttp.web_exceptions import HTTPUnauthorized
 from aiohttp.web_response import Response, StreamResponse
-from websocket._handshake import compare_digest
 
 from web.utils import raw_json_response
 

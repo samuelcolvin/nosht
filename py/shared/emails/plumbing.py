@@ -175,7 +175,8 @@ class BaseEmailActor(BaseActor):
                          e_from: str,
                          reply_to: Optional[str],
                          global_ctx: Dict[str, Any],
-                         attachment: Optional[Attachment]):
+                         attachment: Optional[Attachment],
+                         tags: Dict[str, str]):
         base_url = global_ctx['base_url']
 
         full_name = '{first_name} {last_name}'.format(
@@ -199,6 +200,8 @@ class BaseEmailActor(BaseActor):
             e_msg['Reply-To'] = reply_to
         e_msg['To'] = f'{full_name} <{user_email}>' if full_name else user_email
         e_msg['List-Unsubscribe'] = '<{unsubscribe_link}>'.format(**ctx)
+        e_msg['X-SES-CONFIGURATION-SET'] = 'nosht'
+        e_msg['X-SES-MESSAGE-TAGS'] = ', '.join(f'{k}={v}' for k, v in tags.items())
 
         if DEBUG_PRINT_REGEX.search(body):
             ctx['__debug_context__'] = f'```{json.dumps(ctx, indent=2)}```'
@@ -245,8 +248,9 @@ class BaseEmailActor(BaseActor):
         attachment = None
 
         async with self.pg.acquire() as conn:
-            company_name, e_from, reply_to, template, company_logo, company_domain = await conn.fetchrow(
-                'SELECT name, email_from, email_reply_to, email_template, logo, domain FROM companies WHERE id=$1',
+            company_name, company_slug, e_from, reply_to, template, company_logo, company_domain = await conn.fetchrow(
+                'SELECT name, slug, email_from, email_reply_to, email_template, logo, domain '
+                'FROM companies WHERE id=$1',
                 company_id
             )
             e_from = e_from or self.settings.default_email_address
@@ -299,6 +303,10 @@ class BaseEmailActor(BaseActor):
             base_url=f'https://{company_domain}',
         )
         coros = []
+        tags = {
+            'company': company_slug,
+            'trigger': trigger.value,
+        }
         user_data_lookup = {u['id']: u for u in user_data}
         for user_id, ctx, ticket_id in users_emails:
             try:
@@ -324,6 +332,7 @@ class BaseEmailActor(BaseActor):
                     reply_to=reply_to,
                     global_ctx=global_ctx,
                     attachment=attachment,
+                    tags=tags,
                 )
             )
 
