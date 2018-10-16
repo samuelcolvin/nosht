@@ -17,7 +17,7 @@ from shared.settings import Settings
 from shared.utils import mk_password
 
 from .middleware import csrf_middleware, error_middleware, pg_middleware, user_middleware
-from .views import index, sitemap
+from .views import index, ses_webhook, sitemap
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_captcha_required, login_with,
                          logout, reset_password_request, set_password, unsubscribe)
 from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
@@ -69,7 +69,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
     logging_client = logging_client or setup_logging()
     settings = settings or Settings()
 
-    app = web.Application(middlewares=(
+    app = web.Application(logger=None, middlewares=(
         pg_middleware,
         user_middleware,
         csrf_middleware,
@@ -87,6 +87,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
     app.add_routes([
         web.get('/', index, name='index'),
         web.get('/sitemap.xml', sitemap, name='sitemap'),
+        web.post('/ses-webhook/', ses_webhook, name='ses-webhook'),
 
         web.get('/cat/{category}/', category_public, name='category'),
 
@@ -164,6 +165,7 @@ def create_app(*, settings: Settings=None, logging_client=None):
             session_middleware(EncryptedCookieStorage(settings.auth_key, cookie_name='nosht')),
             error_middleware,
         ),
+        logger=None,
     )
     wrapper_app.update(
         settings=settings,

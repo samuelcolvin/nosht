@@ -115,18 +115,33 @@ async def prepare_database(settings: Settings, overwrite_existing: bool) -> bool
     return True
 
 
-class SimplePgPool:
+class SimplePgPool:  # pragam: no cover
     def __init__(self, conn):
         self.conn = conn
-        self.fetchval = conn.fetchval
-        self.fetchrow = conn.fetchrow
-        self.fetch = conn.fetch
+        # could also add lock to each method of the returned connection
+        self._lock = asyncio.Lock(loop=self.conn._loop)
 
     def acquire(self):
         return self
 
     async def __aenter__(self):
         return self.conn
+
+    async def execute(self, *args, **kwargs):
+        async with self._lock:
+            return await self.conn.execute(*args, **kwargs)
+
+    async def fetch(self, *args, **kwargs):
+        async with self._lock:
+            return await self.conn.fetch(*args, **kwargs)
+
+    async def fetchval(self, *args, **kwargs):
+        async with self._lock:
+            return await self.conn.fetchval(*args, **kwargs)
+
+    async def fetchrow(self, *args, **kwargs):
+        async with self._lock:
+            return await self.conn.fetchrow(*args, **kwargs)
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
@@ -571,3 +586,14 @@ async def add_donation_title(conn, **kwargs):
     add title field to donations
     """
     await conn.execute('ALTER TABLE donations ADD COLUMN title VARCHAR(31)')
+
+
+@patch
+async def email_logging(conn, settings, **kwargs):
+    """
+    create emails and email_events tables and indexes
+    """
+    models_sql = settings.models_sql
+    m = re.search('-- { email change(.*)-- } email change', models_sql, flags=re.DOTALL)
+    sql = m.group(1).strip(' \n')
+    await conn.execute(sql)

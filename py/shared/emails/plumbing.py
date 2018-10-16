@@ -19,8 +19,10 @@ import chevron
 import sass
 from aiohttp import ClientSession, ClientTimeout
 from arq import concurrent
+from buildpg import Values
 from cryptography import fernet
 from misaka import HtmlRenderer, Markdown
+from pydantic.datetime_parse import parse_datetime
 
 from ..actor import BaseActor
 from ..utils import RequestError, format_dt, format_duration, unsubscribe_sig
@@ -139,8 +141,7 @@ class BaseEmailActor(BaseActor):
             text = await r.text()
         if r.status != 200:
             raise RequestError(r.status, self._endpoint, text=text)
-        msg_id = re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
-        return msg_id + f'@{self.settings.aws_region}.amazonses.com'
+        return re.search('<MessageId>(.+?)</MessageId>', text).groups()[0]
 
     async def print_email(self, *, e_from: str, email_msg: EmailMessage, to: List[str]):  # pragma: no cover
         if self.settings.print_emails_verbose:
@@ -175,7 +176,9 @@ class BaseEmailActor(BaseActor):
                          e_from: str,
                          reply_to: Optional[str],
                          global_ctx: Dict[str, Any],
-                         attachment: Optional[Attachment]):
+                         attachment: Optional[Attachment],
+                         tags: Dict[str, str],
+                         company_id: int):
         base_url = global_ctx['base_url']
 
         full_name = '{first_name} {last_name}'.format(
@@ -199,6 +202,8 @@ class BaseEmailActor(BaseActor):
             e_msg['Reply-To'] = reply_to
         e_msg['To'] = f'{full_name} <{user_email}>' if full_name else user_email
         e_msg['List-Unsubscribe'] = '<{unsubscribe_link}>'.format(**ctx)
+        e_msg['X-SES-CONFIGURATION-SET'] = 'nosht'
+        e_msg['X-SES-MESSAGE-TAGS'] = ', '.join(f'{k}={v}' for k, v in tags.items())
 
         if DEBUG_PRINT_REGEX.search(body):
             ctx['__debug_context__'] = f'```{json.dumps(ctx, indent=2)}```'
@@ -233,7 +238,13 @@ class BaseEmailActor(BaseActor):
         send_method = self.aws_send if self.send_via_aws else self.print_email
         msg_id = await send_method(e_from=e_from, to=[user_email], email_msg=e_msg)
 
-        logger.debug('email sent "%s" to "%s", id %0.12s...', subject, user_email, msg_id)
+        await self.pg.execute(
+            """
+            insert into emails (company, user_id, ext_id, trigger, subject, address)
+            values ($1, $2, $3, $4, $5, $6)
+            """,
+            company_id, user['id'], msg_id, tags['trigger'], subject, user_email
+        )
 
     @concurrent
     async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail], *,
@@ -245,8 +256,9 @@ class BaseEmailActor(BaseActor):
         attachment = None
 
         async with self.pg.acquire() as conn:
-            company_name, e_from, reply_to, template, company_logo, company_domain = await conn.fetchrow(
-                'SELECT name, email_from, email_reply_to, email_template, logo, domain FROM companies WHERE id=$1',
+            company_name, company_slug, e_from, reply_to, template, company_logo, company_domain = await conn.fetchrow(
+                'SELECT name, slug, email_from, email_reply_to, email_template, logo, domain '
+                'FROM companies WHERE id=$1',
                 company_id
             )
             e_from = e_from or self.settings.default_email_address
@@ -299,6 +311,10 @@ class BaseEmailActor(BaseActor):
             base_url=f'https://{company_domain}',
         )
         coros = []
+        tags = {
+            'company': company_slug,
+            'trigger': trigger.value,
+        }
         user_data_lookup = {u['id']: u for u in user_data}
         for user_id, ctx, ticket_id in users_emails:
             try:
@@ -324,12 +340,85 @@ class BaseEmailActor(BaseActor):
                     reply_to=reply_to,
                     global_ctx=global_ctx,
                     attachment=attachment,
+                    tags=tags,
+                    company_id=company_id
                 )
             )
 
         await asyncio.gather(*coros)
         logger.info('%d emails sent for trigger %s, company %s (%d)',
                     len(user_data), trigger, company_domain, company_id)
+
+    @concurrent('low')  # noqa: C901 (ignore complexity)
+    async def record_email_event(self, raw_message: str):
+        """
+        record email events
+        """
+        message = json.loads(raw_message)
+        msg_id = message['mail']['messageId']
+        r = await self.pg.fetchrow('select id, user_id, update_ts from emails where ext_id=$1', msg_id)
+        if not r:
+            return
+        email_id, user_id, last_updated = r
+
+        event_type = message.get('eventType')
+        extra = None
+        data = message.get(event_type.lower()) or {}
+        if event_type == 'Send':
+            data = message['mail']
+        elif event_type == 'Delivery':
+            extra = {
+                'delivery_time': data.get('processingTimeMillis'),
+            }
+        elif event_type == 'Open':
+            extra = {
+                'ip': data.get('ipAddress'),
+                'ua': data.get('userAgent'),
+            }
+        elif event_type == 'Click':
+            extra = {
+                'link': data.get('link'),
+                'ip': data.get('ipAddress'),
+                'ua': data.get('userAgent'),
+            }
+        elif event_type == 'Bounce':
+            extra = {
+                'bounceType': data.get('bounceType'),
+                'bounceSubType': data.get('bounceSubType'),
+                'reportingMTA': data.get('reportingMTA'),
+                'feedbackId': data.get('feedbackId'),
+                'unsubscribe': data.get('bounceType') == 'Permanent',
+            }
+        elif event_type == 'Complaint':
+            extra = {
+                'complaintFeedbackType': data.get('complaintFeedbackType'),
+                'feedbackId': data.get('feedbackId'),
+                'ua': data.get('userAgent'),
+                'unsubscribe': True
+            }
+        else:
+            logger.warning('unknown aws webhooks %s', event_type, extra={'data': {'message': message}})
+
+        values = dict(email=email_id, status=event_type)
+        ts = None
+        if data.get('timestamp'):
+            ts = parse_datetime(data['timestamp'])
+            values['ts'] = ts
+        if extra:
+            values['extra'] = json.dumps({k: v for k, v in extra.items() if v})
+
+        async with self.pg.acquire() as conn:
+            await conn.execute_b('insert into email_events (:values__names) values :values', values=Values(**values))
+            if not ts:
+                await conn.execute('update emails set status=$1, update_ts=CURRENT_TIMESTAMP where id=$2',
+                                   event_type, email_id)
+            elif last_updated < ts:
+                await conn.execute('update emails set status=$1, update_ts=$2 where id=$3', event_type, ts, email_id)
+
+            if extra and extra.get('unsubscribe'):
+                await conn.execute('update users set receive_emails=false where id=$1', user_id)
+
+        return event_type
 
 
 strip_markdown_re = [

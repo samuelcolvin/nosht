@@ -1,7 +1,11 @@
+import base64
+import json
 import logging
 from datetime import date
+from secrets import compare_digest
 
-from aiohttp.web_response import StreamResponse
+from aiohttp.web_exceptions import HTTPUnauthorized
+from aiohttp.web_response import Response, StreamResponse
 
 from web.utils import raw_json_response
 
@@ -119,3 +123,23 @@ async def sitemap(request):
 
     await response.write(b'</urlset>\n')
     return response
+
+
+async def ses_webhook(request):
+    pw = request.app['settings'].aws_ses_webhook_auth
+    expected_auth_header = f'Basic {base64.b64encode(pw).decode()}'
+    actual_auth_header = request.headers.get('Authorization', '')
+    if not compare_digest(expected_auth_header, actual_auth_header):
+        raise HTTPUnauthorized(text='Invalid basic auth', headers={'WWW-Authenticate': 'Basic'})
+
+    # content type is plain text for SNS, so we have to decode json manually
+    data = json.loads(await request.text())
+    sns_type = data['Type']
+    if sns_type == 'SubscriptionConfirmation':
+        logger.info('confirming aws Subscription')
+        async with request.app['stripe_client'].head(data['SubscribeURL']) as r:
+            assert r.status == 200, r.status
+    else:
+        assert sns_type == 'Notification', sns_type
+        await request.app['email_actor'].record_email_event(data.get('Message'))
+    return Response(status=204)
