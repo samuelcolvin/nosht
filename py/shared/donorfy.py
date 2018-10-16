@@ -15,6 +15,7 @@ from .settings import Settings
 from .utils import RequestError, display_cash, lenient_json, ticket_id_signed
 
 logger = logging.getLogger('nosht.donorfy')
+DEFAULT_CAMPAIGN = 'Events.HUF'
 
 
 class DonorfyClient:
@@ -87,7 +88,7 @@ class DonorfyActor(BaseActor):
         if not self.client:
             return
 
-        constituent_id = await self._get_or_create_constituent(user_id, 'Events.HUF')
+        constituent_id = await self._get_or_create_constituent(user_id)
 
         await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
                                data='Hosting and helper volunteers_host')
@@ -236,7 +237,7 @@ class DonorfyActor(BaseActor):
             ExistingConstituentId=buyer_constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=currency,
-            Campaign=f'{cat_slug}-guest',
+            Campaign=DEFAULT_CAMPAIGN,
             PaymentMethod='Payment Card via Stripe' if action_type == ActionTypes.buy_tickets else 'Offline Payment',
             Product='Event Ticket(s)',
             Fund='Unrestricted General',
@@ -307,14 +308,13 @@ class DonorfyActor(BaseActor):
             action_id
         )
         cat_slug = d['cat_slug']
-        campaign = f'{cat_slug}-guest'
-        constituent_id = await self._get_or_create_constituent(d['user_id'], campaign)
+        constituent_id = await self._get_or_create_constituent(d['user_id'], f'{cat_slug}-guest')
         await self.client.post('/transactions', data=dict(
             ConnectedConstituentId=constituent_id,
             ExistingConstituentId=constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=d['currency'],
-            Campaign=campaign,
+            Campaign=DEFAULT_CAMPAIGN,
             PaymentMethod='Payment Card via Stripe',
             Product='Donation',
             Fund='Unrestricted General',
@@ -372,7 +372,7 @@ class DonorfyActor(BaseActor):
             )
         requests and await asyncio.gather(*requests)
 
-    async def _get_or_create_constituent(self, user_id, campaign):
+    async def _get_or_create_constituent(self, user_id, campaign=DEFAULT_CAMPAIGN):
         email, first_name, last_name = await self.pg.fetchrow(
             'select email, first_name, last_name from users where id=$1', user_id
         )

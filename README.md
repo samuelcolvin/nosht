@@ -67,6 +67,8 @@ You'll need to set the following config (environment) variables in heroku:
 * `APP_GOOGLE_SIW_CLIENT_KEY` google signin with key, see "Google Setup" below
 * `APP_GRECAPTCHA_SECRET` google recaptcha key, see "Google Setup" below
 * `RAVEN_DSN` DSN from sentry/raven, see "Sentry Setup" below
+* `APP_DONORFY_API_KEY` API key for donorfy integration
+* `APP_DONORFY_ACCESS_KEY` API "access key" for donorfy integration
 
 ## Build and Deploy
 
