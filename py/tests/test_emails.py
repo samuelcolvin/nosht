@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from buildpg import Values
-from pytest_toolbox.comparison import RegexStr
+from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
 from shared.actions import ActionTypes
 from shared.emails import EmailActor, Triggers, UserEmail
@@ -27,7 +27,7 @@ async def email_actor(settings: Settings, db_pool, loop, redis):
     await emails.close()
 
 
-async def test_send_email(email_actor: EmailActor, factory: Factory, dummy_server):
+async def test_send_email(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
     await factory.create_company()
     await factory.create_user(email='testing@example.org')
     u2 = await factory.create_user(email='other@example.org', receive_emails=False)
@@ -41,6 +41,20 @@ async def test_send_email(email_actor: EmailActor, factory: Factory, dummy_serve
         ('email_send_endpoint', 'Subject: "Update: testing", '
                                 'To: "Frank Spencer <testing@example.org>"'),
     ]
+    assert 1 == await db_conn.fetchval('select count(*) from emails')
+    email = await db_conn.fetchrow('select * from emails')
+    assert dict(email) == {
+        'id': AnyInt(),
+        'company': factory.company_id,
+        'user_id': factory.user_id,
+        'ext_id': 'testing',
+        'send_ts': CloseToNow(),
+        'update_ts': CloseToNow(),
+        'status': 'pending',
+        'trigger': 'admin-notification',
+        'subject': 'Update: testing',
+        'address': 'testing@example.org',
+    }
 
 
 async def test_with_def(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):

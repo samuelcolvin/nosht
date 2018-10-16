@@ -9,6 +9,10 @@ from aiohttp.web_response import Response, json_response
 from PIL import Image, ImageDraw
 
 
+async def return_200(request):
+    return Response()
+
+
 async def aws_ses(request):
     data = await request.post()
     raw_email = base64.b64decode(data['RawMessage.Data'])
@@ -244,6 +248,8 @@ async def log_middleware(request, handler):
 async def create_dummy_server(loop, create_server):
     app = web.Application(loop=loop, middlewares=(log_middleware,))
     app.add_routes([
+        web.route('*', '/200/', return_200),
+
         web.post('/aws_ses_endpoint/', aws_ses),
         web.post('/grecaptcha_url/', grecaptcha),
         web.get('/google_siw_url/', google_siw),

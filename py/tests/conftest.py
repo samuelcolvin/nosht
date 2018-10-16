@@ -56,6 +56,7 @@ settings_args = dict(
     max_request_size=1024**2,
     donorfy_api_key=None,
     donorfy_access_key=None,
+    aws_ses_webhook_auth=b'pw:tests'
 )
 
 

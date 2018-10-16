@@ -349,7 +349,7 @@ class BaseEmailActor(BaseActor):
         logger.info('%d emails sent for trigger %s, company %s (%d)',
                     len(user_data), trigger, company_domain, company_id)
 
-    @concurrent('low')
+    @concurrent('low')  # noqa: C901 (ignore complexity)
     async def record_email_event(self, raw_message: str):
         """
         record email events
@@ -405,15 +405,15 @@ class BaseEmailActor(BaseActor):
             ts = parse_datetime(data['timestamp'])
             values['ts'] = ts
         if extra:
-            values['extra'] = json.dumps(extra)
+            values['extra'] = json.dumps({k: v for k, v in extra.items() if v})
 
         async with self.pg.acquire() as conn:
             await conn.execute_b('insert into email_events (:values__names) values :values', values=Values(**values))
             if not ts:
-                await conn.execute('update emails set status=$1, update_ts=$2 where id=$3', event_type, ts, email_id)
-            elif last_updated < ts:
                 await conn.execute('update emails set status=$1, update_ts=CURRENT_TIMESTAMP where id=$2',
                                    event_type, email_id)
+            elif last_updated < ts:
+                await conn.execute('update emails set status=$1, update_ts=$2 where id=$3', event_type, ts, email_id)
 
             if extra and extra.get('unsubscribe'):
                 await conn.execute('update users set receive_emails=false where id=$1', user_id)
