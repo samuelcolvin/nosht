@@ -26,7 +26,6 @@ async def test_create_host_existing(donorfy: DonorfyActor, factory: Factory, dum
     await donorfy.host_signuped(factory.user_id)
     assert dummy_server.app['log'] == [
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
-        f'POST donorfy_api_root/standard/constituents/123456/AddActiveTags',
     ]
 
 
@@ -40,7 +39,6 @@ async def test_create_host_new(donorfy: DonorfyActor, factory: Factory, dummy_se
         f'GET donorfy_api_root/new-user/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/new-user/constituents/EmailAddress/frank@example.org',
         f'POST donorfy_api_root/new-user/constituents',
-        f'POST donorfy_api_root/new-user/constituents/456789/AddActiveTags',
     ]
 
 
@@ -53,11 +51,12 @@ async def test_create_event(donorfy: DonorfyActor, factory: Factory, dummy_serve
     await donorfy.event_created(factory.event_id)
     assert dummy_server.app['log'] == [
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'POST donorfy_api_root/standard/constituents/123456/AddActiveTags',
         f'POST donorfy_api_root/standard/activities',
     ]
 
 
-async def test_create_event_no_user(donorfy: DonorfyActor, factory: Factory, dummy_server):
+async def test_create_event_no_duration(donorfy: DonorfyActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_user()
     await factory.create_cat()
@@ -68,6 +67,8 @@ async def test_create_event_no_user(donorfy: DonorfyActor, factory: Factory, dum
     assert dummy_server.app['log'] == [
         f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/no-users/constituents/EmailAddress/frank@example.org',
+        f'POST donorfy_api_root/no-users/constituents',
+        f'POST donorfy_api_root/no-users/constituents/456789/AddActiveTags',
         f'POST donorfy_api_root/no-users/activities',
     ]
 
