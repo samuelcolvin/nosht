@@ -44,7 +44,12 @@ class BookForm extends React.Component {
     try {
       r = await requests.get(`events/${p.category}/${p.event}/${p.sig ? p.sig + '/': ''}booking-info/`)
     } catch (error) {
-      this.props.ctx.setError(error)
+      if (error.status === 401) {
+        this.props.ctx.setUser(null)
+        this.setState({ticket_0: null})
+      } else {
+        this.props.ctx.setError(error)
+      }
       return
     }
     delete r._response_status
