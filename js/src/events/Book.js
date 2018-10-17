@@ -22,7 +22,7 @@ class BookForm extends React.Component {
     this.finished = this.finished.bind(this)
   }
 
-  componentDidMount() {
+  componentDidMount () {
     if (this.props.ctx.user) {
       this.setState({
         ticket_0: {
