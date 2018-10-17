@@ -85,13 +85,8 @@ class DonorfyActor(BaseActor):
 
     @concurrent
     async def host_signuped(self, user_id):
-        if not self.client:
-            return
-
-        constituent_id = await self._get_or_create_constituent(user_id)
-
-        await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
-                               data='Hosting and helper volunteers_host')
+        if self.client:
+            await self._get_or_create_constituent(user_id)
 
     @concurrent
     async def event_created(self, event_id):
@@ -102,7 +97,7 @@ class DonorfyActor(BaseActor):
             evt = await conn.fetchrow(
                 """
                 select
-                  start_ts, duration, cat.slug, location_name, ticket_limit, short_description, long_description,
+                  start_ts, duration, location_name, ticket_limit, short_description, long_description,
                   event_link(cat.slug, e.slug, e.public, $2) AS link, cat.slug as cat_slug, co.currency,
                   host as host_user_id, host_user.email as host_email
                 from events e
@@ -118,6 +113,12 @@ class DonorfyActor(BaseActor):
                 'select price from ticket_types where event=$1 and active is true and price is not null',
                 event_id
             )
+        constituent_id = await self._get_or_create_constituent(evt['host_user_id'])
+
+        campaign = evt['cat_slug'] + '-host'
+        await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
+                               data=f'Hosting and helper volunteers_{campaign}')
+
         start_ts = evt['start_ts'].astimezone(pytz.utc)
         if not evt['duration']:
             start_ts = start_ts.date()
@@ -125,14 +126,15 @@ class DonorfyActor(BaseActor):
         evt = dict(evt)
         evt['price_text'] = ', '.join(display_cash(r[0], evt['currency']) for r in prices) or 'free'
         data = dict(
+            ExistingConstituentId=constituent_id,
             ActivityType='Event Hosted',
             ActivityDate=format_dt(start_ts),
-            Campaign=evt['cat_slug'] + '-host',
+            Campaign=campaign,
             Notes=(
                 'URL: {link}\n'
                 'location: {location_name}\n'
                 'ticket limit: {ticket_limit}\n'
-                'price: price_text\n'
+                'price: {price_text}\n'
                 'description: {long_description}'
             ).format(**evt),
             Code1=evt['link'],
@@ -145,9 +147,6 @@ class DonorfyActor(BaseActor):
         for i, r in enumerate(prices, start=2):
             data[f'Number{i}'] = float(r[0])
 
-        constituent_id = await self._get_constituent(user_id=evt['host_user_id'], email=evt['host_email'])
-        if constituent_id:
-            data['ExistingConstituentId'] = constituent_id
         await self.client.post('/activities', data=data)
 
     @concurrent
