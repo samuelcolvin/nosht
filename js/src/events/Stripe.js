@@ -68,6 +68,13 @@ export async function stripe_pay (post_url, request_data) {
       address_city: this.state.payment.city,
       address_zip: this.state.payment.postcode,
     })
+    if (r.error) {
+      // happens at least when you use a test card on live stripe
+      console.warn('create token response:', r)
+      const payment = Object.assign({}, this.state.payment, {error: r.error.message || 'Invalid Card'})
+      this.setState({payment, submitting: false})
+      return false
+    }
     token = r.token
     request_data.stripe = {
       token: token.id,
