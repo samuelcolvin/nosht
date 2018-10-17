@@ -51,20 +51,18 @@ export class User extends React.Component {
   }
 }
 
-const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
+const TicketInfo = ({index, state, set_ticket_state, event}) => {
   const key = `ticket_${index}`
   const ticket_info = state[key] || {}
   const first_name_field = {
     name: key + 'first_name',
     placeholder: 'first name',
     show_label: false,
-    required: index === 0,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's name."
   }
   const last_name_field = {
     name: key + 'last_name',
     placeholder: 'last name',
-    required: index === 0,
     show_label: false,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's name."
   }
@@ -72,7 +70,6 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
     name: key + 'email',
     type: 'email',
     placeholder: 'email',
-    required: index === 0,
     show_label: false,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's email address."
   }
@@ -97,22 +94,19 @@ const TicketInfo = ({index, state, set_ticket_state, user, event}) => {
       <Row>
         <Col lg="4" md="6">
           <Input className="my-0"
-                value={!ticket_info.first_name && index === 0 && user.first_name ?
-                       user.first_name : ticket_info.first_name}
+                value={ticket_info.first_name}
                 field={first_name_field}
                 onChange={v => set_ticket_state(key, 'first_name', v)}/>
         </Col>
         <Col lg="4" md="6">
           <Input className="my-0"
-                value={!ticket_info.last_name && index === 0 && user.last_name ?
-                       user.last_name :
-                        ticket_info.last_name}
+                value={ticket_info.last_name}
                 field={last_name_field}
                 onChange={v => set_ticket_state(key, 'last_name', v)}/>
         </Col>
         <Col lg="4">
           <Input className="my-0"
-                value={ticket_info.email === undefined && index === 0 ? user.email : ticket_info.email}
+                value={ticket_info.email}
                 field={email_field}
                 onChange={v => set_ticket_state(key, 'email', v)}/>
         </Col>
@@ -239,8 +233,7 @@ const TicketForm = props => {
 
         <div className="multiple-items">
           {[...Array(state.ticket_count).keys()].map(i => (
-            <TicketInfo key={i} index={i} state={state} set_ticket_state={props.set_ticket_state}
-                        user={props.ctx.user} event={props.event}/>
+            <TicketInfo key={i} index={i} state={state} set_ticket_state={props.set_ticket_state} event={props.event}/>
           ))}
         </div>
       </ModalBody>

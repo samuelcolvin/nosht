@@ -22,6 +22,18 @@ class BookForm extends React.Component {
     this.finished = this.finished.bind(this)
   }
 
+  componentDidMount() {
+    if (this.props.ctx.user) {
+      this.setState({
+        ticket_0: {
+          first_name: this.props.ctx.user.first_name,
+          last_name: this.props.ctx.user.last_name,
+          email: this.props.ctx.user.email,
+        }
+      })
+    }
+  }
+
   async componentDidUpdate () {
     if (this.state.got_booking_info || !this.props.ctx.user) {
       return
@@ -121,7 +133,7 @@ class BookForm extends React.Component {
       return <BookingLogin
           event={this.props.event}
           finished={this.finished}
-          clear_reservation={() => this.setState({reservation: null})}/>
+          setBookingState={s => this.setState(s)}/>
     } else if (!this.state.reservation) {
       return <BookingTickets
           event={this.props.event}
