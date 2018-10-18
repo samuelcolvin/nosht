@@ -136,7 +136,7 @@ def pseudo_random_str(length=10):
 
 def ticket_id_signed(ticket_id, settings: Settings):
     h = hmac.new(settings.auth_key.encode(), b'%d' % ticket_id, digestmod=hashlib.md5)
-    check = base64.urlsafe_b64encode(h.digest()).decode().lower()
+    check = re.sub(b'[^a-z0-9]', b'', base64.b64encode(h.digest()).lower()).decode()
     return f'{check:.7}-{ticket_id}'
 
 
