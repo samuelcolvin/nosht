@@ -92,10 +92,9 @@ def test_clean_markdown_unchanged(input):
 
 
 @pytest.mark.parametrize('ticket_id,expected', [
-    (1, '9qs17sx-1'),
-    (123, '0tqg2o9-123'),
-    (321654, 'v1ivmda-123'),
+    (1, 'hzjsbsm-1'),
+    (123, 'irorchu-123'),
+    (321654, 'admuo35-321654'),
 ])
-def test_ticket_id_signed(ticket_id, expected):
-    settings = type('Settings', (), {'auth_key': 'this is the auth key'})
+def test_ticket_id_signed(ticket_id, expected, settings):
     assert expected == ticket_id_signed(ticket_id, settings)
