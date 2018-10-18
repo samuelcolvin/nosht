@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from aiohttp.test_utils import make_mocked_request
 
-from shared.utils import RequestError, format_duration
+from shared.utils import RequestError, format_duration, ticket_id_signed
 from web.utils import clean_markdown, get_ip, pretty_lenient_json, split_name
 
 
@@ -89,3 +89,13 @@ def test_clean_markdown(input, output):
 ])
 def test_clean_markdown_unchanged(input):
     assert clean_markdown(input) == input
+
+
+@pytest.mark.parametrize('ticket_id,expected', [
+    (1, '9qs17sx-1'),
+    (123, '0tqg2o9-123'),
+    (321654, 'v1ivmda-123'),
+])
+def test_ticket_id_signed(ticket_id, expected):
+    settings = type('Settings', (), {'auth_key': 'this is the auth key'})
+    assert expected == ticket_id_signed(ticket_id, settings)
