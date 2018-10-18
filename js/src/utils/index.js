@@ -91,15 +91,6 @@ export const user_full_name = user => `${user.first_name || ''} ${user.last_name
 
 export const on_mobile = /mobile|ip(hone|od|ad)|android|blackberry|opera mini|iemobile/i.test(navigator.userAgent)
 
-export const set_tmp_name = (first_name, last_name) => {
-  window.sessionStorage['user_name'] = JSON.stringify({first_name, last_name})
-}
-
-export const get_tmp_name = () => {
-  const v = window.sessionStorage[`user_name`]
-  return v ? JSON.parse(v) : {first_name: null, last_name: null}
-}
-
 export const image_thumb = (img, rep) => img && img.replace(/main\.(\w+)$/, (rep || 'thumb') + '.$1')
 
 

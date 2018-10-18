@@ -9,7 +9,7 @@ import {fab} from '@fortawesome/free-brands-svg-icons'
 
 import {GlobalContext} from './utils/context'
 import requests from './utils/requests'
-import {sleep, get_tmp_name} from './utils'
+import {sleep} from './utils'
 import {Error, NotFound, Loading} from './general/Errors'
 import Navbar from './general/Navbar'
 import Footer from './general/Footer'
@@ -125,9 +125,6 @@ class App extends React.Component {
   }
 
   setUser (user) {
-    if (user && !user.first_name && !user.last_name) {
-      user = Object.assign({}, user, get_tmp_name())
-    }
     this.setState({user})
     ReactGA.set({userId: user ? user.id : null})
   }

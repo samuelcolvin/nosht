@@ -5,8 +5,6 @@ import {Loading, NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import EventCards from '../events/Cards'
 
-const single_name = name => name.replace(/ies$/, '').replace(/s$/, '')
-
 class Category extends React.Component {
   constructor (props) {
     super(props)
