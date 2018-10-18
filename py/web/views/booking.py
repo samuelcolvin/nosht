@@ -180,6 +180,8 @@ class ReserveTickets(UpdateViewAuth):
                 email=t.email.lower(),
             ) for t in tickets if t.email
         ]
+        if not user_values:
+            return
 
         await self.conn.execute_b(
             """

@@ -5,8 +5,6 @@ import {Loading, NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
 import EventCards from '../events/Cards'
 
-const single_name = name => name.replace(/ies$/, '').replace(/s$/, '')
-
 class Category extends React.Component {
   constructor (props) {
     super(props)
@@ -54,7 +52,7 @@ class Category extends React.Component {
         <div>
           <h1 className="d-inline-block mr-3">{cat.name}</h1>
           {this.state.events && <Link to={create_link} color="link">
-            Host your own {single_name(cat.name)} event
+            Host your own {cat.name} event
           </Link>}
         </div>
         <div className="card-grid">

@@ -44,21 +44,24 @@ requirements.
 Event:
 
 * Start Time: **{{ event_start }}**
-* Duration: **{{ event_duration }}**
-* Ticket ID: **{{ ticket_id }}**
-{{#event_location}}* Location: **{{ event_location }}**{{/event_location}}
+* Duration: **{{ event_duration }}**{{#ticket_id}}
+* Ticket ID: **{{ ticket_id }}**{{/ticket_id}}{{#event_location}}
+* Location: **{{ event_location }}**{{/event_location}}
 
 {{#static_map}}
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
 {{/static_map}}
 
+{{#ticket_id}}
 **This is your ticket**, please bring the email (and particularly the ticket reference above) \
 to the event.
+{{/ticket_id}}
 
 Payment:
 
 * Ticket Price: **{{ ticket_price }}**
-* Tickets Purchased: **{{ ticket_count }}**
+* Tickets Purchased: **{{ ticket_count }}**{{#extra_donated}}
+* Discretionary extra donation: **{{ extra_donated }}**{{/extra_donated}}
 * Total Amount Charged: **{{ total_price }}**
 
 {{#card_details}}
