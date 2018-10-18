@@ -58,7 +58,8 @@ to the event.
 Payment:
 
 * Ticket Price: **{{ ticket_price }}**
-* Tickets Purchased: **{{ ticket_count }}**
+* Tickets Purchased: **{{ ticket_count }}**{{#extra_donated}}
+* Discretionary extra donation: **{{ extra_donated }}**{{/extra_donated}}
 * Total Amount Charged: **{{ total_price }}**
 
 {{#card_details}}

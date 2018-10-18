@@ -118,6 +118,11 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
         '  <a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n'
         '</div>\n'
     ) in html
+    assert (
+        '<li>Ticket Price: <strong>£10.00</strong></li>\n'
+        '<li>Tickets Purchased: <strong>1</strong></li>\n'
+        '<li>Total Amount Charged: <strong>£10.00</strong></li>\n'
+    ) in html
     assert '<p>Extra Information: <strong>snip snap</strong></p>\n' in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Start Time: <strong>3rd Jun 2020</strong></li>\n' in html
@@ -226,7 +231,7 @@ async def test_send_ticket_other(email_actor: EmailActor, factory: Factory, dumm
     ) in ben_email['part:text/plain']
 
 
-async def test_send_ticket_not_buyer(email_actor: EmailActor, factory: Factory, dummy_server, login, cli, url):
+async def test_send_ticket_not_buyer(factory: Factory, dummy_server, login, cli, url):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
@@ -270,6 +275,50 @@ async def test_send_ticket_not_buyer(email_actor: EmailActor, factory: Factory, 
         'Great news! anne anne has bought you a ticket for Supper Clubs' in e['part:text/html']
         for e in dummy_server.app['emails']
     )
+
+
+async def test_send_ticket_email_cover_costs(factory: Factory, dummy_server, cli, url, login):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(status='published', price=100)
+
+    await factory.create_user(email='ticket.buyer@example.org')
+    await login(email='ticket.buyer@example.org')
+
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'ticket.buyer@example.org', 'cover_costs': True},
+            {'t': True},
+            {'t': True},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    data = await r.json()
+
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
+        booking_token=data['booking_token']
+    )
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert email['To'] == 'Frank Spencer <ticket.buyer@example.org>'
+    html = email['part:text/html']
+    assert (
+        '<li>Ticket Price: <strong>£100.00</strong></li>\n'
+        '<li>Tickets Purchased: <strong>3</strong></li>\n'
+        '<li>Discretionary extra donation: <strong>£15.00</strong></li>\n'
+        '<li>Total Amount Charged: <strong>£315.00</strong></li>\n'
+    ) in html
 
 
 async def test_unsubscribe(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):

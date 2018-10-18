@@ -45,71 +45,74 @@ class EmailActor(BaseEmailActor):
                 """,
                 booked_action_id, self.settings.auth_key
             )
-            price = await conn.fetchval(
+            tickets = await conn.fetch(
                 """
-                SELECT tt.price
+                SELECT id, user_id, trim(BOTH FROM extra_info) as extra_info,
+                   coalesce(t.price, 0) as price, coalesce(t.extra_donated, 0) as extra_donated
                 FROM tickets AS t
-                JOIN ticket_types AS tt ON t.ticket_type = tt.id
                 WHERE t.booked_action = $1
                 """,
                 booked_action_id
             )
-            start, duration = start_tz_duration(data)
-            ctx = {
-                'event_link': data['event_link'],
-                'event_name': data['name'],
-                'event_short_description': data['short_description'],
-                'event_start': start,
-                'event_duration': duration or 'All day',
-                'event_location': data['location_name'],
-                'ticket_price': display_cash_free(price, data['currency']),
-                'buyer_name': data['buyer_name'],
-                'host_name': data['host_name'],
-                'ticket_extra_title': data['ticket_extra_title'] or 'Extra Information',
-                'category_name': data['cat_name'],
-                is_cat(data['cat_slug']): True,
-            }
-            lat, lng = data['location_lat'], data['location_lng']
-            if lat and lng:
-                ctx.update(
-                    static_map=static_map_link(lat, lng, settings=self.settings),
-                    google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
-                )
-
-            ticket_count = await conn.fetchval('SELECT count(*) FROM tickets WHERE booked_action=$1', booked_action_id)
-            ctx_buyer = {
-                **ctx,
-                'ticket_count': ticket_count,
-                'ticket_count_plural': ticket_count > 1,
-                'total_price': display_cash_free(price and price * ticket_count, data['currency']),
-            }
-            if data['extra']:
-                action_extra = json.loads(data['extra'])
-                ctx_buyer['card_details'] = '{brand} {card_expiry} - ending {card_last4}'.format(**action_extra)
-
-            sql = (
-                'SELECT id, user_id, trim(BOTH FROM extra_info) '
-                'FROM tickets WHERE booked_action=$1 AND user_id IS NOT NULL'
+        ticket_price = tickets[0]['price']
+        start, duration = start_tz_duration(data)
+        ctx = {
+            'event_link': data['event_link'],
+            'event_name': data['name'],
+            'event_short_description': data['short_description'],
+            'event_start': start,
+            'event_duration': duration or 'All day',
+            'event_location': data['location_name'],
+            'ticket_price': display_cash_free(ticket_price, data['currency']),
+            'buyer_name': data['buyer_name'],
+            'host_name': data['host_name'],
+            'ticket_extra_title': data['ticket_extra_title'] or 'Extra Information',
+            'category_name': data['cat_name'],
+            is_cat(data['cat_slug']): True,
+        }
+        lat, lng = data['location_lat'], data['location_lng']
+        if lat and lng:
+            ctx.update(
+                static_map=static_map_link(lat, lng, settings=self.settings),
+                google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
             )
-            buyer_user_id = data['user_id']
-            buyer_emails = None
-            other_emails = []
-            for ticket_id, user_id, extra_info in await conn.fetch(sql, booked_action_id):
-                if buyer_user_id == user_id:
-                    ctx_buyer.update(
-                        ticket_id=ticket_id_signed(ticket_id, self.settings),
-                        extra_info=extra_info,
-                    )
-                    buyer_emails = [UserEmail(user_id, ctx_buyer, ticket_id)]
-                else:
-                    ctx_other = dict(
-                        **ctx,
-                        ticket_id=ticket_id_signed(ticket_id, self.settings),
-                        extra_info=extra_info,
-                    )
-                    other_emails.append(
-                        UserEmail(user_id, ctx_other, ticket_id)
-                    )
+
+        ticket_count = len(tickets)
+        extra_donated = sum(t['extra_donated'] for t in tickets)
+        total_price = extra_donated + sum(t['price'] for t in tickets)
+        ctx_buyer = {
+            **ctx,
+            'ticket_count': ticket_count,
+            'ticket_count_plural': ticket_count > 1,
+            'extra_donated': extra_donated and display_cash_free(extra_donated, data['currency']),
+            'total_price': display_cash_free(total_price, data['currency']),
+        }
+        if data['extra']:
+            action_extra = json.loads(data['extra'])
+            ctx_buyer['card_details'] = '{brand} {card_expiry} - ending {card_last4}'.format(**action_extra)
+
+        buyer_user_id = data['user_id']
+        buyer_emails = None
+        other_emails = []
+        for t in tickets:
+            ticket_id, user_id, extra_info = t['id'], t['user_id'], t['extra_info']
+            if not user_id:
+                continue
+            if buyer_user_id == user_id:
+                ctx_buyer.update(
+                    ticket_id=ticket_id_signed(ticket_id, self.settings),
+                    extra_info=extra_info,
+                )
+                buyer_emails = [UserEmail(user_id, ctx_buyer, ticket_id)]
+            else:
+                ctx_other = dict(
+                    **ctx,
+                    ticket_id=ticket_id_signed(ticket_id, self.settings),
+                    extra_info=extra_info,
+                )
+                other_emails.append(
+                    UserEmail(user_id, ctx_other, ticket_id)
+                )
 
         if buyer_emails:
             await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails,
