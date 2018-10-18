@@ -18,7 +18,7 @@ real_stripe_test = pytest.mark.skipif(not os.getenv('REAL_STRIPE_TESTS'), reason
 
 
 @real_stripe_test
-async def test_stripe_successful(cli, db_conn, factory: Factory):
+async def test_real_successful(cli, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
@@ -89,7 +89,7 @@ async def test_stripe_successful(cli, db_conn, factory: Factory):
 
 
 @real_stripe_test
-async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
+async def test_real_existing_customer_card(cli, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
@@ -131,7 +131,7 @@ async def test_stripe_existing_customer_card(cli, db_conn, factory: Factory):
 
 
 @real_stripe_test
-async def test_stripe_saved_card(cli, db_conn, factory: Factory):
+async def test_real_saved_card(cli, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
@@ -220,7 +220,7 @@ async def test_pay_declined(cli, url, dummy_server, factory: Factory, db_conn):
     assert not await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
 
 
-async def test_existing_customer_fake(cli, url, dummy_server, factory: Factory):
+async def test_existing_customer(cli, url, dummy_server, factory: Factory):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(stripe_customer_id='xxx')
@@ -243,6 +243,170 @@ async def test_existing_customer_fake(cli, url, dummy_server, factory: Factory):
     assert dummy_server.app['log'] == [
         'GET stripe_root_url/customers/xxx/sources',
         'POST stripe_root_url/customers/xxx/sources',
+        'POST stripe_root_url/charges',
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
+    ]
+
+
+async def test_existing_customer_no_customer(cli, url, dummy_server, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='missing')
+    await factory.create_event(price=12.5)
+
+    res: Reservation = await factory.create_reservation(factory.user_id, None)
+    app = cli.app['main_app']
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
+        booking_token=encrypt_json(app, res.dict()),
+    )
+
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        'GET stripe_root_url/customers/missing/sources',
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
+    ]
+
+
+async def test_saved_card(cli, url, dummy_server, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='xxx')
+    await factory.create_event(price=12.5)
+
+    res: Reservation = await factory.create_reservation(factory.user_id, None)
+    app = cli.app['main_app']
+
+    source_hash = hashlib.sha1('testing-source-id'.encode()).hexdigest()
+    data = dict(
+        stripe=dict(source_hash=source_hash),
+        booking_token=encrypt_json(app, res.dict()),
+    )
+
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        'GET stripe_root_url/customers/xxx/sources',
+        'POST stripe_root_url/charges',
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
+    ]
+
+
+async def test_saved_card_missing_source(cli, url, dummy_server, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='xxx')
+    await factory.create_event(price=12.5)
+
+    res: Reservation = await factory.create_reservation(factory.user_id, None)
+    app = cli.app['main_app']
+
+    source_hash = hashlib.sha1('missing'.encode()).hexdigest()
+    data = dict(
+        stripe=dict(source_hash=source_hash),
+        booking_token=encrypt_json(app, res.dict()),
+    )
+
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'source not found'}
+    assert dummy_server.app['log'] == ['GET stripe_root_url/customers/xxx/sources']
+
+
+async def test_saved_card_missing_customer(cli, url, dummy_server, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='missing')
+    await factory.create_event(price=12.5)
+
+    res: Reservation = await factory.create_reservation(factory.user_id, None)
+    app = cli.app['main_app']
+
+    source_hash = hashlib.sha1('missing'.encode()).hexdigest()
+    data = dict(
+        stripe=dict(source_hash=source_hash),
+        booking_token=encrypt_json(app, res.dict()),
+    )
+
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'using saved card but stripe customer not found'}
+    assert dummy_server.app['log'] == ['GET stripe_root_url/customers/missing/sources']
+
+
+async def test_existing_customer_new_card(cli, url, dummy_server, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='xxx')
+    await factory.create_event(price=12.5)
+
+    res: Reservation = await factory.create_reservation(factory.user_id, None)
+    app = cli.app['main_app']
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
+        booking_token=encrypt_json(app, res.dict()),
+    )
+
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        'GET stripe_root_url/customers/xxx/sources',
+        'POST stripe_root_url/customers/xxx/sources',
+        'POST stripe_root_url/charges',
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
+    ]
+
+
+async def test_existing_customer_existing_card(cli, url, dummy_server, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='xxx')
+    await factory.create_event(price=12.5)
+
+    res: Reservation = await factory.create_reservation(factory.user_id, None)
+    app = cli.app['main_app']
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-2019-8',
+        ),
+        booking_token=encrypt_json(app, res.dict()),
+    )
+
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        'GET stripe_root_url/customers/xxx/sources',
         'POST stripe_root_url/charges',
         (
             'email_send_endpoint',

@@ -63,19 +63,23 @@ async def facebook_siw(request):
 
 
 async def stripe_get_customer_sources(request):
-    return json_response({
-        'object': 'list',
-        'data': [
-            {
-                'last4': '4242',
-                'brand': 'Visa',
-                'exp_month': 8,
-                'exp_year': 2019,
-            },
-        ],
-        'has_more': False,
-        'url': '/v1/customers/xxx/sources',
-    })
+    if request.match_info['stripe_customer_id'] == 'xxx':
+        return json_response({
+            'object': 'list',
+            'data': [
+                {
+                    'last4': '4242',
+                    'brand': 'Visa',
+                    'exp_month': 8,
+                    'exp_year': 2019,
+                    'id': 'testing-source-id',
+                },
+            ],
+            'has_more': False,
+            'url': '/v1/customers/xxx/sources',
+        })
+    else:
+        return Response(status=404)
 
 
 async def stripe_post_customer_sources(request):
@@ -99,6 +103,10 @@ async def stripe_post_customers(request):
 
 async def stripe_post_charges(request):
     data = await request.post()
+    idempotency_key = request.headers['Idempotency-Key']
+    if idempotency_key in request.app['stripe_idempotency_keys']:
+        request.app['log'].append('Idempotency match')
+    request.app['stripe_idempotency_keys'].add(idempotency_key)
     if 'decline' in data['description']:
         return json_response({
           'error': {
@@ -283,6 +291,7 @@ async def create_dummy_server(loop, create_server):
         log=[],
         emails=[],
         images=[],
-        server_name=f'http://localhost:{server.port}'
+        server_name=f'http://localhost:{server.port}',
+        stripe_idempotency_keys=set(),
     )
     return server

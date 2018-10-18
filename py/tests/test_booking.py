@@ -626,3 +626,64 @@ async def test_buy_offline_other_not_admin(cli, url, dummy_server, factory: Fact
     assert dummy_server.app['log'] == []
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
+
+
+async def test_buy_offline_host(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event(price=10)
+
+    await login()
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        book_action='buy-tickets-offline',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 200, await r.text()
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
+
+
+async def test_buy_repeat(factory: Factory, cli, url, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(status='published', price=100)
+
+    await factory.create_user(email='ticket.buyer@example.org')
+    await login(email='ticket.buyer@example.org')
+
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'ticket.buyer@example.org', 'cover_costs': True},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    data = await r.json()
+
+    data = dict(
+        stripe=dict(
+            token='tok_visa',
+            client_ip='0.0.0.0',
+            card_ref='4242-32-01',
+        ),
+        booking_token=data['booking_token']
+    )
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 200, await r.text()
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'invalid reservation'}
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")

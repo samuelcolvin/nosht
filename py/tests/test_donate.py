@@ -424,3 +424,109 @@ async def test_list_donations_wrong_role(cli, url, factory: Factory, login):
     assert r.status == 403, await r.text()
     data = await r.json()
     assert data == {'message': 'role must be: admin'}
+
+
+async def test_donate_idempotency(factory: Factory, dummy_server, db_conn, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    data = dict(
+        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
+        donation_option_id=factory.donation_option_id,
+        event_id=factory.event_id,
+        gift_aid=False,
+    )
+    r = await cli.json_post(url('donate'), data=data)
+    assert r.status == 200, await r.text()
+
+    r = await cli.json_post(url('donate'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert 2 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    assert dummy_server.app['log'] == [
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
+        'GET stripe_root_url/customers/customer-id/sources',
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
+        'Idempotency match',
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
+    ]
+
+
+async def test_wrong_donation_option(factory: Factory, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await login()
+
+    data = dict(
+        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
+        donation_option_id=999,
+        event_id=factory.event_id,
+        gift_aid=False,
+    )
+    r = await cli.json_post(url('donate'), data=data)
+    assert r.status == 400, await r.text()
+    assert {'message': 'donation option not found'} == await r.json()
+
+
+async def test_wrong_event(factory: Factory, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_donation_option()
+    await login()
+    cat2 = await factory.create_cat(slug='cat2')
+    await factory.create_event(price=10, category_id=cat2)
+
+    data = dict(
+        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
+        donation_option_id=factory.donation_option_id,
+        event_id=factory.event_id,
+        gift_aid=False,
+    )
+    r = await cli.json_post(url('donate'), data=data)
+    assert r.status == 400, await r.text()
+    assert {'message': 'event not found on the same category as donation_option'} == await r.json()
+
+
+async def test_donate_gift_aid_no_name(factory: Factory, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    data = dict(
+        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
+        donation_option_id=factory.donation_option_id,
+        event_id=factory.event_id,
+        gift_aid=True,
+        title='Ms',
+        first_name='Joe',
+        address='Testing Street',
+        city='Testingville',
+        postcode='TE11 0ST',
+    )
+    r = await cli.json_post(url('donate'), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'Invalid Data',
+        'details': [
+            {
+                'loc': ['last_name'],
+                'msg': 'field required',
+                'type': 'value_error.missing',
+            },
+        ],
+    }

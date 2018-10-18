@@ -309,8 +309,8 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
                 idempotency_key = await redis.get(cache_key)
                 if idempotency_key:
                     idempotency_key = idempotency_key.decode()
-                if idempotency_key:
-                    idempotency_key = f'donate-{m.donation_option_id}-{user_id}-' + pseudo_random_str()
+                else:
+                    idempotency_key = f'{cache_key}-{pseudo_random_str()}'
                     await redis.setex(cache_key, 20, idempotency_key)
             metadata = {
                 'purpose': 'donate',
