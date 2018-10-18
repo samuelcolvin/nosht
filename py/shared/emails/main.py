@@ -47,14 +47,19 @@ class EmailActor(BaseEmailActor):
             )
             tickets = await conn.fetch(
                 """
-                SELECT id, user_id, trim(BOTH FROM extra_info) as extra_info,
-                   coalesce(t.price, 0) as price, coalesce(t.extra_donated, 0) as extra_donated
-                FROM tickets AS t
-                WHERE t.booked_action = $1
+                SELECT id, user_id, trim(BOTH FROM extra_info) as extra_info, price
+                FROM tickets
+                WHERE booked_action = $1 and user_id is not null
                 """,
                 booked_action_id
             )
-        ticket_price = tickets[0]['price']
+            # use max to get the price as they should all be the same
+            ticket_count, total_ticket_price, extra_donated, price = await conn.fetchrow(
+                'select count(*), sum(price), sum(extra_donated), max(price) '
+                'from tickets where booked_action=$1',
+                booked_action_id,
+            )
+            total_price = total_ticket_price and total_ticket_price + (extra_donated or 0)
         start, duration = start_tz_duration(data)
         ctx = {
             'event_link': data['event_link'],
@@ -63,7 +68,7 @@ class EmailActor(BaseEmailActor):
             'event_start': start,
             'event_duration': duration or 'All day',
             'event_location': data['location_name'],
-            'ticket_price': display_cash_free(ticket_price, data['currency']),
+            'ticket_price': display_cash_free(price, data['currency']),
             'buyer_name': data['buyer_name'],
             'host_name': data['host_name'],
             'ticket_extra_title': data['ticket_extra_title'] or 'Extra Information',
@@ -77,9 +82,6 @@ class EmailActor(BaseEmailActor):
                 google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
             )
 
-        ticket_count = len(tickets)
-        extra_donated = sum(t['extra_donated'] for t in tickets)
-        total_price = extra_donated + sum(t['price'] for t in tickets)
         ctx_buyer = {
             **ctx,
             'ticket_count': ticket_count,
@@ -94,10 +96,7 @@ class EmailActor(BaseEmailActor):
         buyer_user_id = data['user_id']
         buyer_emails = None
         other_emails = []
-        for t in tickets:
-            ticket_id, user_id, extra_info = t['id'], t['user_id'], t['extra_info']
-            if not user_id:
-                continue
+        for ticket_id, user_id, extra_info, _ in tickets:
             if buyer_user_id == user_id:
                 ctx_buyer.update(
                     ticket_id=ticket_id_signed(ticket_id, self.settings),
@@ -114,9 +113,14 @@ class EmailActor(BaseEmailActor):
                     UserEmail(user_id, ctx_other, ticket_id)
                 )
 
-        if buyer_emails:
-            await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails,
-                                          attached_event_id=data['event_id'])
+        if not buyer_emails:
+            # unusual case where the buyer is not an attendee
+            user_id = await self.pg.fetchval('select user_id from actions where id=$1', booked_action_id)
+            buyer_emails = [UserEmail(user_id, ctx_buyer)]
+
+        await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails,
+                                      attached_event_id=data['event_id'])
+
         if other_emails:
             await self.send_emails.direct(data['company'], Triggers.ticket_other, other_emails,
                                           attached_event_id=data['event_id'])
