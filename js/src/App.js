@@ -1,6 +1,6 @@
 import React from 'react'
 import {Route, Switch, withRouter} from 'react-router-dom'
-import Raven from 'raven-js'
+import * as Sentry from '@sentry/browser'
 import ReactGA from 'react-ga'
 import {library as FaLibrary} from '@fortawesome/fontawesome-svg-core'
 import {far} from '@fortawesome/free-regular-svg-icons'
@@ -107,7 +107,8 @@ class App extends React.Component {
   }
 
   componentDidCatch (error, info) {
-    Raven.captureException(error, {extra: info})
+    Sentry.configureScope(scope => scope.setExtra('extra', info))
+    Sentry.captureException(error)
     this.setState({error: error.toString()})
   }
 
@@ -117,8 +118,10 @@ class App extends React.Component {
       this.props.history.push(`/login/?next=${encodeURIComponent(this.props.location.pathname)}`)
       return
     } else if (error.status !== 404) {
-      Raven.captureMessage(`caught error: ${error.msg || error.toString()}`, {
-        stacktrace: true, level: 'warning', extra: error
+      Sentry.captureEvent({
+        message: `caught error: ${error.msg || error.toString()}`,
+        level: 'warning',
+        extra: error,
       })
     }
     this.setState({error})
