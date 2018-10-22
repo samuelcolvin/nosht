@@ -182,8 +182,8 @@ class EmailModel(GrecaptchaModel):
 
 
 class GuestModel(EmailModel):
-    first_name: constr(min_length=2, max_length=100)
-    last_name: constr(min_length=2, max_length=100)
+    first_name: constr(max_length=100)
+    last_name: constr(max_length=100)
 
 
 async def check_email(m: EmailModel, app):
