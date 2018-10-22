@@ -118,11 +118,8 @@ class App extends React.Component {
       this.props.history.push(`/login/?next=${encodeURIComponent(this.props.location.pathname)}`)
       return
     } else if (error.status !== 404) {
-      Sentry.captureEvent({
-        message: `caught error: ${error.msg || error.toString()}`,
-        level: 'warning',
-        extra: error,
-      })
+      Sentry.configureScope(scope => scope.setExtra('extra', error))
+      Sentry.captureMessage(`caught error: ${error.msg || error.toString()}`, 'warning')
     }
     this.setState({error})
   }

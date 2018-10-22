@@ -12,7 +12,8 @@ if (process.env.NODE_ENV === 'production') {
   // TODO could add release here
   Sentry.init({
     dsn: process.env.REACT_APP_SENTRY_DSN,
-    release: process.env.REACT_APP_COMMIT
+    release: process.env.REACT_APP_COMMIT,
+    attachStacktrace: true,
   })
 }
 ReactGA.initialize(process.env.REACT_APP_GA_TRACKING_ID || 'UA-000000-01', {titleCase: false})
