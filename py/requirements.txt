@@ -3,7 +3,7 @@ aiodns==1.1.1
 aiohttp==3.4.4
 aiohttp-session==2.7.0
 arq==0.14
-asyncpg==0.17.0
+asyncpg==0.18.1
 async-timeout==3.0.0
 bcrypt==3.1.4
 buildpg==0.0.2
