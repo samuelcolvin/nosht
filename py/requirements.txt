@@ -13,7 +13,7 @@ cryptography==2.3.1
 google-auth==1.5.1
 libsass==0.15.1
 misaka==2.1.0
-pydantic[email]==0.13.1
+pydantic[email]==0.14
 pytz==2018.5
 Pillow==5.3.0
 raven==6.9.0
