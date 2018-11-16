@@ -32,8 +32,8 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'category_id': factory.category_id,
             'name': 'The Event Name',
             'image': 'https://www.example.org/main.png',
-            'short_description': RegexStr('.*'),
-            'long_description': RegexStr('.*'),
+            'short_description': RegexStr(r'.*'),
+            'long_description': RegexStr(r'.*'),
             'category_content': None,
             'location': {
                 'name': 'Testing Location',
@@ -690,7 +690,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
         'tickets': [
             {
                 'id': ticket_id,
-                'ticket_id': RegexStr('.{7}-%s' % ticket_id),
+                'ticket_id': RegexStr(r'.{7}-%s' % ticket_id),
                 'extra_info': None,
                 'booked_at': CloseToNow(),
                 'price': 10,
@@ -731,7 +731,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     assert tickets == [
         {
             'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='anne'"),
-            'ticket_id': RegexStr('.{7}-\d+'),
+            'ticket_id': RegexStr(r'.{7}-\d+'),
             'extra_info': None,
             'booked_at': CloseToNow(),
             'price': None,
@@ -747,7 +747,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
         },
         {
             'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='ben'"),
-            'ticket_id': RegexStr('.{7}-\d+'),
+            'ticket_id': RegexStr(r'.{7}-\d+'),
             'extra_info': None,
             'booked_at': CloseToNow(),
             'price': None,

@@ -109,11 +109,11 @@ async def stripe_post_charges(request):
     request.app['stripe_idempotency_keys'].add(idempotency_key)
     if 'decline' in data['description']:
         return json_response({
-          'error': {
-            'code': 'card_declined',
-            'message': 'Your card was declined.',
-            'type': 'card_error'
-          }
+            'error': {
+                'code': 'card_declined',
+                'message': 'Your card was declined.',
+                'type': 'card_error'
+            }
         }, status=402)
     else:
         if 'slow-request' in data['description']:

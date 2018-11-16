@@ -49,7 +49,7 @@ async def list_images(path: Path, settings: Settings) -> List[str]:
         async for result in paginator.paginate(Bucket=settings.s3_bucket, Prefix=str(settings.s3_prefix / path)):
             for c in result.get('Contents', []):
                 p = c['Key']
-                if re.search('main\.\w+$', p):
+                if re.search(r'main\.\w+$', p):
                     images.append(f'{settings.s3_domain}/{p}')
     return images
 

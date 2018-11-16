@@ -64,7 +64,7 @@ class BaseBread:
     @classmethod
     def routes(cls, root, name=None) -> Tuple[web.RouteDef]:
         root = root.rstrip('/')
-        name = name or cls.name or re.sub('Bread$', '', cls.__name__).lower()
+        name = name or cls.name or re.sub(r'Bread$', '', cls.__name__).lower()
         return tuple(cls._routes(root, name))
 
     @classmethod
@@ -263,7 +263,7 @@ class ReadBread(BaseBread):
             yield web.get(root + '/', cls.view(Method.browse), name=f'{name}-browse')
             # yield web.options(root + '/', cls.view(Method.options), name=f'{name}-options')
         if cls.retrieve_enabled:
-            yield web.get(root + '/{pk:\d+}/', cls.view(Method.retrieve), name=f'{name}-retrieve')
+            yield web.get(root + r'/{pk:\d+}/', cls.view(Method.retrieve), name=f'{name}-retrieve')
 
 
 class Bread(ReadBread):
@@ -387,13 +387,13 @@ class Bread(ReadBread):
             yield web.post(root + '/add/', cls.view(Method.add), name=f'{name}-add')
             # yield web.options(root + '/add/', cls.view(Method.add_options), name=f'{name}-add-options')
         if cls.edit_enabled:
-            yield web.post(root + '/{pk:\d+}/', cls.view(Method.edit), name=f'{name}-edit')
+            yield web.post(root + r'/{pk:\d+}/', cls.view(Method.edit), name=f'{name}-edit')
             # yield web.options(root + '/{pk:\d+}/', cls.view(Method.edit_options), name=f'{name}-edit-options')
         if cls.delete_enabled:
-            yield web.post(root + '/{pk:\d+}/delete/', cls.view(Method.delete), name=f'{name}-delete')
+            yield web.post(root + r'/{pk:\d+}/delete/', cls.view(Method.delete), name=f'{name}-delete')
 
     def conflict_exc(self, exc: UniqueViolationError):
-        columns = re.search('\((.+?)\)', exc.as_dict()['detail']).group(1).split(', ')
+        columns = re.search(r'\((.+?)\)', exc.as_dict()['detail']).group(1).split(', ')
         return JsonErrors.HTTPConflict(
             message='Conflict',
             details=[

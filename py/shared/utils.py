@@ -33,7 +33,7 @@ CURRENCY_LOOKUP = {
 def slugify(title):
     name = title.replace(' ', '-').lower()
     name = URI_NOT_ALLOWED.sub('', name)
-    name = re.sub('-{2,}', '-', name)
+    name = re.sub(r'-{2,}', '-', name)
     return name.strip('_-')
 
 
