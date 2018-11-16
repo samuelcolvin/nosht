@@ -199,7 +199,7 @@ def csrf_checks(request):
         yield origin == path_root or origin is None or request.host.startswith('localhost')
 
         # iframe requests don't include a referrer, thus this isn't checked for cross origin urls
-        r = request.headers.get('Referer')
+        r = request.headers.get('Referer', '')
         yield r.startswith(path_root + '/')
 
 
