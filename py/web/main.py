@@ -48,7 +48,7 @@ async def startup(app: web.Application):
         donorfy_actor=DonorfyActor(settings=settings, existing_redis=redis),
         http_client=http_client,
         # custom stripe client to make stripe requests as speedy as possible
-        stripe_client=ClientSession(timeout=ClientTimeout(total=5), loop=app.loop),
+        stripe_client=ClientSession(timeout=ClientTimeout(total=9), loop=app.loop),
     )
 
 
