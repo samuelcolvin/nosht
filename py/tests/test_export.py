@@ -29,7 +29,7 @@ async def test_event_export(cli, url, login, factory: Factory):
 
     r = await cli.get(url('export', type='events'))
     assert r.status == 200
-    assert r.headers['Content-Disposition'] == RegexStr('attachment;filename=nosht_events_\d{4}-\d\d-\d\dT.+\.csv')
+    assert r.headers['Content-Disposition'] == RegexStr(r'attachment;filename=nosht_events_\d{4}-\d\d-\d\dT.+\.csv')
     text = await r.text()
     data = [dict(r) for r in DictReader(StringIO(text))]
     assert data == [
@@ -41,8 +41,8 @@ async def test_event_export(cli, url, login, factory: Factory):
             'start_time': '2020-06-01T02:13:12+01',
             'timezone': 'Europe/London',
             'duration_hours': '2.75',
-            'short_description': RegexStr('.*'),
-            'long_description': RegexStr('.*'),
+            'short_description': RegexStr(r'.*'),
+            'long_description': RegexStr(r'.*'),
             'is_public': 'true',
             'location_name': 'Testing Location',
             'location_lat': '51.5000000',
@@ -168,14 +168,14 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
     ticket_type = str(await db_conn.fetchval('SELECT id FROM ticket_types'))
     assert data == [
         {
-            'id': RegexStr('\d+'),
+            'id': RegexStr(r'\d+'),
             'ticket_first_name': '',
             'ticket_last_name': '',
             'status': 'booked',
             'booking_action': 'buy-tickets',
             'price': '12.34',
             'extra_donated': '',
-            'created_ts': RegexStr('\d{4}.*'),
+            'created_ts': RegexStr(r'\d{4}.*'),
             'extra_info': '',
             'ticket_type_id': ticket_type,
             'ticket_type_name': 'Standard',
@@ -189,14 +189,14 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
             'buyer_last_name': 'Spencer',
         },
         {
-            'id': RegexStr('\d+'),
+            'id': RegexStr(r'\d+'),
             'ticket_first_name': '',
             'ticket_last_name': '',
             'status': 'booked',
             'booking_action': 'buy-tickets',
             'price': '12.34',
             'extra_donated': '',
-            'created_ts': RegexStr('\d{4}.*'),
+            'created_ts': RegexStr(r'\d{4}.*'),
             'extra_info': '',
             'ticket_type_id': ticket_type,
             'ticket_type_name': 'Standard',
@@ -264,7 +264,7 @@ async def test_event_ticket_export(cli, url, login, factory: Factory, db_conn):
     data = [dict(r) for r in DictReader(StringIO(text))]
     assert data == [
         {
-            'ticket_id': RegexStr('.{7}-\d+'),
+            'ticket_id': RegexStr(r'.{7}-\d+'),
             'booked_at': CloseToNow(),
             'price': '',
             'extra_donated': '',
@@ -296,7 +296,7 @@ async def test_event_ticket_export_host(cli, url, login, factory: Factory, db_co
     data = [dict(r) for r in DictReader(StringIO(text))]
     assert data == [
         {
-            'ticket_id': RegexStr('.{7}-\d+'),
+            'ticket_id': RegexStr(r'.{7}-\d+'),
             'booked_at': CloseToNow(),
             'price': '',
             'extra_donated': '',

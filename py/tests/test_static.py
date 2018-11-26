@@ -25,7 +25,7 @@ async def test_file(cli, setup_static):
 
 
 async def test_wrong(cli, setup_static):
-    request = make_mocked_request('GET', '/D:\path', match_info={'path': '../path'}, app=cli.app)
+    request = make_mocked_request('GET', '/D:\\path', match_info={'path': '../path'}, app=cli.app)
     with pytest.raises(HTTPNotFound):
         await static_handler(request)
 
@@ -66,4 +66,4 @@ async def test_private(cli, setup_static):
 async def test_sitemap(cli, setup_static):
     r = await cli.get('/sitemap.xml', allow_redirects=False)
     assert r.status == 301, await r.text()
-    assert r.headers['location'] == RegexStr('https://127.0.0.1:\d+/api/sitemap.xml')
+    assert r.headers['location'] == RegexStr(r'https://127.0.0.1:\d+/api/sitemap.xml')

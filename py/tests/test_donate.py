@@ -96,7 +96,7 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
         'event': factory.event_id,
         'ts': CloseToNow(),
         'type': 'donate',
-        'extra': RegexStr('{.*}'),
+        'extra': RegexStr(r'{.*}'),
     }
     assert json.loads(action['extra']) == {
         'new_card': True,

@@ -265,7 +265,7 @@ async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_serv
     email = dummy_server.app['emails'][0]['part:text/plain']
     assert 'Confirm Email' in email
     assert 'Create &amp; Publish Events' not in email
-    token = re.search('/set-password/\?sig=([^"]+)', email).group(1)
+    token = re.search(r'/set-password/\?sig=([^"]+)', email).group(1)
     token_data = json.loads(fernet.Fernet(settings.auth_key).decrypt(token.encode()).decode())
     assert token_data == user['id']
 
@@ -516,7 +516,7 @@ async def test_set_password(cli, url, factory: Factory, db_conn, login):
     data = await r.json()
     assert data == {
         'status': 'success',
-        'auth_token': RegexStr('.+'),
+        'auth_token': RegexStr(r'.+'),
         'user': {
             'id': factory.user_id,
             'first_name': 'Frank',
@@ -595,7 +595,7 @@ async def test_password_reset(cli, url, factory: Factory, dummy_server, db_conn)
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
 
-    sig = re.search('\?sig=(.+?)"', email['part:text/plain']).group(1)
+    sig = re.search(r'\?sig=(.+?)"', email['part:text/plain']).group(1)
     assert email['part:text/plain'] == (
         f'Hi Frank,\n'
         f'\n'

@@ -22,7 +22,7 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'cat_slug': 'supper-clubs',
                 'slug': 'the-event-name',
                 'image': 'https://www.example.org/main.png',
-                'short_description': RegexStr('.*'),
+                'short_description': RegexStr(r'.*'),
                 'location_name': None,
                 'start_ts': '2020-06-28T19:00:00',
                 'duration': 3600,

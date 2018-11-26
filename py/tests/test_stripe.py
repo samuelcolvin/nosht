@@ -68,9 +68,9 @@ async def test_real_successful(cli, db_conn, factory: Factory):
     assert extra == {
         'new_card': True,
         'new_customer': True,
-        'charge_id': RegexStr('ch_.+'),
+        'charge_id': RegexStr(r'ch_.+'),
         'brand': 'Visa',
-        'card_expiry': RegexStr('\d+/\d+'),
+        'card_expiry': RegexStr(r'\d+/\d+'),
         'card_last4': '4242',
     }
 
@@ -123,9 +123,9 @@ async def test_real_existing_customer_card(cli, db_conn, factory: Factory):
     assert extra == {
         'new_card': False,
         'new_customer': False,
-        'charge_id': RegexStr('ch_.+'),
+        'charge_id': RegexStr(r'ch_.+'),
         'brand': 'Visa',
-        'card_expiry': RegexStr('\d+/\d+'),
+        'card_expiry': RegexStr(r'\d+/\d+'),
         'card_last4': '4242',
     }
 

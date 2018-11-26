@@ -48,7 +48,7 @@ async def startup(app: web.Application):
         donorfy_actor=DonorfyActor(settings=settings, existing_redis=redis),
         http_client=http_client,
         # custom stripe client to make stripe requests as speedy as possible
-        stripe_client=ClientSession(timeout=ClientTimeout(total=5), loop=app.loop),
+        stripe_client=ClientSession(timeout=ClientTimeout(total=9), loop=app.loop),
     )
 
 
@@ -85,78 +85,78 @@ def create_app(*, settings: Settings=None, logging_client=None):
     app.on_cleanup.append(cleanup)
 
     app.add_routes([
-        web.get('/', index, name='index'),
-        web.get('/sitemap.xml', sitemap, name='sitemap'),
-        web.post('/ses-webhook/', ses_webhook, name='ses-webhook'),
+        web.get(r'/', index, name='index'),
+        web.get(r'/sitemap.xml', sitemap, name='sitemap'),
+        web.post(r'/ses-webhook/', ses_webhook, name='ses-webhook'),
 
-        web.get('/cat/{category}/', category_public, name='category'),
+        web.get(r'/cat/{category}/', category_public, name='category'),
 
         # event admin
-        web.get('/events/categories/', event_categories, name='event-categories'),
-        *EventBread.routes('/events/'),
-        web.post('/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
-        web.post('/events/{id:\d+}/set-image/new/', set_event_image_new, name='event-set-image-new'),
-        web.post('/events/{id:\d+}/set-image/existing/', set_event_image_existing, name='event-set-image-existing'),
-        web.get('/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
-        web.get('/events/{id:\d+}/tickets/export.csv', event_tickets_export, name='event-tickets-export'),
-        web.get('/events/{id:\d+}/ticket-types/', event_ticket_types, name='event-ticket-types'),
-        web.post('/events/{id:\d+}/ticket-types/update/', SetTicketTypes.view(), name='update-event-ticket-types'),
-        web.post('/events/{id:\d+}/reserve/', ReserveTickets.view(), name='event-reserve-tickets'),
-        web.post('/events/{id:\d+}/updates/send/', EventUpdate.view(), name='event-send-update'),
-        web.get('/events/{id:\d+}/updates/list/', event_updates_sent, name='event-updates-sent'),
-        web.post('/events/{id:\d+}/switch-highlight/', switch_highlight, name='event-switch-highlight'),
+        web.get(r'/events/categories/', event_categories, name='event-categories'),
+        *EventBread.routes(r'/events/'),
+        web.post(r'/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
+        web.post(r'/events/{id:\d+}/set-image/new/', set_event_image_new, name='event-set-image-new'),
+        web.post(r'/events/{id:\d+}/set-image/existing/', set_event_image_existing, name='event-set-image-existing'),
+        web.get(r'/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
+        web.get(r'/events/{id:\d+}/tickets/export.csv', event_tickets_export, name='event-tickets-export'),
+        web.get(r'/events/{id:\d+}/ticket-types/', event_ticket_types, name='event-ticket-types'),
+        web.post(r'/events/{id:\d+}/ticket-types/update/', SetTicketTypes.view(), name='update-event-ticket-types'),
+        web.post(r'/events/{id:\d+}/reserve/', ReserveTickets.view(), name='event-reserve-tickets'),
+        web.post(r'/events/{id:\d+}/updates/send/', EventUpdate.view(), name='event-send-update'),
+        web.get(r'/events/{id:\d+}/updates/list/', event_updates_sent, name='event-updates-sent'),
+        web.post(r'/events/{id:\d+}/switch-highlight/', switch_highlight, name='event-switch-highlight'),
 
         # event public views
-        web.post('/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
-        web.post('/events/buy/', BuyTickets.view(), name='event-buy-tickets'),
-        web.post('/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
-        web.get('/events/{category}/{event}/', event_get, name='event-get-public'),
-        web.get('/events/{category}/{event}/booking-info/', booking_info, name='event-booking-info-public'),
-        web.get('/events/{category}/{event}/{sig}/', event_get, name='event-get-private'),
-        web.get('/events/{category}/{event}/{sig}/booking-info/', booking_info, name='event-booking-info-private'),
+        web.post(r'/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
+        web.post(r'/events/buy/', BuyTickets.view(), name='event-buy-tickets'),
+        web.post(r'/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
+        web.get(r'/events/{category}/{event}/', event_get, name='event-get-public'),
+        web.get(r'/events/{category}/{event}/booking-info/', booking_info, name='event-booking-info-public'),
+        web.get(r'/events/{category}/{event}/{sig}/', event_get, name='event-get-private'),
+        web.get(r'/events/{category}/{event}/{sig}/booking-info/', booking_info, name='event-booking-info-private'),
 
-        web.post('/donate/', Donate.view(), name='donate'),
+        web.post(r'/donate/', Donate.view(), name='donate'),
 
-        web.post('/login/', login, name='login'),
-        web.get('/login/captcha/', login_captcha_required, name='login-captcha-required'),
-        web.post('/login/{site:(google|facebook)}/', login_with, name='login-google-facebook'),
-        web.post('/auth-token/', authenticate_token, name='auth-token'),
-        web.post('/reset-password/', reset_password_request, name='reset-password-request'),
-        web.post('/set-password/', set_password, name='set-password'),
-        web.post('/logout/', logout, name='logout'),
-        web.post('/signup/guest/{site:(google|facebook|email)}/', guest_signup, name='signup-guest'),
-        web.post('/signup/host/{site:(google|facebook|email)}/', host_signup, name='signup-host'),
+        web.post(r'/login/', login, name='login'),
+        web.get(r'/login/captcha/', login_captcha_required, name='login-captcha-required'),
+        web.post(r'/login/{site:(google|facebook)}/', login_with, name='login-google-facebook'),
+        web.post(r'/auth-token/', authenticate_token, name='auth-token'),
+        web.post(r'/reset-password/', reset_password_request, name='reset-password-request'),
+        web.post(r'/set-password/', set_password, name='set-password'),
+        web.post(r'/logout/', logout, name='logout'),
+        web.post(r'/signup/guest/{site:(google|facebook|email)}/', guest_signup, name='signup-guest'),
+        web.post(r'/signup/host/{site:(google|facebook|email)}/', host_signup, name='signup-host'),
 
-        web.get('/unsubscribe/{id:\d+}/', unsubscribe, name='unsubscribe'),
+        web.get(r'/unsubscribe/{id:\d+}/', unsubscribe, name='unsubscribe'),
 
-        *CompanyBread.routes('/companies/'),
-        web.post('/companies/upload/{field:(image|logo)}/', company_upload, name='company-upload'),
-        web.post('/companies/footer-links/set/', company_set_footer_link, name='company-footer-links'),
+        *CompanyBread.routes(r'/companies/'),
+        web.post(r'/companies/upload/{field:(image|logo)}/', company_upload, name='company-upload'),
+        web.post(r'/companies/footer-links/set/', company_set_footer_link, name='company-footer-links'),
 
-        web.post('/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
-        web.get('/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
-        web.post('/categories/{cat_id:\d+}/images/set-default/', category_set_image, name='categories-set-image'),
-        web.post('/categories/{cat_id:\d+}/images/delete/', category_delete_image, name='categories-delete-image'),
-        *CategoryBread.routes('/categories/'),
+        web.post(r'/categories/{cat_id:\d+}/add-image/', category_add_image, name='categories-add-image'),
+        web.get(r'/categories/{cat_id:\d+}/images/', category_images, name='categories-images'),
+        web.post(r'/categories/{cat_id:\d+}/images/set-default/', category_set_image, name='categories-set-image'),
+        web.post(r'/categories/{cat_id:\d+}/images/delete/', category_delete_image, name='categories-delete-image'),
+        *CategoryBread.routes(r'/categories/'),
 
-        *UserBread.routes('/users/'),
-        *UserSelfBread.routes('/account/', name='account'),
-        web.get('/users/{pk:\d+}/actions/', user_actions, name='user-actions'),
-        web.get('/users/{pk:\d+}/tickets/', user_tickets, name='user-tickets'),
-        web.post('/users/{pk:\d+}/switch-status/', switch_user_status, name='user-switch-status'),
+        *UserBread.routes(r'/users/'),
+        *UserSelfBread.routes(r'/account/', name='account'),
+        web.get(r'/users/{pk:\d+}/actions/', user_actions, name='user-actions'),
+        web.get(r'/users/{pk:\d+}/tickets/', user_tickets, name='user-tickets'),
+        web.post(r'/users/{pk:\d+}/switch-status/', switch_user_status, name='user-switch-status'),
 
-        web.get('/export/{type:(events|categories|users|tickets|donations)}.csv', export, name='export'),
+        web.get(r'/export/{type:(events|categories|users|tickets|donations)}.csv', export, name='export'),
 
-        web.get('/email-defs/', email_def_browse, name='email-defs-browse'),
-        web.get('/email-defs/{trigger}/', email_def_retrieve, name='email-defs-retrieve'),
-        web.post('/email-defs/{trigger}/edit/', email_def_edit, name='email-defs-edit'),
-        web.post('/email-defs/{trigger}/clear/', clear_email_def, name='email-defs-clear'),
+        web.get(r'/email-defs/', email_def_browse, name='email-defs-browse'),
+        web.get(r'/email-defs/{trigger}/', email_def_retrieve, name='email-defs-retrieve'),
+        web.post(r'/email-defs/{trigger}/edit/', email_def_edit, name='email-defs-edit'),
+        web.post(r'/email-defs/{trigger}/clear/', clear_email_def, name='email-defs-clear'),
 
-        *DonationOptionBread.routes('/donation-options/', name='donation-options'),
+        *DonationOptionBread.routes(r'/donation-options/', name='donation-options'),
 
-        web.get('/categories/{cat_id:\d+}/donation-options/', donation_options, name='donation-options'),
-        web.post('/donation-options/{pk:\d+}/upload-image/', donation_image_upload, name='donation-image-upload'),
-        web.get('/donation-options/{pk:\d+}/donations/', opt_donations, name='donation-opt-donations'),
+        web.get(r'/categories/{cat_id:\d+}/donation-options/', donation_options, name='donation-options'),
+        web.post(r'/donation-options/{pk:\d+}/upload-image/', donation_image_upload, name='donation-image-upload'),
+        web.get(r'/donation-options/{pk:\d+}/donations/', opt_donations, name='donation-opt-donations'),
     ])
 
     wrapper_app = web.Application(
@@ -175,8 +175,8 @@ def create_app(*, settings: Settings=None, logging_client=None):
     assert static_dir.exists(), f'js static directory "{static_dir}" does not exists'
     logger.debug('serving static files "%s"', static_dir)
     wrapper_app['static_dir'] = static_dir
-    wrapper_app.add_subapp('/api/', app)
+    wrapper_app.add_subapp(r'/api/', app)
     wrapper_app.add_routes([
-        web.get('/{path:.*}', static_handler, name='static'),
+        web.get(r'/{path:.*}', static_handler, name='static'),
     ])
     return wrapper_app

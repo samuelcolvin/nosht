@@ -71,8 +71,8 @@ async def test_user_actions(cli, url, login, factory: Factory, db_conn):
                 'type': 'login',
                 'extra': {
                     'ip': '127.0.0.1',
-                    'ua': RegexStr('Python.*'),
-                    'url': RegexStr('http://127.0.0.1:\d+/api/auth-token/'),
+                    'ua': RegexStr(r'Python.*'),
+                    'url': RegexStr(r'http://127.0.0.1:\d+/api/auth-token/'),
                 },
             },
         ],

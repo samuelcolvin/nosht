@@ -34,7 +34,7 @@ async def test_root(cli, url, factory: Factory):
                 'cat_slug': 'supper-clubs',
                 'slug': 'the-event-name',
                 'image': 'https://www.example.org/main.png',
-                'short_description': RegexStr('.*'),
+                'short_description': RegexStr(r'.*'),
                 'location_name': 'Testing Location',
                 'start_ts': '2020-06-28T19:00:00',
                 'duration': 3600,
@@ -134,7 +134,7 @@ async def test_sitemap_none(cli, url, factory: Factory):
     r = await cli.get(url('sitemap'))
     text = await r.text()
     assert r.status == 200, text
-    assert re.sub('\d{4}-\d\d-\d\d', 'DATE', text) == (
+    assert re.sub(r'\d{4}-\d\d-\d\d', 'DATE', text) == (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         '<url>'

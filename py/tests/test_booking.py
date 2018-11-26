@@ -133,7 +133,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'booking_token': RegexStr('.+'),
+        'booking_token': RegexStr(r'.+'),
         'ticket_count': 2,
         'extra_donated': None,
         'item_price': 10.0,
@@ -227,7 +227,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'booking_token': RegexStr('.+'),
+        'booking_token': RegexStr(r'.+'),
         'ticket_count': 2,
         'extra_donated': None,
         'item_price': 10.0,
@@ -302,7 +302,7 @@ async def test_reserve_tickets_cover_costs(cli, url, factory: Factory, login):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'booking_token': RegexStr('.+'),
+        'booking_token': RegexStr(r'.+'),
         'ticket_count': 2,
         'extra_donated': 2.5,
         'item_price': 10.0,
@@ -341,7 +341,7 @@ async def test_reserve_tickets_free(cli, url, factory: Factory, login):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'booking_token': RegexStr('.+'),
+        'booking_token': RegexStr(r'.+'),
         'ticket_count': 1,
         'extra_donated': None,
         'item_price': None,

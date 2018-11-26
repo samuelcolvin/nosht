@@ -210,7 +210,7 @@ class BaseEmailActor(BaseActor):
 
         body = apply_macros(body)
         body = chevron.render(body, data=ctx)
-        raw_body = re.sub('\n{3,}', '\n\n', body).strip('\n')
+        raw_body = re.sub(r'\n{3,}', '\n\n', body).strip('\n')
         e_msg.set_content(raw_body, cte='quoted-printable')
 
         ctx.update(

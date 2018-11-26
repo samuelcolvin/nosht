@@ -45,7 +45,7 @@ async def test_retrieve_missing_email_defs(cli, url, login, factory: Factory):
         'active': True,
         'subject': '{{{ event_name }}} Upcoming',
         'title': '{{ company_name }}',
-        'body': RegexStr('.*')
+        'body': RegexStr(r'.*')
     }
 
 
