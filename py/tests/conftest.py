@@ -75,7 +75,7 @@ def _fix_clean_db(request, settings_session):
 
 @pytest.fixture(name='dummy_server')
 async def _fix_dummy_server(loop, aiohttp_server):
-    return await create_dummy_server(loop, aiohttp_server)
+    return await create_dummy_server(aiohttp_server)
 
 
 replaced_url_fields = (
