@@ -34,8 +34,6 @@ COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/p
 COPY --from=python-build /lib/* /lib/
 COPY --from=python-build /usr/lib/* /usr/lib/
 
-ARG COMMIT
-ENV COMMIT $COMMIT
 ENV PYTHONUNBUFFERED 1
 ENV APP_ON_DOCKER 1
 WORKDIR /home/root/py
@@ -46,5 +44,7 @@ ADD ./py/run.py /home/root/py/run.py
 ADD ./py/shared /home/root/py/shared
 ADD ./py/web /home/root/py/web
 COPY --from=js-build /home/root/build /home/root/js/build
+ARG COMMIT
+ENV COMMIT $COMMIT
 
 CMD ["./run.py", "web"]
