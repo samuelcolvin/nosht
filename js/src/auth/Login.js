@@ -48,7 +48,7 @@ class Login extends React.Component {
     }
     if (event.data === 'grecaptcha-reset') {
       if (this.state.recaptcha_shown) {
-        window.grecaptcha.reset()
+        Recaptcha.reset()
       } else {
         this.setState({recaptcha_shown: true})
         document.getElementById('login-iframe').contentWindow.postMessage('{"grecaptcha_required": true}', '*')

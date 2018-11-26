@@ -77,7 +77,7 @@ class BookingLogin extends React.Component {
       }
       const error_msg = await this.auth('email', data, [200, 470])
       error_msg && this.setState({email_error: error_msg})
-      window.grecaptcha.reset()
+      Recaptcha.reset()
     }
   }
 

@@ -66,7 +66,7 @@ class Signup extends React.Component {
     if (this.state.email) {
       ReactGA.event({category: 'auth', action: 'auth-signup', label: 'email'})
       await this.auth('email', {email: this.state.email, name: this.state.name})
-      window.grecaptcha.reset()
+      Recaptcha.reset()
     }
   }
 
