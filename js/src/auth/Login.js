@@ -76,6 +76,7 @@ class Login extends React.Component {
       r = await requests.get('/login/captcha/')
     } catch (error) {
       this.props.ctx.setError(error)
+      return
     }
     if (r.captcha_required) {
       this.setState({recaptcha_shown: true})

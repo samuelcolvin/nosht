@@ -1,20 +1,22 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import Raven from 'raven-js'
+import * as Sentry from '@sentry/browser'
 import {user_full_name} from '../utils'
 
 const update_raven_user = user => {
-  if (user) {
-    Raven.setUserContext({
-      email: user.email,
-      username: user_full_name(user),
-      role: user.role,
-      status: user.status,
-    })
-  } else {
-    Raven.setUserContext()
-  }
+  Sentry.configureScope((scope) => {
+    if (user) {
+      scope.setUser({
+        email: user.email,
+        username: user_full_name(user),
+        role: user.role,
+        status: user.status,
+      })
+    } else {
+      scope.setUser({})
+    }
+  })
 }
 
 class Footer extends React.Component {
