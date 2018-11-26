@@ -9,7 +9,6 @@ import './styles/main.scss'
 window.Sentry = Sentry
 
 if (process.env.NODE_ENV === 'production') {
-  // TODO could add release here
   Sentry.init({
     dsn: process.env.REACT_APP_SENTRY_DSN,
     release: process.env.REACT_APP_COMMIT,
