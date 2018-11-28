@@ -93,7 +93,7 @@ async def log_warning(request, response):
 
 
 def should_warn(r):
-    return r.status > 310 and r.status not in {401, 404, 470}
+    return r.status > 310 and r.status not in {401, 402, 404, 470}
 
 
 def get_request_start(request):
