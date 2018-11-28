@@ -125,11 +125,14 @@ def request_root(request):
 
 class JsonErrors:
     class _HTTPClientErrorJson(HTTPClientError):
+        custom_reason = None
+
         def __init__(self, headers_=None, **data):
             super().__init__(
                 text=pretty_lenient_json(data),
                 content_type=JSON_CONTENT_TYPE,
                 headers=headers_,
+                reason=self.custom_reason
             )
 
     class HTTPBadRequest(_HTTPClientErrorJson):
@@ -152,6 +155,7 @@ class JsonErrors:
 
     class HTTP470(_HTTPClientErrorJson):
         status_code = 470
+        custom_reason = 'Invalid user input'
 
 
 def encrypt_json(app, data: Any) -> str:
