@@ -86,7 +86,7 @@ class DonorfyActor(BaseActor):
     @concurrent
     async def host_signuped(self, user_id):
         if self.client:
-            await self._get_or_create_constituent(user_id, DEFAULT_CAMPAIGN)
+            await self._get_or_create_constituent(user_id)
 
     @concurrent
     async def event_created(self, event_id):
@@ -311,7 +311,7 @@ class DonorfyActor(BaseActor):
         cat_slug, evt_slug = d['cat_slug'], d['evt_slug']
         campaign = await self._get_or_create_campaign(cat_slug, evt_slug)
 
-        constituent_id = await self._get_or_create_constituent(d['user_id'], f'{cat_slug}-guest')
+        constituent_id = await self._get_or_create_constituent(d['user_id'], campaign)
         await self.client.post('/transactions', data=dict(
             ConnectedConstituentId=constituent_id,
             ExistingConstituentId=constituent_id,
@@ -375,15 +375,33 @@ class DonorfyActor(BaseActor):
             )
         requests and await asyncio.gather(*requests)
 
-    async def _get_or_create_constituent(self, user_id, campaign):
+    async def _get_or_create_constituent(self, user_id, campaign=None):
         email, first_name, last_name = await self.pg.fetchrow(
             'select email, first_name, last_name from users where id=$1', user_id
         )
 
-        constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=DEFAULT_CAMPAIGN)
-        return constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)
+        constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=campaign)
+        if constituent_id:
+            return constituent_id
 
-    async def _get_constituent(self, *, user_id, email=None, campaign=DEFAULT_CAMPAIGN):
+        r = await self.client.post(
+            '/constituents',
+            data=dict(
+                FirstName=first_name,
+                LastName=last_name,
+                EmailAddress=email,
+                ConstituentType='Individual',
+                AllowNameSwap=False,
+                NoGiftAid=False,
+                ExternalKey=f'nosht_{user_id}',
+                RecruitmentCampaign=campaign or DEFAULT_CAMPAIGN,
+                EmailFormat='HTML'
+            )
+        )
+        data = await r.json()
+        return data['ConstituentId']
+
+    async def _get_constituent(self, *, user_id, email=None, campaign=None):
         ext_key = f'nosht_{user_id}'
         r = await self.client.get(f'/constituents/ExternalKey/{ext_key}', allowed_statuses=(200, 404))
         if email is not None and r.status == 404:
@@ -395,7 +413,7 @@ class DonorfyActor(BaseActor):
             update_data = {}
             if constituent_data['ExternalKey'] is None:
                 update_data['ExternalKey'] = ext_key
-            if campaign != DEFAULT_CAMPAIGN and constituent_data['RecruitmentCampaign'] == DEFAULT_CAMPAIGN:
+            if campaign and constituent_data['RecruitmentCampaign'] == DEFAULT_CAMPAIGN:
                 update_data['RecruitmentCampaign'] = campaign
             if update_data:
                 await self.client.put(f'/constituents/{constituent_id}', data=update_data)
@@ -404,24 +422,6 @@ class DonorfyActor(BaseActor):
                                constituent_id, constituent_data['ExternalKey'], ext_key)
                 return
             return constituent_id
-
-    async def _create_constituent(self, user_id, email, first_name, last_name, campaign):
-        r = await self.client.post(
-            '/constituents',
-            data=dict(
-                FirstName=first_name,
-                LastName=last_name,
-                EmailAddress=email,
-                ConstituentType='Individual',
-                AllowNameSwap=False,
-                NoGiftAid=False,
-                ExternalKey=f'nosht_{user_id}',
-                RecruitmentCampaign=campaign,
-                EmailFormat='HTML'
-            )
-        )
-        data = await r.json()
-        return data['ConstituentId']
 
     async def _get_or_create_campaign(self, cat_slug, event_slug):
         description = f'{cat_slug}:{event_slug}'
