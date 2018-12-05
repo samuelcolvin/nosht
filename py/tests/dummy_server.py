@@ -238,11 +238,22 @@ async def donorfy_transactions(request):
     }, status=201)
 
 
-async def donorfy_allocations(requests):
+async def donorfy_allocations(request):
     return json_response({
         'AllocationsList': [
             {
                 'AllocationId': '123'
+            }
+        ]
+    })
+
+
+async def donorfy_get_campaigns(request):
+    return json_response({
+        'LookUps': [
+            {
+                'LookUpDescription': 'supper-clubs:the-event-name',
+                'IsActive': True,
             }
         ]
     })
@@ -285,6 +296,9 @@ async def create_dummy_server(create_server):
         web.get('/donorfy_api_root/{api_key}/transactions/{trans_id}/Allocations', donorfy_allocations),
         web.put('/donorfy_api_root/{api_key}/transactions/Allocation/{alloc}', donorfy_200),
         web.post('/donorfy_api_root/{api_key}/transactions/{trans_id}/AddAllocation', donorfy_201),
+
+        web.get('/donorfy_api_root/{api_key}/System/LookUpTypes/Campaigns', donorfy_get_campaigns),
+        web.post('/donorfy_api_root/{api_key}/System/LookUpTypes/Campaigns', donorfy_201),
     ])
     server = await create_server(app)
     app.update(

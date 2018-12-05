@@ -50,6 +50,7 @@ async def test_create_event(donorfy: DonorfyActor, factory: Factory, dummy_serve
 
     await donorfy.event_created(factory.event_id)
     assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         f'POST donorfy_api_root/standard/constituents/123456/AddActiveTags',
         f'POST donorfy_api_root/standard/activities',
@@ -65,6 +66,7 @@ async def test_create_event_no_duration(donorfy: DonorfyActor, factory: Factory,
 
     await donorfy.event_created(factory.event_id)
     assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/no-users/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/no-users/constituents/EmailAddress/frank@example.org',
         f'POST donorfy_api_root/no-users/constituents',
@@ -86,6 +88,7 @@ async def test_book_tickets(donorfy: DonorfyActor, factory: Factory, dummy_serve
     assert dummy_server.app['log'] == [
         f'POST stripe_root_url/customers',
         f'POST stripe_root_url/charges',
+        f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         f'POST donorfy_api_root/standard/activities',
         f'POST donorfy_api_root/standard/transactions',
@@ -102,6 +105,7 @@ async def test_book_tickets_free(donorfy: DonorfyActor, factory: Factory, dummy_
 
     await donorfy.tickets_booked(action_id)
     assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         f'POST donorfy_api_root/standard/activities',
     ]
@@ -124,6 +128,7 @@ async def test_book_tickets_multiple(donorfy: DonorfyActor, factory: Factory, du
 
     await donorfy.tickets_booked(action_id)
     assert set(dummy_server.app['log']) == {
+        f'GET donorfy_api_root/no-users/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/no-users/constituents/EmailAddress/frank@example.org',
         f'POST donorfy_api_root/no-users/constituents',
@@ -156,6 +161,7 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
         f'GET donorfy_api_root/standard/transactions/trans_123/Allocations',
         f'POST donorfy_api_root/standard/transactions/trans_123/AddAllocation',
         f'PUT donorfy_api_root/standard/transactions/Allocation/123',
+        f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
     }
 
 
