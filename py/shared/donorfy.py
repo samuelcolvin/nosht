@@ -15,7 +15,6 @@ from .settings import Settings
 from .utils import RequestError, display_cash, lenient_json, ticket_id_signed
 
 logger = logging.getLogger('nosht.donorfy')
-TAG_CATEGORY = 'Hosting and helper volunteers'
 
 
 class DonorfyClient:
@@ -441,9 +440,9 @@ class DonorfyActor(BaseActor):
                 logger.warning('user with matching email but different external key %s: %r != %r',
                                constituent_id, constituent_data['ExternalKey'], ext_key)
             else:
-                await redis.setex(cache_key, 3600, constituent_id)
+                await redis.setex(cache_key, 300, constituent_id)
                 return constituent_id
-        await redis.setex(cache_key, 3600, b'null')
+        await redis.setex(cache_key, 300, b'null')
 
     async def _get_or_create_campaign(self, cat_slug, event_slug):
         description = f'{cat_slug}:{event_slug}'
