@@ -399,9 +399,23 @@ class DonorfyActor(BaseActor):
 
         r = await self.client.post('/constituents', data=data)
         data = await r.json()
-        return data['ConstituentId']
+        constituent_id = data['ConstituentId']
+
+        redis = await self.get_redis()
+        await redis.setex(self._constituent_cache_key(user_id, email, campaign), 3600, constituent_id)
+        return constituent_id
+
+    @staticmethod
+    def _constituent_cache_key(user_id, email, campaign):
+        return f'donorfy-constituent-{user_id}-{email}-{campaign}'
 
     async def _get_constituent(self, *, user_id, email=None, campaign=None):
+        redis = await self.get_redis()
+        cache_key = self._constituent_cache_key(user_id, email, campaign)
+        constituent_id = await redis.get(cache_key)
+        if constituent_id:
+            return None if constituent_id == b'null' else constituent_id.decode()
+
         ext_key = f'nosht_{user_id}'
         r = await self.client.get(f'/constituents/ExternalKey/{ext_key}', allowed_statuses=(200, 404))
         if email is not None and r.status == 404:
@@ -423,11 +437,13 @@ class DonorfyActor(BaseActor):
             if update_data:
                 await self.client.put(f'/constituents/{constituent_id}', data=update_data)
 
-            elif constituent_data['ExternalKey'] != ext_key:
+            if constituent_data['ExternalKey'] is not None and constituent_data['ExternalKey'] != ext_key:
                 logger.warning('user with matching email but different external key %s: %r != %r',
                                constituent_id, constituent_data['ExternalKey'], ext_key)
-                return
-            return constituent_id
+            else:
+                await redis.setex(cache_key, 3600, constituent_id)
+                return constituent_id
+        await redis.setex(cache_key, 3600, b'null')
 
     async def _get_or_create_campaign(self, cat_slug, event_slug):
         description = f'{cat_slug}:{event_slug}'
