@@ -162,7 +162,7 @@ def encrypt_json(app, data: Any) -> str:
     return _encrypt_json(data, auth_fernet=app['auth_fernet'])
 
 
-def decrypt_json(app, token: bytes, *, ttl: int=None, headers_=None) -> Any:
+def decrypt_json(app, token: bytes, *, ttl: int = None, headers_=None) -> Any:
     try:
         return json.loads(app['auth_fernet'].decrypt(token, ttl=ttl).decode())
     except InvalidToken:

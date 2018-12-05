@@ -30,13 +30,13 @@ class DonorfyClient:
     async def close(self):
         await self._client.close()
 
-    async def get(self, path, *, allowed_statuses: Sequence[int]=(200,), data=None, params=None):
+    async def get(self, path, *, allowed_statuses: Sequence[int] = (200,), data=None, params=None):
         return await self._request(METH_GET, path, allowed_statuses, data, params)
 
-    async def put(self, path, *, allowed_statuses: Sequence[int]=(200,), data=None):
+    async def put(self, path, *, allowed_statuses: Sequence[int] = (200,), data=None):
         return await self._request(METH_PUT, path, allowed_statuses, data)
 
-    async def post(self, path, *, allowed_statuses: Sequence[int]=(200, 201), data=None):
+    async def post(self, path, *, allowed_statuses: Sequence[int] = (200, 201), data=None):
         return await self._request(METH_POST, path, allowed_statuses, data)
 
     async def _request(self, method, path, allowed_statuses, data, params=None) -> ClientResponse:

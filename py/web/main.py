@@ -65,7 +65,7 @@ async def cleanup(app: web.Application):
     transport and await transport.close()
 
 
-def create_app(*, settings: Settings=None, logging_client=None):
+def create_app(*, settings: Settings = None, logging_client=None):
     logging_client = logging_client or setup_logging()
     settings = settings or Settings()
 

@@ -175,8 +175,8 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
         company_id: int,
         app,
         conn: BuildPgConnection,
-        res: Optional[Reservation]=None,
-        don: Optional[Donation]=None) -> Tuple[int, str]:
+        res: Optional[Reservation] = None,
+        don: Optional[Donation] = None) -> Tuple[int, str]:
 
     if res:
         user_id = res.user_id
