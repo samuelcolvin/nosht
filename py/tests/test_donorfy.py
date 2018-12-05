@@ -13,10 +13,12 @@ async def create_donorfy(settings, db_pool):
     settings.donorfy_access_key = 'donorfy-access-key'
     don = DonorfyActor(settings=settings, pg=db_pool, concurrency_enabled=False)
     await don.startup()
+    redis = await don.get_redis()
+    await redis.flushdb()
 
     yield don
 
-    await don.client.close()
+    await don.close(shutdown=True)
 
 
 async def test_create_host_existing(donorfy: DonorfyActor, factory: Factory, dummy_server):
@@ -268,4 +270,34 @@ async def test_bad_response(donorfy: DonorfyActor, dummy_server):
         await donorfy.client.get('/foobar')
     assert dummy_server.app['log'] == [
         'GET donorfy_api_root/standard/foobar',
+    ]
+
+
+async def test_campaign_exists(donorfy: DonorfyActor, dummy_server):
+    await donorfy._get_or_create_campaign('supper-clubs', 'the-event-name')
+    assert dummy_server.app['log'] == ['GET donorfy_api_root/standard/System/LookUpTypes/Campaigns']
+
+    await donorfy._get_or_create_campaign('supper-clubs', 'the-event-name')
+    assert dummy_server.app['log'] == ['GET donorfy_api_root/standard/System/LookUpTypes/Campaigns']  # cached
+
+
+async def test_campaign_new(donorfy: DonorfyActor, dummy_server):
+    await donorfy._get_or_create_campaign('supper-clubs', 'foobar')
+    assert dummy_server.app['log'] == [
+        'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
+        'POST donorfy_api_root/standard/System/LookUpTypes/Campaigns',
+    ]
+
+    await donorfy._get_or_create_campaign('supper-clubs', 'foobar')
+    assert len(dummy_server.app['log']) == 2
+
+
+async def test_get_constituent_update_campaign(donorfy: DonorfyActor, dummy_server):
+    donorfy.settings.donorfy_api_key = 'default-campaign'
+
+    await donorfy._get_constituent(user_id=123, campaign='foo:bar')
+
+    assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/default-campaign/constituents/ExternalKey/nosht_123',
+        'PUT donorfy_api_root/default-campaign/constituents/123456'
     ]

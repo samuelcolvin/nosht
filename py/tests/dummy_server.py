@@ -200,7 +200,13 @@ async def donorfy_200(request):
 
 
 async def donorfy_get_con_ext_id(request):
-    if request.match_info['api_key'] == 'standard':
+    if request.match_info['api_key'] == 'default-campaign':
+        return json_response([{
+            'ConstituentId': '123456',
+            'ExternalKey': request.match_info['ext_key'],
+            'RecruitmentCampaign': 'Events.HUF',
+        }])
+    elif request.match_info['api_key'] == 'standard':
         return json_response([{
             'ConstituentId': '123456',
             'ExternalKey': request.match_info['ext_key'],

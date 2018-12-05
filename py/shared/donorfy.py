@@ -202,7 +202,7 @@ class DonorfyActor(BaseActor):
                 constituent_id = buyer_constituent_id
                 ticket_id = _ticket_id
             else:
-                constituent_id = await self._get_constituent(user_id=user_id, email=email)
+                constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=campaign)
 
             if not constituent_id:
                 return
@@ -309,10 +309,8 @@ class DonorfyActor(BaseActor):
             action_id
         )
         cat_slug, evt_slug = d['cat_slug'], d['evt_slug']
-        if evt_slug:
-            campaign = await self._get_or_create_campaign(cat_slug, evt_slug)
-        else:
-            campaign = DEFAULT_CAMPAIGN
+        campaign = await self._get_or_create_campaign(cat_slug, evt_slug)
+
         constituent_id = await self._get_or_create_constituent(d['user_id'], f'{cat_slug}-guest')
         await self.client.post('/transactions', data=dict(
             ConnectedConstituentId=constituent_id,
@@ -382,10 +380,10 @@ class DonorfyActor(BaseActor):
             'select email, first_name, last_name from users where id=$1', user_id
         )
 
-        constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=campaign)
+        constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=DEFAULT_CAMPAIGN)
         return constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)
 
-    async def _get_constituent(self, *, user_id, email=None, campaign=None):
+    async def _get_constituent(self, *, user_id, email=None, campaign=DEFAULT_CAMPAIGN):
         ext_key = f'nosht_{user_id}'
         r = await self.client.get(f'/constituents/ExternalKey/{ext_key}', allowed_statuses=(200, 404))
         if email is not None and r.status == 404:
@@ -397,7 +395,7 @@ class DonorfyActor(BaseActor):
             update_data = {}
             if constituent_data['ExternalKey'] is None:
                 update_data['ExternalKey'] = ext_key
-            if campaign not in {None, DEFAULT_CAMPAIGN} and constituent_data['RecruitmentCampaign'] == DEFAULT_CAMPAIGN:
+            if campaign != DEFAULT_CAMPAIGN and constituent_data['RecruitmentCampaign'] == DEFAULT_CAMPAIGN:
                 update_data['RecruitmentCampaign'] = campaign
             if update_data:
                 await self.client.put(f'/constituents/{constituent_id}', data=update_data)
