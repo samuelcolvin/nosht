@@ -86,7 +86,7 @@ class DonorfyActor(BaseActor):
     @concurrent
     async def host_signuped(self, user_id):
         if self.client:
-            await self._get_or_create_constituent(user_id)
+            await self._get_or_create_constituent(user_id, DEFAULT_CAMPAIGN)
 
     @concurrent
     async def event_created(self, event_id):
@@ -98,7 +98,8 @@ class DonorfyActor(BaseActor):
                 """
                 select
                   start_ts, duration, location_name, ticket_limit, short_description, long_description,
-                  event_link(cat.slug, e.slug, e.public, $2) AS link, cat.slug as cat_slug, co.currency,
+                  event_link(cat.slug, e.slug, e.public, $2) AS link, e.slug as event_slug,
+                  cat.slug as cat_slug, co.currency,
                   host as host_user_id, host_user.email as host_email
                 from events e
                 join categories cat on e.category = cat.id
@@ -113,9 +114,9 @@ class DonorfyActor(BaseActor):
                 'select price from ticket_types where event=$1 and active is true and price is not null',
                 event_id
             )
-        constituent_id = await self._get_or_create_constituent(evt['host_user_id'])
+        campaign = await self._get_or_create_campaign(evt['cat_slug'], evt['event_slug'])
+        constituent_id = await self._get_or_create_constituent(evt['host_user_id'], campaign)
 
-        campaign = evt['cat_slug'] + '-host'
         await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
                                data=f'Hosting and helper volunteers_{campaign}')
 
@@ -187,7 +188,7 @@ class DonorfyActor(BaseActor):
                 action_id
             )
         ticket_count = len(tickets)
-        campaign = f'{cat_slug}-guest'
+        campaign = await self._get_or_create_campaign(cat_slug, event_slug)
         buyer_constituent_id = await self._get_or_create_constituent(buyer_user_id, campaign)
         ticket_id = None
 
@@ -236,7 +237,7 @@ class DonorfyActor(BaseActor):
             ExistingConstituentId=buyer_constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=currency,
-            Campaign=DEFAULT_CAMPAIGN,
+            Campaign=campaign,
             PaymentMethod='Payment Card via Stripe' if action_type == ActionTypes.buy_tickets else 'Offline Payment',
             Product='Event Ticket(s)',
             Fund='Unrestricted General',
@@ -371,7 +372,7 @@ class DonorfyActor(BaseActor):
             )
         requests and await asyncio.gather(*requests)
 
-    async def _get_or_create_constituent(self, user_id, campaign=DEFAULT_CAMPAIGN):
+    async def _get_or_create_constituent(self, user_id, campaign):
         email, first_name, last_name = await self.pg.fetchrow(
             'select email, first_name, last_name from users where id=$1', user_id
         )
@@ -413,6 +414,16 @@ class DonorfyActor(BaseActor):
         )
         data = await r.json()
         return data['ConstituentId']
+
+    async def _get_or_create_campaign(self, cat_slug, event_slug):
+        description = f'{cat_slug}:{event_slug}'
+        r = await self.client.get('/System/LookUpTypes/Campaigns')
+        data = await r.json()
+        try:
+            next(1 for v in data['LookUps'] if v['LookUpDescription'] == description)
+        except StopIteration:
+            await self.client.post('/System/LookUpTypes/Campaigns', data=dict(LookUpDescription=description))
+        return description
 
 
 def format_dt(dt: datetime):
