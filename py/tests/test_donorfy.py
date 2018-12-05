@@ -194,6 +194,7 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
+        'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         'POST donorfy_api_root/standard/transactions',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),

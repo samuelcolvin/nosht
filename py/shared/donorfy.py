@@ -297,24 +297,29 @@ class DonorfyActor(BaseActor):
             select a.ts as action_ts, a.user_id, d.amount,
               d.gift_aid, d.title, d.first_name, d.last_name, d.address, d.city, d.postcode,
               donopt.id as donopt,
-              cat.name as cat_name, cat.slug as cat_slug, currency
+              cat.name as cat_name, cat.slug as cat_slug, evt.slug as evt_slug, currency
             from actions a
             join donations d on a.id = d.action
             join donation_options donopt on d.donation_option = donopt.id
             join categories cat on donopt.category = cat.id
+            left join events evt on a.event = evt.id
             join companies co on cat.company = co.id
             where a.id=$1
             """,
             action_id
         )
-        cat_slug = d['cat_slug']
+        cat_slug, evt_slug = d['cat_slug'], d['evt_slug']
+        if evt_slug:
+            campaign = await self._get_or_create_campaign(cat_slug, evt_slug)
+        else:
+            campaign = DEFAULT_CAMPAIGN
         constituent_id = await self._get_or_create_constituent(d['user_id'], f'{cat_slug}-guest')
         await self.client.post('/transactions', data=dict(
             ConnectedConstituentId=constituent_id,
             ExistingConstituentId=constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=d['currency'],
-            Campaign=DEFAULT_CAMPAIGN,
+            Campaign=campaign,
             PaymentMethod='Payment Card via Stripe',
             Product='Donation',
             Fund='Unrestricted General',
@@ -377,10 +382,10 @@ class DonorfyActor(BaseActor):
             'select email, first_name, last_name from users where id=$1', user_id
         )
 
-        constituent_id = await self._get_constituent(user_id=user_id, email=email)
+        constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=campaign)
         return constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)
 
-    async def _get_constituent(self, *, user_id, email=None):
+    async def _get_constituent(self, *, user_id, email=None, campaign=None):
         ext_key = f'nosht_{user_id}'
         r = await self.client.get(f'/constituents/ExternalKey/{ext_key}', allowed_statuses=(200, 404))
         if email is not None and r.status == 404:
@@ -389,12 +394,17 @@ class DonorfyActor(BaseActor):
         if r.status != 404:
             constituent_data = (await r.json())[0]
             constituent_id = constituent_data['ConstituentId']
+            update_data = {}
             if constituent_data['ExternalKey'] is None:
-                await self.client.put(f'/constituents/{constituent_id}', data=dict(ExternalKey=ext_key))
+                update_data['ExternalKey'] = ext_key
+            if campaign not in {None, DEFAULT_CAMPAIGN} and constituent_data['RecruitmentCampaign'] == DEFAULT_CAMPAIGN:
+                update_data['RecruitmentCampaign'] = campaign
+            if update_data:
+                await self.client.put(f'/constituents/{constituent_id}', data=update_data)
             elif constituent_data['ExternalKey'] != ext_key:
                 logger.warning('user with matching email but different external key %s: %r != %r',
                                constituent_id, constituent_data['ExternalKey'], ext_key)
-                return None
+                return
             return constituent_id
 
     async def _create_constituent(self, user_id, email, first_name, last_name, campaign):
@@ -417,12 +427,19 @@ class DonorfyActor(BaseActor):
 
     async def _get_or_create_campaign(self, cat_slug, event_slug):
         description = f'{cat_slug}:{event_slug}'
+        cache_key = f'donorfy-campaigns::{description}'
+        redis = await self.get_redis()
+        campaign_created = await redis.get(cache_key)
+        if campaign_created:
+            return description
+
         r = await self.client.get('/System/LookUpTypes/Campaigns')
         data = await r.json()
         try:
             next(1 for v in data['LookUps'] if v['LookUpDescription'] == description)
         except StopIteration:
             await self.client.post('/System/LookUpTypes/Campaigns', data=dict(LookUpDescription=description))
+        await redis.setex(cache_key, 86400, '1')
         return description
 
 

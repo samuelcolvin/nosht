@@ -204,6 +204,7 @@ async def donorfy_get_con_ext_id(request):
         return json_response([{
             'ConstituentId': '123456',
             'ExternalKey': request.match_info['ext_key'],
+            'RecruitmentCampaign': 'supper-clubs:the-event-name',
         }])
     else:
         return Response(status=404)
@@ -221,6 +222,7 @@ async def donorfy_get_con_email(request):
     return json_response([{
         'ConstituentId': '456789',
         'ExternalKey': ext_id,
+        'RecruitmentCampaign': 'supper-clubs:the-event-name',
     }])
 
 
