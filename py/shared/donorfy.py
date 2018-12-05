@@ -15,6 +15,7 @@ from .settings import Settings
 from .utils import RequestError, display_cash, lenient_json, ticket_id_signed
 
 logger = logging.getLogger('nosht.donorfy')
+TAG_CATEGORY = 'Hosting and helper volunteers'
 
 
 class DonorfyClient:
@@ -117,7 +118,7 @@ class DonorfyActor(BaseActor):
         constituent_id = await self._get_or_create_constituent(evt['host_user_id'], campaign)
 
         await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
-                               data=f'Hosting and helper volunteers_{campaign}')
+                               data=f'Hosting and helper volunteers_{evt["cat_slug"]}-host')
 
         start_ts = evt['start_ts'].astimezone(pytz.utc)
         if not evt['duration']:
