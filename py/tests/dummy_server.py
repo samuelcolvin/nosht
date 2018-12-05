@@ -200,18 +200,28 @@ async def donorfy_200(request):
 
 
 async def donorfy_get_con_ext_id(request):
+    if request.match_info['api_key'] in {'standard', 'default-campaign'}:
+        return json_response([{
+            'ConstituentId': '123456',
+            'ExternalKey': request.match_info['ext_key'],
+        }])
+    else:
+        return Response(status=404)
+
+
+async def donorfy_get_con_id(request):
     if request.match_info['api_key'] == 'default-campaign':
-        return json_response([{
-            'ConstituentId': '123456',
-            'ExternalKey': request.match_info['ext_key'],
+        return json_response({
+            'ConstituentId': request.match_info['const_id'],
+            'ExternalKey': None,
             'RecruitmentCampaign': 'Events.HUF',
-        }])
+        })
     elif request.match_info['api_key'] == 'standard':
-        return json_response([{
-            'ConstituentId': '123456',
-            'ExternalKey': request.match_info['ext_key'],
+        return json_response({
+            'ConstituentId': request.match_info['const_id'],
+            'ExternalKey': None,
             'RecruitmentCampaign': 'supper-clubs:the-event-name',
-        }])
+        })
     else:
         return Response(status=404)
 
@@ -294,6 +304,7 @@ async def create_dummy_server(create_server):
         web.get('/donorfy_api_root/{api_key}/constituents/ExternalKey/{ext_key}', donorfy_get_con_ext_id),
         web.get('/donorfy_api_root/{api_key}/constituents/EmailAddress/{email}', donorfy_get_con_email),
         web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/AddActiveTags', donorfy_201),
+        web.get('/donorfy_api_root/{api_key}/constituents/{const_id}', donorfy_get_con_id),
         web.put('/donorfy_api_root/{api_key}/constituents/{const_id}', donorfy_200),
         web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/Preferences', donorfy_201),
         web.post('/donorfy_api_root/{api_key}/constituents', donorfy_create_user),

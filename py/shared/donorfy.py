@@ -410,13 +410,19 @@ class DonorfyActor(BaseActor):
         if r.status != 404:
             constituent_data = (await r.json())[0]
             constituent_id = constituent_data['ConstituentId']
+
             update_data = {}
             if constituent_data['ExternalKey'] is None:
                 update_data['ExternalKey'] = ext_key
-            if campaign and constituent_data['RecruitmentCampaign'] == DEFAULT_CAMPAIGN:
-                update_data['RecruitmentCampaign'] = campaign
+            if campaign:
+                # have to get the constituent again by ID to check "RecruitmentCampaign"
+                r_ = await self.client.get(f'/constituents/{constituent_id}')
+                extra_data = await r_.json()
+                if extra_data['RecruitmentCampaign'] == DEFAULT_CAMPAIGN:
+                    update_data['RecruitmentCampaign'] = campaign
             if update_data:
                 await self.client.put(f'/constituents/{constituent_id}', data=update_data)
+
             elif constituent_data['ExternalKey'] != ext_key:
                 logger.warning('user with matching email but different external key %s: %r != %r',
                                constituent_id, constituent_data['ExternalKey'], ext_key)

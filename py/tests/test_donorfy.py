@@ -54,6 +54,7 @@ async def test_create_event(donorfy: DonorfyActor, factory: Factory, dummy_serve
     assert dummy_server.app['log'] == [
         f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/constituents/123456/AddActiveTags',
         f'POST donorfy_api_root/standard/activities',
     ]
@@ -92,6 +93,7 @@ async def test_book_tickets(donorfy: DonorfyActor, factory: Factory, dummy_serve
         f'POST stripe_root_url/charges',
         f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
         f'POST donorfy_api_root/standard/transactions',
     ]
@@ -109,6 +111,7 @@ async def test_book_tickets_free(donorfy: DonorfyActor, factory: Factory, dummy_
     assert dummy_server.app['log'] == [
         f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
     ]
 
@@ -158,6 +161,7 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
         f'POST stripe_root_url/customers',
         f'POST stripe_root_url/charges',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
         f'POST donorfy_api_root/standard/transactions',
         f'GET donorfy_api_root/standard/transactions/trans_123/Allocations',
@@ -198,9 +202,11 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
         'POST stripe_root_url/charges',
         'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        'GET donorfy_api_root/standard/constituents/123456',
         'POST donorfy_api_root/standard/transactions',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        'GET donorfy_api_root/standard/constituents/123456',
         'POST donorfy_api_root/standard/transactions',
     ]
 
@@ -299,5 +305,6 @@ async def test_get_constituent_update_campaign(donorfy: DonorfyActor, dummy_serv
 
     assert dummy_server.app['log'] == [
         f'GET donorfy_api_root/default-campaign/constituents/ExternalKey/nosht_123',
-        'PUT donorfy_api_root/default-campaign/constituents/123456'
+        'GET donorfy_api_root/default-campaign/constituents/123456',
+        'PUT donorfy_api_root/default-campaign/constituents/123456',
     ]
