@@ -15,7 +15,6 @@ from .settings import Settings
 from .utils import RequestError, display_cash, lenient_json, ticket_id_signed
 
 logger = logging.getLogger('nosht.donorfy')
-DEFAULT_CAMPAIGN = 'Events.HUF'
 
 
 class DonorfyClient:
@@ -384,20 +383,20 @@ class DonorfyActor(BaseActor):
         if constituent_id:
             return constituent_id
 
-        r = await self.client.post(
-            '/constituents',
-            data=dict(
-                FirstName=first_name,
-                LastName=last_name,
-                EmailAddress=email,
-                ConstituentType='Individual',
-                AllowNameSwap=False,
-                NoGiftAid=False,
-                ExternalKey=f'nosht_{user_id}',
-                RecruitmentCampaign=campaign or DEFAULT_CAMPAIGN,
-                EmailFormat='HTML'
-            )
+        data = dict(
+            FirstName=first_name,
+            LastName=last_name,
+            EmailAddress=email,
+            ConstituentType='Individual',
+            AllowNameSwap=False,
+            NoGiftAid=False,
+            ExternalKey=f'nosht_{user_id}',
+            EmailFormat='HTML'
         )
+        if campaign:
+            data['RecruitmentCampaign'] = campaign
+
+        r = await self.client.post('/constituents', data=data)
         data = await r.json()
         return data['ConstituentId']
 
@@ -418,7 +417,7 @@ class DonorfyActor(BaseActor):
                 # have to get the constituent again by ID to check "RecruitmentCampaign"
                 r_ = await self.client.get(f'/constituents/{constituent_id}')
                 extra_data = await r_.json()
-                if extra_data['RecruitmentCampaign'] == DEFAULT_CAMPAIGN:
+                if not extra_data['RecruitmentCampaign']:
                     update_data['RecruitmentCampaign'] = campaign
             if update_data:
                 await self.client.put(f'/constituents/{constituent_id}', data=update_data)
@@ -431,7 +430,7 @@ class DonorfyActor(BaseActor):
 
     async def _get_or_create_campaign(self, cat_slug, event_slug):
         description = f'{cat_slug}:{event_slug}'
-        cache_key = f'donorfy-campaigns::{description}'
+        cache_key = f'donorfy-campaigns|{description}'
         redis = await self.get_redis()
         campaign_created = await redis.get(cache_key)
         if campaign_created:

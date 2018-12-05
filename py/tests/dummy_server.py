@@ -214,7 +214,7 @@ async def donorfy_get_con_id(request):
         return json_response({
             'ConstituentId': request.match_info['const_id'],
             'ExternalKey': None,
-            'RecruitmentCampaign': 'Events.HUF',
+            'RecruitmentCampaign': '',
         })
     elif request.match_info['api_key'] == 'standard':
         return json_response({
