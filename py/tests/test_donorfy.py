@@ -13,10 +13,12 @@ async def create_donorfy(settings, db_pool):
     settings.donorfy_access_key = 'donorfy-access-key'
     don = DonorfyActor(settings=settings, pg=db_pool, concurrency_enabled=False)
     await don.startup()
+    redis = await don.get_redis()
+    await redis.flushdb()
 
     yield don
 
-    await don.client.close()
+    await don.close(shutdown=True)
 
 
 async def test_create_host_existing(donorfy: DonorfyActor, factory: Factory, dummy_server):
@@ -50,7 +52,9 @@ async def test_create_event(donorfy: DonorfyActor, factory: Factory, dummy_serve
 
     await donorfy.event_created(factory.event_id)
     assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/constituents/123456/AddActiveTags',
         f'POST donorfy_api_root/standard/activities',
     ]
@@ -65,6 +69,7 @@ async def test_create_event_no_duration(donorfy: DonorfyActor, factory: Factory,
 
     await donorfy.event_created(factory.event_id)
     assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/no-users/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/no-users/constituents/EmailAddress/frank@example.org',
         f'POST donorfy_api_root/no-users/constituents',
@@ -86,7 +91,9 @@ async def test_book_tickets(donorfy: DonorfyActor, factory: Factory, dummy_serve
     assert dummy_server.app['log'] == [
         f'POST stripe_root_url/customers',
         f'POST stripe_root_url/charges',
+        f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
         f'POST donorfy_api_root/standard/transactions',
     ]
@@ -102,7 +109,9 @@ async def test_book_tickets_free(donorfy: DonorfyActor, factory: Factory, dummy_
 
     await donorfy.tickets_booked(action_id)
     assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
     ]
 
@@ -124,6 +133,7 @@ async def test_book_tickets_multiple(donorfy: DonorfyActor, factory: Factory, du
 
     await donorfy.tickets_booked(action_id)
     assert set(dummy_server.app['log']) == {
+        f'GET donorfy_api_root/no-users/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/no-users/constituents/EmailAddress/frank@example.org',
         f'POST donorfy_api_root/no-users/constituents',
@@ -151,11 +161,13 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
         f'POST stripe_root_url/customers',
         f'POST stripe_root_url/charges',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
         f'POST donorfy_api_root/standard/transactions',
         f'GET donorfy_api_root/standard/transactions/trans_123/Allocations',
         f'POST donorfy_api_root/standard/transactions/trans_123/AddAllocation',
         f'PUT donorfy_api_root/standard/transactions/Allocation/123',
+        f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
     }
 
 
@@ -188,10 +200,11 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
+        'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        'GET donorfy_api_root/standard/constituents/123456',
         'POST donorfy_api_root/standard/transactions',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
-        f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         'POST donorfy_api_root/standard/transactions',
     ]
 
@@ -261,4 +274,35 @@ async def test_bad_response(donorfy: DonorfyActor, dummy_server):
         await donorfy.client.get('/foobar')
     assert dummy_server.app['log'] == [
         'GET donorfy_api_root/standard/foobar',
+    ]
+
+
+async def test_campaign_exists(donorfy: DonorfyActor, dummy_server):
+    await donorfy._get_or_create_campaign('supper-clubs', 'the-event-name')
+    assert dummy_server.app['log'] == ['GET donorfy_api_root/standard/System/LookUpTypes/Campaigns']
+
+    await donorfy._get_or_create_campaign('supper-clubs', 'the-event-name')
+    assert dummy_server.app['log'] == ['GET donorfy_api_root/standard/System/LookUpTypes/Campaigns']  # cached
+
+
+async def test_campaign_new(donorfy: DonorfyActor, dummy_server):
+    await donorfy._get_or_create_campaign('supper-clubs', 'foobar')
+    assert dummy_server.app['log'] == [
+        'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
+        'POST donorfy_api_root/standard/System/LookUpTypes/Campaigns',
+    ]
+
+    await donorfy._get_or_create_campaign('supper-clubs', 'foobar')
+    assert len(dummy_server.app['log']) == 2
+
+
+async def test_get_constituent_update_campaign(donorfy: DonorfyActor, dummy_server):
+    donorfy.settings.donorfy_api_key = 'default-campaign'
+
+    await donorfy._get_constituent(user_id=123, campaign='foo:bar')
+
+    assert dummy_server.app['log'] == [
+        f'GET donorfy_api_root/default-campaign/constituents/ExternalKey/nosht_123',
+        'GET donorfy_api_root/default-campaign/constituents/123456',
+        'PUT donorfy_api_root/default-campaign/constituents/123456',
     ]

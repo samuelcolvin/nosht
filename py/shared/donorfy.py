@@ -15,7 +15,6 @@ from .settings import Settings
 from .utils import RequestError, display_cash, lenient_json, ticket_id_signed
 
 logger = logging.getLogger('nosht.donorfy')
-DEFAULT_CAMPAIGN = 'Events.HUF'
 
 
 class DonorfyClient:
@@ -98,7 +97,8 @@ class DonorfyActor(BaseActor):
                 """
                 select
                   start_ts, duration, location_name, ticket_limit, short_description, long_description,
-                  event_link(cat.slug, e.slug, e.public, $2) AS link, cat.slug as cat_slug, co.currency,
+                  event_link(cat.slug, e.slug, e.public, $2) AS link, e.slug as event_slug,
+                  cat.slug as cat_slug, co.currency,
                   host as host_user_id, host_user.email as host_email
                 from events e
                 join categories cat on e.category = cat.id
@@ -113,11 +113,11 @@ class DonorfyActor(BaseActor):
                 'select price from ticket_types where event=$1 and active is true and price is not null',
                 event_id
             )
-        constituent_id = await self._get_or_create_constituent(evt['host_user_id'])
+        campaign = await self._get_or_create_campaign(evt['cat_slug'], evt['event_slug'])
+        constituent_id = await self._get_or_create_constituent(evt['host_user_id'], campaign)
 
-        campaign = evt['cat_slug'] + '-host'
         await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
-                               data=f'Hosting and helper volunteers_{campaign}')
+                               data=f'Hosting and helper volunteers_{evt["cat_slug"]}-host')
 
         start_ts = evt['start_ts'].astimezone(pytz.utc)
         if not evt['duration']:
@@ -187,7 +187,7 @@ class DonorfyActor(BaseActor):
                 action_id
             )
         ticket_count = len(tickets)
-        campaign = f'{cat_slug}-guest'
+        campaign = await self._get_or_create_campaign(cat_slug, event_slug)
         buyer_constituent_id = await self._get_or_create_constituent(buyer_user_id, campaign)
         ticket_id = None
 
@@ -201,7 +201,7 @@ class DonorfyActor(BaseActor):
                 constituent_id = buyer_constituent_id
                 ticket_id = _ticket_id
             else:
-                constituent_id = await self._get_constituent(user_id=user_id, email=email)
+                constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=campaign)
 
             if not constituent_id:
                 return
@@ -236,7 +236,7 @@ class DonorfyActor(BaseActor):
             ExistingConstituentId=buyer_constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=currency,
-            Campaign=DEFAULT_CAMPAIGN,
+            Campaign=campaign,
             PaymentMethod='Payment Card via Stripe' if action_type == ActionTypes.buy_tickets else 'Offline Payment',
             Product='Event Ticket(s)',
             Fund='Unrestricted General',
@@ -296,24 +296,27 @@ class DonorfyActor(BaseActor):
             select a.ts as action_ts, a.user_id, d.amount,
               d.gift_aid, d.title, d.first_name, d.last_name, d.address, d.city, d.postcode,
               donopt.id as donopt,
-              cat.name as cat_name, cat.slug as cat_slug, currency
+              cat.name as cat_name, cat.slug as cat_slug, evt.slug as evt_slug, currency
             from actions a
             join donations d on a.id = d.action
             join donation_options donopt on d.donation_option = donopt.id
             join categories cat on donopt.category = cat.id
+            left join events evt on a.event = evt.id
             join companies co on cat.company = co.id
             where a.id=$1
             """,
             action_id
         )
-        cat_slug = d['cat_slug']
-        constituent_id = await self._get_or_create_constituent(d['user_id'], f'{cat_slug}-guest')
+        cat_slug, evt_slug = d['cat_slug'], d['evt_slug']
+        campaign = await self._get_or_create_campaign(cat_slug, evt_slug)
+
+        constituent_id = await self._get_or_create_constituent(d['user_id'], campaign)
         await self.client.post('/transactions', data=dict(
             ConnectedConstituentId=constituent_id,
             ExistingConstituentId=constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=d['currency'],
-            Campaign=DEFAULT_CAMPAIGN,
+            Campaign=campaign,
             PaymentMethod='Payment Card via Stripe',
             Product='Donation',
             Fund='Unrestricted General',
@@ -371,15 +374,47 @@ class DonorfyActor(BaseActor):
             )
         requests and await asyncio.gather(*requests)
 
-    async def _get_or_create_constituent(self, user_id, campaign=DEFAULT_CAMPAIGN):
+    async def _get_or_create_constituent(self, user_id, campaign=None):
         email, first_name, last_name = await self.pg.fetchrow(
             'select email, first_name, last_name from users where id=$1', user_id
         )
 
-        constituent_id = await self._get_constituent(user_id=user_id, email=email)
-        return constituent_id or await self._create_constituent(user_id, email, first_name, last_name, campaign)
+        constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=campaign)
+        if constituent_id:
+            return constituent_id
 
-    async def _get_constituent(self, *, user_id, email=None):
+        data = dict(
+            FirstName=first_name,
+            LastName=last_name,
+            EmailAddress=email,
+            ConstituentType='Individual',
+            AllowNameSwap=False,
+            NoGiftAid=False,
+            ExternalKey=f'nosht_{user_id}',
+            EmailFormat='HTML'
+        )
+        if campaign:
+            data['RecruitmentCampaign'] = campaign
+
+        r = await self.client.post('/constituents', data=data)
+        data = await r.json()
+        constituent_id = data['ConstituentId']
+
+        redis = await self.get_redis()
+        await redis.setex(self._constituent_cache_key(user_id, email, campaign), 3600, constituent_id)
+        return constituent_id
+
+    @staticmethod
+    def _constituent_cache_key(user_id, email, campaign):
+        return f'donorfy-constituent-{user_id}-{email}-{campaign}'
+
+    async def _get_constituent(self, *, user_id, email=None, campaign=None):
+        redis = await self.get_redis()
+        cache_key = self._constituent_cache_key(user_id, email, campaign)
+        constituent_id = await redis.get(cache_key)
+        if constituent_id:
+            return None if constituent_id == b'null' else constituent_id.decode()
+
         ext_key = f'nosht_{user_id}'
         r = await self.client.get(f'/constituents/ExternalKey/{ext_key}', allowed_statuses=(200, 404))
         if email is not None and r.status == 404:
@@ -388,31 +423,43 @@ class DonorfyActor(BaseActor):
         if r.status != 404:
             constituent_data = (await r.json())[0]
             constituent_id = constituent_data['ConstituentId']
+
+            update_data = {}
             if constituent_data['ExternalKey'] is None:
-                await self.client.put(f'/constituents/{constituent_id}', data=dict(ExternalKey=ext_key))
-            elif constituent_data['ExternalKey'] != ext_key:
+                update_data['ExternalKey'] = ext_key
+            if campaign:
+                # have to get the constituent again by ID to check "RecruitmentCampaign"
+                r_ = await self.client.get(f'/constituents/{constituent_id}')
+                extra_data = await r_.json()
+                if not extra_data['RecruitmentCampaign']:
+                    update_data['RecruitmentCampaign'] = campaign
+            if update_data:
+                await self.client.put(f'/constituents/{constituent_id}', data=update_data)
+
+            if constituent_data['ExternalKey'] is not None and constituent_data['ExternalKey'] != ext_key:
                 logger.warning('user with matching email but different external key %s: %r != %r',
                                constituent_id, constituent_data['ExternalKey'], ext_key)
-                return None
-            return constituent_id
+            else:
+                await redis.setex(cache_key, 300, constituent_id)
+                return constituent_id
+        await redis.setex(cache_key, 300, b'null')
 
-    async def _create_constituent(self, user_id, email, first_name, last_name, campaign):
-        r = await self.client.post(
-            '/constituents',
-            data=dict(
-                FirstName=first_name,
-                LastName=last_name,
-                EmailAddress=email,
-                ConstituentType='Individual',
-                AllowNameSwap=False,
-                NoGiftAid=False,
-                ExternalKey=f'nosht_{user_id}',
-                RecruitmentCampaign=campaign,
-                EmailFormat='HTML'
-            )
-        )
+    async def _get_or_create_campaign(self, cat_slug, event_slug):
+        description = f'{cat_slug}:{event_slug}'
+        cache_key = f'donorfy-campaigns|{description}'
+        redis = await self.get_redis()
+        campaign_created = await redis.get(cache_key)
+        if campaign_created:
+            return description
+
+        r = await self.client.get('/System/LookUpTypes/Campaigns')
         data = await r.json()
-        return data['ConstituentId']
+        try:
+            next(1 for v in data['LookUps'] if v['LookUpDescription'] == description)
+        except StopIteration:
+            await self.client.post('/System/LookUpTypes/Campaigns', data=dict(LookUpDescription=description))
+        await redis.setex(cache_key, 86400, '1')
+        return description
 
 
 def format_dt(dt: datetime):
