@@ -65,7 +65,7 @@ docker-dev-stop:
 dev-pgcli:
 	pgcli postgres://postgres:docker@localhost:54320/nosht
 
-.PHONY: heroku-release
+.PHONY: heroku-push
 heroku-push: build
 	docker tag nosht-web registry.heroku.com/$(HEROKU_APP)/web
 	docker push registry.heroku.com/$(HEROKU_APP)/web
