@@ -339,6 +339,7 @@ class DonorfyActor(BaseActor):
         ))
         if d['gift_aid']:
             await self.client.post(f'/constituents/{constituent_id}/GiftAidDeclarations', data=dict(
+                Campaign=campaign,
                 DeclarationMethod='Web',
                 DeclarationDate=datestamp,
                 DeclarationStartDate=datestamp,
