@@ -30,7 +30,7 @@ from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTyp
                            event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
                            set_event_image_existing, set_event_image_new, switch_highlight)
 from .views.export import export
-from .views.static import static_handler
+from .views.static import get_csp_headers, static_handler
 from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_tickets
 
 logger = logging.getLogger('nosht.web')
@@ -174,7 +174,10 @@ def create_app(*, settings: Settings = None, logging_client=None):
     static_dir = settings.custom_static_dir or (Path(__file__).parent / '../../js/build').resolve()
     assert static_dir.exists(), f'js static directory "{static_dir}" does not exists'
     logger.debug('serving static files "%s"', static_dir)
-    wrapper_app['static_dir'] = static_dir
+    wrapper_app.update(
+        static_dir=static_dir,
+        csp_headers=get_csp_headers(settings),
+    )
     wrapper_app.add_subapp(r'/api/', app)
     wrapper_app.add_routes([
         web.get(r'/{path:.*}', static_handler, name='static'),
