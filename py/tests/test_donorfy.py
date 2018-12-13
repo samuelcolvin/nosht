@@ -26,6 +26,7 @@ async def test_create_host_existing(donorfy: DonorfyActor, factory: Factory, dum
     await factory.create_user()
 
     await donorfy.host_signuped(factory.user_id)
+    await donorfy.host_signuped(factory.user_id)
     assert dummy_server.app['log'] == [
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
     ]
