@@ -194,9 +194,7 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
     r = await cli.json_post(url('donate'), data=data)
     assert r.status == 200, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
-    action_id = await db_conn.fetchval("select id from actions where type='donate'")
 
-    await donorfy.donation(action_id)
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
         'POST stripe_root_url/charges',
@@ -204,8 +202,8 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         'GET donorfy_api_root/standard/constituents/123456',
         'POST donorfy_api_root/standard/transactions',
+        'POST donorfy_api_root/standard/constituents/123456/GiftAidDeclarations',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
-        'POST donorfy_api_root/standard/transactions',
     ]
 
 

@@ -308,6 +308,7 @@ async def create_dummy_server(create_server):
         web.put('/donorfy_api_root/{api_key}/constituents/{const_id}', donorfy_200),
         web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/Preferences', donorfy_201),
         web.post('/donorfy_api_root/{api_key}/constituents', donorfy_create_user),
+        web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/GiftAidDeclarations', donorfy_201),
 
         web.post('/donorfy_api_root/{api_key}/activities', donorfy_201),
 
