@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     donorfy_api_key: str = None
     donorfy_access_key: str = None
 
+    csp_image_source = 'https://nosht.scolvin.com'
+
     @validator('on_heroku', always=True)
     def set_on_heroku(cls, v):
         return v or 'DYNO' in os.environ
