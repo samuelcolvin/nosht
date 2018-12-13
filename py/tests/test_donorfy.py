@@ -207,6 +207,35 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
     ]
 
 
+async def test_donate_no_gift_aid(donorfy: DonorfyActor, factory: Factory, dummy_server, db_conn, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    data = dict(
+        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
+        donation_option_id=factory.donation_option_id,
+        event_id=factory.event_id,
+        gift_aid=False,
+    )
+    r = await cli.json_post(url('donate'), data=data)
+    assert r.status == 200, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    assert dummy_server.app['log'] == [
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/charges',
+        'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
+        f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        'GET donorfy_api_root/standard/constituents/123456',
+        'POST donorfy_api_root/standard/transactions',
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
+    ]
+
+
 async def test_update_user(donorfy: DonorfyActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_user()
