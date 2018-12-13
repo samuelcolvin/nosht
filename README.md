@@ -69,6 +69,7 @@ You'll need to set the following config (environment) variables in heroku:
 * `RAVEN_DSN` DSN from sentry/raven, see "Sentry Setup" below
 * `APP_DONORFY_API_KEY` API key for donorfy integration
 * `APP_DONORFY_ACCESS_KEY` API "access key" for donorfy integration
+* `APP_CSP_IMAGE_SOURCE` to something like `https://events-images.example.org` to allow images to show
 
 ## Build and Deploy
 
@@ -113,12 +114,9 @@ The only exception is `logo.png` which should be a 380x150px logo for your servi
 REACT_APP_SITE_NAME='<the name of your service/company>'
 REACT_APP_THEME_COLOUR='company hex colour, should match favicons/browserconfig.xml, eg. "016997"'
 REACT_APP_COPYRIGHT_STATEMENT='© copyright statement for the footer'
-REACT_APP_CSP_IMAGE='https://events-images.example.org'
 REACT_APP_GOOGLE_MAPS_KEY='<public google maps key, see below>'
 REACT_APP_GOOGLE_SIW_CLIENT_KEY='<google signin with client key, see below>'
 REACT_APP_FACEBOOK_SIW_APP_ID='<facebook signin with app id, see below>'
-REACT_APP_CSP_SOURCE_EXTRA=''
-REACT_APP_CSP_CONNECT='https://sentry.io'
 REACT_APP_RECAPTCHA_KEY='<google recaptcah public key>'
 REACT_APP_SENTRY_DSN='<sentry dsn for js error tracking>'
 REACT_APP_GA_TRACKING_ID='<tracking id for google analytics>'

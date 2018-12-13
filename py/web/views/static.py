@@ -116,7 +116,8 @@ async def static_handler(request):
     if request_path.startswith('iframes/') and request_path.endswith('.html') and is_file:
         new_root = request_root(request)
         content = filepath.read_text().replace('http://localhost:3000', new_root)
-        return Response(text=content, content_type='text/html', headers=csp_headers)
+        # no csp header here, it's defined in the page as a http-equiv header
+        return Response(text=content, content_type='text/html')
     elif is_file:
         return FileResponse(filepath, headers=csp_headers)
     elif request_path.startswith('pvt/'):

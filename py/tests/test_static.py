@@ -5,7 +5,7 @@ from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_exceptions import HTTPNotFound
 from pytest_toolbox.comparison import RegexStr
 
-from web.views.static import static_handler, get_csp_headers
+from web.views.static import get_csp_headers, static_handler
 
 
 async def test_index(cli, setup_static):
@@ -74,9 +74,16 @@ async def test_sitemap(cli, setup_static):
 async def test_csp(cli, setup_static):
     r = await cli.get('/')
     assert r.status == 200, await r.text()
+    assert 'Content-Security-Policy' in r.headers
     assert r.headers['Content-Security-Policy'].startswith("default-src 'self';")
     assert 'https://nosht.scolvin.com' in r.headers['Content-Security-Policy']
     assert 'report-uri' not in r.headers['Content-Security-Policy']
+
+
+async def test_csp_iframe(cli, setup_static):
+    r = await cli.get('/iframes/login.html')
+    assert r.status == 200, await r.text()
+    assert 'Content-Security-Policy' not in r.headers
 
 
 async def test_csp_with_raven(settings):
