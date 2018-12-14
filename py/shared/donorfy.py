@@ -311,6 +311,7 @@ class DonorfyActor(BaseActor):
         campaign = await self._get_or_create_campaign(cat_slug, evt_slug)
 
         constituent_id = await self._get_or_create_constituent(d['user_id'], campaign)
+        datestamp = format_dt(d['action_ts'])
         await self.client.post('/transactions', data=dict(
             ConnectedConstituentId=constituent_id,
             ExistingConstituentId=constituent_id,
@@ -322,12 +323,12 @@ class DonorfyActor(BaseActor):
             Fund='Unrestricted General',
             Department='200 Fund Raising Income',
             BankAccount='Main Account',
-            DatePaid=format_dt(d['action_ts']),
+            DatePaid=datestamp,
             Amount=float(d['amount']),
             Acknowledgement=f'{cat_slug}-thanks',
             AcknowledgementText=f'{d["cat_name"]} Donation Thanks',
             Reference=f'Events.HUF:{cat_slug} donation {d["donopt"]}',
-            AddGiftAidDeclaration=d['gift_aid'],
+            AddGiftAidDeclaration=False,  # since we manually create the gift aid declaration below
             GiftAidClaimed=d['gift_aid'],
             Title=d['title'],
             FirstName=d['first_name'],
@@ -336,6 +337,18 @@ class DonorfyActor(BaseActor):
             Town=d['city'],
             PostalCode=d['postcode'],
         ))
+        if d['gift_aid']:
+            await self.client.post(f'/constituents/{constituent_id}/GiftAidDeclarations', data=dict(
+                Campaign=campaign,
+                DeclarationMethod='Web',
+                DeclarationDate=datestamp,
+                DeclarationStartDate=datestamp,
+                DeclarationEndDate=datestamp,
+                TaxPayerTitle=d['title'],
+                TaxPayerFirstName=d['first_name'],
+                TaxPayerLastName=d['last_name'],
+                ConfirmationRequired=False
+            ))
 
     @concurrent
     async def update_user(self, user_id, update_user=True, update_marketing=True):
