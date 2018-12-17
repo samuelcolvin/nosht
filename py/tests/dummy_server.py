@@ -192,10 +192,12 @@ async def s3_demo_image(request):
 
 async def donorfy_201(request):
     # debug(await request.json())
+    request.app['data'][f'{request.path} 201'] = await request.json()
     return Response(status=201)
 
 
 async def donorfy_200(request):
+    request.app['data'][f'{request.path} 200'] = await request.json()
     return Response(status=200)
 
 
@@ -327,5 +329,6 @@ async def create_dummy_server(create_server):
         images=[],
         server_name=f'http://localhost:{server.port}',
         stripe_idempotency_keys=set(),
+        data={}
     )
     return server

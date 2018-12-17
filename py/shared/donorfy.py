@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime
+from textwrap import shorten
 from time import time
 from typing import Sequence
 
@@ -137,13 +138,16 @@ class DonorfyActor(BaseActor):
                 'price: {price_text}\n'
                 'description: {long_description}'
             ).format(**evt),
-            Code1=evt['link'],
-            Code2=evt['location_name'],
-            Code3=evt['short_description'],
             Number1=evt['ticket_limit'],
             Date1=format_dt(created),
             Date2=format_dt(start_ts),
         )
+
+        codes = evt['link'], evt['location_name'], evt['short_description']
+        for i, v in enumerate(codes, start=1):
+            if v:
+                data[f'Code{i}'] = shorten(v, width=50, placeholder='...')
+
         for i, r in enumerate(prices, start=2):
             data[f'Number{i}'] = float(r[0])
 
