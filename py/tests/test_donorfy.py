@@ -49,7 +49,7 @@ async def test_create_event(donorfy: DonorfyActor, factory: Factory, dummy_serve
     await factory.create_company()
     await factory.create_user()
     await factory.create_cat()
-    await factory.create_event()
+    await factory.create_event(long_description='test ' * 100)
 
     await donorfy.event_created(factory.event_id)
     assert dummy_server.app['log'] == [
@@ -59,6 +59,10 @@ async def test_create_event(donorfy: DonorfyActor, factory: Factory, dummy_serve
         f'POST donorfy_api_root/standard/constituents/123456/AddActiveTags',
         f'POST donorfy_api_root/standard/activities',
     ]
+    activity_data = dummy_server.app['data']['/donorfy_api_root/standard/activities 201']
+    assert activity_data['Code1'] == '/supper-clubs/the-event-name/'
+    assert activity_data['Code3'] == 'test test test test test test test test test...'
+    assert 'Code2' not in activity_data
 
 
 async def test_create_event_no_duration(donorfy: DonorfyActor, factory: Factory, dummy_server):
