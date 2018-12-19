@@ -317,7 +317,6 @@ class DonorfyActor(BaseActor):
         constituent_id = await self._get_or_create_constituent(d['user_id'], campaign)
         datestamp = format_dt(d['action_ts'])
         await self.client.post('/transactions', data=dict(
-            ConnectedConstituentId=constituent_id,
             ExistingConstituentId=constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=d['currency'],
