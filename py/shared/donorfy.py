@@ -236,7 +236,6 @@ class DonorfyActor(BaseActor):
         extra = float(extra or 0)
         ticket_id = ticket_id or tickets[0]['ticket_id']
         r = await self.client.post('/transactions', data=dict(
-            ConnectedConstituentId=buyer_constituent_id,
             ExistingConstituentId=buyer_constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=currency,
