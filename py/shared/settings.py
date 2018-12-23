@@ -71,6 +71,12 @@ class Settings(BaseSettings):
     donorfy_api_key: str = None
     donorfy_access_key: str = None
 
+    # account and sales codes used when submitting data to donorfy
+    donorfy_account_donations = '210 Donations Income'
+    donorfy_account_salies = '220 Ticket Sales'
+    donorfy_bank_account = 'Unrestricted Account'
+    donorfy_fund = 'Unrestricted General'
+
     csp_image_source = 'https://nosht.scolvin.com'
 
     @validator('on_heroku', always=True)
