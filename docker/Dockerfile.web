@@ -19,7 +19,8 @@ ARG COMMIT
 RUN REACT_APP_COMMIT=$COMMIT yarn build
 
 RUN echo '' >> build/index.html
-RUN echo '<!-- nosht event platform, https://github.com/samuelcolvin/nosht for more details -->' >> build/index.html
+RUN echo '<!-- nosht event platform, see https://github.com/samuelcolvin/nosht for more details -->' >> build/index.html
+RUN echo "<!-- build: $COMMIT at $(date) -->" >> build/index.html
 RUN rm build/service-worker.js
 RUN find build/ -type f | xargs ls -lh
 
