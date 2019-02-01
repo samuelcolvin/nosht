@@ -9,7 +9,7 @@ bcrypt==3.1.6
 buildpg==0.0.2
 cchardet==2.1.4
 chevron==0.13.1
-cryptography==2.4.2
+cryptography==2.5
 google-auth==1.6.2
 libsass==0.16.1
 misaka==2.1.1
