@@ -18,4 +18,4 @@ pytz==2018.9
 Pillow==5.4.1
 raven==6.10.0
 raven-aiohttp==0.7.0
-uvloop==0.11.3
+uvloop==0.12.1
