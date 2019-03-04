@@ -129,6 +129,12 @@ main.container {
   .card-text {
     flex-grow: 1;
   }
+  .img-thumbnail {
+    width: 100px;
+    margin-top: -110px;
+    margin-right: 0;
+    margin-left: auto;
+  }
 }
 
 #google-map {
