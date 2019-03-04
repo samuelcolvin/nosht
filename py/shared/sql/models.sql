@@ -101,6 +101,7 @@ CREATE TABLE events (
   ticket_limit INT CONSTRAINT ticket_limit_gt_0 CHECK (ticket_limit > 0),
   tickets_taken INT NOT NULL DEFAULT 0,  -- sold and reserved
   image VARCHAR(255),
+  secondary_image VARCHAR(255),
   CONSTRAINT ticket_limit_check CHECK (tickets_taken <= ticket_limit)
 );
 CREATE UNIQUE INDEX event_cat_slug ON events USING btree (category, slug);

@@ -155,7 +155,6 @@ async def upload_other(image_data: bytes, *, upload_path: Path, settings: Settin
 
     thumb_bytes = None
     if thumb:
-
         resize_to, crop_box = resize_crop(img, 400, 200)
         if resize_to:
             thumb_img = img.resize(resize_to, Image.ANTIALIAS)
@@ -168,3 +167,23 @@ async def upload_other(image_data: bytes, *, upload_path: Path, settings: Settin
         thumb_bytes = thumb_stream.getvalue()
 
     return await _upload(upload_path, main_stream.getvalue(), thumb_bytes, settings)
+
+
+async def upload_force_shape(image_data: bytes, *, upload_path: Path, settings: Settings, req_size) -> str:
+    img = Image.open(BytesIO(image_data))
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+
+    req_width, req_height = req_size
+    assert img.width >= req_width and img.height >= req_height, 'image too small'
+
+    resize_to, crop_box = resize_crop(img, req_width, req_height)
+    if resize_to:
+        img = img.resize(resize_to, Image.ANTIALIAS)
+        img = img.crop(crop_box)
+
+    img_stream = BytesIO()
+    img.save(img_stream, 'PNG', optimize=True, quality=95)
+
+    return await _upload(upload_path, img_stream.getvalue(), None, settings)
+
