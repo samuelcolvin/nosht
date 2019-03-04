@@ -28,7 +28,7 @@ from .views.donate import Donate, DonationOptionBread, donation_image_upload, do
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
 from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories, event_get,
                            event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
-                           set_event_image_existing, set_event_image_new, switch_highlight, set_event_secondary_image)
+                           set_event_image_existing, set_event_image_new, set_event_secondary_image, switch_highlight)
 from .views.export import export
 from .views.static import get_csp_headers, static_handler
 from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_tickets

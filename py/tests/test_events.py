@@ -32,6 +32,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'category_id': factory.category_id,
             'name': 'The Event Name',
             'image': 'https://www.example.org/main.png',
+            'secondary_image': None,
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
             'category_content': None,
@@ -179,6 +180,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'cat_id': factory.category_id,
         'public': False,
         'image': None,
+        'secondary_image': None,
         'ticket_limit': None,
         'location_name': None,
         'location_lat': None,
@@ -302,6 +304,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'ticket_limit': None,
         'tickets_taken': 0,
         'image': None,
+        'secondary_image': None,
     }
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
     tt = dict(await db_conn.fetchrow('SELECT event, name, price, slots_used, active FROM ticket_types'))

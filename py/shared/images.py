@@ -186,4 +186,3 @@ async def upload_force_shape(image_data: bytes, *, upload_path: Path, settings: 
     img.save(img_stream, 'PNG', optimize=True, quality=95)
 
     return await _upload(upload_path, img_stream.getvalue(), None, settings)
-
