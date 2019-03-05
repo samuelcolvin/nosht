@@ -23,7 +23,26 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'slug': 'the-event-name',
                 'image': 'https://www.example.org/main.png',
                 'short_description': RegexStr(r'.*'),
-                'location_name': None,
+                'start_ts': '2020-06-28T19:00:00',
+                'duration': 3600,
+            },
+        ],
+    }
+    await db_conn.execute("update events set secondary_image='second-image', location_name='loc-name'")
+    r = await cli.get(url('category', category=slug))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'events': [
+            {
+                'id': factory.event_id,
+                'name': 'The Event Name',
+                'cat_slug': 'supper-clubs',
+                'slug': 'the-event-name',
+                'image': 'https://www.example.org/main.png',
+                'secondary_image': 'second-image',
+                'short_description': RegexStr(r'.*'),
+                'location_name': 'loc-name',
                 'start_ts': '2020-06-28T19:00:00',
                 'duration': 3600,
             },

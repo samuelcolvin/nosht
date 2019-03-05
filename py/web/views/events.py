@@ -16,7 +16,7 @@ from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, condecimal, conint, constr, validator
 from pytz.tzinfo import BaseTzInfo
 
-from shared.images import delete_image, upload_background
+from shared.images import delete_image, upload_background, upload_force_shape
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin, is_admin_or_host
@@ -43,6 +43,7 @@ FROM (
   SELECT e.id,
          e.name,
          coalesce(e.image, c.image) AS image,
+         e.secondary_image,
          e.short_description,
          e.long_description,
          c.event_content AS category_content,
@@ -197,6 +198,7 @@ class EventBread(Bread):
         V('cat.id').as_('cat_id'),
         'e.public',
         'e.image',
+        'e.secondary_image',
         'e.ticket_limit',
         'e.location_name',
         'e.location_lat',
@@ -638,6 +640,31 @@ async def set_event_image_existing(request):
     await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', m.image, event_id)
     await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
                         event_id=event_id, subtype='set-image-existing')
+    return json_response(status='success')
+
+
+secondary_image_size = 300, 300
+
+
+@is_admin_or_host
+async def set_event_secondary_image(request):
+    event_id = await _check_event_permissions(request, check_upcoming=True)
+    content = await request_image(request, expected_size=secondary_image_size)
+
+    image = await request['conn'].fetchval('SELECT secondary_image from events WHERE id=$1', event_id)
+    # delete the image from S3 if it's set and isn't a category image option
+    if image:
+        await delete_image(image, request.app['settings'])
+
+    co_slug, cat_slug, event_slug = await request['conn'].fetchrow(slugs_sql, request['company_id'], event_id)
+    upload_path = Path(co_slug) / cat_slug / event_slug / 'secondary'
+
+    image_url = await upload_force_shape(
+        content, upload_path=upload_path, settings=request.app['settings'], req_size=secondary_image_size,
+    )
+    await request['conn'].execute('UPDATE events SET secondary_image=$1 WHERE id=$2', image_url, event_id)
+    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
+                        event_id=event_id, subtype='set-image-secondary')
     return json_response(status='success')
 
 

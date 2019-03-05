@@ -280,9 +280,9 @@ export class RenderDetails extends RenderItem {
   }
 }
 
-export const ImageThumbnail = ({image, alt, image_type}) => (
+export const ImageThumbnail = ({image, alt, image_type, width}) => (
   image ?
-    <img src={image_thumb(image, image_type)} alt={alt} className="img-thumbnail"/>
+    <img src={image_thumb(image, image_type)} alt={alt} className="img-thumbnail" style={{width}}/>
     :
     <span>&mdash;</span>
 )

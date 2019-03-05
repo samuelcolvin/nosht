@@ -16,6 +16,7 @@ import SetImage from './SetImage'
 import {TicketTypes, TicketTypeTable} from './TicketTypes'
 import {Tickets, CancelTicket} from './Tickets'
 import {EVENT_FIELDS} from './Create'
+import {ModalDropzoneForm} from '../forms/Drop'
 
 export class EventsList extends RenderList {
   constructor (props) {
@@ -243,16 +244,22 @@ export class EventsDetails extends RenderDetails {
             title: 'Host',
           } : null,
           short_description: {index: 2},
-          long_description: {
-            index: 3,
-            wide: true,
-            render: v => <MarkdownPreview v={v}/>,
-          },
           image: {
-            index: 4,
+            index: 3,
             wide: true,
             edit_link: can_edit && this.uri + 'set-image/',
             render: (v, item) => <ImageThumbnail image={v} alt={item.name}/>,
+          },
+          secondary_image: {
+            index: 4,
+            wide: true,
+            edit_link: can_edit && this.uri + 'set-secondary-image/',
+            render: (v, item) => <ImageThumbnail image={v} alt={item.name} image_type="main" width={150}/>,
+          },
+          long_description: {
+            index: 5,
+            wide: true,
+            render: v => <MarkdownPreview v={v}/>,
           },
           location_lng: null,
           location_name: null,
@@ -260,7 +267,7 @@ export class EventsDetails extends RenderDetails {
             render: (v, item) => <MiniMap lat={v} lng={item.location_lng} name={item.location_name}/>,
             title: 'Location',
             wide: true,
-            index: 5,
+            index: 6,
           },
         }
       }
@@ -369,6 +376,14 @@ export class EventsDetails extends RenderDetails {
                 regex={/set-image\/$/}
                 update={this.update}
                 title="Upload Background Image"/>,
+      <ModalDropzoneForm key="set-secondary-image"
+                         multiple={false}
+                         parent_uri={this.uri}
+                         regex={/set-secondary-image\/$/}
+                         update={this.update}
+                         title="Upload Secondary Image"
+                         help_text="Image should at least 300px x 300px, it will be displayed square."
+                         action={`/events/${this.id}//set-image/secondary/`}/>,
       this.props.ctx.user.role === 'admin' ?
         <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id} uri={this.uri}/>
         : null,

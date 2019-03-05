@@ -600,6 +600,14 @@ async def email_logging(conn, settings, **kwargs):
 
 
 @patch
+async def add_secondary_image(conn, **kwargs):
+    """
+    add secondary_image field to events
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN secondary_image VARCHAR(255)')
+
+
+@patch
 async def add_cancel_action(conn, **kwargs):
     """
     add cancel_action field to tickets

@@ -14,8 +14,11 @@ from web.utils import ImageModel, JsonErrors, json_response, parse_request, raw_
 category_public_sql = """
 SELECT json_build_object('events', events)
 FROM (
-  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS events FROM (
-    SELECT e.id, e.name, c.slug as cat_slug, e.slug, coalesce(e.image, c.image) AS image, e.short_description,
+  SELECT coalesce(array_to_json(array_agg(json_strip_nulls(row_to_json(t)))), '[]') AS events FROM (
+    SELECT e.id, e.name, c.slug as cat_slug, e.slug,
+      coalesce(e.image, c.image) AS image,
+      e.secondary_image,
+      e.short_description,
       e.location_name,
       e.start_ts AT TIME ZONE e.timezone AS start_ts,
       extract(epoch FROM e.duration)::int AS duration

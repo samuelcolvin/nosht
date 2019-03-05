@@ -32,6 +32,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'category_id': factory.category_id,
             'name': 'The Event Name',
             'image': 'https://www.example.org/main.png',
+            'secondary_image': None,
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
             'category_content': None,
@@ -179,6 +180,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'cat_id': factory.category_id,
         'public': False,
         'image': None,
+        'secondary_image': None,
         'ticket_limit': None,
         'location_name': None,
         'location_lat': None,
@@ -302,6 +304,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'ticket_limit': None,
         'tickets_taken': 0,
         'image': None,
+        'secondary_image': None,
     }
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
     tt = dict(await db_conn.fetchrow('SELECT event, name, price, slots_used, active FROM ticket_types'))
@@ -1218,3 +1221,62 @@ async def test_delete_event_host(cli, url, factory: Factory, login, db_conn):
     assert r.status == 403, await r.text()
 
     assert 1 == await db_conn.fetchval('SELECT count(*) FROM events')
+
+
+async def test_secondary_image(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    data = FormData()
+    data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('event-set-image-secondary', id=factory.event_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 200, await r.text()
+
+    img_path = await db_conn.fetchval('SELECT secondary_image FROM events')
+    assert img_path == RegexStr(
+        r'https://testingbucket.example.org/tests/testing/supper-clubs/the-event-name/secondary/\w+/main.png'
+    )
+
+    assert dummy_server.app['log'] == [
+        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/'
+                 r'supper-clubs/the-event-name/secondary/\w+/main.png'),
+    ]
+
+
+async def test_secondary_image_exists(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    event_path = 'testingbucket.example.org/tests/testing/supper-clubs/the-event-name'
+    img_url = f'https://{event_path}/secondary/xxx123/main.png'
+    await db_conn.execute('update events set secondary_image=$1', img_url)
+
+    data = FormData()
+    data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('event-set-image-secondary', id=factory.event_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        }
+    )
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/thumb.png',
+        RegexStr(rf'PUT aws_endpoint_url/{event_path}/secondary/\w+/main.png'),
+    ]
