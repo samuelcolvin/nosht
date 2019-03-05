@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Optional, Tuple, Union, cast
 
 from aiohttp import BasicAuth, ClientSession
+from aiohttp.abc import Application
 from aiohttp.hdrs import METH_GET, METH_POST
 from buildpg import Values
 from buildpg.asyncpg import BuildPgConnection
@@ -170,10 +171,56 @@ async def stripe_donate(m: StripeDonateModel, company_id: int, user_id: Optional
         return await _stripe_pay(m=m, company_id=company_id, app=app, conn=conn, don=don)
 
 
+async def stripe_refund(
+    refund_charge_id: Optional[str],
+    ticket_id: int,
+    event_id: int,
+    amount: int,
+    user_id: int,
+    company_id: int,
+    app: Application,
+    conn: BuildPgConnection
+):
+    if refund_charge_id:
+        user_email, stripe_secret_key = await conn.fetchrow(
+            """
+            SELECT email, stripe_secret_key
+            FROM users AS u
+            JOIN companies c on u.company = c.id
+            WHERE u.id=$1 AND c.id=$2
+            """,
+            user_id, company_id
+        )
+        stripe = StripeClient(app, stripe_secret_key)
+    async with conn.transaction():
+        action_id = await conn.fetchval_b(
+            'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+            values=Values(
+                company=company_id,
+                user_id=user_id,
+                type=ActionTypes.buy_tickets,
+                event=event_id,
+            )
+        )
+        await conn.execute("update tickets set status='cancelled', cancel_action=$1 where id=$2", action_id, ticket_id)
+        if refund_charge_id:
+             await stripe.post(
+                'refunds',
+                idempotency_key=f'refund-ticket-{ticket_id}',
+                charge=refund_charge_id,
+                amount=amount,
+                reason='requested_by_customer',
+                metadata={
+                    'admin_email': user_email,
+                    'admin_user_id': user_id,
+                }
+            )
+
+
 async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
         m: StripeModel,
         company_id: int,
-        app,
+        app: Application,
         conn: BuildPgConnection,
         res: Optional[Reservation] = None,
         don: Optional[Donation] = None) -> Tuple[int, str]:

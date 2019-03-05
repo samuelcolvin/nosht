@@ -597,3 +597,11 @@ async def email_logging(conn, settings, **kwargs):
     m = re.search('-- { email change(.*)-- } email change', models_sql, flags=re.DOTALL)
     sql = m.group(1).strip(' \n')
     await conn.execute(sql)
+
+
+@patch
+async def add_cancel_action(conn, **kwargs):
+    """
+    add cancel_action field to tickets
+    """
+    await conn.execute('ALTER TABLE tickets ADD COLUMN cancel_action INT REFERENCES actions ON DELETE SET NULL')

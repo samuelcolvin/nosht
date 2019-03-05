@@ -124,6 +124,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'book-free-tickets',
   'donate',
   'cancel-reserved-tickets',
+  'cancel-booked-tickets',
   'create-event',
   'event-guest-reminder',
   'event-update',
@@ -171,6 +172,7 @@ CREATE TABLE tickets (
   extra_donated NUMERIC(7, 2) CONSTRAINT extra_donated_gt_0 CHECK (extra_donated > 0),
   reserve_action INT NOT NULL REFERENCES actions ON DELETE CASCADE,
   booked_action INT REFERENCES actions ON DELETE CASCADE,
+  cancel_action INT REFERENCES actions ON DELETE SET NULL,
   status TICKET_STATUS NOT NULL DEFAULT 'reserved',
   created_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   extra_info TEXT

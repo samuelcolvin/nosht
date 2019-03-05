@@ -21,6 +21,7 @@ from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread, Method, UpdateView
+from web.stripe import BookActions, stripe_refund
 from web.utils import (ImageModel, JsonErrors, clean_markdown, json_response, parse_request, raw_json_response,
                        request_image)
 from web.views.export import export_plumbing
@@ -362,8 +363,10 @@ async def _check_event_permissions(request, check_upcoming=False):
 event_tickets_sql = """
 SELECT t.id, t.price::float AS price, t.extra_donated::float AS extra_donated, t.extra_info,
   iso_ts(a.ts, co.display_timezone) AS booked_at,
+  t.status as ticket_status,
   t.user_id AS guest_user_id, full_name(t.first_name, t.last_name) AS guest_name, ug.email AS guest_email,
   a.user_id as buyer_user_id,
+  a.type as booking_type,
   coalesce(full_name(tb.first_name, tb.last_name), full_name(ub.first_name, ub.last_name)) AS buyer_name,
   ub.email AS buyer_email,
   tt.name AS ticket_type_name, tt.id AS ticket_type_id
@@ -374,8 +377,8 @@ JOIN companies AS co ON a.company = co.id
 LEFT JOIN tickets AS tb ON (a.user_id = tb.user_id AND a.id = tb.booked_action)
 JOIN users AS ub ON a.user_id = ub.id
 JOIN ticket_types AS tt ON t.ticket_type = tt.id
-WHERE t.event=$1 AND t.status='booked'
-ORDER BY a.ts
+WHERE t.event=$1 AND t.status!='reserved'
+ORDER BY t.id
 """
 
 
@@ -395,6 +398,49 @@ async def event_tickets(request):
             ticket.pop('buyer_email')
         tickets.append(ticket)
     return json_response(tickets=tickets)
+
+
+class CancelTickets(UpdateView):
+    class Model(BaseModel):
+        refund_amount: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+
+    async def check_permissions(self):
+        await check_session(self.request, 'admin')
+
+    async def execute(self, m: Model):
+        event_id = await _check_event_permissions(self.request)
+        ticket_id = int(self.request.match_info['tid'])
+        r = await self.conn.fetchrow(
+            """
+            select a.type, t.price, a.extra->>'charge_id'
+            from tickets as t
+            join actions as a on t.booked_action = a.id
+            where t.event = $1 and t.id = $2 and t.status = 'booked'
+            """,
+            event_id,
+            ticket_id,
+        )
+        if not r:
+            raise JsonErrors.HTTPNotFound(message='Ticket not found')
+        booking_type, price, charge_id = r
+        debug(event_id, ticket_id, m, booking_type, charge_id)
+        if m.refund_amount is not None:
+            if booking_type != ActionTypes.buy_tickets:
+                raise JsonErrors.HTTPBadRequest(message='Refund not possible unless ticket was bought through stripe.')
+            if m.refund_amount > price:
+                raise JsonErrors.HTTPBadRequest(message=f'Refund amount must not exceed {price:0.2f}.')
+            await stripe_refund(
+                charge_id=charge_id,
+                ticket_id=ticket_id,
+                event_id=event_id,
+                amount=int(m.refund_amount * 100),
+                user_id=self.session['user_id'],
+                company_id=self.request['company_id'],
+                app=self.app,
+                conn=self.conn,
+            )
+        else:
+            await self.conn.execute("update tickets set status='cancelled' where id=$1", ticket_id)
 
 
 @is_admin_or_host

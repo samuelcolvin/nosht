@@ -7,12 +7,16 @@ import {
   ModalFooter,
   Row,
   Col,
-  Form as BootstrapForm,
+  Form as BootstrapForm, Table
 } from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import requests from '../utils/requests'
 import AsModal from '../general/Modal'
 import Input from '../forms/Input'
+import WithContext from '../utils/context'
+import {Link} from 'react-router-dom'
+import {MoneyFree} from '../general/Money'
+import {render} from '../general/Dashboard'
 
 const TicketType = ({index, ticket_type, update_ticket, active_count}) => {
   const name_field = {
@@ -78,7 +82,7 @@ const TicketType = ({index, ticket_type, update_ticket, active_count}) => {
   )
 }
 
-class TicketTypes extends React.Component {
+class TicketTypes_ extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -150,4 +154,38 @@ class TicketTypes extends React.Component {
   }
 }
 
-export default AsModal(TicketTypes)
+export const TicketTypes = AsModal(TicketTypes_)
+
+export const TicketTypeTable = WithContext(({ticket_types, uri, can_edit}) => (
+  <div className="mb-5">
+    <h4>
+      Ticket Types
+      {can_edit && (
+        <Button tag={Link} to={uri + 'ticket-types/'} size="sm" className="ml-2">
+          <FontAwesomeIcon icon="pencil-alt" className="mr-1"/>
+          Edit
+        </Button>
+      )}
+    </h4>
+    <Table striped>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Group Size</th>
+          <th>Active</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ticket_types.map(tt => (
+          <tr key={tt.id}>
+            <td>{tt.name}</td>
+            <td><MoneyFree>{tt.price}</MoneyFree></td>
+            <td>{tt.slots_used}</td>
+            <td>{render(tt.active)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  </div>
+))

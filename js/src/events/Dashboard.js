@@ -1,20 +1,20 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {Alert, Button, Table, Progress as BsProgress} from 'reactstrap'
 import {format_event_start, format_event_duration, format_datetime, as_title} from '../utils'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {
-  Dash, Detail, RenderList, RenderDetails, ImageThumbnail, MiniMap, render,
+  RenderList, RenderDetails, ImageThumbnail, MiniMap, render,
   MarkdownPreview
 } from '../general/Dashboard'
-import {MoneyFree, Money} from '../general/Money'
+import {Money} from '../general/Money'
 import {InfoModal} from '../general/Modal'
 import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
-import TicketTypes from './TicketTypes'
+import {TicketTypes, TicketTypeTable} from './TicketTypes'
+import {Tickets, CancelTicket} from './Tickets'
 import {EVENT_FIELDS} from './Create'
 
 export class EventsList extends RenderList {
@@ -89,141 +89,6 @@ const Progress = WithContext(({event, tickets, ticket_types, ctx}) => {
     </div>
   )
 })
-
-const TicketTypeTable = WithContext(({ticket_types, uri, can_edit}) => (
-  <div className="mb-5">
-    <h4>
-      Ticket Types
-      {can_edit && (
-        <Button tag={Link} to={uri + 'ticket-types/'} size="sm" className="ml-2">
-          <FontAwesomeIcon icon="pencil-alt" className="mr-1"/>
-          Edit
-        </Button>
-      )}
-    </h4>
-    <Table striped>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Price</th>
-          <th>Group Size</th>
-          <th>Active</th>
-        </tr>
-      </thead>
-      <tbody>
-        {ticket_types.map(tt => (
-          <tr key={tt.id}>
-            <td>{tt.name}</td>
-            <td><MoneyFree>{tt.price}</MoneyFree></td>
-            <td>{tt.slots_used}</td>
-            <td>{render(tt.active)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </Table>
-  </div>
-))
-
-class Tickets_ extends React.Component {
-  constructor (props) {
-    super(props)
-    this.state = {selected: null}
-  }
-
-  render () {
-    if (!this.props.tickets || !this.props.tickets.length) {
-      return (
-        <div className="mb-5">
-          <h4>Tickets</h4>
-          <small>No Tickets bought for this event.</small>
-        </div>
-      )
-    }
-    const s = this.state.selected || {}
-    const is_admin = this.props.ctx.user.role === 'admin'
-    return (
-      <div className="mb-5">
-        <InfoModal isOpen={!!this.state.selected}
-                   title={s.guest_name || <Dash/>}
-                   onClose={() => this.setState({selected: null})}>
-          <Detail name="ID">
-            <code className="text-dark font-weight-bold mt-1">
-              {s.ticket_id}
-            </code>
-          </Detail>
-          <Detail name="Guest">
-            {(s.guest_name || s.guest_email) ?
-              is_admin ?
-                <Link to={`/dashboard/users/${s.guest_user_id}/`}>{s.guest_name || s.guest_email}</Link>
-                :
-                <span>{s.guest_name}</span>
-              :
-              <span className="text-muted">No name provided</span>
-            }
-          </Detail>
-          <Detail name="Buyer">
-            {s.guest_user_id === s.buyer_user_id ?
-              <span className="text-muted">this guest</span>
-              :
-              is_admin ?
-                <Link to={`/dashboard/users/${s.buyer_user_id}/`}>
-                  {s.buyer_name || s.buyer_email || <span className="text-muted">No name provided</span>}
-                </Link>
-                :
-                <span>{s.buyer_name || s.buyer_email || <span className="text-muted">No name provided</span>}</span>
-            }
-          </Detail>
-          <Detail name="Bought At">{format_datetime(s.bought_at)}</Detail>
-          <Detail name="Price"><MoneyFree>{s.price}</MoneyFree></Detail>
-          <Detail name="Extra Donated"><Money>{s.extra_donated}</Money></Detail>
-          <Detail name="Ticket Type">{s.ticket_type_name}</Detail>
-          <Detail name="Extra Info">{s.extra_info}</Detail>
-        </InfoModal>
-        <h4>
-          Tickets
-          <a href={`/api/events/${this.props.id}/tickets/export.csv`}
-              download={true} className="btn btn-secondary btn-sm ml-2">
-            <FontAwesomeIcon icon="file-export" className="mr-1"/>
-            Export
-          </a>
-        </h4>
-        <Table striped>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Guest</th>
-              <th>Buyer</th>
-              <th>Bought At</th>
-              <th>Type</th>
-              <th>Extra Info</th>
-            </tr>
-          </thead>
-          <tbody>
-            {this.props.tickets.map((t, i) => (
-              <tr key={i} onClick={() => this.setState({selected: t})} className="cursor-pointer">
-                <th scope="row">
-                  <code className="text-dark">
-                    {t.ticket_id}
-                  </code>
-                </th>
-                <td>{t.guest_name || t.guest_email || <Dash/>}</td>
-                <td>{t.buyer_name || t.buyer_email || <Dash/>}</td>
-                <td>{format_datetime(t.booked_at)}</td>
-                <td>{t.ticket_type_name}</td>
-                <td>
-                  <span className={t.extra_info && t.extra_info.length > 30 ? 'font-small' : ''}>
-                    {t.extra_info}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </div>
-    )
-  }
-}
-const Tickets = WithContext(Tickets_)
 
 class EventUpdates extends React.Component {
   constructor (props) {
@@ -467,13 +332,13 @@ export class EventsDetails extends RenderDetails {
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
         : null,
-      <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id}/>,
+      <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id} uri={this.uri}/>,
       <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"
                  parent_uri={this.uri}
                  mode="edit"
-                 success_msg='Event updated'
+                 success_msg="Event updated"
                  initial={event}
                  update={this.update}
                  action={`/events/${this.id}/`}
@@ -504,6 +369,15 @@ export class EventsDetails extends RenderDetails {
                 regex={/set-image\/$/}
                 update={this.update}
                 title="Upload Background Image"/>,
+      this.props.ctx.user.role === 'admin' ?
+        <CancelTicket key="cancel"
+                      ctx={this.props.ctx}
+                      location={this.props.location}
+                      tickets={this.state.tickets}
+                      update={this.update}
+                      id={this.id}
+                      uri={this.uri}/>
+        : null,
       this.state.ticket_types ?
         <TicketTypes key="edit-ticket-types"
                      event={event}
