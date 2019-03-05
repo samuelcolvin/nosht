@@ -517,7 +517,7 @@ export class EventsDetails extends RenderDetails {
                          regex={/set-secondary-image\/$/}
                          update={this.update}
                          title="Upload Secondary Image"
-                         help_text="Image should be square and will be displayed at 150px x 150px."
+                         help_text="Image should at least 300px x 300px, it will be displayed square."
                          action={`/events/${this.id}//set-image/secondary/`}/>,
       this.state.ticket_types ?
         <TicketTypes key="edit-ticket-types"
