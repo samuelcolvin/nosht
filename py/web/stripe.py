@@ -193,7 +193,7 @@ async def stripe_refund(
         user_id, company_id
     )
     stripe = StripeClient(app, stripe_secret_key)
-    await stripe.post(
+    return await stripe.post(
         'refunds',
         idempotency_key=f'refund-ticket-{ticket_id}',
         charge=refund_charge_id,

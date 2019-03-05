@@ -130,6 +130,10 @@ async def stripe_post_charges(request):
         })
 
 
+async def stripe_post_refund(request):
+    return json_response({'id': 'xyz'})
+
+
 s3_response = """\
 <?xml version="1.0" ?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
@@ -299,6 +303,7 @@ async def create_dummy_server(create_server):
         web.post('/stripe_root_url/customers/{stripe_customer_id}/sources', stripe_post_customer_sources),
         web.post('/stripe_root_url/customers', stripe_post_customers),
         web.post('/stripe_root_url/charges', stripe_post_charges),
+        web.post('/stripe_root_url/refunds', stripe_post_refund),
 
         web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
         web.get('/s3_demo_image_url/{image:.*}', s3_demo_image),

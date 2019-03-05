@@ -6,7 +6,8 @@ from asyncio import sleep
 import pytest
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
-from web.stripe import Reservation, StripeBuyModel, StripeClient, stripe_buy
+from shared.actions import ActionTypes
+from web.stripe import Reservation, StripeBuyModel, StripeClient, stripe_buy, stripe_refund
 from web.utils import encrypt_json
 
 from .conftest import Factory
@@ -131,7 +132,7 @@ async def test_real_existing_customer_card(cli, db_conn, factory: Factory):
 
 
 @real_stripe_test
-async def test_real_saved_card(cli, db_conn, factory: Factory):
+async def test_real_saved_card_refund(cli, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
@@ -161,6 +162,33 @@ async def test_real_saved_card(cli, db_conn, factory: Factory):
 
     assert action_id == await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
     assert new_source_hash is None
+
+    ticket_id, booking_type, price, charge_id = await db_conn.fetchrow(
+        """
+        select t.id, a.type, t.price, a.extra->>'charge_id'
+        from tickets as t
+        join actions as a on t.booked_action = a.id
+        where t.event = $1 and t.status = 'booked' and a.id = $2
+        """,
+        factory.event_id,
+        action_id,
+    )
+    assert booking_type == ActionTypes.buy_tickets
+    assert price == 10
+    refund = await stripe_refund(
+        refund_charge_id=charge_id,
+        ticket_id=ticket_id,
+        amount=910,
+        user_id=factory.user_id,
+        company_id=factory.company_id,
+        app=app,
+        conn=db_conn,
+    )
+    assert refund['object'] == 'refund'
+    assert refund['amount'] == 910
+    assert refund['charge'] == charge_id
+    assert refund['currency'] == 'gbp'
+    assert refund['reason'] == 'requested_by_customer'
 
 
 async def test_pay_cli(cli, url, dummy_server, factory: Factory, db_conn):

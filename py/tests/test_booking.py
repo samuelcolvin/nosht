@@ -1,5 +1,7 @@
+import pytest
 from pytest_toolbox.comparison import AnyInt, RegexStr
 
+from shared.actions import ActionTypes
 from web.stripe import Reservation
 from web.utils import decrypt_json, encrypt_json
 
@@ -687,3 +689,127 @@ async def test_buy_repeat(factory: Factory, cli, url, login, db_conn):
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
     assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
+
+
+@pytest.fixture
+def buy_tickets(cli, url, login):
+    async def run(factory: Factory):
+        await factory.create_user(email='ticket.buyer@example.org')
+        await login(email='ticket.buyer@example.org')
+
+        data = {
+            'tickets': [{'t': True, 'email': 'ticket.buyer@example.org', 'cover_costs': True}],
+            'ticket_type': factory.ticket_type_id,
+        }
+        r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+        assert r.status == 200, await r.text()
+        data = await r.json()
+
+        data = dict(
+            stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
+            booking_token=data['booking_token']
+        )
+        r = await cli.json_post(url('event-buy-tickets'), data=data)
+        assert r.status == 200, await r.text()
+    return run
+
+
+async def test_cancel_ticket(factory: Factory, cli, url, buy_tickets, db_conn, dummy_server):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(status='published', price=100, ticket_limit=10)
+
+    tickets_remaining = await db_conn.fetchval('SELECT check_tickets_remaining($1, $2)', factory.event_id, 600)
+    assert tickets_remaining == 10
+
+    await buy_tickets(factory)
+
+    tickets_remaining = await db_conn.fetchval('SELECT check_tickets_remaining($1, $2)', factory.event_id, 600)
+    assert tickets_remaining == 9
+    assert 0 == await db_conn.fetchval('select count(*) from actions where type=$1', ActionTypes.cancel_booked_tickets)
+
+    ticket_id, status = await db_conn.fetchrow('select id, status from tickets')
+    assert status == 'booked'
+    r = await cli.json_post(url('event-tickets-cancel', id=factory.event_id, tid=ticket_id), data='{}')
+    assert r.status == 200, await r.text()
+
+    tickets_remaining = await db_conn.fetchval('SELECT check_tickets_remaining($1, $2)', factory.event_id, 600)
+    assert tickets_remaining == 10
+    status = await db_conn.fetchval('select status from tickets where id=$1', ticket_id)
+    assert status == 'cancelled'
+    assert 1 == await db_conn.fetchval('select count(*) from actions where type=$1', ActionTypes.cancel_booked_tickets)
+    assert 'POST stripe_root_url/refunds' not in dummy_server.app['log']
+
+
+async def test_cancel_ticket_refund(factory: Factory, cli, url, buy_tickets, db_conn, dummy_server):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(status='published', price=100)
+
+    await buy_tickets(factory)
+
+    ticket_id, status = await db_conn.fetchrow('select id, status from tickets')
+    assert status == 'booked'
+    data = {'refund_amount': 99}
+    r = await cli.json_post(url('event-tickets-cancel', id=factory.event_id, tid=ticket_id), data=data)
+    assert r.status == 200, await r.text()
+    assert 'POST stripe_root_url/refunds' in dummy_server.app['log']
+
+
+async def test_cancel_ticket_wrong_ticket(factory: Factory, cli, url, buy_tickets, db_conn):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(status='published', price=100)
+
+    await buy_tickets(factory)
+
+    ticket_id = await db_conn.fetchval('select id, status from tickets')
+    event2_id = await factory.create_event(status='published', name='Another Event')
+
+    r = await cli.json_post(url('event-tickets-cancel', id=event2_id, tid=ticket_id), data='{}')
+    assert r.status == 404, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Ticket not found'}
+
+
+async def test_cancel_ticket_refund_free(factory: Factory, cli, url, buy_tickets, db_conn, dummy_server):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(status='published', price=100)
+
+    await buy_tickets(factory)
+
+    v = await db_conn.execute(
+        'update actions set type=$1 where type=$2', ActionTypes.book_free_tickets,  ActionTypes.buy_tickets
+    )
+    assert v == 'UPDATE 1'
+    ticket_id, status = await db_conn.fetchrow('select id, status from tickets')
+    assert status == 'booked'
+    data = {'refund_amount': 99}
+    r = await cli.json_post(url('event-tickets-cancel', id=factory.event_id, tid=ticket_id), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Refund not possible unless ticket was bought through stripe.'}
+    assert 'POST stripe_root_url/refunds' not in dummy_server.app['log']
+
+
+async def test_cancel_ticket_refund_too_much(factory: Factory, cli, url, buy_tickets, db_conn, dummy_server):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(status='published', price=100)
+
+    await buy_tickets(factory)
+
+    ticket_id, status = await db_conn.fetchrow('select id, status from tickets')
+    assert status == 'booked'
+    data = {'refund_amount': 101}
+    r = await cli.json_post(url('event-tickets-cancel', id=factory.event_id, tid=ticket_id), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Refund amount must not exceed 100.00.'}
+    assert 'POST stripe_root_url/refunds' not in dummy_server.app['log']
