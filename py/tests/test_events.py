@@ -691,6 +691,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
             {
                 'id': ticket_id,
                 'ticket_id': RegexStr(r'.{7}-%s' % ticket_id),
+                'ticket_status': 'booked',
                 'extra_info': None,
                 'booked_at': CloseToNow(),
                 'booking_type': 'buy-tickets',
@@ -733,6 +734,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
         {
             'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='anne'"),
             'ticket_id': RegexStr(r'.{7}-\d+'),
+            'ticket_status': 'booked',
             'extra_info': None,
             'booked_at': CloseToNow(),
             'booking_type': 'book-free-tickets',
@@ -750,6 +752,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
         {
             'id': await db_conn.fetchval("SELECT id FROM tickets where first_name='ben'"),
             'ticket_id': RegexStr(r'.{7}-\d+'),
+            'ticket_status': 'booked',
             'extra_info': None,
             'booked_at': CloseToNow(),
             'booking_type': 'book-free-tickets',

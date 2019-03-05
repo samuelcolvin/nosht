@@ -370,13 +370,7 @@ export class EventsDetails extends RenderDetails {
                 update={this.update}
                 title="Upload Background Image"/>,
       this.props.ctx.user.role === 'admin' ?
-        <CancelTicket key="cancel"
-                      ctx={this.props.ctx}
-                      location={this.props.location}
-                      tickets={this.state.tickets}
-                      update={this.update}
-                      id={this.id}
-                      uri={this.uri}/>
+        <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id} uri={this.uri}/>
         : null,
       this.state.ticket_types ?
         <TicketTypes key="edit-ticket-types"

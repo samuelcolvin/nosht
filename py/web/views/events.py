@@ -21,7 +21,7 @@ from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread, Method, UpdateView
-from web.stripe import BookActions, stripe_refund
+from web.stripe import stripe_refund
 from web.utils import (ImageModel, JsonErrors, clean_markdown, json_response, parse_request, raw_json_response,
                        request_image)
 from web.views.export import export_plumbing
@@ -423,24 +423,27 @@ class CancelTickets(UpdateView):
         if not r:
             raise JsonErrors.HTTPNotFound(message='Ticket not found')
         booking_type, price, charge_id = r
-        debug(event_id, ticket_id, m, booking_type, charge_id)
         if m.refund_amount is not None:
             if booking_type != ActionTypes.buy_tickets:
                 raise JsonErrors.HTTPBadRequest(message='Refund not possible unless ticket was bought through stripe.')
             if m.refund_amount > price:
                 raise JsonErrors.HTTPBadRequest(message=f'Refund amount must not exceed {price:0.2f}.')
-            await stripe_refund(
-                charge_id=charge_id,
-                ticket_id=ticket_id,
-                event_id=event_id,
-                amount=int(m.refund_amount * 100),
-                user_id=self.session['user_id'],
-                company_id=self.request['company_id'],
-                app=self.app,
-                conn=self.conn,
+
+        async with self.conn.transaction():
+            action_id = await record_action_id(self.request, self.session['user_id'], ActionTypes.cancel_booked_tickets)
+            await self.conn.execute(
+                "update tickets set status='cancelled', cancel_action=$1 where id=$2", action_id, ticket_id
             )
-        else:
-            await self.conn.execute("update tickets set status='cancelled' where id=$1", ticket_id)
+            if m.refund_amount is not None:
+                await stripe_refund(
+                    refund_charge_id=charge_id,
+                    ticket_id=ticket_id,
+                    amount=int(m.refund_amount * 100),
+                    user_id=self.session['user_id'],
+                    company_id=self.request['company_id'],
+                    app=self.app,
+                    conn=self.conn,
+                )
 
 
 @is_admin_or_host

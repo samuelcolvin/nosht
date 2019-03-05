@@ -1,5 +1,5 @@
 import React from 'react'
-import {Link} from 'react-router-dom'
+import {Link, withRouter} from 'react-router-dom'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {Badge, Button, Table} from 'reactstrap'
 import {as_title, format_datetime} from '../utils'
@@ -117,7 +117,7 @@ class Tickets_ extends React.Component {
 }
 export const Tickets = WithContext(Tickets_)
 
-export const CancelTicket = ({ctx, update, uri, id, location, tickets}) => {
+export const CancelTicket = WithContext(withRouter(({ctx, update, uri, id, location, tickets}) => {
   if (ctx.user.role !== 'admin') {
     return
   }
@@ -170,7 +170,7 @@ export const CancelTicket = ({ctx, update, uri, id, location, tickets}) => {
       mode="edit"
       success_msg="Ticket Cancelled"
       update={update}
-      regex={/tickets\/\d+\/cancel\/$/}
+      regex={regex}
       action={action}
       content_before={content}
       fields={fields}
@@ -180,4 +180,4 @@ export const CancelTicket = ({ctx, update, uri, id, location, tickets}) => {
       save_color="danger"
     />
   )
-}
+}))

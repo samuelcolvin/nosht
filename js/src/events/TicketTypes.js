@@ -7,7 +7,8 @@ import {
   ModalFooter,
   Row,
   Col,
-  Form as BootstrapForm, Table
+  Table,
+  Form as BootstrapForm
 } from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import requests from '../utils/requests'

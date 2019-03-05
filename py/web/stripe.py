@@ -174,47 +174,36 @@ async def stripe_donate(m: StripeDonateModel, company_id: int, user_id: Optional
 async def stripe_refund(
     refund_charge_id: Optional[str],
     ticket_id: int,
-    event_id: int,
     amount: int,
     user_id: int,
     company_id: int,
     app: Application,
     conn: BuildPgConnection
 ):
-    if refund_charge_id:
-        user_email, stripe_secret_key = await conn.fetchrow(
-            """
-            SELECT email, stripe_secret_key
-            FROM users AS u
-            JOIN companies c on u.company = c.id
-            WHERE u.id=$1 AND c.id=$2
-            """,
-            user_id, company_id
-        )
-        stripe = StripeClient(app, stripe_secret_key)
-    async with conn.transaction():
-        action_id = await conn.fetchval_b(
-            'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-            values=Values(
-                company=company_id,
-                user_id=user_id,
-                type=ActionTypes.buy_tickets,
-                event=event_id,
-            )
-        )
-        await conn.execute("update tickets set status='cancelled', cancel_action=$1 where id=$2", action_id, ticket_id)
-        if refund_charge_id:
-             await stripe.post(
-                'refunds',
-                idempotency_key=f'refund-ticket-{ticket_id}',
-                charge=refund_charge_id,
-                amount=amount,
-                reason='requested_by_customer',
-                metadata={
-                    'admin_email': user_email,
-                    'admin_user_id': user_id,
-                }
-            )
+    """
+    Should be called inside ticket cancellation transaction/
+    """
+    user_email, stripe_secret_key = await conn.fetchrow(
+        """
+        SELECT email, stripe_secret_key
+        FROM users AS u
+        JOIN companies c on u.company = c.id
+        WHERE u.id=$1 AND c.id=$2
+        """,
+        user_id, company_id
+    )
+    stripe = StripeClient(app, stripe_secret_key)
+    await stripe.post(
+        'refunds',
+        idempotency_key=f'refund-ticket-{ticket_id}',
+        charge=refund_charge_id,
+        amount=amount,
+        reason='requested_by_customer',
+        metadata={
+            'admin_email': user_email,
+            'admin_user_id': user_id,
+        }
+    )
 
 
 async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
