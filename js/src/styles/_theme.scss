@@ -129,6 +129,12 @@ main.container {
   .card-text {
     flex-grow: 1;
   }
+  .img-thumbnail {
+    width: 100px;
+    margin-top: -110px;
+    margin-right: 0;
+    margin-left: auto;
+  }
 }
 
 #google-map {
@@ -471,5 +477,11 @@ table.dashboard {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+.event-about {
+  .img-thumbnail {
+    width: 150px;
   }
 }

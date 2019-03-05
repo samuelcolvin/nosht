@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {Row, Col, Button} from 'reactstrap'
 import requests from '../utils/requests'
-import {unique} from '../utils'
+import {image_thumb, unique} from '../utils'
 import WithContext from '../utils/context'
 import {Loading, NotFound} from '../general/Errors'
 import PromptUpdate from '../general/PromptUpdate'
@@ -82,7 +82,12 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
         <Markdown content={event.category_content}/>
       </div>
     )}
-    <div className="pt-3">
+    <div className="pt-3 event-about">
+      {event.secondary_image && (
+        <div className="float-left pr-2">
+          <img src={image_thumb(event.secondary_image, 'main')} alt={event.name} className="img-thumbnail"/>
+        </div>
+      )}
       <h2>About</h2>
       <Markdown content={event.long_description}/>
     </div>

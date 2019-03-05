@@ -12,6 +12,9 @@ const Event = ({event}) => (
       <Card>
         <CardImg top width="100%" src={image_thumb(event.image)} alt={event.name}/>
         <CardBody>
+          {event.secondary_image && (
+            <img src={image_thumb(event.secondary_image, 'main')} alt={event.name} className="img-thumbnail"/>
+          )}
           <CardTitle tag="h3">{event.name}</CardTitle>
           <CardSubtitle className="mb-1 text-muted">
             <FontAwesomeIcon icon={['far', 'clock']} className="mr-1"/>

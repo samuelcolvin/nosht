@@ -597,3 +597,11 @@ async def email_logging(conn, settings, **kwargs):
     m = re.search('-- { email change(.*)-- } email change', models_sql, flags=re.DOTALL)
     sql = m.group(1).strip(' \n')
     await conn.execute(sql)
+
+
+@patch
+async def add_secondary_image(conn, **kwargs):
+    """
+    add secondary_image field to events
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN secondary_image VARCHAR(255)')
