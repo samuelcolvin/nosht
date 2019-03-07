@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom'
 import {Card, CardImg, CardTitle, CardText, CardSubtitle, CardBody, Row, Col} from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {chunk_array, image_thumb} from '../utils'
+import Markdown from '../general/Markdown'
 import When from '../general/When'
 
 
@@ -21,7 +22,7 @@ const Event = ({event}) => (
             <When event={event}/>
           </CardSubtitle>
           <CardText>
-            {event.short_description}
+            <Markdown content={event.short_description}/>
           </CardText>
 
           <small className="text-muted">

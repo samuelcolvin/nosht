@@ -21,7 +21,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
       <Col>
         <h1>{event.name}</h1>
         <p className="lead">
-          {event.short_description}
+          <Markdown content={event.short_description}/>
         </p>
       </Col>
       <Col md="3" className="text-right">
