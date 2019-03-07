@@ -26,8 +26,8 @@ from .views.categories import (CategoryBread, category_add_image, category_delet
 from .views.company import CompanyBread, company_set_footer_link, company_upload
 from .views.donate import Donate, DonationOptionBread, donation_image_upload, donation_options, opt_donations
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
-from .views.events import (EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories, event_get,
-                           event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
+from .views.events import (CancelTickets, EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories,
+                           event_get, event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
                            set_event_image_existing, set_event_image_new, set_event_secondary_image, switch_highlight)
 from .views.export import export
 from .views.static import get_csp_headers, static_handler
@@ -99,6 +99,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
         web.post(r'/events/{id:\d+}/set-image/existing/', set_event_image_existing, name='event-set-image-existing'),
         web.post(r'/events/{id:\d+}/set-image/secondary/', set_event_secondary_image, name='event-set-image-secondary'),
         web.get(r'/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
+        web.post(r'/events/{id:\d+}/tickets/{tid:\d+}/cancel/', CancelTickets.view(), name='event-tickets-cancel'),
         web.get(r'/events/{id:\d+}/tickets/export.csv', event_tickets_export, name='event-tickets-export'),
         web.get(r'/events/{id:\d+}/ticket-types/', event_ticket_types, name='event-ticket-types'),
         web.post(r'/events/{id:\d+}/ticket-types/update/', SetTicketTypes.view(), name='update-event-ticket-types'),

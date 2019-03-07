@@ -265,6 +265,8 @@ async def test_event_ticket_export(cli, url, login, factory: Factory, db_conn):
     assert data == [
         {
             'ticket_id': RegexStr(r'.{7}-\d+'),
+            'ticket_status': 'booked',
+            'booking_type': 'book-free-tickets',
             'booked_at': CloseToNow(),
             'price': '',
             'extra_donated': '',
@@ -297,6 +299,8 @@ async def test_event_ticket_export_host(cli, url, login, factory: Factory, db_co
     assert data == [
         {
             'ticket_id': RegexStr(r'.{7}-\d+'),
+            'ticket_status': 'booked',
+            'booking_type': 'book-free-tickets',
             'booked_at': CloseToNow(),
             'price': '',
             'extra_donated': '',

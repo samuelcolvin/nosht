@@ -31,7 +31,7 @@ class _Form extends React.Component {
 
   async submit (e) {
     e.preventDefault()
-    if (Object.keys(this.props.form_data).length === 0) {
+    if (Object.keys(this.props.form_data).length === 0 && !this.props.allow_empty_form) {
       this.setState({form_error: 'No data entered'})
       return
     }
@@ -88,6 +88,7 @@ class _Form extends React.Component {
     return (
       <BootstrapForm onSubmit={this.submit.bind(this)} className="highlight-required">
         <div className={this.props.form_body_class}>
+          {this.props.content_before}
           <div className="form-error text-right">{this.state.form_error}</div>
           {(this.props.fields || []).map((field, i) => (
             <Input key={i}
@@ -106,7 +107,7 @@ class _Form extends React.Component {
                     onClick={() => this.props.finished && this.props.finished()}>
               {this.props.cancel || 'Cancel'}
             </Button>
-            <Button type="submit" color="primary" disabled={this.state.disabled}>
+            <Button type="submit" color={this.props.save_color || 'primary'} disabled={this.state.disabled}>
               {this.props.save || 'Save'}
             </Button>
           </ButtonGroup>
