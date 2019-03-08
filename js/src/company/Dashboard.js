@@ -56,7 +56,7 @@ const LinksTable = WithContext(({links, uri}) => (
           <tr key={i}>
             <td>{link.title}</td>
             <td>
-              <a href={link.url} target="_blank">
+              <a href={link.url} target="_blank" rel="noopener noreferrer">
                 <code>{link.url}</code>
               </a>
             </td>
