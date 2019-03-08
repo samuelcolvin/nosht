@@ -1,8 +1,9 @@
 # ===============================================
 # js build stage
-FROM alpine:3.7 as js-build
-RUN apk --no-cache add yarn
+FROM python:2.7-alpine3.8 as js-build
+RUN apk --no-cache add nodejs-current npm yarn make g++
 WORKDIR /home/root
+RUN echo "node: $(node -v), npm: $(npm -v), yarn: $(yarn -v)"
 
 ADD ./js/package.json /home/root/package.json
 ADD ./js/yarn.lock /home/root/yarn.lock
@@ -16,7 +17,7 @@ ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
 ADD ./deploy-settings-$HEROKU_APP/favicons/* /home/root/public/
 ARG COMMIT
-RUN REACT_APP_COMMIT=$COMMIT yarn build
+RUN REACT_APP_COMMIT=$COMMIT INLINE_RUNTIME_CHUNK=false yarn build
 
 RUN echo '' >> build/index.html
 RUN echo '<!-- nosht event platform, see https://github.com/samuelcolvin/nosht for more details -->' >> build/index.html
@@ -30,7 +31,7 @@ FROM nosht-python-build as python-build
 
 # ===============================================
 # final image
-FROM python:3.6-alpine3.7
+FROM python:3.6-alpine3.8
 COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
 COPY --from=python-build /lib/* /lib/
 COPY --from=python-build /usr/lib/* /usr/lib/
