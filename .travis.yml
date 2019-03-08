@@ -11,8 +11,11 @@ services:
 python:
 - '3.6'
 
+dist: xenial
+sudo: required
+
 node_js:
-- '9'
+- '10'
 
 cache:
   pip: true
