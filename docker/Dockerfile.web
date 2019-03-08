@@ -17,7 +17,7 @@ ADD ./js/src /home/root/src
 ADD ./js/public /home/root/public
 ADD ./deploy-settings-$HEROKU_APP/favicons/* /home/root/public/
 ARG COMMIT
-RUN REACT_APP_COMMIT=$COMMIT yarn build
+RUN REACT_APP_COMMIT=$COMMIT INLINE_RUNTIME_CHUNK=false yarn build
 
 RUN echo '' >> build/index.html
 RUN echo '<!-- nosht event platform, see https://github.com/samuelcolvin/nosht for more details -->' >> build/index.html

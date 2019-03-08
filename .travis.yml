@@ -12,7 +12,7 @@ python:
 - '3.6'
 
 node_js:
-- '10'
+- '9'
 
 cache:
   pip: true
@@ -25,6 +25,9 @@ install:
 - pip install -r py/tests/requirements.txt
 - pip install -r py/requirements.txt
 - cp py/setup.cfg .
+- node -v
+- npm -v
+- yarn -v
 - cd js && yarn && cd ..
 
 script:
