@@ -54,5 +54,10 @@
       "Firefox ESR",
       "not ie < 11"
     ]
+  },
+  "engines": {
+    "node": "10.x",
+    "npm": "6.x",
+    "yarn": "^1.13.x"
   }
 }
