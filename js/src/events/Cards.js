@@ -1,6 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import {Card, CardImg, CardTitle, CardText, CardSubtitle, CardBody, Row, Col} from 'reactstrap'
+import {Card, CardImg, CardTitle, CardSubtitle, CardBody, Row, Col} from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {chunk_array, image_thumb} from '../utils'
 import Markdown from '../general/Markdown'
@@ -21,9 +21,9 @@ const Event = ({event}) => (
             <FontAwesomeIcon icon={['far', 'clock']} className="mr-1"/>
             <When event={event}/>
           </CardSubtitle>
-          <CardText>
+          <div className="card-text pb-2">
             <Markdown content={event.short_description}/>
-          </CardText>
+          </div>
 
           <small className="text-muted">
             <FontAwesomeIcon icon={['fas', 'map-marker']} className="mr-1"/>
