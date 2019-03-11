@@ -383,7 +383,7 @@ export class EventsDetails extends RenderDetails {
                          update={this.update}
                          title="Upload Secondary Image"
                          help_text="Image should at least 300px x 300px, it will be displayed square."
-                         action={`/events/${this.id}//set-image/secondary/`}/>,
+                         action={`/events/${this.id}/set-image/secondary/`}/>,
       this.props.ctx.user.role === 'admin' ?
         <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id} uri={this.uri}/>
         : null,
