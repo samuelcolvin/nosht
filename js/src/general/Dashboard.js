@@ -51,7 +51,7 @@ const Buttons = ({buttons, ctx}) => (
 
 export const Dash = () => <span>&mdash;</span>
 
-export const Detail = ({name, wide, edit_link, children}) => (
+export const Detail = ({name, wide, edit_link, delete_button, children}) => (
   <div className={`item-detail${wide ? ' wide' : ''}`}>
     <div className="key">
       {name}
@@ -59,6 +59,16 @@ export const Detail = ({name, wide, edit_link, children}) => (
         <FontAwesomeIcon icon="pencil-alt" className="mr-1"/>
         Edit {name}
       </Button>}
+      {delete_button && (
+        <ButtonConfirm action={delete_button.action}
+                       modal_title={delete_button.modal_title || 'Confirm'}
+                       btn_text={<span><FontAwesomeIcon icon="times" className="mr-1"/> Delete {name}</span>}
+                       done={delete_button.done}
+                       btn_size="sm"
+                       className="ml-2">
+          {delete_button.content || 'Are you sure?'}
+        </ButtonConfirm>
+      )}
     </div>
     <div className="value">
       {render(children)}
@@ -268,6 +278,7 @@ export class RenderDetails extends RenderItem {
           <Detail key={key}
                   name={this.render_key(key)}
                   wide={Boolean((this.state.formats[key] || {}).wide)}
+                  delete_button={(this.state.formats[key] || {}).delete_button}
                   edit_link={(this.state.formats[key] || {}).edit_link}>
             {this.render_value(this.state.item, key)}
           </Detail>
