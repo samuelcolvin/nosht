@@ -652,7 +652,6 @@ async def set_event_secondary_image(request):
     content = await request_image(request, expected_size=secondary_image_size)
 
     image = await request['conn'].fetchval('SELECT secondary_image from events WHERE id=$1', event_id)
-    # delete the image from S3 if it's set and isn't a category image option
     if image:
         await delete_image(image, request.app['settings'])
 
@@ -662,9 +661,25 @@ async def set_event_secondary_image(request):
     image_url = await upload_force_shape(
         content, upload_path=upload_path, settings=request.app['settings'], req_size=secondary_image_size,
     )
-    await request['conn'].execute('UPDATE events SET secondary_image=$1 WHERE id=$2', image_url, event_id)
-    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
-                        event_id=event_id, subtype='set-image-secondary')
+    async with request['conn'].transaction():
+        await request['conn'].execute('UPDATE events SET secondary_image=$1 WHERE id=$2', image_url, event_id)
+        await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
+                            event_id=event_id, subtype='set-image-secondary')
+    return json_response(status='success')
+
+
+@is_admin_or_host
+async def remove_event_secondary_image(request):
+    event_id = await _check_event_permissions(request, check_upcoming=True)
+
+    image = await request['conn'].fetchval('select secondary_image from events where id=$1', event_id)
+    if image:
+        await delete_image(image, request.app['settings'])
+
+    async with request['conn'].transaction():
+        await request['conn'].execute('update events set secondary_image=null where id=$1', event_id)
+        await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
+                            event_id=event_id, subtype='remove-image-secondary')
     return json_response(status='success')
 
 

@@ -2,10 +2,11 @@ import pytest
 from aiohttp import web
 from aiohttp_session import new_session, session_middleware
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from tests.conftest import Factory
 
 from shared.db import SimplePgPool
 from web.middleware import error_middleware, exc_extra
+
+from .conftest import Factory
 
 
 async def handle_user(request):

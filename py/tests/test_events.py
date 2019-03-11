@@ -1280,3 +1280,32 @@ async def test_secondary_image_exists(cli, url, factory: Factory, db_conn, login
         f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/thumb.png',
         RegexStr(rf'PUT aws_endpoint_url/{event_path}/secondary/\w+/main.png'),
     ]
+
+
+async def test_remove_secondary_image_(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    event_path = 'testingbucket.example.org/tests/testing/supper-clubs/the-event-name'
+    img_url = f'https://{event_path}/secondary/xxx123/main.png'
+    await db_conn.execute('update events set secondary_image=$1', img_url)
+
+    r = await cli.json_post(url('event-remove-image-secondary', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/thumb.png',
+    ]
+    assert None is await db_conn.fetchval('select secondary_image from events where id=$1', factory.event_id)
+
+    r = await cli.json_post(url('event-remove-image-secondary', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/thumb.png',
+    ]
+    assert None is await db_conn.fetchval('select secondary_image from events where id=$1', factory.event_id)

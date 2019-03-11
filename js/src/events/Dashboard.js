@@ -254,6 +254,12 @@ export class EventsDetails extends RenderDetails {
             index: 4,
             wide: true,
             edit_link: can_edit && this.uri + 'set-secondary-image/',
+            delete_button: this.state.item.secondary_image && {
+              action: `/events/${this.id}/remove-image/secondary/`,
+              modal_title: 'Remove Secondary Image',
+              content: 'Are you sure you want to remove the secondary Image?',
+              done: this.update,
+            },
             render: (v, item) => <ImageThumbnail image={v} alt={item.name} image_type="main" width={150}/>,
           },
           long_description: {
