@@ -1300,3 +1300,12 @@ async def test_remove_secondary_image_(cli, url, factory: Factory, db_conn, logi
         f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/thumb.png',
     ]
     assert None is await db_conn.fetchval('select secondary_image from events where id=$1', factory.event_id)
+
+    r = await cli.json_post(url('event-remove-image-secondary', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/thumb.png',
+    ]
+    assert None is await db_conn.fetchval('select secondary_image from events where id=$1', factory.event_id)
