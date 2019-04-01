@@ -3,7 +3,7 @@ flake8==3.7.7
 isort==4.3.16
 lorem==0.1.1
 pycodestyle==2.5.0
-pyflakes==2.0.0
+pyflakes==2.1.1
 pytest==4.0.2
 pytest-aiohttp==0.3.0
 pytest-cov==2.6.0
