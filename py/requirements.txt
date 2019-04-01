@@ -6,7 +6,7 @@ arq==0.15
 asyncpg==0.18.3
 async-timeout==3.0.1
 bcrypt==3.1.6
-buildpg==0.0.2
+buildpg==0.1
 cchardet==2.1.4
 chevron==0.13.1
 cryptography==2.4.2
