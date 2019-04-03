@@ -60,7 +60,9 @@ const EVENT_EMAIL_UPDATE_FIELDS = [
 
 const Progress = WithContext(({event, tickets, ticket_types, ctx}) => {
   const tickets_booked = tickets && (
-    tickets.reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
+    tickets
+    .filter(t => t.ticket_status === 'booked')
+    .reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
   )
   return (
     <div className="mb-5">
