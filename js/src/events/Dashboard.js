@@ -58,10 +58,10 @@ const EVENT_EMAIL_UPDATE_FIELDS = [
   {name: 'message', required: true, type: 'textarea'},
 ]
 
-const Progress = WithContext(({event, tickets, ticket_types, ctx}) => {
+const Progress = WithContext(({event, all_tickets, ticket_types, ctx}) => {
+  const tickets = all_tickets && all_tickets.filter(t => t.ticket_status === 'booked')
   const tickets_booked = tickets && (
     tickets
-    .filter(t => t.ticket_status === 'booked')
     .reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
   )
   return (
@@ -342,7 +342,7 @@ export class EventsDetails extends RenderDetails {
     event.date = {dt: event.start_ts, dur: event.duration}
     const event_fields = EVENT_FIELDS.filter(f => !['category', 'price'].includes(f.name))
     return [
-      <Progress key="progress" event={event} ticket_types={this.state.ticket_types} tickets={this.state.tickets}/>,
+      <Progress key="progress" event={event} ticket_types={this.state.ticket_types} all_tickets={this.state.tickets}/>,
       this.state.ticket_types ?
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
