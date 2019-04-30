@@ -228,8 +228,8 @@ class DonorfyActor(BaseActor):
         if action_type == ActionTypes.book_free_tickets:
             return
 
-        price, extra = await self.pg.fetchrow(
-            'select sum(price), sum(extra_donated) from tickets where booked_action = $1',
+        ticket_count, price, extra = await self.pg.fetchrow(
+            'select count(*), sum(price), sum(extra_donated) from tickets where booked_action = $1',
             action_id,
         )
         price = float(price)
@@ -247,6 +247,7 @@ class DonorfyActor(BaseActor):
             BankAccount=self.settings.donorfy_bank_account,
             DatePaid=format_dt(action_ts),
             Amount=price + extra,
+            Quantity=ticket_count,
             Acknowledgement=f'{cat_slug}-thanks',
             AcknowledgementText=f'Ticket ID: {ticket_id_signed(ticket_id, self.settings)}',
             Reference=f'Events.HUF:{cat_slug} {event_slug}',

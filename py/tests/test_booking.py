@@ -692,12 +692,8 @@ async def test_buy_repeat(factory: Factory, cli, url, login, db_conn):
     data = await r.json()
 
     data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=data['booking_token']
+        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
+        booking_token=data['booking_token'],
     )
     r = await cli.json_post(url('event-buy-tickets'), data=data)
     assert r.status == 200, await r.text()
@@ -726,7 +722,7 @@ def buy_tickets(cli, url, login):
 
         data = dict(
             stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-            booking_token=data['booking_token']
+            booking_token=data['booking_token'],
         )
         r = await cli.json_post(url('event-buy-tickets'), data=data)
         assert r.status == 200, await r.text()
