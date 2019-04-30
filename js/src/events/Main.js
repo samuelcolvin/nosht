@@ -17,7 +17,7 @@ import Thanks from '../donations/Thanks'
 
 const link_classes = e => (
   `hover-raise btn btn-lg btn-${e.tickets_available !== null ? 'danger': 'primary'}` +
-  (e.tickets_available ? '' : ' disabled')
+  (e.tickets_available === 0 ? ' disabled' : '')
 )
 
 
