@@ -829,6 +829,38 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     ]
 
 
+async def test_tickets_dont_repeat(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(first_name='T', last_name='B', email='ticket.buyer@example.org')
+    await factory.create_event(status='published', price=10)
+    await login(email='ticket.buyer@example.org')
+
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'ticket.buyer@example.org'},
+            {'t': True, 'email': 'ticket.buyer@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    data = {
+        'stripe': {'token': 'tok_visa', 'client_ip': '0.0.0.0', 'card_ref': '4242-32-01'},
+        'booking_token': (await r.json())['booking_token']
+    }
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert 2 == await db_conn.fetchval('select count(*) from tickets')
+
+    r = await cli.get(url('event-tickets', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert len(data['tickets']) == 2
+
+
 async def test_image_existing(cli, url, factory: Factory, db_conn, login, dummy_server):
     await factory.create_company()
     await factory.create_cat()
