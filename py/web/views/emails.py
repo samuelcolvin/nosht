@@ -1,5 +1,7 @@
+import chevron
 from buildpg import Values
-from pydantic import BaseModel, constr
+from chevron import ChevronError
+from pydantic import BaseModel, constr, validator
 
 from shared.emails.defaults import EMAIL_DEFAULTS, Triggers
 from web.auth import is_admin
@@ -66,6 +68,14 @@ class EmailDefModel(BaseModel):
     title: constr(max_length=127) = None
     body: str
     active: bool
+
+    @validator('body', 'title')
+    def check_mustache(cls, v):
+        try:
+            chevron.render(v, data={})
+        except (ChevronError, IndexError):
+            raise ValueError('invalid mustache template')
+        return v
 
 
 @is_admin

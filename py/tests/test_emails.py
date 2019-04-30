@@ -748,3 +748,30 @@ async def test_event_created(email_actor: EmailActor, factory: Factory, dummy_se
     assert (
         f'<a href="https://127.0.0.1/dashboard/events/{factory.event_id}/"><span>Event Dashboard</span></a>'
     ) in host_email['part:text/html']
+
+
+async def test_custom_email_def_ok(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_user(email='testing@example.org')
+
+    body = 'DETAILS: {{{ details }}}'
+    await db_conn.execute_b(
+        'INSERT INTO email_definitions (:values__names) VALUES :values',
+        values=Values(company=factory.company_id, trigger=Triggers.admin_notification, subject='testing',
+                      body=body, title='the title')
+    )
+
+    u2 = await factory.create_user(email='other@example.org', receive_emails=False)
+    ctx = {'details': '<h1>details</h1>'}
+    await email_actor.send_emails(factory.company_id, Triggers.admin_notification,
+                                  [UserEmail(id=factory.user_id, ctx=ctx), UserEmail(id=u2, ctx=ctx)])
+
+    assert dummy_server.app['log'] == [
+        (
+            'email_send_endpoint',
+            'Subject: "testing", To: "Frank Spencer <testing@example.org>"'
+        ),
+    ]
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert '<p>DETAILS: <h1>details</h1></p>' in email['part:text/html']
