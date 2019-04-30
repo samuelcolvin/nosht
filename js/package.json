@@ -16,6 +16,7 @@
     "@fortawesome/react-fontawesome": "^0.1.4",
     "@sentry/browser": "^4.1.1",
     "bootstrap": "^4.1.1",
+    "browser-update": "^3.2.5",
     "draft-js": "^0.10.5",
     "draftjs-md-converter": "^1.1.1",
     "http-proxy-middleware": "^0.19.1",

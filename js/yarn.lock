@@ -2151,6 +2151,11 @@ browser-resolve@^1.11.3:
   dependencies:
     resolve "1.1.7"
 
+browser-update@^3.2.5:
+  version "3.2.5"
+  resolved "https://registry.yarnpkg.com/browser-update/-/browser-update-3.2.5.tgz#461c96297edf0a2cd3d3ce5248492d4ae25c5b81"
+  integrity sha512-sL03kAxm7g9go0wu7p5nZq8ZbvmA8/5qQ+jPz0msYoc80lRGTwWT42upBlyUssY96hb7NE7fIj13fgIksSEh0g==
+
 browserify-aes@^1.0.0, browserify-aes@^1.0.4:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/browserify-aes/-/browserify-aes-1.2.0.tgz#326734642f403dabc3003209853bb70ad428ef48"
