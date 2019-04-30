@@ -369,7 +369,8 @@ async def _check_event_permissions(request, check_upcoming=False):
 
 
 event_tickets_sql = """
-SELECT t.id, t.price::float AS price, t.extra_donated::float AS extra_donated, t.extra_info,
+SELECT DISTINCT ON (t.id)
+  t.id, t.price::float AS price, t.extra_donated::float AS extra_donated, t.extra_info,
   iso_ts(a.ts, co.display_timezone) AS booked_at,
   t.status as ticket_status,
   t.user_id AS guest_user_id, full_name(t.first_name, t.last_name) AS guest_name, ug.email AS guest_email,
