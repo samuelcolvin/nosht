@@ -468,6 +468,28 @@ async def test_create_external_ticketing(cli, url, db_conn, factory: Factory, lo
     assert data['event']['external_ticket_url'] == 'https://www.example.com/the-test-event/'
 
 
+async def test_create_event_host_external_ticketing(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await login()
+    await db_conn.fetchval("UPDATE users SET status='pending'")
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        long_description='I love to party',
+        timezone='Europe/London',
+        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+        external_ticket_url='https://www.example.com/the-test-event/',
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 403, await r.text()
+    data = await r.json()
+    assert data == {'message': 'external_ticket_url may only be set by admins'}
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+
+
 async def test_create_bad_timezone(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()

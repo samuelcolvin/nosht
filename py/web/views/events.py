@@ -245,6 +245,9 @@ class EventBread(Bread):
         return Where(logic)
 
     def prepare(self, data):
+        if data.get('external_ticket_url') and self.request['session']['role'] != 'admin':
+            raise JsonErrors.HTTPForbidden(message='external_ticket_url may only be set by admins')
+
         date = data.pop('date', None)
         timezone: TzInfo = data.pop('timezone', None)
         if timezone:
