@@ -384,6 +384,25 @@ async def test_reserve_tickets_wrong_type(cli, url, factory: Factory, login):
     assert data == {'message': 'Ticket type not found'}
 
 
+async def test_reserve_tickets_externally_ticketed(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+    await login()
+
+    await db_conn.execute('update events set external_ticket_url=$1', 'https://www.example.com/thing')
+
+    data = {
+        'tickets': [{'t': True}],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Cannot reserve ticket for an externally ticketed event'}
+
+
 async def test_reserve_0_tickets(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
