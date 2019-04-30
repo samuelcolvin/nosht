@@ -69,7 +69,7 @@ class ReserveTickets(UpdateViewAuth):
                 raise ValueError('at least one ticket must be purchased')
             return v
 
-    async def execute(self, m: Model):
+    async def execute(self, m: Model):  # noqa: C901 (ignore complexity)
         event_id = int(self.request.match_info['id'])
         ticket_count = len(m.tickets)
 
