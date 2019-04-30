@@ -25,6 +25,7 @@ CSP = {
         'connect.facebook.net',
         'js.stripe.com',
         'browser-update.org',
+        "'sha256-5mXP31tdRzR5vh4PvB6B1yJLFdqrPSuKmSv9FWGv2ro='",
     ],
     'font-src': [
         "'self'",
