@@ -384,6 +384,25 @@ async def test_reserve_tickets_wrong_type(cli, url, factory: Factory, login):
     assert data == {'message': 'Ticket type not found'}
 
 
+async def test_reserve_tickets_externally_ticketed(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+    await login()
+
+    await db_conn.execute('update events set external_ticket_url=$1', 'https://www.example.com/thing')
+
+    data = {
+        'tickets': [{'t': True}],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': 'Cannot reserve ticket for an externally ticketed event'}
+
+
 async def test_reserve_0_tickets(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
@@ -673,12 +692,8 @@ async def test_buy_repeat(factory: Factory, cli, url, login, db_conn):
     data = await r.json()
 
     data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=data['booking_token']
+        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
+        booking_token=data['booking_token'],
     )
     r = await cli.json_post(url('event-buy-tickets'), data=data)
     assert r.status == 200, await r.text()
@@ -707,7 +722,7 @@ def buy_tickets(cli, url, login):
 
         data = dict(
             stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-            booking_token=data['booking_token']
+            booking_token=data['booking_token'],
         )
         r = await cli.json_post(url('event-buy-tickets'), data=data)
         assert r.status == 200, await r.text()

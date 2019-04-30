@@ -87,6 +87,7 @@ CREATE TABLE events (
   name VARCHAR(63) NOT NULL,
   slug VARCHAR(63),
   highlight BOOLEAN NOT NULL DEFAULT FALSE,
+  external_ticket_url VARCHAR(255),
   start_ts TIMESTAMPTZ NOT NULL,
   timezone VARCHAR(63) NOT NULL DEFAULT 'Europe/London',
   duration INTERVAL,

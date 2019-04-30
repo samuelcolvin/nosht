@@ -156,7 +156,7 @@ async def user_middleware(request, handler):
     if not company_id:
         company_id = await conn.fetchval('SELECT id FROM companies WHERE domain=$1', host)
         if not company_id:
-            return JsonErrors.HTTPBadRequest(message='no company found for this host')
+            raise JsonErrors.HTTPBadRequest(message='no company found for this host')
     request['company_id'] = company_id
     return await handler(request)
 

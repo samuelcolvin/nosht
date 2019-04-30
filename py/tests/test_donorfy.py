@@ -1,5 +1,6 @@
 import pytest
 from pytest import fixture
+from pytest_toolbox.comparison import CloseToNow, RegexStr
 
 from shared.donorfy import DonorfyActor
 from shared.utils import RequestError
@@ -173,6 +174,54 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
         f'POST donorfy_api_root/standard/transactions/trans_123/AddAllocation',
         f'PUT donorfy_api_root/standard/transactions/Allocation/123',
         f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
+    }
+
+
+async def test_book_multiple(donorfy: DonorfyActor, factory: Factory, dummy_server, db_conn, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_user(first_name='T', last_name='B', email='ticket.buyer@example.org')
+    await factory.create_event(status='published', price=10)
+    await login(email='ticket.buyer@example.org')
+
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'ticket.buyer@example.org'},
+            {'t': True, 'email': 'ticket.buyer@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    data = {
+        'stripe': {'token': 'tok_visa', 'client_ip': '0.0.0.0', 'card_ref': '4242-32-01'},
+        'booking_token': (await r.json())['booking_token']
+    }
+    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    trans_data = dummy_server.app['post_data']['POST donorfy_api_root/standard/transactions']
+    assert len(trans_data) == 1
+    assert trans_data[0] == {
+        'ExistingConstituentId': '123456',
+        'Channel': 'nosht-supper-clubs',
+        'Currency': 'gbp',
+        'Campaign': 'supper-clubs:the-event-name',
+        'PaymentMethod': 'Payment Card via Stripe',
+        'Product': 'Event Ticket(s)',
+        'Fund': 'Unrestricted General',
+        'Department': '220 Ticket Sales',
+        'BankAccount': 'Unrestricted Account',
+        'DatePaid': CloseToNow(),
+        'Amount': 20.0,
+        'Quantity': 2,
+        'Acknowledgement': 'supper-clubs-thanks',
+        'AcknowledgementText': RegexStr('Ticket ID: .*'),
+        'Reference': 'Events.HUF:supper-clubs the-event-name',
+        'AddGiftAidDeclaration': False,
+        'GiftAidClaimed': False,
     }
 
 

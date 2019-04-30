@@ -285,7 +285,18 @@ async def donorfy_get_campaigns(request):
 
 @middleware
 async def log_middleware(request, handler):
-    request.app['log'].append(request.method + ' ' + request.path.strip('/'))
+    path = request.method + ' ' + request.path.strip('/')
+    request.app['log'].append(path)
+    if request.method == 'POST':
+        try:
+            data = await request.json()
+        except ValueError:
+            pass
+        else:
+            if path in request.app['post_data']:
+                request.app['post_data'][path].append(data)
+            else:
+                request.app['post_data'][path] = [data]
     return await handler(request)
 
 
@@ -330,6 +341,7 @@ async def create_dummy_server(create_server):
     server = await create_server(app)
     app.update(
         log=[],
+        post_data={},
         emails=[],
         images=[],
         server_name=f'http://localhost:{server.port}',

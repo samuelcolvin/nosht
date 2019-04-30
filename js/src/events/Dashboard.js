@@ -58,9 +58,11 @@ const EVENT_EMAIL_UPDATE_FIELDS = [
   {name: 'message', required: true, type: 'textarea'},
 ]
 
-const Progress = WithContext(({event, tickets, ticket_types, ctx}) => {
+const Progress = WithContext(({event, all_tickets, ticket_types, ctx}) => {
+  const tickets = all_tickets && all_tickets.filter(t => t.ticket_status === 'booked')
   const tickets_booked = tickets && (
-    tickets.reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
+    tickets
+    .reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
   )
   return (
     <div className="mb-5">
@@ -338,14 +340,20 @@ export class EventsDetails extends RenderDetails {
     const event = Object.assign({}, this.state.item)
     event.location = {name: event.location_name, lat: event.location_lat, lng: event.location_lng}
     event.date = {dt: event.start_ts, dur: event.duration}
-    const event_fields = EVENT_FIELDS.filter(f => !['category', 'price'].includes(f.name))
+    const event_fields = (
+      EVENT_FIELDS.filter(f => !['category', 'price'].includes(f.name))
+      .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
+    )
+    const internal = !event.external_ticket_url
     return [
-      <Progress key="progress" event={event} ticket_types={this.state.ticket_types} tickets={this.state.tickets}/>,
+      internal ?
+        <Progress key="progress" event={event} ticket_types={this.state.ticket_types} all_tickets={this.state.tickets}/>
+        : null,
       this.state.ticket_types ?
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
         : null,
-      <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id} uri={this.uri}/>,
+      internal ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id} uri={this.uri}/> : null,
       <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"

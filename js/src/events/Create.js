@@ -70,6 +70,12 @@ export const EVENT_FIELDS = [
                "You can add more ticket types once you've created the event.",
   },
   {
+    name: 'external_ticket_url',
+    title: 'External Ticketing URL',
+    type: 'url',
+    help_text: "Set if you're not selling tickets for this event through this platform.",
+  },
+  {
     name: 'long_description',
     title: 'Long Description',
     type: 'md',
@@ -113,6 +119,7 @@ class CreateEvent extends React.Component {
     return (
       EVENT_FIELDS
       .filter(f => f.name !== 'short_description' && f.name !== 'timezone')
+      .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
       .map(f => f.name === 'category' ? Object.assign({}, f, {choices}) : f)
     )
   }

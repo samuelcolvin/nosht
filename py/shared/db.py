@@ -613,3 +613,11 @@ async def add_cancel_action(conn, **kwargs):
     add cancel_action field to tickets
     """
     await conn.execute('ALTER TABLE tickets ADD COLUMN cancel_action INT REFERENCES actions ON DELETE SET NULL')
+
+
+@patch
+async def add_external_ticketing(conn, **kwargs):
+    """
+    add the external_ticket_url column to events
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN external_ticket_url VARCHAR(255)')

@@ -88,7 +88,6 @@ async def test_retrieve_existing_email_defs(cli, url, login, factory: Factory, d
 async def test_edit_email_defs(cli, url, login, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_user()
-
     await login()
 
     data = dict(
@@ -108,6 +107,27 @@ async def test_edit_email_defs(cli, url, login, factory: Factory, db_conn):
         'subject': 'foobar',
         'title': None,
         'body': 'the body',
+    }
+
+
+async def test_edit_email_defs_invalid(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        subject='foobar',
+        active=False,
+        body='the body {{ broken'
+    )
+    r = await cli.json_post(url('email-defs-edit', trigger=Triggers.event_reminder.value), data=data)
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {
+        'message': 'Invalid Data',
+        'details': [
+            {'loc': ['body'], 'msg': 'invalid mustache template', 'type': 'value_error'},
+        ],
     }
 
 

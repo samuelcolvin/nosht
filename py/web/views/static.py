@@ -75,14 +75,14 @@ def get_csp_headers(settings: Settings):
     csp = dict(CSP)
     csp['img-src'].append(settings.csp_image_source)
 
-    raven_dsn = os.getenv('RAVEN_DSN', None)
+    raven_dsn = os.getenv('RAVEN_DSN_CSP', None) or os.getenv('RAVEN_DSN', None)
     if raven_dsn:
         m = re.search(r'^https://(.+)@sentry\.io/(.+)', raven_dsn)
         if m:
             key, app = m.groups()
             csp['report-uri'] = [f'https://sentry.io/api/{app}/security/?sentry_key={key}']
         else:
-            logger.warning('app and key not found in RAVEN_DSN %r', raven_dsn)
+            logger.warning('app and key not found in raven dsn %r', raven_dsn)
     return {'Content-Security-Policy': ' '.join(f'{k} {" ".join(v)};' for k, v in csp.items())}
 
 
