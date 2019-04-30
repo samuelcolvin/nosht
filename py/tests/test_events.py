@@ -35,6 +35,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'secondary_image': None,
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
+            'external_ticket_url': None,
             'category_content': None,
             'location': {
                 'name': 'Testing Location',
@@ -187,6 +188,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'location_lng': None,
         'short_description': 'xxx',
         'long_description': 'yyy',
+        'external_ticket_url': None,
         'host': factory.user_id,
         'host_name': 'Frank Spencer',
         'link': '/pvt/supper-clubs/the-event-name/8d2a9334aa29f2151668a54433df2e9d/',
@@ -297,6 +299,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'duration': timedelta(seconds=7200),
         'short_description': 'title I love to party',
         'long_description': '# title\nI love to **party**',
+        'external_ticket_url': None,
         'public': True,
         'location_name': 'London',
         'location_lat': 50.0,
@@ -432,6 +435,37 @@ async def test_create_timezone(cli, url, db_conn, factory: Factory, login):
     start_ts, tz = await db_conn.fetchrow('SELECT start_ts, timezone FROM events WHERE id=$1', data['pk'])
     assert tz == 'America/New_York'
     assert start_ts == datetime(2020, 6, 1, 23, 0, tzinfo=timezone.utc)
+
+
+async def test_create_external_ticketing(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        location={'lat': 50, 'lng': 0, 'name': 'London'},
+        date={'dt': datetime(2020, 6, 1, 19, 0).isoformat(), 'dur': 7200},
+        external_ticket_url='https://www.example.com/the-test-event/',
+        timezone='America/New_York',
+        long_description='# title\nI love to **party**'
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 201, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+    data = await r.json()
+    external_ticket_url = await db_conn.fetchval('SELECT external_ticket_url FROM events WHERE id=$1', data['pk'])
+    assert external_ticket_url == 'https://www.example.com/the-test-event/'
+
+    cat_slug, event_slug = await db_conn.fetchrow(
+        'SELECT cat.slug, e.slug FROM events e JOIN categories cat on e.category = cat.id WHERE e.id=$1', data['pk']
+    )
+    r = await cli.get(url('event-get-public', category=cat_slug, event=event_slug))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['event']['external_ticket_url'] == 'https://www.example.com/the-test-event/'
 
 
 async def test_create_bad_timezone(cli, url, factory: Factory, login):
