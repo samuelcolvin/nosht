@@ -25,7 +25,7 @@ CSP = {
         'connect.facebook.net',
         'js.stripe.com',
         'browser-update.org',
-        "'sha256-5mXP31tdRzR5vh4PvB6B1yJLFdqrPSuKmSv9FWGv2ro='",
+        "'sha256-0ni4JEtxxn/uHl32Dvj0iyke8H1kqdpZkoPzdam0nl8='",
     ],
     'font-src': [
         "'self'",
@@ -58,6 +58,7 @@ CSP = {
         '*.google.de',
         '*.google.pt',
         '*.doubleclick.net',
+        'browser-update.org',
     ],
     'media-src': [
         "'self'",
