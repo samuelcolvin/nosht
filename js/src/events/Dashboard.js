@@ -349,7 +349,7 @@ export class EventsDetails extends RenderDetails {
       internal ?
         <Progress key="progress" event={event} ticket_types={this.state.ticket_types} all_tickets={this.state.tickets}/>
         : null,
-      this.state.ticket_types && internal ?
+      this.state.ticket_types ?
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
         : null,
