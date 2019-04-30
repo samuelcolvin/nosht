@@ -69,7 +69,7 @@ class ReserveTickets(UpdateViewAuth):
                 raise ValueError('at least one ticket must be purchased')
             return v
 
-    async def execute(self, m: Model):
+    async def execute(self, m: Model):  # noqa: C901 (ignore complexity)
         event_id = int(self.request.match_info['id'])
         ticket_count = len(m.tickets)
 
@@ -78,9 +78,9 @@ class ReserveTickets(UpdateViewAuth):
 
         user_id = self.session['user_id']
 
-        status, event_name, cover_costs_percentage = await self.conn.fetchrow(
+        status, external_ticket_url, event_name, cover_costs_percentage = await self.conn.fetchrow(
             """
-            SELECT e.status, e.name, c.cover_costs_percentage
+            SELECT e.status, e.external_ticket_url, e.name, c.cover_costs_percentage
             FROM events AS e
             JOIN categories c on e.category = c.id
             WHERE c.company=$1 AND e.id=$2
@@ -90,6 +90,9 @@ class ReserveTickets(UpdateViewAuth):
 
         if status != 'published':
             raise JsonErrors.HTTPBadRequest(message='Event not published')
+
+        if external_ticket_url is not None:
+            raise JsonErrors.HTTPBadRequest(message='Cannot reserve ticket for an externally ticketed event')
 
         r = await self.conn.fetchrow('SELECT price FROM ticket_types WHERE event=$1 AND id=$2',
                                      event_id, m.ticket_type)

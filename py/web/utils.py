@@ -103,7 +103,7 @@ async def parse_request_ignore_missing(request, model: Type[T], *, headers_=None
         if errors:
             raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=errors, headers_=headers_)
 
-    return model.construct(**data), raw_data
+    return model.construct(values=data, fields_set=set(data.keys())), raw_data
 
 
 IP_HEADER = 'X-Forwarded-For'

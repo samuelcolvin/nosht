@@ -13,7 +13,7 @@ from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
-from pydantic import BaseModel, condecimal, conint, constr, validator
+from pydantic import BaseModel, UrlStr, condecimal, conint, constr, validator
 from pytz.tzinfo import BaseTzInfo
 
 from shared.images import delete_image, upload_background, upload_force_shape
@@ -46,6 +46,7 @@ FROM (
          e.secondary_image,
          e.short_description,
          e.long_description,
+         e.external_ticket_url,
          c.event_content AS category_content,
          json_build_object(
            'name', e.location_name,
@@ -173,6 +174,7 @@ class EventBread(Bread):
         price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
         long_description: str
         short_description: str = None
+        external_ticket_url: UrlStr = None
 
     browse_enabled = True
     retrieve_enabled = True
@@ -205,6 +207,7 @@ class EventBread(Bread):
         'e.location_lng',
         'e.short_description',
         'e.long_description',
+        'e.external_ticket_url',
         'e.host',
         'e.timezone',
         Func('full_name', V('uh.first_name'), V('uh.last_name'), V('uh.email')).as_('host_name'),
@@ -242,6 +245,9 @@ class EventBread(Bread):
         return Where(logic)
 
     def prepare(self, data):
+        if data.get('external_ticket_url') and self.request['session']['role'] != 'admin':
+            raise JsonErrors.HTTPForbidden(message='external_ticket_url may only be set by admins')
+
         date = data.pop('date', None)
         timezone: TzInfo = data.pop('timezone', None)
         if timezone:

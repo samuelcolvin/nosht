@@ -15,6 +15,12 @@ import BookEvent from './Book'
 import Thanks from '../donations/Thanks'
 
 
+const link_classes = e => (
+  `hover-raise btn btn-lg btn-${e.tickets_available !== null ? 'danger': 'primary'}` +
+  (e.tickets_available ? '' : ' disabled')
+)
+
+
 const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
   <div>
     <Row>
@@ -30,11 +36,15 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
             Edit Event
           </Button>
         }
-        <Button color={event.tickets_available !== null ? 'danger': 'primary'} size="lg"
-                className="hover-raise" tag={Link} to={uri + 'book/'} disabled={event.tickets_available === 0}>
-          Book Now
-        </Button>
-        {}
+        {event.external_ticket_url ? (
+          <a className={link_classes(event)} href={event.external_ticket_url}>Book Now</a>
+        ) : (
+          <Button color={event.tickets_available !== null ? 'danger': 'primary'} size="lg"
+                  className="hover-raise" tag={Link} to={uri + 'book/'} disabled={event.tickets_available === 0}>
+            Book Now
+          </Button>
+        )
+        }
         {event.tickets_available !== null &&
           <div className="font-weight-bold mt-3">
             {event.tickets_available === 0 ?

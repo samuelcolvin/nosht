@@ -136,6 +136,8 @@ const NumberInput = props => (
                 onChange={v => props.onChange(v ? parseFloat(v) : null)}/>
 )
 
+const UrlInput = props => <GeneralInput {...props} onChange={v => props.onChange(v || null)}/>
+
 const DURATIONS = [
   {value: null, title: 'All Day'},
   {value: 1800, title: '30 mins'},
@@ -348,6 +350,7 @@ const INPUT_LOOKUP = {
   datetime: DatetimeInput,
   integer: IntegerInput,
   number: NumberInput,
+  url: UrlInput,
   geolocation: GeoLocation,
 }
 
