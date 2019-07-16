@@ -46,7 +46,7 @@ export function StripeContext (WrappedComponent) {
   return WithContext(StripeContext)
 }
 
-export async function stripe_pay (post_url, request_data) {
+export async function stripe_pay (post_url, request_data, client_secret) {
   if (this.state.submitting || !stripe_form_valid(this.state.payment)) {
     const payment = Object.assign({}, this.state.payment, {
       name_error: this.state.payment.name ? null: 'Required',
@@ -62,12 +62,19 @@ export async function stripe_pay (post_url, request_data) {
   if (this.state.payment.source_hash) {
     request_data.stripe = {source_hash: this.state.payment.source_hash}
   } else {
-    const r = await this.props.stripe.createToken({
-      name: this.state.payment.name,
-      address_line1: this.state.payment.address,
-      address_city: this.state.payment.city,
-      address_zip: this.state.payment.postcode,
+    const r = await this.props.stripe.handleCardPayment(client_secret, {
+      payment_method_data: {
+        billing_details: {
+          address: {
+            city: this.state.payment.city,
+            line1: this.state.payment.address,
+            postal_code: this.state.payment.postcode,
+          },
+          name: this.state.payment.name,
+        }
+      }
     })
+    console.log(r)
     if (r.error) {
       // happens at least when you use a test card on live stripe
       console.warn('create token response:', r)
@@ -75,32 +82,32 @@ export async function stripe_pay (post_url, request_data) {
       this.setState({payment, submitting: false})
       return false
     }
-    token = r.token
-    request_data.stripe = {
-      token: token.id,
-      card_ref: `${token.card.last4}-${token.card.exp_year}-${token.card.exp_month}`,
-      client_ip: token.client_ip,
-    }
+    // token = r.token
+    // request_data.stripe = {
+    //   token: token.id,
+    //   card_ref: `${token.card.last4}-${token.card.exp_year}-${token.card.exp_month}`,
+    //   client_ip: token.client_ip,
+    // }
   }
-  this.setState({submitted: true})
-
-  let response_data
-  try {
-    response_data = await requests.post(post_url, request_data, {expected_statuses: [200, 402]})
-  } catch (error) {
-    this.props.ctx.setError(error)
-    return false
-  }
-  if (response_data._response_status === 200) {
-    if (token) {
-      record_card(this.props.ctx.user, token, response_data.source_hash)
-    }
-    return true
-  } else {
-    const payment = Object.assign({}, this.state.payment, {error: response_data.message})
-    this.setState({payment, submitted: false, submitting: false})
-    return false
-  }
+  // this.setState({submitted: true})
+  //
+  // let response_data
+  // try {
+  //   response_data = await requests.post(post_url, request_data, {expected_statuses: [200, 402]})
+  // } catch (error) {
+  //   this.props.ctx.setError(error)
+  //   return false
+  // }
+  // if (response_data._response_status === 200) {
+  //   if (token) {
+  //     record_card(this.props.ctx.user, token, response_data.source_hash)
+  //   }
+  //   return true
+  // } else {
+  //   const payment = Object.assign({}, this.state.payment, {error: response_data.message})
+  //   this.setState({payment, submitted: false, submitting: false})
+  //   return false
+  // }
 }
 
 export const stripe_form_valid = payment_details => (

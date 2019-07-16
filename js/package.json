@@ -32,7 +32,7 @@
     "react-ga": "^2.5.3",
     "react-router-dom": "^4.2.2",
     "react-scripts": "^2.1.8",
-    "react-stripe-elements": "^2.0.0",
+    "react-stripe-elements": "^4.0.0",
     "react-test-renderer": "^16.4.2",
     "reactstrap": "^6.4.0"
   },

@@ -88,7 +88,11 @@ class StripeBookingForm extends React.Component {
   }
 
   async take_payment () {
-    const ok = await this.stripe_pay('events/buy/', {booking_token: this.props.reservation.booking_token})
+    const ok = await this.stripe_pay(
+      'events/buy/',
+      {booking_token: this.props.reservation.booking_token},
+      this.props.reservation.client_secret,
+      )
     if (ok) {
       this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
       ReactGA.event({

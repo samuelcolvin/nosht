@@ -10,7 +10,7 @@ from pydantic import BaseModel, EmailStr, constr, validator
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_auth
 from web.bread import UpdateView
-from web.stripe import BookFreeModel, Reservation, StripeBuyModel, book_free, stripe_buy
+from web.stripe import BookFreeModel, Reservation, StripeBuyModel, book_free, stripe_buy, stripe_buy_intent
 from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response
 
 from .events import check_event_sig
@@ -163,8 +163,9 @@ class ReserveTickets(UpdateViewAuth):
             ticket_count=ticket_count,
             event_name=event_name,
         )
+        client_secret = await stripe_buy_intent(res, self.request['company_id'], self.app, self.conn)
         if update_user_preferences:
-            # has to happen after the transactions is finished
+            # has to happen after the transactions is finishedhttps://forum.bikeradar.com/viewtopic.php?t=13042009
             await self.app['donorfy_actor'].update_user(self.request['session']['user_id'], update_user=False)
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
@@ -173,6 +174,7 @@ class ReserveTickets(UpdateViewAuth):
             'extra_donated': item_extra_donated and float(item_extra_donated * ticket_count),
             'total_price': total_price and float(total_price),
             'timeout': int(time()) + self.settings.ticket_ttl,
+            'client_secret': client_secret,
         }
 
     async def create_users(self, tickets: List[TicketModel]):

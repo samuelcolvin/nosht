@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     stripe_root_url = 'https://api.stripe.com/v1/'
     stripe_idempotency_extra = ''
     stripe_api_version = '2018-08-23'  # https://stripe.com/docs/upgrades
+    stripe_descriptor_prefix = 'nosht:'
 
     default_email_address: str = 'Nosht <nosht@scolvin.com>'
 

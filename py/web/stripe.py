@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import re
 from contextlib import contextmanager
 from enum import Enum
 from typing import Optional, Tuple, Union, cast
@@ -105,6 +106,24 @@ async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection
     return res
 
 
+async def stripe_buy_intent(res: Reservation, company_id: int, app, conn: BuildPgConnection) -> str:
+    with _catch_stripe_errors():
+        return await _create_payment_intent(
+            user_id=res.user_id,
+            price_cents=res.price_cent,
+            description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
+            metadata={
+                'purpose': 'buy-tickets',
+                'event': res.event_id,
+                'tickets_bought': res.ticket_count,
+                'reserve_action': res.action_id,
+            },
+            company_id=company_id,
+            app=app,
+            conn=conn,
+        )
+
+
 async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn: BuildPgConnection) -> int:
     user_id = session.get('user_id')
     res = await get_reservation(m, user_id, app, conn)
@@ -206,20 +225,16 @@ async def stripe_refund(
     )
 
 
-async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
-        m: StripeModel,
-        company_id: int,
-        app: Application,
-        conn: BuildPgConnection,
-        res: Optional[Reservation] = None,
-        don: Optional[Donation] = None) -> Tuple[int, str]:
-
-    if res:
-        user_id = res.user_id
-        price_cents = res.price_cent
-    else:
-        user_id = don.user_id
-        price_cents = don.price_cent
+async def _create_payment_intent(
+    *,
+    user_id: int,
+    price_cents: int,
+    description: str,
+    metadata: dict,
+    company_id: int,
+    app: Application,
+    conn: BuildPgConnection,
+) -> str:
 
     if price_cents is None or price_cents < 100:
         raise JsonErrors.HTTPBadRequest(message='booking price cent < 100')
@@ -234,45 +249,23 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
         """,
         user_id, company_id
     )
-    use_saved_card = hasattr(m.stripe, 'source_hash')
 
-    source_id = None
-    new_customer, new_card = True, True
+    # could move the customer stuff to the worker
+    new_customer = True
     stripe = StripeClient(app, stripe_secret_key)
     if stripe_customer_id:
         try:
-            cards = await stripe.get(f'customers/{stripe_customer_id}/sources?object=card')
+            await stripe.get(f'customers/{stripe_customer_id}')
         except RequestError as e:
             # 404 is ok, it happens when the customer has been deleted, we create a new customer below
             if e.status != 404:
                 raise
         else:
             new_customer = False
-            if use_saved_card:
-                try:
-                    source_id = next(c['id'] for c in cards['data'] if _hash_src(c['id']) == m.stripe.source_hash)
-                except StopIteration:
-                    raise JsonErrors.HTTPBadRequest(message='source not found')
-            else:
-                try:
-                    source_id = next(c['id'] for c in cards['data'] if _card_ref(c) == m.stripe.card_ref)
-                except StopIteration:
-                    # card not found on customer, create a new source
-                    source = await stripe.post(
-                        f'customers/{stripe_customer_id}/sources',
-                        source=m.stripe.token,
-                    )
-                    source_id = source['id']
-                else:
-                    new_card = False
-
-    if new_customer and use_saved_card:
-        raise JsonErrors.HTTPBadRequest(message='using saved card but stripe customer not found')
 
     if new_customer:
         customer = await stripe.post(
             'customers',
-            source=m.stripe.token,
             email=user_email,
             description=f'{user_name} ({user_role})',
             metadata={
@@ -281,8 +274,23 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
             }
         )
         stripe_customer_id = customer['id']
-        source_id = customer['sources']['data'][0]['id']
+        await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, user_id)
+    settings: Settings = app['settings']
+    intent = await stripe.post(
+        'payment_intents',
+        amount=price_cents,
+        currency=currency,
+        setup_future_usage='on_session',
+        customer=stripe_customer_id,
+        description=description,
+        metadata=metadata,
+        statement_descriptor=_clean_descriptor(f'{settings.stripe_descriptor_prefix}: {description}')
+    )
+    debug(intent)
+    return intent['client_secret']
 
+
+async def _stripe_pay():
     async with conn.transaction():
         # mark the tickets paid in DB, then create charge in stripe, then finish transaction
         if res:
@@ -405,6 +413,13 @@ def _hash_src(source_id):
     return hashlib.sha1(source_id.encode()).hexdigest()
 
 
+descriptor_remove = re.compile(r"""[<>'"*]""")
+
+
+def _clean_descriptor(s: str) -> str:
+    return descriptor_remove.sub('', s)[:22]
+
+
 class StripeClient:
     def __init__(self, app, stripe_secret_key):
         self._client: ClientSession = app['stripe_client']
@@ -415,6 +430,7 @@ class StripeClient:
         return await self._request(METH_GET, path, idempotency_key=idempotency_key, **data)
 
     async def post(self, path, *, idempotency_key=None, **data):
+        debug(data)
         return await self._request(METH_POST, path, idempotency_key=idempotency_key, **data)
 
     async def _request(self, method, path, *, idempotency_key=None, **data):
