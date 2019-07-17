@@ -17,7 +17,7 @@ from shared.settings import Settings
 from shared.utils import mk_password
 
 from .middleware import csrf_middleware, error_middleware, pg_middleware, user_middleware
-from .views import index, ses_webhook, sitemap, stripe_webhook
+from .views import index, ses_webhook, sitemap
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_captcha_required, login_with,
                          logout, reset_password_request, set_password, unsubscribe)
 from .views.booking import BookFreeTickets, CancelReservedTickets, ReserveTickets, booking_info
@@ -32,6 +32,7 @@ from .views.events import (CancelTickets, EventBread, EventUpdate, SetEventStatu
                            set_event_secondary_image, switch_highlight)
 from .views.export import export
 from .views.static import get_csp_headers, static_handler
+from .views.stripe import UpdatePaymentIntent, get_payment_method_details, stripe_webhook
 from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_tickets
 
 logger = logging.getLogger('nosht.web')
@@ -89,7 +90,6 @@ def create_app(*, settings: Settings = None, logging_client=None):
         web.get(r'/', index, name='index'),
         web.get(r'/sitemap.xml', sitemap, name='sitemap'),
         web.post(r'/ses-webhook/', ses_webhook, name='ses-webhook'),
-        web.post(r'/stripe-webhook/', stripe_webhook, name='stripe-webhook'),
 
         web.get(r'/cat/{category}/', category_public, name='category'),
 
@@ -119,6 +119,12 @@ def create_app(*, settings: Settings = None, logging_client=None):
         web.get(r'/events/{category}/{event}/booking-info/', booking_info, name='event-booking-info-public'),
         web.get(r'/events/{category}/{event}/{sig}/', event_get, name='event-get-private'),
         web.get(r'/events/{category}/{event}/{sig}/booking-info/', booking_info, name='event-booking-info-private'),
+
+        web.post(r'/stripe/webhook/', stripe_webhook, name='stripe-webhook'),
+        web.get(r'/stripe/payment-method-details/{payment_method}/', get_payment_method_details,
+                name='get-payment-method-details'),
+        web.post(r'/stripe/payment-intent/{client_secret}/', UpdatePaymentIntent.view(),
+                 name='update-payment-intent'),
 
         web.post(r'/donate/', Donate.view(), name='donate'),
 

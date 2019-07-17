@@ -5,15 +5,60 @@ from buildpg import V
 from buildpg.clauses import Join, Where
 from pydantic import BaseModel, condecimal, constr
 
+from shared.actions import ActionTypes
 from shared.images import delete_image, upload_other
+from web.actions import record_action_id
 from web.auth import check_session, is_admin
 from web.bread import Bread
-from web.stripe import StripeDonateModel, stripe_donate
+from web.stripe import StripeDonateModel, stripe_donate, stripe_donate_intent
 from web.utils import JsonErrors, json_response, raw_json_response, request_image
 
 from .booking import UpdateViewAuth
 
 logger = logging.getLogger('nosht.booking')
+
+
+class DonateIntent(UpdateViewAuth):
+    class Model:
+        donation_option_id: int
+        event_id: int
+
+    async def execute(self, m: Model):
+        r = await self.conn.fetchrow(
+            """
+            SELECT opt.name, opt.amount, cat.id
+            FROM donation_options AS opt
+            JOIN categories AS cat ON opt.category = cat.id
+            WHERE opt.id = $1 AND opt.live AND cat.company = $2
+            """,
+            m.donation_option_id, self.request['company_id']
+        )
+        if not r:
+            raise JsonErrors.HTTPBadRequest(message='donation option not found')
+
+        name, amount, cat_id = r
+        event = await self.conn.fetchval('SELECT 1 FROM events WHERE id=$1 AND category=$2', m.event_id, cat_id)
+        if not event:
+            raise JsonErrors.HTTPBadRequest(message='event not found on the same category as donation_option')
+
+        user_id = self.session['user_id']
+        action_id = await record_action_id(self.request, user_id, ActionTypes.pre_donate,
+                                           event_id=m.event_id, donation_option=m.donation_option_id)
+        client_secret = await stripe_donate_intent(
+            user_id=user_id,
+            price_cent=int(amount * 100),
+            donation_option_id=m.donation_option_id,
+            donation_option_name=name,
+            event_id=m.event_id,
+            action_id=action_id,
+            company_id=self.request['company_id'],
+            app=self.app,
+            conn=self.conn,
+        )
+        return {
+            'client_secret': client_secret,
+            'action_id': action_id,
+        }
 
 
 class Donate(UpdateViewAuth):

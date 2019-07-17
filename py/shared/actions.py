@@ -12,6 +12,7 @@ class ActionTypes(str, Enum):
     buy_tickets = 'buy-tickets'
     buy_tickets_offline = 'buy-tickets-offline'
     book_free_tickets = 'book-free-tickets'
+    pre_donate = 'pre-donate'
     donate = 'donate'
     cancel_reserved_tickets = 'cancel-reserved-tickets'
     cancel_booked_tickets = 'cancel-booked-tickets'

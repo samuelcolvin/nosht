@@ -9,7 +9,7 @@ import {
 import AsModal, {SetModalTitle, ModalFooter} from '../general/Modal'
 import Markdown from '../general/Markdown'
 import {Money} from '../general/Money'
-import {get_card, stripe_pay, StripeContext, StripeForm} from '../events/Stripe'
+import {stripe_pay, StripeContext, StripeForm} from '../events/Stripe'
 import Input from '../forms/Input'
 import ReactGA from 'react-ga'
 
@@ -33,18 +33,18 @@ class DonateForm extends React.Component {
     this.state = {
       gift_aid: false,
       submitting: false,
-      submitted: false,
+      submitted: false, // TODO remove
       payment: {},
     }
     this.stripe_pay = stripe_pay.bind(this)
   }
 
-  componentDidMount () {
+  async componentDidMount () {
     if (!this.props.ctx.user) {
       this.props.ctx.setError('You must be logged in to make a donation')
       return
     }
-    const stored_card = get_card(this.props.ctx.user)
+
     this.setState({
       title: this.props.ctx.user.title,
       title_error: null,
@@ -52,13 +52,24 @@ class DonateForm extends React.Component {
       first_name_error: null,
       last_name: this.props.ctx.user.last_name,
       last_name_error: null,
-      address: stored_card.address_line1,
       address_error: null,
-      city: stored_card.address_city,
       city_error: null,
-      postcode: stored_card.address_zip,
       postcode_error: null,
     })
+  }
+
+  setPaymentState = payment => {
+    this.setState({payment})
+    if (!this.state.address && !this.state.city && !this.state.postcode) {
+      this.setState({
+        address: payment.address,
+        address_error: null,
+        city: payment.city,
+        city_error: null,
+        postcode: payment.postal_code,
+        postcode_error: null,
+      })
+    }
   }
 
   async submit (e) {
@@ -92,7 +103,7 @@ class DonateForm extends React.Component {
     if (!this.props.ctx.user) {
       return null
     }
-    const can_submit = !this.state.submitting && (this.state.payment.complete || this.state.payment.source_hash)
+    const can_submit = !this.state.submitting && (this.state.payment.complete || this.state.payment.payment_method_id)
 
     const title_field = {name: 'title', required: this.state.gift_aid, max_length: 10}
     const first_name_field = {name: 'first_name', required: this.state.gift_aid}
@@ -161,7 +172,7 @@ class DonateForm extends React.Component {
               </Collapse>
               <hr/>
               <StripeForm submitted={this.state.submitted} payment_state={this.state.payment}
-                          setPaymentState={payment => this.setState({payment})}/>
+                          setPaymentState={this.setPaymentState}/>
             </Col>
           </Row>
         </ModalBody>

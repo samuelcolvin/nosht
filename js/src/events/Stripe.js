@@ -13,6 +13,7 @@ import {get_component_name, load_script, window_property} from '../utils'
 import WithContext from '../utils/context'
 import Input from '../forms/Input'
 import {Waiting} from '../general/Errors'
+import requests from '../utils/requests'
 
 
 export function StripeContext (WrappedComponent) {
@@ -35,7 +36,7 @@ export function StripeContext (WrappedComponent) {
       return (
         <StripeProvider stripe={this.state.stripe}>
           <Elements>
-            <InjectedWrappedComponent {...this.props}/>
+            <InjectedWrappedComponent {...this.props} raw_stripe={this.state.stripe}/>
           </Elements>
         </StripeProvider>
       )
@@ -51,16 +52,21 @@ export async function stripe_pay (post_url, request_data, client_secret) {
       name_error: this.state.payment.name ? null: 'Required',
       address_error: this.state.payment.address ? null: 'Required',
       city_error: this.state.payment.city ? null: 'Required',
-      postcode_error: this.state.payment.postcode ? null: 'Required',
+      postal_code_error: this.state.payment.postal_code ? null: 'Required',
     })
     this.setState({submitting: false, payment})
     return false
   }
 
   this.setState({submitting: true})
-  if (this.state.payment.source_hash) {
+  if (this.state.payment.payment_method_id) {
     // TODO complete payment intent via
-    request_data.stripe = {source_hash: this.state.payment.source_hash}
+    // request_data.stripe = {stripe_id: this.state.payment.stripe_id}
+    const data = {payment_method: this.state.payment.payment_method_id}
+    const r = await requests.post(`/stripe/payment-intent/${client_secret}/`, data)
+    console.log('payment-intent:', r)
+    this.setState({submitting: false})
+    return false
   } else {
     const r = await this.props.stripe.handleCardPayment(client_secret, {
       payment_method_data: {
@@ -68,7 +74,7 @@ export async function stripe_pay (post_url, request_data, client_secret) {
           address: {
             city: this.state.payment.city,
             line1: this.state.payment.address,
-            postal_code: this.state.payment.postcode,
+            postal_code: this.state.payment.postal_code,
           },
           name: this.state.payment.name,
         }
@@ -87,7 +93,8 @@ export async function stripe_pay (post_url, request_data, client_secret) {
 }
 
 export const stripe_form_valid = payment_details => (
-  payment_details.source_hash || ['complete', 'name', 'address', 'city', 'postcode'].every(f => payment_details[f])
+  payment_details.payment_method_id ||
+  ['complete', 'name', 'address', 'city', 'postal_code'].every(f => payment_details[f])
 )
 
 export const record_payment_method = (user, payment_method) => {
@@ -99,6 +106,17 @@ export const get_card = user => {
   return v ? JSON.parse(v) : {}
 }
 
+export const get_payment_method = async (user) => {
+  const payment_method_id = window.sessionStorage[`payment_method_${user.id}`]
+  if (payment_method_id) {
+    const data = await requests.get(`/stripe/payment-method-details/${payment_method_id}/`)
+    delete data._response_status
+    return {payment_method_id, ...data}
+  } else {
+    return {payment_method_id}
+  }
+}
+
 const ShowCard = ({card}) => (
   <span>
     {card.brand} expiring: {card.exp_month}/{card.exp_year - 2000}, ending: {card.last4}
@@ -108,31 +126,33 @@ const ShowCard = ({card}) => (
 const name_field = {name: 'billing_name', required: true}
 const address_field = {name: 'billing_address', required: true}
 const city_field = {name: 'billing_city', required: true}
-const postcode_field = {name: 'billing_postcode', required: true}
+const postal_code_field = {name: 'billing_postal_code', required: true}
 
 class StripeForm_ extends React.Component {
   constructor (props) {
     super(props)
     this.setPaymentState = this.setPaymentState.bind(this)
     this.radioChange = this.radioChange.bind(this)
-    this.stored_card = get_card(props.ctx.user)
+    this.stored_payment_method = {}
     this.state = {overlay_style: null}
   }
 
-  componentDidMount () {
+  async componentDidMount () {
     const u = this.props.ctx.user
+    this.stored_payment_method = await get_payment_method(this.props.ctx.user)
+    console.log(this.stored_payment_method)
     this.props.setPaymentState({
       error: false,
       complete: false,
-      name: this.stored_card.name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+      name: this.stored_payment_method.name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
       name_error: null,
-      address: this.stored_card.address_line1,
+      address: this.stored_payment_method.address.line1,
       address_error: null,
-      city: this.stored_card.address_city,
+      city: this.stored_payment_method.address.city,
       city_error: null,
-      postcode: this.stored_card.address_zip,
-      postcode_error: null,
-      source_hash: this.stored_card.source_hash || null,
+      postal_code: this.stored_payment_method.address.postal_code,
+      postal_code_error: null,
+      payment_method_id: this.stored_payment_method.payment_method_id || null,
     })
   }
 
@@ -155,7 +175,7 @@ class StripeForm_ extends React.Component {
   }
 
   setPaymentState (change) {
-    this.props.setPaymentState(Object.assign({}, this.props.payment_state, change))
+    this.props.setPaymentState({...this.props.payment_state, ...change})
   }
 
   update_stripe_status (status) {
@@ -163,12 +183,13 @@ class StripeForm_ extends React.Component {
   }
 
   radioChange (e) {
-    this.setPaymentState({source_hash: e.target.value === 'saved' ? this.stored_card.source_hash : null})
+    const payment_method_id = e.target.value === 'saved' ? this.stored_payment_method.payment_method_id : null
+    this.setPaymentState({payment_method_id})
   }
 
   render () {
     const payment_state = this.props.payment_state || {}
-    const has_saved_card = Boolean(this.stored_card.source_hash)
+    const has_saved_card = Boolean(this.stored_payment_method.payment_method_id)
     return (
       <div className="hide-help-text" id="stripe-form">
         {this.props.submitting && (
@@ -181,22 +202,22 @@ class StripeForm_ extends React.Component {
           <div className="pb-2">
             <div className="form-check">
               <input className="form-check-input" type="radio" id="card-saved" value="saved"
-                     checked={!!payment_state.source_hash} onChange={this.radioChange}/>
+                     checked={!!payment_state.payment_method_id} onChange={this.radioChange}/>
               <label className="form-check-label" htmlFor="card-saved">
-                Use <ShowCard card={this.stored_card}/>
+                Use <ShowCard card={this.stored_payment_method.card}/>
               </label>
             </div>
 
             <div className="form-check">
               <input className="form-check-input" type="radio" id="card-new" value="new"
-                     checked={!payment_state.source_hash} onChange={this.radioChange}/>
+                     checked={!payment_state.payment_method_id} onChange={this.radioChange}/>
               <label className="form-check-label" htmlFor="card-new">
                 Use new Card
               </label>
             </div>
           </div>
         )}
-        <Collapse isOpen={!payment_state.source_hash}>
+        <Collapse isOpen={!payment_state.payment_method_id}>
           <Input field={name_field} value={payment_state.name} error={payment_state.name_error}
                  onChange={v => this.setPaymentState({name: v, name_error: null})}/>
           <Input field={address_field} value={payment_state.address} error={payment_state.address_error}
@@ -207,8 +228,8 @@ class StripeForm_ extends React.Component {
                      onChange={v => this.setPaymentState({city: v, city_error: null})}/>
             </Col>
             <Col md="6">
-              <Input field={postcode_field} value={payment_state.postcode} error={payment_state.postcode_error}
-                     onChange={v => this.setPaymentState({postcode: v, postcode_error: null})}/>
+              <Input field={postal_code_field} value={payment_state.postal_code} error={payment_state.postal_code_error}
+                     onChange={v => this.setPaymentState({postal_code: v, postal_code_error: null})}/>
             </Col>
           </Row>
           <FormGroup>
