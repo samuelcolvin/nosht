@@ -10,7 +10,7 @@ from pydantic import BaseModel, EmailStr, constr, validator
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_auth
 from web.bread import UpdateView
-from web.stripe import BookFreeModel, Reservation, StripeBuyModel, book_free, stripe_buy, stripe_buy_intent
+from web.stripe import BookFreeModel, Reservation, book_free, stripe_buy_intent
 from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response
 
 from .events import check_event_sig
@@ -165,7 +165,7 @@ class ReserveTickets(UpdateViewAuth):
         )
         client_secret = await stripe_buy_intent(res, self.request['company_id'], self.app, self.conn)
         if update_user_preferences:
-            # has to happen after the transactions is finishedhttps://forum.bikeradar.com/viewtopic.php?t=13042009
+            # has to happen after the transactions is finished
             await self.app['donorfy_actor'].update_user(self.request['session']['user_id'], update_user=False)
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
@@ -173,7 +173,7 @@ class ReserveTickets(UpdateViewAuth):
             'item_price': item_price and float(item_price),
             'extra_donated': item_extra_donated and float(item_extra_donated * ticket_count),
             'total_price': total_price and float(total_price),
-            'timeout': int(time()) + self.settings.ticket_ttl,
+            'timeout': int(time()) + self.settings.ticket_ttl - 30,
             'client_secret': client_secret,
         }
 
@@ -224,17 +224,6 @@ class CancelReservedTickets(UpdateView):
                 raise JsonErrors.HTTPBadRequest(message='no tickets deleted')
             await self.conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, self.settings.ticket_ttl)
             await record_action(self.request, user_id, ActionTypes.cancel_reserved_tickets, event_id=res.event_id)
-
-
-class BuyTickets(UpdateView):
-    Model = StripeBuyModel
-
-    async def execute(self, m: StripeBuyModel):
-        booked_action_id, source_hash = await stripe_buy(m, self.request['company_id'], self.session.get('user_id'),
-                                                         self.app, self.conn)
-        await self.app['donorfy_actor'].tickets_booked(booked_action_id)
-        await self.app['email_actor'].send_event_conf(booked_action_id)
-        return {'source_hash': source_hash}
 
 
 class BookFreeTickets(UpdateView):

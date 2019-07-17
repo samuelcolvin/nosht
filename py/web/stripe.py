@@ -1,10 +1,13 @@
 import hashlib
+import hmac
 import json
 import logging
 import re
+import secrets
 from contextlib import contextmanager
 from enum import Enum
-from typing import Optional, Tuple, Union, cast
+from time import time
+from typing import Optional, Tuple, Union
 
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.abc import Application
@@ -14,7 +17,7 @@ from buildpg.asyncpg import BuildPgConnection
 from pydantic import BaseModel, MissingError, constr, validator
 
 from shared.settings import Settings
-from shared.utils import RequestError, pseudo_random_str
+from shared.utils import RequestError
 
 from .actions import ActionTypes
 from .utils import JsonErrors, decrypt_json
@@ -60,15 +63,8 @@ class StripeOldCard(BaseModel):
     source_hash: str
 
 
-class StripeModel(BaseModel):
+class StripeDonateModel(BaseModel):
     stripe: Union[StripeNewCard, StripeOldCard]
-
-
-class StripeBuyModel(StripeModel, BookingModel):
-    pass
-
-
-class StripeDonateModel(StripeModel):
     donation_option_id: int
     event_id: int
     gift_aid: bool
@@ -86,7 +82,29 @@ class StripeDonateModel(StripeModel):
         return v or ''  # https://github.com/samuelcolvin/pydantic/issues/132
 
 
-async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection) -> Reservation:
+async def stripe_buy_intent(res: Reservation, company_id: int, app, conn: BuildPgConnection) -> str:
+    with _catch_stripe_errors():
+        return await _create_payment_intent(
+            user_id=res.user_id,
+            price_cents=res.price_cent,
+            description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
+            metadata={
+                'purpose': 'buy-tickets',
+                'event_id': res.event_id,
+                'tickets_bought': res.ticket_count,
+                'reserve_action_id': res.action_id,
+                'user_id': res.user_id,
+            },
+            company_id=company_id,
+            idempotency_key=f'buy-reservation-{res.action_id}',
+            app=app,
+            conn=conn,
+        )
+
+
+async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn: BuildPgConnection) -> int:
+    user_id = session.get('user_id')
+
     res = Reservation(**decrypt_json(app, m.booking_token, ttl=app['settings'].ticket_ttl - 10))
     assert user_id in {None, res.user_id}, "user ids don't match"
 
@@ -103,30 +121,6 @@ async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection
         logger.warning('res ticket count %d, db reserved tickets %d', res.ticket_count, reserved_tickets)
         raise JsonErrors.HTTPBadRequest(message='invalid reservation')
 
-    return res
-
-
-async def stripe_buy_intent(res: Reservation, company_id: int, app, conn: BuildPgConnection) -> str:
-    with _catch_stripe_errors():
-        return await _create_payment_intent(
-            user_id=res.user_id,
-            price_cents=res.price_cent,
-            description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
-            metadata={
-                'purpose': 'buy-tickets',
-                'event': res.event_id,
-                'tickets_bought': res.ticket_count,
-                'reserve_action': res.action_id,
-            },
-            company_id=company_id,
-            app=app,
-            conn=conn,
-        )
-
-
-async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn: BuildPgConnection) -> int:
-    user_id = session.get('user_id')
-    res = await get_reservation(m, user_id, app, conn)
     if m.book_action is BookActions.book_free_tickets:
         if res.price_cent is not None:
             raise JsonErrors.HTTPBadRequest(message='booking not free')
@@ -153,13 +147,6 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
         await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
 
     return confirm_action_id
-
-
-async def stripe_buy(m: StripeBuyModel, company_id: int, user_id: Optional[int], app,
-                     conn: BuildPgConnection) -> Tuple[int, str]:
-    res = await get_reservation(m, user_id, app, conn)
-    with _catch_stripe_errors():
-        return await _stripe_pay(m=m, company_id=company_id, app=app, conn=conn, res=res)
 
 
 async def stripe_donate(m: StripeDonateModel, company_id: int, user_id: Optional[int], app,
@@ -225,6 +212,115 @@ async def stripe_refund(
     )
 
 
+class MetadataPurpose(str, Enum):
+    buy_tickets = 'buy-tickets'
+    donate = 'donate'
+
+
+class MetadataModel(BaseModel):
+    purpose: MetadataPurpose
+    user_id: int
+    event_id: int
+    reserve_action_id: int
+
+
+async def stripe_webhook_pay(request):
+    webhook = await _stripe_webhook_body(request)
+    hook_type = webhook['type']
+    if hook_type == 'payment_intent.payment_failed':
+        ...
+    elif hook_type != 'payment_intent.succeeded':
+        logger.warning('unknown webhook %r', hook_type, extra={'webhook': webhook})
+        return
+
+    settings: Settings = request.app['settings']
+    conn: BuildPgConnection = request['conn']
+    company_id: int = request['company_id']
+
+    data = webhook['data']['object']
+    amount_cents = data['amount']
+    payment_method_id = data['payment_method']
+    metadata = MetadataModel(**data['metadata'])
+
+    charge = data['charges']['data'][0]
+    card = charge['payment_method_details']['card']
+    action_extra = json.dumps({
+        'charge_id': charge['id'],
+        'brand': card['brand'],
+        'card_last4': card['last4'],
+        'card_expiry': f"{card['exp_month']}/{card['exp_year'] - 2000}",
+        '3DS': card['three_d_secure'],
+    })
+
+    async with conn.transaction():
+        # mark the tickets paid in DB, then create charge in stripe, then finish transaction
+        if metadata.purpose == MetadataPurpose.buy_tickets:
+            action_id = await conn.fetchval_b(
+                'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+                values=Values(
+                    company=company_id,
+                    user_id=metadata.user_id,
+                    type=ActionTypes.buy_tickets,
+                    event=metadata.event_id,
+                    extra=action_extra
+                )
+            )
+            await conn.execute(
+                "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
+                action_id, int(metadata.reserve_action_id),
+            )
+            await conn.execute('SELECT check_tickets_remaining($1, $2)', metadata.event_id, settings.ticket_ttl)
+        else:
+            action_id = await conn.fetchval_b(
+                'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+                values=Values(
+                    company=company_id,
+                    user_id=metadata.user_id,
+                    type=ActionTypes.donate,
+                    event=metadata.event_id,
+                    extra=action_extra,
+                )
+            )
+            # gift_aid = metadata['gift_aid'].lower() == 'true'
+            # don_values = dict(
+            #     donation_option=int(metadata['donation_option_id']),
+            #     amount=amount_cents / 100,
+            #     gift_aid=gift_aid,
+            #     action=action_id,
+            # )
+            # if gift_aid:
+            #     don_values.update(
+            #         first_name=metadata['don_first_name'],
+            #         last_name=metadata['don_last_name'],
+            #         title=metadata['don_title'],
+            #         address=metadata['don_address'],
+            #         city=metadata['don_city'],
+            #         postcode=metadata['don_postcode'],
+            #     )
+            # await conn.fetchval_b(
+            #     'INSERT INTO donations (:values__names) VALUES :values',
+            #     values=Values(**don_values)
+            # )
+    if metadata.purpose == MetadataPurpose.buy_tickets:
+        await request.app['donorfy_actor'].tickets_booked(action_id)
+        await request.app['email_actor'].send_event_conf(action_id)
+
+    stripe_customer_id, stripe_secret_key = await conn.fetchrow(
+        """
+        SELECT stripe_customer_id, stripe_secret_key
+        FROM users AS u
+        JOIN companies c on u.company = c.id
+        WHERE u.id=$1 AND c.id=$2
+        """,
+        metadata.user_id, company_id
+    )
+    stripe = StripeClient(request.app, stripe_secret_key)
+    await stripe.post(
+        f'payment_methods/{payment_method_id}/attach',
+        customer=stripe_customer_id,
+    )
+
+
 async def _create_payment_intent(
     *,
     user_id: int,
@@ -232,6 +328,7 @@ async def _create_payment_intent(
     description: str,
     metadata: dict,
     company_id: int,
+    idempotency_key: str,
     app: Application,
     conn: BuildPgConnection,
 ) -> str:
@@ -278,6 +375,7 @@ async def _create_payment_intent(
     settings: Settings = app['settings']
     intent = await stripe.post(
         'payment_intents',
+        idempotency_key=idempotency_key,
         amount=price_cents,
         currency=currency,
         setup_future_usage='on_session',
@@ -286,109 +384,140 @@ async def _create_payment_intent(
         metadata=metadata,
         statement_descriptor=_clean_descriptor(f'{settings.stripe_descriptor_prefix}: {description}')
     )
-    debug(intent)
+    # debug(intent)
     return intent['client_secret']
 
 
-async def _stripe_pay():
-    async with conn.transaction():
-        # mark the tickets paid in DB, then create charge in stripe, then finish transaction
-        if res:
-            action_id = await conn.fetchval_b(
-                'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-                values=Values(
-                    company=company_id,
-                    user_id=user_id,
-                    type=ActionTypes.buy_tickets,
-                    event=res.event_id,
-                )
-            )
-            await conn.execute(
-                "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
-                action_id, res.action_id,
-            )
-            await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
-            idempotency_key = f'buy-reservation-{res.action_id}'
-            metadata = {
-                'purpose': 'buy-tickets',
-                'event': res.event_id,
-                'tickets_bought': res.ticket_count,
-                'booked_action': action_id,
-                'reserve_action': res.action_id,
-            }
-            description = f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})'
-        else:
-            assert don
-            m = cast(StripeDonateModel, m)
-            action_id = await conn.fetchval_b(
-                'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-                values=Values(
-                    company=company_id,
-                    user_id=user_id,
-                    type=ActionTypes.donate,
-                    event=m.event_id,
-                )
-            )
-            don_values = dict(
-                donation_option=m.donation_option_id,
-                amount=price_cents / 100,
-                gift_aid=m.gift_aid,
-                action=action_id,
-            )
-            if m.gift_aid:
-                don_values.update(
-                    first_name=m.first_name,
-                    last_name=m.last_name,
-                    title=m.title,
-                    address=m.address,
-                    city=m.city,
-                    postcode=m.postcode,
-                )
-            don_id = await conn.fetchval_b(
-                'INSERT INTO donations (:values__names) VALUES :values RETURNING id',
-                values=Values(**don_values)
-            )
-            cache_key = f'idempotency-donate-{m.donation_option_id}-{user_id}'
-            with await app['redis'] as redis:
-                idempotency_key = await redis.get(cache_key)
-                if idempotency_key:
-                    idempotency_key = idempotency_key.decode()
-                else:
-                    idempotency_key = f'{cache_key}-{pseudo_random_str()}'
-                    await redis.setex(cache_key, 20, idempotency_key)
-            metadata = {
-                'purpose': 'donate',
-                'donation_option': m.donation_option_id,
-                'donation_id': don_id,
-                'event': m.event_id,
-            }
-            description = f'donation towards {don.donation_option_name} ({don_id})'
+# async def _pay_stripe(request):
+#     webhook = await _stripe_webhook_body(request)
+#     hook_type = webhook['type']
+#     if hook_type == 'payment_intent.payment_failed':
+#         ...
+#     elif hook_type != 'payment_intent.succeeded':
+#         logger.warning('unknown webhook %r', hook_type, extra={'webhook': webhook})
+#         return
+#
+#     settings: Settings = request.app['settings']
+#
+#     data = webhook['data']['object']
+#     metadata = data['metadata']
+#     user_id = metadata['user_id']
+#     event_id = metadata.get('event_id')
+#     async with request['conn'].transaction():
+#         # mark the tickets paid in DB, then create charge in stripe, then finish transaction
+#         if res:
+#             action_id = await conn.fetchval_b(
+#                 'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+#                 values=Values(
+#                     company=company_id,
+#                     user_id=user_id,
+#                     type=ActionTypes.buy_tickets,
+#                     event=event_id,
+#                 )
+#             )
+#             await conn.execute(
+#                 "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
+#                 action_id, res.action_id,
+#             )
+#             await conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, settings.ticket_ttl)
+#         else:
+#             # assert don
+#             # m = cast(StripeDonateModel, m)
+#             donation_option_id = int(metadata['donation_option_id'])
+#             action_id = await conn.fetchval_b(
+#                 'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+#                 values=Values(
+#                     company=company_id,
+#                     user_id=user_id,
+#                     type=ActionTypes.donate,
+#                     event=event_id,
+#                 )
+#             )
+#             don_values = dict(
+#                 donation_option=donation_option_id,
+#                 amount=price_cents / 100,
+#                 gift_aid=m.gift_aid,
+#                 action=action_id,
+#             )
+#             if m.gift_aid:
+#                 don_values.update(
+#                     first_name=m.first_name,
+#                     last_name=m.last_name,
+#                     title=m.title,
+#                     address=m.address,
+#                     city=m.city,
+#                     postcode=m.postcode,
+#                 )
+#             don_id = await conn.fetchval_b(
+#                 'INSERT INTO donations (:values__names) VALUES :values RETURNING id',
+#                 values=Values(**don_values)
+#             )
+#             cache_key = f'idempotency-donate-{m.donation_option_id}-{user_id}'
+#             with await app['redis'] as redis:
+#                 idempotency_key = await redis.get(cache_key)
+#                 if idempotency_key:
+#                     idempotency_key = idempotency_key.decode()
+#                 else:
+#                     idempotency_key = f'{cache_key}-{pseudo_random_str()}'
+#                     await redis.setex(cache_key, 20, idempotency_key)
+#             metadata = {
+#                 'purpose': 'donate',
+#                 'donation_option': m.donation_option_id,
+#                 'donation_id': don_id,
+#                 'event': m.event_id,
+#             }
+#             description = f'donation towards {don.donation_option_name} ({don_id})'
+#
+#         charge = await stripe.post(
+#             'charges',
+#             idempotency_key=idempotency_key,
+#             amount=price_cents,
+#             currency=currency,
+#             customer=stripe_customer_id,
+#             source=source_id,
+#             description=description,
+#             metadata=metadata
+#         )
+#     await conn.execute(
+#         'UPDATE actions SET extra=$1 WHERE id=$2',
+#         json.dumps({
+#             'new_customer': new_customer,
+#             'new_card': new_card,
+#             'charge_id': charge['id'],
+#             'brand': charge['source']['brand'],
+#             'card_last4': charge['source']['last4'],
+#             'card_expiry': f"{charge['source']['exp_month']}/{charge['source']['exp_year'] - 2000}",
+#         }),
+#         action_id,
+#     )
+#     if new_customer:
+#         await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, user_id)
+#     return action_id, None if use_saved_card else _hash_src(source_id)
 
-        charge = await stripe.post(
-            'charges',
-            idempotency_key=idempotency_key,
-            amount=price_cents,
-            currency=currency,
-            customer=stripe_customer_id,
-            source=source_id,
-            description=description,
-            metadata=metadata
-        )
-    await conn.execute(
-        'UPDATE actions SET extra=$1 WHERE id=$2',
-        json.dumps({
-            'new_customer': new_customer,
-            'new_card': new_card,
-            'charge_id': charge['id'],
-            'brand': charge['source']['brand'],
-            'card_last4': charge['source']['last4'],
-            'card_expiry': f"{charge['source']['exp_month']}/{charge['source']['exp_year'] - 2000}",
-        }),
-        action_id,
-    )
-    if new_customer:
-        await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, user_id)
-    return action_id, None if use_saved_card else _hash_src(source_id)
+
+async def _stripe_webhook_body(request) -> dict:
+    """
+    check the signature of a stripe webhook, then decode and return the body
+    """
+    ts, sig = '1', 'missing'
+    for part in request.headers.get('Stripe-Signature', '').split(','):
+        key, value = part.split('=', 1)
+        if key == 't':
+            ts = value
+        elif key == 'v1':
+            sig = value
+
+    text = await request.text()
+    settings: Settings = request.app['settings']
+    payload = f'{ts}.{text}'.encode()
+    if not secrets.compare_digest(hmac.new(settings.stripe_webhook_secret, payload, hashlib.sha256).hexdigest(), sig):
+        raise JsonErrors.HTTPForbidden(message='Invalid signature')
+
+    age = int(time()) - int(ts)
+    if age > 300:
+        raise JsonErrors.HTTPBadRequest(message='webhook too old', age=age)
+
+    return json.loads(text)
 
 
 @contextmanager
@@ -430,7 +559,6 @@ class StripeClient:
         return await self._request(METH_GET, path, idempotency_key=idempotency_key, **data)
 
     async def post(self, path, *, idempotency_key=None, **data):
-        debug(data)
         return await self._request(METH_POST, path, idempotency_key=idempotency_key, **data)
 
     async def _request(self, method, path, *, idempotency_key=None, **data):

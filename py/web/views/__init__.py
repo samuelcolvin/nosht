@@ -8,6 +8,7 @@ from aiohttp.web_exceptions import HTTPUnauthorized
 from aiohttp.web_response import Response, StreamResponse
 
 from web.utils import raw_json_response
+from web.stripe import stripe_webhook_pay
 
 logger = logging.getLogger('nosht.views')
 
@@ -145,4 +146,9 @@ async def ses_webhook(request):
     else:
         assert sns_type == 'Notification', sns_type
         await request.app['email_actor'].record_email_event(data.get('Message'))
+    return Response(status=204)
+
+
+async def stripe_webhook(request):
+    await stripe_webhook_pay(request)
     return Response(status=204)

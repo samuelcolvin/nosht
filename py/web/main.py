@@ -17,10 +17,10 @@ from shared.settings import Settings
 from shared.utils import mk_password
 
 from .middleware import csrf_middleware, error_middleware, pg_middleware, user_middleware
-from .views import index, ses_webhook, sitemap
+from .views import index, ses_webhook, sitemap, stripe_webhook
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_captcha_required, login_with,
                          logout, reset_password_request, set_password, unsubscribe)
-from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
+from .views.booking import BookFreeTickets, CancelReservedTickets, ReserveTickets, booking_info
 from .views.categories import (CategoryBread, category_add_image, category_delete_image, category_images,
                                category_public, category_set_image)
 from .views.company import CompanyBread, company_set_footer_link, company_upload
@@ -89,6 +89,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
         web.get(r'/', index, name='index'),
         web.get(r'/sitemap.xml', sitemap, name='sitemap'),
         web.post(r'/ses-webhook/', ses_webhook, name='ses-webhook'),
+        web.post(r'/stripe-webhook/', stripe_webhook, name='stripe-webhook'),
 
         web.get(r'/cat/{category}/', category_public, name='category'),
 
@@ -113,7 +114,6 @@ def create_app(*, settings: Settings = None, logging_client=None):
 
         # event public views
         web.post(r'/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
-        web.post(r'/events/buy/', BuyTickets.view(), name='event-buy-tickets'),
         web.post(r'/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
         web.get(r'/events/{category}/{event}/', event_get, name='event-get-public'),
         web.get(r'/events/{category}/{event}/booking-info/', booking_info, name='event-booking-info-public'),

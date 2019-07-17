@@ -163,6 +163,7 @@ async def user_middleware(request, handler):
 
 NO_CHECKS = {
     '/api/ses-webhook/',
+    '/api/stripe-webhook/',
 }
 UPLOAD_PATHS = (
     re.compile(r'/api/companies/upload/(?:image|logo)/'),

@@ -13,7 +13,6 @@ import {get_component_name, load_script, window_property} from '../utils'
 import WithContext from '../utils/context'
 import Input from '../forms/Input'
 import {Waiting} from '../general/Errors'
-import requests from '../utils/requests'
 
 
 export function StripeContext (WrappedComponent) {
@@ -58,8 +57,9 @@ export async function stripe_pay (post_url, request_data, client_secret) {
     return false
   }
 
-  let token = null
+  this.setState({submitting: true})
   if (this.state.payment.source_hash) {
+    // TODO complete payment intent via
     request_data.stripe = {source_hash: this.state.payment.source_hash}
   } else {
     const r = await this.props.stripe.handleCardPayment(client_secret, {
@@ -74,48 +74,24 @@ export async function stripe_pay (post_url, request_data, client_secret) {
         }
       }
     })
-    console.log(r)
     if (r.error) {
       // happens at least when you use a test card on live stripe
       console.warn('create token response:', r)
-      const payment = Object.assign({}, this.state.payment, {error: r.error.message || 'Invalid Card'})
+      const payment = {...this.state.payment, error: r.error.message || 'Invalid Card'}
       this.setState({payment, submitting: false})
       return false
     }
-    // token = r.token
-    // request_data.stripe = {
-    //   token: token.id,
-    //   card_ref: `${token.card.last4}-${token.card.exp_year}-${token.card.exp_month}`,
-    //   client_ip: token.client_ip,
-    // }
+    record_payment_method(this.props.ctx.user, r.paymentIntent.payment_method)
   }
-  // this.setState({submitted: true})
-  //
-  // let response_data
-  // try {
-  //   response_data = await requests.post(post_url, request_data, {expected_statuses: [200, 402]})
-  // } catch (error) {
-  //   this.props.ctx.setError(error)
-  //   return false
-  // }
-  // if (response_data._response_status === 200) {
-  //   if (token) {
-  //     record_card(this.props.ctx.user, token, response_data.source_hash)
-  //   }
-  //   return true
-  // } else {
-  //   const payment = Object.assign({}, this.state.payment, {error: response_data.message})
-  //   this.setState({payment, submitted: false, submitting: false})
-  //   return false
-  // }
+  return true
 }
 
 export const stripe_form_valid = payment_details => (
   payment_details.source_hash || ['complete', 'name', 'address', 'city', 'postcode'].every(f => payment_details[f])
 )
 
-export const record_card = (user, token, source_hash) => {
-  window.sessionStorage[`card_details_${user.id}`] = JSON.stringify(Object.assign({}, token.card, {source_hash}))
+export const record_payment_method = (user, payment_method) => {
+  window.sessionStorage[`payment_method_${user.id}`] = payment_method
 }
 
 export const get_card = user => {
@@ -140,7 +116,7 @@ class StripeForm_ extends React.Component {
     this.setPaymentState = this.setPaymentState.bind(this)
     this.radioChange = this.radioChange.bind(this)
     this.stored_card = get_card(props.ctx.user)
-    this.state = {form_height: null}
+    this.state = {overlay_style: null}
   }
 
   componentDidMount () {
@@ -164,7 +140,12 @@ class StripeForm_ extends React.Component {
     this.clear_timer = setTimeout(() => {
       const el = document.getElementById('stripe-form')
       if (el && el.offsetHeight !== this.state.form_height) {
-        this.setState({form_height: el.offsetHeight})
+        this.setState({
+          overlay_style: {
+            height: el.offsetHeight,
+            width: el.offsetWidth,
+          }
+        })
       }
     }, 100)
   }
@@ -188,68 +169,65 @@ class StripeForm_ extends React.Component {
   render () {
     const payment_state = this.props.payment_state || {}
     const has_saved_card = Boolean(this.stored_card.source_hash)
-    if (this.props.submitted) {
-      return (
-        <div style={{height: this.state.form_height}} className="vertical-center">
-          <Waiting/>
-          <small className="text-muted mt-4">processing payment...</small>
-        </div>
-      )
-    } else {
-      return (
-        <div className="hide-help-text" id="stripe-form">
-          {has_saved_card && (
-            <div className="pb-2">
-              <div className="form-check">
-                <input className="form-check-input" type="radio" id="card-saved" value="saved"
-                       checked={!!payment_state.source_hash} onChange={this.radioChange}/>
-                <label className="form-check-label" htmlFor="card-saved">
-                  Use <ShowCard card={this.stored_card}/>
-                </label>
-              </div>
-
-              <div className="form-check">
-                <input className="form-check-input" type="radio" id="card-new" value="new"
-                       checked={!payment_state.source_hash} onChange={this.radioChange}/>
-                <label className="form-check-label" htmlFor="card-new">
-                  Use new Card
-                </label>
-              </div>
+    return (
+      <div className="hide-help-text" id="stripe-form">
+        {this.props.submitting && (
+          <div style={this.state.overlay_style} className="stripe-overlay">
+            <Waiting/>
+            <small className="text-muted mt-4">processing payment...</small>
+          </div>
+        )}
+        {has_saved_card && (
+          <div className="pb-2">
+            <div className="form-check">
+              <input className="form-check-input" type="radio" id="card-saved" value="saved"
+                     checked={!!payment_state.source_hash} onChange={this.radioChange}/>
+              <label className="form-check-label" htmlFor="card-saved">
+                Use <ShowCard card={this.stored_card}/>
+              </label>
             </div>
-          )}
-          <Collapse isOpen={!payment_state.source_hash}>
-            <Input field={name_field} value={payment_state.name} error={payment_state.name_error}
-                   onChange={v => this.setPaymentState({name: v, name_error: null})}/>
-            <Input field={address_field} value={payment_state.address} error={payment_state.address_error}
-                   onChange={v => this.setPaymentState({address: v, address_error: null})}/>
-            <Row>
-              <Col md="6">
-                <Input field={city_field} value={payment_state.city} error={payment_state.city_error}
-                       onChange={v => this.setPaymentState({city: v, city_error: null})}/>
-              </Col>
-              <Col md="6">
-                <Input field={postcode_field} value={payment_state.postcode} error={payment_state.postcode_error}
-                       onChange={v => this.setPaymentState({postcode: v, postcode_error: null})}/>
-              </Col>
-            </Row>
-            <FormGroup>
-              <Label className="required">
-                Card Details
-              </Label>
-              <CardElement className={`py-2 px-1${payment_state.error ? ' stripe-error' : ''}`}
-                           hidePostalCode={true}
-                           onChange={this.update_stripe_status.bind(this)}/>
-              {payment_state.error &&
-                <FormFeedback className="d-block">
-                  <FontAwesomeIcon icon="times" className="mr-1"/>
-                  {payment_state.error}
-                </FormFeedback>
-              }
-            </FormGroup>
-          </Collapse>
-        </div>
-      )
-    }
+
+            <div className="form-check">
+              <input className="form-check-input" type="radio" id="card-new" value="new"
+                     checked={!payment_state.source_hash} onChange={this.radioChange}/>
+              <label className="form-check-label" htmlFor="card-new">
+                Use new Card
+              </label>
+            </div>
+          </div>
+        )}
+        <Collapse isOpen={!payment_state.source_hash}>
+          <Input field={name_field} value={payment_state.name} error={payment_state.name_error}
+                 onChange={v => this.setPaymentState({name: v, name_error: null})}/>
+          <Input field={address_field} value={payment_state.address} error={payment_state.address_error}
+                 onChange={v => this.setPaymentState({address: v, address_error: null})}/>
+          <Row>
+            <Col md="6">
+              <Input field={city_field} value={payment_state.city} error={payment_state.city_error}
+                     onChange={v => this.setPaymentState({city: v, city_error: null})}/>
+            </Col>
+            <Col md="6">
+              <Input field={postcode_field} value={payment_state.postcode} error={payment_state.postcode_error}
+                     onChange={v => this.setPaymentState({postcode: v, postcode_error: null})}/>
+            </Col>
+          </Row>
+          <FormGroup>
+            <Label className="required">
+              Card Details
+            </Label>
+            <CardElement className={`py-2 px-1${payment_state.error ? ' stripe-error' : ''}`}
+                         hidePostalCode={true}
+                         onChange={this.update_stripe_status.bind(this)}/>
+            {payment_state.error &&
+              <FormFeedback className="d-block">
+                <FontAwesomeIcon icon="times" className="mr-1"/>
+                {payment_state.error}
+              </FormFeedback>
+            }
+          </FormGroup>
+        </Collapse>
+      </div>
+    )
   }
 }
 export const StripeForm = injectStripe(WithContext(StripeForm_))

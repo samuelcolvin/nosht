@@ -214,6 +214,16 @@ textarea {
   min-height: 100px;
 }
 
+.stripe-overlay {
+  z-index: 1000;
+  position: fixed;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
 $item-size: 220px;
 .dropzone {
   width: 100%;
@@ -325,13 +335,6 @@ li.react-datepicker__time-list-item {
   // &.StripeElement--complete {
   //   border: $border-width solid $form-feedback-valid-color;
   // }
-}
-
-.vertical-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
 }
 
 $waiting-size: 60px;
