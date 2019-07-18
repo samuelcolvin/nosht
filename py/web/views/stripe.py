@@ -31,21 +31,18 @@ async def stripe_webhook(request):
     webhook = await stripe_webhook_body(request)
     hook_type = webhook['type']
 
-    data = webhook['data']['object']
-    amount_cents = data['amount']
-    metadata = MetadataModel(**data['metadata'])
-
-    if hook_type == 'payment_intent.payment_failed':
-        logger.warning('payment failed for user %s', metadata.user_id, extra={'webhook': webhook})
-        # TODO send them an email
-        return Response(status=204)
-    elif hook_type != 'payment_intent.succeeded':
+    if hook_type != 'payment_intent.succeeded':
         logger.warning('unknown webhook %r', hook_type, extra={'webhook': webhook})
         return Response(status=204)
 
     settings: Settings = request.app['settings']
     conn: BuildPgConnection = request['conn']
     company_id: int = request['company_id']
+
+    data = webhook['data']['object']
+    amount_cents = data['amount']
+    metadata = MetadataModel(**data['metadata'])
+    debug(metadata)
 
     charge = data['charges']['data'][0]
     card = charge['payment_method_details']['card']

@@ -7,7 +7,7 @@ import pytest
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
 from shared.actions import ActionTypes
-from web.stripe import Reservation, StripeBuyModel, StripeClient, stripe_buy, stripe_refund
+from web.stripe import Reservation, StripeClient, stripe_refund
 from web.utils import encrypt_json
 
 from .conftest import Factory

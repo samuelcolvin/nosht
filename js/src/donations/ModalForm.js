@@ -35,7 +35,6 @@ class DonateForm extends React.Component {
     this.state = {
       gift_aid: false,
       submitting: false,
-      submitted: false, // TODO remove
       payment: {},
     }
     this.stripe_pay = stripe_pay.bind(this)
@@ -63,8 +62,10 @@ class DonateForm extends React.Component {
     const r = await requests.post(
       `/donation-options/${this.props.donation_option.id}/prepare/${this.props.event.id}/`
     )
-    this.donation_action_id = r.action_id
-    this.client_secret = r.client_secret
+    this.setState({
+      donation_action_id: r.action_id,
+      client_secret: r.client_secret,
+    })
   }
 
   setPaymentState = payment => {
@@ -80,7 +81,10 @@ class DonateForm extends React.Component {
 
   async submit (e) {
     e.preventDefault()
-    // this.setState({submitting: true})
+    if (!this.state.client_secret || this.state.submitting) {
+      return
+    }
+    this.setState({submitting: true})
     if (this.state.gift_aid) {
       const data = {
         title: this.state.title,
@@ -90,9 +94,9 @@ class DonateForm extends React.Component {
         city: this.state.city,
         postcode: this.state.postcode,
       }
-      await requests.post(`/donation/${this.donation_action_id}/gift-aid/`, data)
+      await requests.post(`/donation/${this.state.donation_action_id}/gift-aid/`, data)
     }
-    const ok = await this.stripe_pay(this.client_secret)
+    const ok = await this.stripe_pay(this.state.client_secret)
     if (ok) {
       this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Donation successful, check your email'})
       ReactGA.event({
@@ -109,7 +113,11 @@ class DonateForm extends React.Component {
     if (!this.props.ctx.user) {
       return null
     }
-    const can_submit = !this.state.submitting && (this.state.payment.complete || this.state.payment.payment_method_id)
+    const can_submit = (
+      !this.state.submitting &&
+      this.state.client_secret &&
+      (this.state.payment.complete || this.state.payment.payment_method_id)
+    )
 
     const title_field = {name: 'title', required: this.state.gift_aid, max_length: 10}
     const first_name_field = {name: 'first_name', required: this.state.gift_aid}
@@ -137,47 +145,47 @@ class DonateForm extends React.Component {
             <Col lg="8">
               <hr/>
               <Input field={gift_aid_field} value={this.state.gift_aid}
-                     disabled={this.state.submitted || this.state.submitting}
+                     disabled={this.state.submitting}
                      onChange={gift_aid => this.setState({gift_aid})}/>
 
               <Collapse isOpen={this.state.gift_aid}>
                 <Row>
                   <Col md="6">
                     <Input field={title_field} value={this.state.title} error={this.state.title_error}
-                           disabled={this.state.submitted || this.state.submitting}
+                           disabled={this.state.submitting}
                            onChange={v => this.setState({title: v, title_error: null})}/>
                   </Col>
                 </Row>
                 <Row>
                   <Col md="6">
                     <Input field={first_name_field} value={this.state.first_name} error={this.state.first_name_error}
-                           disabled={this.state.submitted || this.state.submitting}
+                           disabled={this.state.submitting}
                            onChange={v => this.setState({first_name: v, first_name_error: null})}/>
                   </Col>
                   <Col md="6">
                     <Input field={last_name_field} value={this.state.last_name} error={this.state.last_name_error}
-                           disabled={this.state.submitted || this.state.submitting}
+                           disabled={this.state.submitting}
                            onChange={v => this.setState({last_name: v, last_name_error: null})}/>
                   </Col>
                 </Row>
                 <Input field={address_field} value={this.state.address} error={this.state.address_error}
-                       disabled={this.state.submitted || this.state.submitting}
+                       disabled={this.state.submitting}
                        onChange={v => this.setState({address: v, address_error: null})}/>
                 <Row>
                   <Col md="6">
                     <Input field={city_field} value={this.state.city} error={this.state.city_error}
-                           disabled={this.state.submitted || this.state.submitting}
+                           disabled={this.state.submitting}
                            onChange={v => this.setState({city: v, city_error: null})}/>
                   </Col>
                   <Col md="6">
                     <Input field={postcode_field} value={this.state.postcode} error={this.state.postcode_error}
-                           disabled={this.state.submitted || this.state.submitting}
+                           disabled={this.state.submitting}
                            onChange={v => this.setState({postcode: v, postcode_error: null})}/>
                   </Col>
                 </Row>
               </Collapse>
               <hr/>
-              <StripeForm submitted={this.state.submitted} payment_state={this.state.payment}
+              <StripeForm submitting={this.state.submitting} payment_state={this.state.payment}
                           setPaymentState={this.setPaymentState}/>
             </Col>
           </Row>

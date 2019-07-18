@@ -283,7 +283,7 @@ async def test_send_ticket_email_cover_costs(factory: Factory, dummy_server, cli
     await factory.create_user()
     await factory.create_event(status='published', price=100)
 
-    await factory.create_user(email='ticket.buyer@example.org')
+    factory.user_id = await factory.create_user(email='ticket.buyer@example.org')
     await login(email='ticket.buyer@example.org')
 
     data = {
@@ -297,17 +297,8 @@ async def test_send_ticket_email_cover_costs(factory: Factory, dummy_server, cli
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
     data = await r.json()
-
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=data['booking_token']
-    )
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
+    action_id = int(re.search(r'_(\d+)', data['client_secret']).group(1))
+    await factory.fire_stripe_webhook(reserve_action_id=action_id, )
 
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
@@ -573,7 +564,7 @@ async def test_event_host_updates_full(email_actor: EmailActor, factory: Factory
     )
 
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
-    await factory.buy_tickets(await factory.create_reservation(anne), anne)
+    await factory.buy_tickets(await factory.create_reservation(anne))
     await db_conn.execute("UPDATE tickets SET created_ts=now() - '2 days'::interval")
 
     assert 1 == await email_actor.send_event_host_updates.direct()

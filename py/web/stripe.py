@@ -4,17 +4,16 @@ import json
 import logging
 import re
 import secrets
-from contextlib import contextmanager
 from enum import Enum
 from time import time
-from typing import Optional, Union
+from typing import Optional
 
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.abc import Application
 from aiohttp.hdrs import METH_GET, METH_POST
 from buildpg import Values
 from buildpg.asyncpg import BuildPgConnection
-from pydantic import BaseModel, MissingError, constr, validator
+from pydantic import BaseModel
 
 from shared.settings import Settings
 from shared.utils import RequestError
@@ -33,102 +32,33 @@ class Reservation(BaseModel):
     event_name: str
 
 
-class Donation(BaseModel):
-    user_id: int
-    price_cent: int
-    donation_option_name: str
-
-
-class BookingModel(BaseModel):
-    booking_token: bytes
-
-
 class BookActions(str, Enum):
     buy_tickets_offline = 'buy-tickets-offline'
     book_free_tickets = 'book-free-tickets'
 
 
-class BookFreeModel(BookingModel):
+class BookFreeModel(BaseModel):
+    booking_token: bytes
     book_action: BookActions
 
 
-class StripeNewCard(BaseModel):
-    token: str
-    card_ref: str
-    client_ip: str
-
-
-class StripeOldCard(BaseModel):
-    source_hash: str
-
-
-class StripeDonateModel(BaseModel):
-    stripe: Union[StripeNewCard, StripeOldCard]
-    donation_option_id: int
-    event_id: int
-    gift_aid: bool
-    title: constr(max_length=31) = None
-    first_name: constr(max_length=255) = None
-    last_name: constr(max_length=255) = None
-    address: constr(max_length=255) = None
-    city: constr(max_length=255) = None
-    postcode: constr(max_length=31) = None
-
-    @validator('title', 'first_name', 'last_name', 'address', 'city', 'postcode', always=True, pre=True)
-    def check_required_fields(cls, v, values, **kwargs):
-        if v is None and values.get('gift_aid'):
-            raise MissingError()
-        return v or ''  # https://github.com/samuelcolvin/pydantic/issues/132
-
-
 async def stripe_buy_intent(res: Reservation, company_id: int, app, conn: BuildPgConnection) -> str:
-    with catch_stripe_errors():
-        return await _create_payment_intent(
-            user_id=res.user_id,
-            price_cents=res.price_cent,
-            description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
-            metadata={
-                'purpose': 'buy-tickets',
-                'event_id': res.event_id,
-                'tickets_bought': res.ticket_count,
-                'reserve_action_id': res.action_id,
-                'user_id': res.user_id,
-            },
-            company_id=company_id,
-            idempotency_key=f'buy-reservation-{res.action_id}',
-            app=app,
-            conn=conn,
-        )
-
-
-async def stripe_donate_intent(
-    *,
-    user_id: int,
-    price_cent: int,
-    donation_option_id: int,
-    donation_option_name: str,
-    event_id: int,
-    action_id: int,
-    company_id: int,
-    app,
-    conn: BuildPgConnection
-) -> str:
-    with catch_stripe_errors():
-        return await _create_payment_intent(
-            user_id=user_id,
-            price_cents=price_cent,
-            description=f'donation to {donation_option_name} ({donation_option_id})',
-            metadata={
-                'purpose': 'donate',
-                'event_id': event_id,
-                'reserve_action_id': action_id,
-                'user_id': user_id,
-            },
-            company_id=company_id,
-            idempotency_key=f'idempotency-donate-{action_id}',
-            app=app,
-            conn=conn,
-        )
+    return await stripe_payment_intent(
+        user_id=res.user_id,
+        price_cents=res.price_cent,
+        description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
+        metadata={
+            'purpose': 'buy-tickets',
+            'event_id': res.event_id,
+            'tickets_bought': res.ticket_count,
+            'reserve_action_id': res.action_id,
+            'user_id': res.user_id,
+        },
+        company_id=company_id,
+        idempotency_key=f'buy-reservation-{res.action_id}',
+        app=app,
+        conn=conn,
+    )
 
 
 async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn: BuildPgConnection) -> int:
@@ -273,7 +203,7 @@ async def stripe_webhook_body(request) -> dict:
     return json.loads(text)
 
 
-async def _create_payment_intent(
+async def stripe_payment_intent(
     *,
     user_id: int,
     price_cents: int,
@@ -336,7 +266,6 @@ async def _create_payment_intent(
         metadata=metadata,
         statement_descriptor=_clean_descriptor(f'{settings.stripe_descriptor_prefix}: {description}')
     )
-    # debug(intent)
     client_secret = payment_intent['client_secret']
     await app['redis'].setex(payment_intent_key(client_secret), 900, payment_intent['id'])
     return client_secret
@@ -344,20 +273,6 @@ async def _create_payment_intent(
 
 def payment_intent_key(client_secret):
     return f'payment-intent:{client_secret}'
-
-
-@contextmanager
-def catch_stripe_errors():
-    try:
-        yield
-    except RequestError as e:
-        if e.status != 402:
-            raise
-        data = e.json()
-        code = data['error']['code']
-        message = data['error']['message']
-        logger.info('stripe payment failed: %s, %s', code, message)
-        raise JsonErrors.HTTPPaymentRequired(message=message, code=code) from e
 
 
 def _card_ref(c):

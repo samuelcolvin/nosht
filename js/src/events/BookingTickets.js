@@ -18,6 +18,7 @@ import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
 import {MoneyFree} from '../general/Money'
 import {PricingList} from './BookingStripe'
+import {Overlay} from './Stripe'
 
 const MAX_TICKETS = 20
 
@@ -153,7 +154,8 @@ const TicketForm = props => {
 
   return (
     <BootstrapForm onSubmit={props.reserve}>
-      <ModalBody>
+      <Overlay element_id="modal-body" show={state.submitting_reservation} text="reserving tickets"/>
+      <ModalBody id="modal-body">
         <Row className="justify-content-between">
           <div>
             {existing_tickets ?

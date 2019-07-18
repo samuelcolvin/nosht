@@ -130,6 +130,15 @@ async def stripe_post_charges(request):
         })
 
 
+async def stripe_create_payment_intent(request):
+    data = await request.post()
+    action_id = data['metadata[reserve_action_id]']
+    return json_response({
+        'id': f'payment_intent_{action_id}',
+        'client_secret': f'payment_intent_secret_{action_id}'
+    })
+
+
 async def stripe_post_refund(request):
     return json_response({'id': 'xyz'})
 
@@ -315,6 +324,7 @@ async def create_dummy_server(create_server):
         web.post('/stripe_root_url/customers', stripe_post_customers),
         web.post('/stripe_root_url/charges', stripe_post_charges),
         web.post('/stripe_root_url/refunds', stripe_post_refund),
+        web.post('/stripe_root_url/payment_intents', stripe_create_payment_intent),
 
         web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
         web.get('/s3_demo_image_url/{image:.*}', s3_demo_image),

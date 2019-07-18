@@ -87,6 +87,10 @@ class StripeBookingForm extends React.Component {
   }
 
   async take_payment () {
+    if (this.state.submitting) {
+      return
+    }
+    this.setState({submitting: true})
     const ok = await this.stripe_pay(this.props.reservation.client_secret)
     if (ok) {
       this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})

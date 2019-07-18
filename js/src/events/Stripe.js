@@ -47,7 +47,7 @@ export function StripeContext (WrappedComponent) {
 }
 
 export async function stripe_pay (client_secret) {
-  if (this.state.submitting || !stripe_form_valid(this.state.payment)) {
+  if (!stripe_form_valid(this.state.payment)) {
     const payment = Object.assign({}, this.state.payment, {
       name_error: this.state.payment.name ? null: 'Required',
       address_error: this.state.payment.address ? null: 'Required',
@@ -58,7 +58,6 @@ export async function stripe_pay (client_secret) {
     return false
   }
 
-  this.setState({submitting: true})
   let r
   const payment_method = this.state.payment.payment_method_id
   if (payment_method) {
@@ -100,11 +99,6 @@ export const record_payment_method = (user, payment_method) => {
   window.sessionStorage[`payment_method_${user.id}`] = payment_method
 }
 
-export const get_card = user => {
-  const v = window.sessionStorage[`card_details_${user.id}`]
-  return v ? JSON.parse(v) : {}
-}
-
 export const get_payment_method = async (user) => {
   const payment_method_id = window.sessionStorage[`payment_method_${user.id}`]
   if (payment_method_id) {
@@ -123,6 +117,35 @@ const ShowCard = ({card}) => (
     {card.brand} expiring: {card.exp_month}/{card.exp_year - 2000}, ending: {card.last4}
   </span>
 )
+
+export class Overlay extends React.Component {
+  state = {style: null}
+
+  componentDidUpdate () {
+    this.clear_timer = setTimeout(() => {
+      const el = document.getElementById(this.props.element_id)
+      if (el) {
+        this.setState({style: {height: el.offsetHeight, width: el.offsetWidth}})
+      }
+    }, 100)
+  }
+
+  componentWillUnmount () {
+    clearInterval(this.clear_timer)
+  }
+
+  render () {
+    if (!this.props.show) {
+      return null
+    }
+    return (
+      <div style={this.state.style} className="processing-overlay">
+        <Waiting/>
+        <small className="text-muted mt-4">{this.props.text}...</small>
+      </div>
+    )
+  }
+}
 
 const name_field = {name: 'billing_name', required: true}
 const address_field = {name: 'billing_address', required: true}
@@ -187,12 +210,7 @@ class StripeForm_ extends React.Component {
     const has_saved_card = Boolean(this.stored_payment_method.payment_method_id)
     return (
       <div className="hide-help-text" id="stripe-form">
-        {this.props.submitting && (
-          <div style={this.state.overlay_style} className="stripe-overlay">
-            <Waiting/>
-            <small className="text-muted mt-4">processing payment...</small>
-          </div>
-        )}
+        <Overlay element_id="stripe-form" show={this.props.submitting} text="processing payment"/>
         {has_saved_card && (
           <div className="pb-2">
             <div className="form-check">

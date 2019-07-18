@@ -11,7 +11,7 @@ from shared.images import delete_image, upload_other
 from web.actions import record_action_id
 from web.auth import check_session, is_admin, is_auth
 from web.bread import Bread
-from web.stripe import stripe_donate_intent
+from web.stripe import stripe_payment_intent
 from web.utils import JsonErrors, json_response, raw_json_response, request_image
 
 from .booking import UpdateViewAuth
@@ -44,14 +44,19 @@ async def donation_prepare(request):
     user_id = request['session']['user_id']
     action_id = await record_action_id(request, user_id, ActionTypes.donate_prepare,
                                        event_id=event_id, donation_option_id=donation_option_id)
-    client_secret = await stripe_donate_intent(
+
+    client_secret = await stripe_payment_intent(
         user_id=user_id,
-        price_cent=int(amount * 100),
-        donation_option_id=donation_option_id,
-        donation_option_name=name,
-        event_id=event_id,
-        action_id=action_id,
+        price_cents=int(amount * 100),
+        description=f'donation to {name} ({donation_option_id})',
+        metadata={
+            'purpose': 'donate',
+            'event_id': event_id,
+            'reserve_action_id': action_id,
+            'user_id': user_id,
+        },
         company_id=request['company_id'],
+        idempotency_key=f'idempotency-donate-{action_id}',
         app=request.app,
         conn=conn,
     )

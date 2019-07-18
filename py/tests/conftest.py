@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
+from time import time
 
 import aiodns
 import lorem
@@ -29,7 +30,7 @@ from shared.db import prepare_database
 from shared.settings import Settings
 from shared.utils import encrypt_json, mk_password, slugify
 from web.main import create_app
-from web.stripe import BookFreeModel, Reservation, StripeBuyModel, book_free, stripe_buy
+from web.stripe import BookFreeModel, Reservation, book_free
 
 from .dummy_server import create_dummy_server
 
@@ -133,9 +134,10 @@ london = pytz.timezone('Europe/London')
 
 
 class Factory:
-    def __init__(self, conn, app):
+    def __init__(self, conn, app, fire_stripe_webhook):
         self.conn = conn
         self.app = app
+        self._fire_stripe_webhook = fire_stripe_webhook
         self.settings: Settings = app['settings']
         self.company_id = None
         self.category_id = None
@@ -313,16 +315,26 @@ class Factory:
             event_name=await self.conn.fetchval('SELECT name FROM events WHERE id=$1', event_id),
         )
 
-    async def buy_tickets(self, reservation: Reservation, user_id=None):
-        m = StripeBuyModel(
-            stripe=dict(
-                token='tok_visa',
-                client_ip='0.0.0.0',
-                card_ref='4242-32-01',
-            ),
-            booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
+    async def buy_tickets(self, res: Reservation):
+        await self._fire_stripe_webhook(user_id=res.user_id, event_id=res.event_id, reserve_action_id=res.action_id)
+
+    async def fire_stripe_webhook(
+            self,
+            *,
+            reserve_action_id,
+            event_id=None,
+            user_id=None,
+            amount=10_00,
+            purpose='buy-tickets',
+            webhook_type='payment_intent.succeeded'):
+        return await self._fire_stripe_webhook(
+            user_id=user_id or self.user_id,
+            event_id=event_id or self.event_id,
+            reserve_action_id=reserve_action_id,
+            amount=amount,
+            purpose=purpose,
+            webhook_type=webhook_type,
         )
-        return await stripe_buy(m, self.company_id, user_id or self.user_id, self.app, self.conn)
 
     async def book_free(self, reservation: Reservation, user_id=None):
         m = BookFreeModel(
@@ -374,8 +386,8 @@ class Factory:
 
 
 @pytest.fixture
-async def factory(db_conn, cli):
-    return Factory(db_conn, cli.app['main_app'])
+async def factory(db_conn, cli, fire_stripe_webhook):
+    return Factory(db_conn, cli.app['main_app'], fire_stripe_webhook)
 
 
 @pytest.fixture
@@ -426,13 +438,18 @@ async def pre_cleanup(app):
         await donorfy_actor.client.close()
 
 
-@pytest.fixture(name='cli')
-async def _fix_cli(settings, db_conn, aiohttp_client, redis):
+@pytest.fixture(name='app')
+def _fix_app(settings, db_conn, redis):
     app = create_app(settings=settings)
     app['test_conn'] = db_conn
     app.on_startup.insert(0, pre_startup_app)
     app.on_startup.append(post_startup_app)
     app.on_cleanup.insert(0, pre_cleanup)
+    return app
+
+
+@pytest.fixture(name='cli')
+async def _fix_cli(app, aiohttp_client):
     cli = await aiohttp_client(app)
 
     def json_post(url, *, data=None, headers=None, origin_null=False):
@@ -492,6 +509,59 @@ def _setup_static(tmpdir):
     tmpdir.join('test.js').write('this is test.js')
     tmpdir.join('iframes').mkdir()
     tmpdir.join('iframes').join('login.html').write('this is iframes/login.html')
+
+
+@pytest.fixture(name='fire_stripe_webhook')
+async def _fix_fire_stripe_webhook(app, url, settings, aiohttp_client):
+    webhook_cli = await aiohttp_client(app)
+
+    async def fire(
+            *,
+            user_id,
+            event_id,
+            reserve_action_id,
+            amount=10_00,
+            purpose='buy-tickets',
+            webhook_type='payment_intent.succeeded',
+    ):
+        data = {
+            'type': webhook_type,
+            'data': {
+                'object': {
+                    'amount': amount,
+                    'metadata': {
+                        'purpose': purpose,
+                        'user_id': user_id,
+                        'event_id': event_id,
+                        'reserve_action_id': reserve_action_id,
+                    },
+                    'charges': {
+                        'data': [
+                            {
+                                'id': 'charge_id',
+                                'payment_method_details': {
+                                    'card': {
+                                        'brand': 'visa',
+                                        'last4': '1234',
+                                        'exp_month': 6,
+                                        'exp_year': 2032,
+                                        'three_d_secure': True,
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        body = json.dumps(data)
+        t = int(time())
+        sig = hmac.new(settings.stripe_webhook_secret, f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
+
+        r = await webhook_cli.post(url('stripe-webhook'), data=body, headers={'Stripe-Signature': f't={t},v1={sig}'})
+        assert r.status == 204, await r.text()
+        return r
+    return fire
 
 
 class Offline:
