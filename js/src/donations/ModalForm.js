@@ -6,12 +6,14 @@ import {
   Col,
   Collapse,
 } from 'reactstrap'
+import ReactGA from 'react-ga'
 import AsModal, {SetModalTitle, ModalFooter} from '../general/Modal'
 import Markdown from '../general/Markdown'
 import {Money} from '../general/Money'
 import {stripe_pay, StripeContext, StripeForm} from '../events/Stripe'
 import Input from '../forms/Input'
-import ReactGA from 'react-ga'
+import requests from '../utils/requests'
+
 
 const gift_aid_field = {
   type: 'bool',
@@ -37,6 +39,8 @@ class DonateForm extends React.Component {
       payment: {},
     }
     this.stripe_pay = stripe_pay.bind(this)
+    this.donation_action_id = null
+    this.client_secret = null
   }
 
   async componentDidMount () {
@@ -56,6 +60,11 @@ class DonateForm extends React.Component {
       city_error: null,
       postcode_error: null,
     })
+    const r = await requests.post(
+      `/donation-options/${this.props.donation_option.id}/prepare/${this.props.event.id}/`
+    )
+    this.donation_action_id = r.action_id
+    this.client_secret = r.client_secret
   }
 
   setPaymentState = payment => {
@@ -63,30 +72,27 @@ class DonateForm extends React.Component {
     if (!this.state.address && !this.state.city && !this.state.postcode) {
       this.setState({
         address: payment.address,
-        address_error: null,
         city: payment.city,
-        city_error: null,
         postcode: payment.postal_code,
-        postcode_error: null,
       })
     }
   }
 
   async submit (e) {
     e.preventDefault()
-    this.setState({submitting: true})
-    const data = {
-      donation_option_id: this.props.donation_option.id,
-      gift_aid: this.state.gift_aid,
-      event_id: this.props.event.id,
-      title: this.state.title,
-      first_name: this.state.first_name,
-      last_name: this.state.last_name,
-      address: this.state.address,
-      city: this.state.city,
-      postcode: this.state.postcode,
+    // this.setState({submitting: true})
+    if (this.state.gift_aid) {
+      const data = {
+        title: this.state.title,
+        first_name: this.state.first_name,
+        last_name: this.state.last_name,
+        address: this.state.address,
+        city: this.state.city,
+        postcode: this.state.postcode,
+      }
+      await requests.post(`/donation/${this.donation_action_id}/gift-aid/`, data)
     }
-    const ok = await this.stripe_pay('donate/', data)
+    const ok = await this.stripe_pay(this.client_secret)
     if (ok) {
       this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Donation successful, check your email'})
       ReactGA.event({

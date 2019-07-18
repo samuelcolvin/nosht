@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 
@@ -8,9 +9,9 @@ from pydantic import BaseModel, condecimal, constr
 from shared.actions import ActionTypes
 from shared.images import delete_image, upload_other
 from web.actions import record_action_id
-from web.auth import check_session, is_admin
+from web.auth import check_session, is_admin, is_auth
 from web.bread import Bread
-from web.stripe import StripeDonateModel, stripe_donate, stripe_donate_intent
+from web.stripe import stripe_donate_intent
 from web.utils import JsonErrors, json_response, raw_json_response, request_image
 
 from .booking import UpdateViewAuth
@@ -18,58 +19,65 @@ from .booking import UpdateViewAuth
 logger = logging.getLogger('nosht.booking')
 
 
-class DonateIntent(UpdateViewAuth):
-    class Model:
-        donation_option_id: int
-        event_id: int
+@is_auth
+async def donation_prepare(request):
+    donation_option_id = int(request.match_info['don_opt_id'])
+    event_id = int(request.match_info['event_id'])
+    conn = request['conn']
+    r = await conn.fetchrow(
+        """
+        SELECT opt.name, opt.amount, cat.id
+        FROM donation_options AS opt
+        JOIN categories AS cat ON opt.category = cat.id
+        WHERE opt.id = $1 AND opt.live AND cat.company = $2
+        """,
+        donation_option_id, request['company_id']
+    )
+    if not r:
+        raise JsonErrors.HTTPBadRequest(message='donation option not found')
+
+    name, amount, cat_id = r
+    event = await conn.fetchval('SELECT 1 FROM events WHERE id=$1 AND category=$2', event_id, cat_id)
+    if not event:
+        raise JsonErrors.HTTPBadRequest(message='event not found on the same category as donation_option')
+
+    user_id = request['session']['user_id']
+    action_id = await record_action_id(request, user_id, ActionTypes.donate_prepare,
+                                       event_id=event_id, donation_option_id=donation_option_id)
+    client_secret = await stripe_donate_intent(
+        user_id=user_id,
+        price_cent=int(amount * 100),
+        donation_option_id=donation_option_id,
+        donation_option_name=name,
+        event_id=event_id,
+        action_id=action_id,
+        company_id=request['company_id'],
+        app=request.app,
+        conn=conn,
+    )
+    return json_response(
+        client_secret=client_secret,
+        action_id=action_id,
+    )
+
+
+class DonationGiftAid(UpdateViewAuth):
+    class Model(BaseModel):
+        title: constr(max_length=31)
+        first_name: constr(max_length=255)
+        last_name: constr(max_length=255)
+        address: constr(max_length=255)
+        city: constr(max_length=255)
+        postcode: constr(max_length=31)
 
     async def execute(self, m: Model):
-        r = await self.conn.fetchrow(
-            """
-            SELECT opt.name, opt.amount, cat.id
-            FROM donation_options AS opt
-            JOIN categories AS cat ON opt.category = cat.id
-            WHERE opt.id = $1 AND opt.live AND cat.company = $2
-            """,
-            m.donation_option_id, self.request['company_id']
+        action_id = int(self.request.match_info['action_id'])
+        v = await self.conn.execute(
+            'update actions set extra=extra || $3 where id=$1 and user_id=$2',
+            action_id, self.session['user_id'], json.dumps({'gift_aid': m.dict()})
         )
-        if not r:
-            raise JsonErrors.HTTPBadRequest(message='donation option not found')
-
-        name, amount, cat_id = r
-        event = await self.conn.fetchval('SELECT 1 FROM events WHERE id=$1 AND category=$2', m.event_id, cat_id)
-        if not event:
-            raise JsonErrors.HTTPBadRequest(message='event not found on the same category as donation_option')
-
-        user_id = self.session['user_id']
-        action_id = await record_action_id(self.request, user_id, ActionTypes.pre_donate,
-                                           event_id=m.event_id, donation_option=m.donation_option_id)
-        client_secret = await stripe_donate_intent(
-            user_id=user_id,
-            price_cent=int(amount * 100),
-            donation_option_id=m.donation_option_id,
-            donation_option_name=name,
-            event_id=m.event_id,
-            action_id=action_id,
-            company_id=self.request['company_id'],
-            app=self.app,
-            conn=self.conn,
-        )
-        return {
-            'client_secret': client_secret,
-            'action_id': action_id,
-        }
-
-
-class Donate(UpdateViewAuth):
-    Model = StripeDonateModel
-
-    async def execute(self, m: StripeDonateModel):
-        action_id, source_hash = await stripe_donate(m, self.request['company_id'], self.session['user_id'],
-                                                     self.app, self.conn)
-        await self.app['donorfy_actor'].donation(action_id)
-        await self.app['email_actor'].send_donation_thanks(action_id)
-        return {'source_hash': source_hash}
+        if v != 'UPDATE 1':
+            raise JsonErrors.HTTPNotFound(message='action not found')
 
 
 class DonationOptionBread(Bread):

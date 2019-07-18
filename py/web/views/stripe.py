@@ -9,10 +9,8 @@ from pydantic import BaseModel
 
 from shared.actions import ActionTypes
 from shared.settings import Settings
-from web.stripe import (StripeClient, catch_stripe_errors, get_stripe_payment_method, payment_intent_key,
-                        stripe_webhook_body)
+from web.stripe import get_stripe_payment_method, stripe_webhook_body
 from web.utils import json_response
-from web.views.booking import UpdateViewAuth
 
 logger = logging.getLogger('nosht.views.stripe')
 
@@ -32,20 +30,22 @@ class MetadataModel(BaseModel):
 async def stripe_webhook(request):
     webhook = await stripe_webhook_body(request)
     hook_type = webhook['type']
+
+    data = webhook['data']['object']
+    amount_cents = data['amount']
+    metadata = MetadataModel(**data['metadata'])
+
     if hook_type == 'payment_intent.payment_failed':
-        ...
+        logger.warning('payment failed for user %s', metadata.user_id, extra={'webhook': webhook})
+        # TODO send them an email
+        return Response(status=204)
     elif hook_type != 'payment_intent.succeeded':
         logger.warning('unknown webhook %r', hook_type, extra={'webhook': webhook})
-        return
+        return Response(status=204)
 
     settings: Settings = request.app['settings']
     conn: BuildPgConnection = request['conn']
     company_id: int = request['company_id']
-
-    data = webhook['data']['object']
-    # amount_cents = data['amount']
-    payment_method_id = data['payment_method']
-    metadata = MetadataModel(**data['metadata'])
 
     charge = data['charges']['data'][0]
     card = charge['payment_method_details']['card']
@@ -55,11 +55,19 @@ async def stripe_webhook(request):
         'card_last4': card['last4'],
         'card_expiry': f"{card['exp_month']}/{card['exp_year'] - 2000}",
         '3DS': card['three_d_secure'],
+        'payment_metadata': metadata.dict(),
     })
 
     async with conn.transaction():
         # mark the tickets paid in DB, then create charge in stripe, then finish transaction
         if metadata.purpose == MetadataPurpose.buy_tickets:
+            ticket_status = await conn.fetchval(
+                'select status from tickets where reserve_action=$1 for update', metadata.reserve_action_id
+            )
+            if ticket_status != 'reserved':
+                logger.warning('ticket not in reserved status %r', ticket_status, extra={'webhook': webhook})
+                return Response(status=204)
+            # TODO make sure this can't be duplicated
             action_id = await conn.fetchval_b(
                 'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
                 values=Values(
@@ -72,10 +80,23 @@ async def stripe_webhook(request):
             )
             await conn.execute(
                 "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
-                action_id, int(metadata.reserve_action_id),
+                action_id, metadata.reserve_action_id,
             )
             await conn.execute('SELECT check_tickets_remaining($1, $2)', metadata.event_id, settings.ticket_ttl)
         else:
+            gift_aid_info, donation_option_id, complete = await conn.fetchrow(
+                """
+                select extra->'gift_aid', extra->>'donation_option_id', extra->>'complete'
+                from actions where id=$1
+                for update
+                """,
+                metadata.reserve_action_id
+            )
+            if complete:
+                logger.warning('donation already performed with action %s', metadata.reserve_action_id,
+                               extra={'webhook': webhook})
+                return Response(status=204)
+
             action_id = await conn.fetchval_b(
                 'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
                 values=Values(
@@ -86,45 +107,30 @@ async def stripe_webhook(request):
                     extra=action_extra,
                 )
             )
-            # gift_aid = metadata['gift_aid'].lower() == 'true'
-            # don_values = dict(
-            #     donation_option=int(metadata['donation_option_id']),
-            #     amount=amount_cents / 100,
-            #     gift_aid=gift_aid,
-            #     action=action_id,
-            # )
-            # if gift_aid:
-            #     don_values.update(
-            #         first_name=metadata['don_first_name'],
-            #         last_name=metadata['don_last_name'],
-            #         title=metadata['don_title'],
-            #         address=metadata['don_address'],
-            #         city=metadata['don_city'],
-            #         postcode=metadata['don_postcode'],
-            #     )
-            # await conn.fetchval_b(
-            #     'INSERT INTO donations (:values__names) VALUES :values',
-            #     values=Values(**don_values)
-            # )
+            gift_aid = bool(gift_aid_info)
+            don_values = dict(
+                donation_option=int(donation_option_id),
+                amount=amount_cents / 100,
+                gift_aid=gift_aid,
+                action=action_id,
+            )
+            if gift_aid:
+                don_values.update(json.loads(gift_aid_info))
+            await conn.fetchval_b(
+                'INSERT INTO donations (:values__names) VALUES :values',
+                values=Values(**don_values)
+            )
+            await conn.execute(
+                """update actions set extra=extra || '{"complete": true}' where id=$1""",
+                metadata.reserve_action_id,
+            )
+
     if metadata.purpose == MetadataPurpose.buy_tickets:
         await request.app['donorfy_actor'].tickets_booked(action_id)
         await request.app['email_actor'].send_event_conf(action_id)
-
-    stripe_customer_id, stripe_secret_key = await conn.fetchrow(
-        """
-        SELECT stripe_customer_id, stripe_secret_key
-        FROM users AS u
-        JOIN companies c on u.company = c.id
-        WHERE u.id=$1 AND c.id=$2
-        """,
-        metadata.user_id, company_id
-    )
-    with catch_stripe_errors():
-        stripe = StripeClient(request.app, stripe_secret_key)
-        await stripe.post(
-            f'payment_methods/{payment_method_id}/attach',
-            customer=stripe_customer_id,
-        )
+    else:
+        await request.app['donorfy_actor'].donation(action_id)
+        await request.app['email_actor'].send_donation_thanks(action_id)
     return Response(status=204)
 
 
@@ -138,27 +144,3 @@ async def get_payment_method_details(request):
         conn=request['conn']
     )
     return json_response(**data)
-
-
-class UpdatePaymentIntent(UpdateViewAuth):
-    class Model(BaseModel):
-        payment_method: str
-
-    async def execute(self, m: Model):
-        stripe_customer_id, stripe_secret_key = await self.conn.fetchrow(
-            """
-            SELECT stripe_customer_id, stripe_secret_key
-            FROM users AS u
-            JOIN companies c on u.company = c.id
-            WHERE u.id=$1 AND c.id=$2
-            """,
-            self.session['user_id'], self.request['company_id']
-        )
-        payment_intent_id = await self.app['redis'].get(payment_intent_key(self.request.match_info['client_secret']))
-        # debug(self.request.match_info, payment_intent_id)
-        with catch_stripe_errors():
-            stripe = StripeClient(self.app, stripe_secret_key)
-            await stripe.post(
-                f'payment_intents/{payment_intent_id}',
-                payment_method=m.payment_method,
-            )

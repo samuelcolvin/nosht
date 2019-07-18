@@ -124,7 +124,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'buy-tickets',
   'buy-tickets-offline',
   'book-free-tickets',
-  'pre-donate',
+  'donate-prepare',
   'donate',
   'cancel-reserved-tickets',
   'cancel-booked-tickets',

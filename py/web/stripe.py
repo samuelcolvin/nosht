@@ -196,12 +196,21 @@ async def get_stripe_payment_method(
         user_id, company_id
     )
     stripe = StripeClient(app, stripe_secret_key)
-    data = await stripe.get(f'payment_methods/{payment_method_id}')
-    return {
-        'card': {k: data['card'][k] for k in ('brand', 'exp_month', 'exp_year', 'last4')},
-        'address': data['billing_details']['address'],
-        'name': data['billing_details']['name']
-    }
+    try:
+        data = await stripe.get(f'payment_methods/{payment_method_id}')
+    except RequestError as e:
+        if e.status == 404:
+            raise JsonErrors.HTTPNotFound(message='payment method not found')
+        else:
+            raise
+    else:
+        if data['customer'] != stripe_customer_id:
+            raise JsonErrors.HTTPNotFound(message='payment method not found for this customer')
+        return {
+            'card': {k: data['card'][k] for k in ('brand', 'exp_month', 'exp_year', 'last4')},
+            'address': data['billing_details']['address'],
+            'name': data['billing_details']['name']
+        }
 
 
 async def stripe_refund(

@@ -46,7 +46,7 @@ export function StripeContext (WrappedComponent) {
   return WithContext(StripeContext)
 }
 
-export async function stripe_pay (post_url, request_data, client_secret) {
+export async function stripe_pay (client_secret) {
   if (this.state.submitting || !stripe_form_valid(this.state.payment)) {
     const payment = Object.assign({}, this.state.payment, {
       name_error: this.state.payment.name ? null: 'Required',
@@ -59,16 +59,12 @@ export async function stripe_pay (post_url, request_data, client_secret) {
   }
 
   this.setState({submitting: true})
-  if (this.state.payment.payment_method_id) {
-    // TODO complete payment intent via
-    // request_data.stripe = {stripe_id: this.state.payment.stripe_id}
-    const data = {payment_method: this.state.payment.payment_method_id}
-    const r = await requests.post(`/stripe/payment-intent/${client_secret}/`, data)
-    console.log('payment-intent:', r)
-    this.setState({submitting: false})
-    return false
+  let r
+  const payment_method = this.state.payment.payment_method_id
+  if (payment_method) {
+    r = await this.props.raw_stripe.handleCardPayment(client_secret, {payment_method})
   } else {
-    const r = await this.props.stripe.handleCardPayment(client_secret, {
+    r = await this.props.stripe.handleCardPayment(client_secret, {
       payment_method_data: {
         billing_details: {
           address: {
@@ -78,16 +74,19 @@ export async function stripe_pay (post_url, request_data, client_secret) {
           },
           name: this.state.payment.name,
         }
-      }
+      },
+      save_payment_method: true
     })
-    if (r.error) {
-      // happens at least when you use a test card on live stripe
-      console.warn('create token response:', r)
-      const payment = {...this.state.payment, error: r.error.message || 'Invalid Card'}
-      this.setState({payment, submitting: false})
-      return false
+    if (!r.error) {
+      record_payment_method(this.props.ctx.user, r.paymentIntent.payment_method)
     }
-    record_payment_method(this.props.ctx.user, r.paymentIntent.payment_method)
+  }
+  if (r.error) {
+    // happens at least when you use a test card on live stripe
+    console.warn('create token response:', r)
+    const payment = {...this.state.payment, error: r.error.message || 'Invalid Card'}
+    this.setState({payment, submitting: false})
+    return false
   }
   return true
 }
@@ -109,12 +108,14 @@ export const get_card = user => {
 export const get_payment_method = async (user) => {
   const payment_method_id = window.sessionStorage[`payment_method_${user.id}`]
   if (payment_method_id) {
-    const data = await requests.get(`/stripe/payment-method-details/${payment_method_id}/`)
-    delete data._response_status
-    return {payment_method_id, ...data}
-  } else {
-    return {payment_method_id}
+    const config = {expected_statuses: [200, 404]}
+    const data = await requests.get(`/stripe/payment-method-details/${payment_method_id}/`, null, config)
+    if (data._response_status === 200) {
+      delete data._response_status
+      return {payment_method_id, ...data}
+    }
   }
+  return {}
 }
 
 const ShowCard = ({card}) => (
@@ -140,17 +141,16 @@ class StripeForm_ extends React.Component {
   async componentDidMount () {
     const u = this.props.ctx.user
     this.stored_payment_method = await get_payment_method(this.props.ctx.user)
-    console.log(this.stored_payment_method)
     this.props.setPaymentState({
       error: false,
       complete: false,
       name: this.stored_payment_method.name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
       name_error: null,
-      address: this.stored_payment_method.address.line1,
+      address: this.stored_payment_method.address ? this.stored_payment_method.address.line1 : null,
       address_error: null,
-      city: this.stored_payment_method.address.city,
+      city: this.stored_payment_method.address ? this.stored_payment_method.address.city : null,
       city_error: null,
-      postal_code: this.stored_payment_method.address.postal_code,
+      postal_code: this.stored_payment_method.address ? this.stored_payment_method.address.postal_code : null,
       postal_code_error: null,
       payment_method_id: this.stored_payment_method.payment_method_id || null,
     })
@@ -159,13 +159,8 @@ class StripeForm_ extends React.Component {
   componentDidUpdate () {
     this.clear_timer = setTimeout(() => {
       const el = document.getElementById('stripe-form')
-      if (el && el.offsetHeight !== this.state.form_height) {
-        this.setState({
-          overlay_style: {
-            height: el.offsetHeight,
-            width: el.offsetWidth,
-          }
-        })
+      if (el) {
+        this.setState({overlay_style: {height: el.offsetHeight, width: el.offsetWidth}})
       }
     }, 100)
   }
@@ -239,14 +234,12 @@ class StripeForm_ extends React.Component {
             <CardElement className={`py-2 px-1${payment_state.error ? ' stripe-error' : ''}`}
                          hidePostalCode={true}
                          onChange={this.update_stripe_status.bind(this)}/>
-            {payment_state.error &&
-              <FormFeedback className="d-block">
-                <FontAwesomeIcon icon="times" className="mr-1"/>
-                {payment_state.error}
-              </FormFeedback>
-            }
           </FormGroup>
         </Collapse>
+        <FormFeedback className={payment_state.error ? 'd-block' : 'd-none'}>
+          <FontAwesomeIcon icon="times" className="mr-1"/>
+          {payment_state.error}
+        </FormFeedback>
       </div>
     )
   }
