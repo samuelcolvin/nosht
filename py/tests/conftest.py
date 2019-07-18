@@ -316,7 +316,7 @@ class Factory:
         )
 
     async def buy_tickets(self, res: Reservation):
-        await self._fire_stripe_webhook(user_id=res.user_id, event_id=res.event_id, reserve_action_id=res.action_id)
+        await self.fire_stripe_webhook(reserve_action_id=res.action_id, event_id=res.event_id, user_id=res.user_id)
 
     async def fire_stripe_webhook(
             self,
@@ -326,7 +326,8 @@ class Factory:
             user_id=None,
             amount=10_00,
             purpose='buy-tickets',
-            webhook_type='payment_intent.succeeded'):
+            webhook_type='payment_intent.succeeded',
+            charge_id='charge-id'):
         return await self._fire_stripe_webhook(
             user_id=user_id or self.user_id,
             event_id=event_id or self.event_id,
@@ -334,6 +335,7 @@ class Factory:
             amount=amount,
             purpose=purpose,
             webhook_type=webhook_type,
+            charge_id=charge_id,
         )
 
     async def book_free(self, reservation: Reservation, user_id=None):
@@ -515,9 +517,10 @@ async def _fix_fire_stripe_webhook(url, settings, cli, loop):
             user_id,
             event_id,
             reserve_action_id,
-            amount=10_00,
-            purpose='buy-tickets',
-            webhook_type='payment_intent.succeeded',
+            amount,
+            purpose,
+            webhook_type,
+            charge_id,
     ):
         data = {
             'type': webhook_type,
@@ -533,7 +536,7 @@ async def _fix_fire_stripe_webhook(url, settings, cli, loop):
                     'charges': {
                         'data': [
                             {
-                                'id': 'charge-id',
+                                'id': charge_id,
                                 'payment_method_details': {
                                     'card': {
                                         'brand': 'Visa',

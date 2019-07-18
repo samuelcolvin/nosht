@@ -303,14 +303,17 @@ class StripeClient:
         return await self._request(METH_POST, path, idempotency_key=idempotency_key, **data)
 
     async def _request(self, method, path, *, idempotency_key=None, **data):
-        metadata = data.pop('metadata', None)
-        if metadata:
-            data.update({f'metadata[{k}]': v for k, v in metadata.items()})
+        post = {}
+        for k, v in data.items():
+            if isinstance(v, dict):
+                post.update({f'{k}[{kk}]': str(vv) for kk, vv in v.items()})
+            else:
+                post[k] = str(v)
         headers = {'Stripe-Version': self._settings.stripe_api_version}
         if idempotency_key:
             headers['Idempotency-Key'] = idempotency_key + self._settings.stripe_idempotency_extra
         full_path = self._settings.stripe_root_url + path
-        async with self._client.request(method, full_path, data=data or None, auth=self._auth, headers=headers) as r:
+        async with self._client.request(method, full_path, data=post or None, auth=self._auth, headers=headers) as r:
             if r.status == 200:
                 return await r.json()
             else:

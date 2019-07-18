@@ -1,14 +1,11 @@
-import hashlib
-import json
 import os
-from asyncio import sleep
 
 import pytest
-from pytest_toolbox.comparison import CloseToNow, RegexStr
+from pytest_toolbox.comparison import AnyInt, RegexStr
 
 from shared.actions import ActionTypes
-from web.stripe import Reservation, StripeClient, stripe_refund
-from web.utils import encrypt_json
+from web.stripe import Reservation, StripeClient, stripe_buy_intent, stripe_refund
+from web.utils import JsonErrors
 
 from .conftest import Factory
 
@@ -18,170 +15,100 @@ stripe_secret_key = 'sk_test_WZT0Ntpze4QB8oeQIGeXAYsG'
 real_stripe_test = pytest.mark.skipif(not os.getenv('REAL_STRIPE_TESTS'), reason='requires REAL_STRIPE_TESTS env var')
 
 
-def StripeBuyModel(**kwargs):
-    pass
-
-
-def stripe_buy(*args, **kwargs):
-    pass
-
-
 @real_stripe_test
-async def test_real_successful(cli, db_conn, factory: Factory):
+async def test_real_intent(cli, url, login, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(ticket_limit=10, price=10)
+    await factory.create_event(status='published', price=123.45)
 
-    res: Reservation = await factory.create_reservation()
-    app = cli.app['main_app']
-
-    m = StripeBuyModel(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-    await db_conn.execute('SELECT check_tickets_remaining($1, 10)', res.event_id)
-    customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
-    assert customer_id is None
-
-    ticket_limit, tickets_taken = await db_conn.fetchrow(
-        'SELECT ticket_limit, tickets_taken FROM events where id=$1',
-        factory.event_id
-    )
-    assert (ticket_limit, tickets_taken) == (10, 1)
-
-    action_id, new_source_hash = await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
-
+    await login()
+    data = {
+        'tickets': [
+            {'t': True, 'first_name': 'Ticket', 'last_name': 'Buyer', 'email': 'ticket.buyer@example.org'},
+            {'t': True, 'email': 'different@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    response_data = await r.json()
+    assert response_data == {
+        'booking_token': RegexStr(r'.+'),
+        'ticket_count': 2,
+        'extra_donated': None,
+        'item_price': 123.45,
+        'total_price': 246.90,
+        'timeout': AnyInt(),
+        'client_secret': RegexStr(r'pi_.*'),
+        'action_id': AnyInt(),
+    }
     customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
     assert customer_id is not None
     assert customer_id.startswith('cus_')
 
-    ticket_limit, tickets_taken = await db_conn.fetchrow(
-        'SELECT ticket_limit, tickets_taken FROM events where id=$1',
-        factory.event_id
-    )
-    assert (ticket_limit, tickets_taken) == (10, 1)
+    app = cli.app['main_app']
+    r = await StripeClient(app, stripe_secret_key).get(f'payment_intents?limit=3&customer={customer_id}')
 
-    booked_action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='buy-tickets'")
-
-    assert booked_action['id'] == action_id
-    assert new_source_hash is not None
-    assert booked_action['company'] == factory.company_id
-    assert booked_action['user_id'] == factory.user_id
-    assert booked_action['ts'] == CloseToNow(delta=10)
-    extra = json.loads(booked_action['extra'])
-    assert extra == {
-        'new_card': True,
-        'new_customer': True,
-        'charge_id': RegexStr(r'ch_.+'),
-        'brand': 'Visa',
-        'card_expiry': RegexStr(r'\d+/\d+'),
-        'card_last4': '4242',
-    }
-
-    charge = await StripeClient(app, stripe_secret_key).get(f'charges/{extra["charge_id"]}')
-    # debug(d)
-    assert charge['amount'] == 10_00
-    assert charge['description'] == f'1 tickets for The Event Name ({factory.event_id})'
-    assert charge['metadata'] == {
+    assert len(r['data']) == 1
+    payment_intent = r['data'][0]
+    assert payment_intent['amount'] == 246_90
+    assert payment_intent['description'] == f'2 tickets for The Event Name ({factory.event_id})'
+    assert payment_intent['metadata'] == {
         'purpose': 'buy-tickets',
-        'event': str(factory.event_id),
-        'tickets_bought': '1',
-        'booked_action': str(booked_action['id']),
-        'reserve_action': str(res.action_id),
-    }
-    assert charge['source']['last4'] == '4242'
-
-
-@real_stripe_test
-async def test_real_existing_customer_card(cli, db_conn, factory: Factory):
-    await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
-    await factory.create_cat()
-    await factory.create_user()
-    await factory.create_event(ticket_limit=10, price=10)
-
-    res: Reservation = await factory.create_reservation()
-    app = cli.app['main_app']
-
-    customers = await StripeClient(app, stripe_secret_key).get('customers?limit=1')
-    customer = customers['data'][0]
-    customer_id = customer['id']
-    await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
-
-    m = StripeBuyModel(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='{last4}-{exp_year}-{exp_month}'.format(**customer['sources']['data'][0]),
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
-
-    new_customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
-    assert new_customer_id == customer_id
-
-    extra = await db_conn.fetchval("SELECT extra FROM actions WHERE type='buy-tickets'")
-
-    extra = json.loads(extra)
-    assert extra == {
-        'new_card': False,
-        'new_customer': False,
-        'charge_id': RegexStr(r'ch_.+'),
-        'brand': 'Visa',
-        'card_expiry': RegexStr(r'\d+/\d+'),
-        'card_last4': '4242',
+        'event_id': str(factory.event_id),
+        'tickets_bought': '2',
+        'reserve_action_id': str(response_data['action_id']),
+        'user_id': str(factory.user_id),
     }
 
 
 @real_stripe_test
-async def test_real_saved_card_refund(cli, db_conn, factory: Factory):
+async def test_real_refund(cli, url, login, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(price=10)
+    await factory.create_event(status='published', price=10)
 
-    res: Reservation = await factory.create_reservation()
+    await login()
+    data = {
+        'tickets': [
+            {'t': True, 'first_name': 'Ticket', 'last_name': 'Buyer', 'email': 'ticket.buyer@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    reserve_action_id = (await r.json())['action_id']
+    customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
+
     app = cli.app['main_app']
+    stripe = StripeClient(app, stripe_secret_key)
 
-    customers = await StripeClient(app, stripe_secret_key).get('customers?limit=1')
-    customer = customers['data'][0]
-    customer_id = customer['id']
-    await db_conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', customer_id, factory.user_id)
-    source_id = customer['sources']['data'][0]['id']
-    source_hash = hashlib.sha1(source_id.encode()).hexdigest()
+    r = await stripe.get(f'payment_intents?limit=3&customer={customer_id}')
+    assert len(r['data']) == 1
+    payment_intent_id = r['data'][0]['id']
 
-    m = StripeBuyModel(
-        stripe=dict(
-            source_hash=source_hash,
-        ),
-        booking_token=encrypt_json(app, res.dict()),
+    r = await stripe.post(
+        f'payment_intents/{payment_intent_id}/confirm',
+        payment_method='pm_card_visa'
     )
+    assert r['status'] == 'succeeded'
+    charge_id = r['charges']['data'][0]['id']
 
-    action_id, new_source_hash = await stripe_buy(m, factory.company_id, factory.user_id, app, db_conn)
+    await factory.fire_stripe_webhook(reserve_action_id, charge_id=charge_id)
 
-    new_customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
-    assert new_customer_id == customer_id
-
-    assert action_id == await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
-    assert new_source_hash is None
-
-    ticket_id, booking_type, price, charge_id = await db_conn.fetchrow(
+    ticket_id, booking_type, price, ticket_charge_id = await db_conn.fetchrow(
         """
         select t.id, a.type, t.price, a.extra->>'charge_id'
         from tickets as t
         join actions as a on t.booked_action = a.id
-        where t.event = $1 and t.status = 'booked' and a.id = $2
+        where t.event = $1 and t.status = 'booked' and a.type=$2
         """,
         factory.event_id,
-        action_id,
+        ActionTypes.buy_tickets,
     )
-    assert booking_type == ActionTypes.buy_tickets
+    assert ticket_charge_id == charge_id
     assert price == 10
     refund = await stripe_refund(
         refund_charge_id=charge_id,
@@ -199,312 +126,90 @@ async def test_real_saved_card_refund(cli, db_conn, factory: Factory):
     assert refund['reason'] == 'requested_by_customer'
 
 
-async def test_pay_cli(cli, url, dummy_server, factory: Factory, db_conn):
+async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(price=12.5)
+    await factory.create_event(status='published', price=10)
 
-    res: Reservation = await factory.create_reservation()
-    app = cli.app['main_app']
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
-
-    assert dummy_server.app['log'] == [
-        'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
-        (
-            'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
-        ),
-    ]
-    assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
-
-
-async def test_pay_declined(cli, url, dummy_server, factory: Factory, db_conn):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user()
-    await factory.create_event(price=12.5, name='this should be declined')
-
-    res: Reservation = await factory.create_reservation()
-    app = cli.app['main_app']
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 402, await r.text()
-    assert dummy_server.app['log'] == [
-        'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
-    ]
-    assert not await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
-
-
-async def test_existing_customer(cli, url, dummy_server, factory: Factory):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user(stripe_customer_id='xxx')
-    await factory.create_event(price=12.5)
-
-    res: Reservation = await factory.create_reservation(factory.user_id, None)
-    app = cli.app['main_app']
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
-
-    assert dummy_server.app['log'] == [
-        'GET stripe_root_url/customers/xxx/sources',
-        'POST stripe_root_url/customers/xxx/sources',
-        'POST stripe_root_url/charges',
-        (
-            'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
-        ),
-    ]
-
-
-async def test_existing_customer_no_customer(cli, url, dummy_server, factory: Factory):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user(stripe_customer_id='missing')
-    await factory.create_event(price=12.5)
-
-    res: Reservation = await factory.create_reservation(factory.user_id, None)
-    app = cli.app['main_app']
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
-
-    assert dummy_server.app['log'] == [
-        'GET stripe_root_url/customers/missing/sources',
-        'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
-        (
-            'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
-        ),
-    ]
-
-
-async def test_saved_card(cli, url, dummy_server, factory: Factory):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user(stripe_customer_id='xxx')
-    await factory.create_event(price=12.5)
-
-    res: Reservation = await factory.create_reservation(factory.user_id, None)
-    app = cli.app['main_app']
-
-    source_hash = hashlib.sha1('testing-source-id'.encode()).hexdigest()
-    data = dict(
-        stripe=dict(source_hash=source_hash),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
-
-    assert dummy_server.app['log'] == [
-        'GET stripe_root_url/customers/xxx/sources',
-        'POST stripe_root_url/charges',
-        (
-            'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
-        ),
-    ]
-
-
-async def test_saved_card_missing_source(cli, url, dummy_server, factory: Factory):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user(stripe_customer_id='xxx')
-    await factory.create_event(price=12.5)
-
-    res: Reservation = await factory.create_reservation(factory.user_id, None)
-    app = cli.app['main_app']
-
-    source_hash = hashlib.sha1('missing'.encode()).hexdigest()
-    data = dict(
-        stripe=dict(source_hash=source_hash),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 400, await r.text()
-    data = await r.json()
-    assert data == {'message': 'source not found'}
-    assert dummy_server.app['log'] == ['GET stripe_root_url/customers/xxx/sources']
-
-
-async def test_saved_card_missing_customer(cli, url, dummy_server, factory: Factory):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user(stripe_customer_id='missing')
-    await factory.create_event(price=12.5)
-
-    res: Reservation = await factory.create_reservation(factory.user_id, None)
-    app = cli.app['main_app']
-
-    source_hash = hashlib.sha1('missing'.encode()).hexdigest()
-    data = dict(
-        stripe=dict(source_hash=source_hash),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 400, await r.text()
-    data = await r.json()
-    assert data == {'message': 'using saved card but stripe customer not found'}
-    assert dummy_server.app['log'] == ['GET stripe_root_url/customers/missing/sources']
-
-
-async def test_existing_customer_new_card(cli, url, dummy_server, factory: Factory):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user(stripe_customer_id='xxx')
-    await factory.create_event(price=12.5)
-
-    res: Reservation = await factory.create_reservation(factory.user_id, None)
-    app = cli.app['main_app']
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
-
-    assert dummy_server.app['log'] == [
-        'GET stripe_root_url/customers/xxx/sources',
-        'POST stripe_root_url/customers/xxx/sources',
-        'POST stripe_root_url/charges',
-        (
-            'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
-        ),
-    ]
-
-
-async def test_existing_customer_existing_card(cli, url, dummy_server, factory: Factory, db_conn):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user(stripe_customer_id='xxx')
-    await factory.create_event(price=12.5)
-
-    res: Reservation = await factory.create_reservation(factory.user_id, None)
-    app = cli.app['main_app']
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-2019-8',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
-
-    assert dummy_server.app['log'] == [
-        'GET stripe_root_url/customers/xxx/sources',
-        'POST stripe_root_url/charges',
-        (
-            'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
-        ),
-    ]
-
-
-async def test_pay_no_price(cli, url, factory: Factory):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user()
-    await factory.create_event(price=None)
-
-    res: Reservation = await factory.create_reservation()
-    app = cli.app['main_app']
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 400, await r.text()
-    data = await r.json()
-    assert data == {
-        'message': 'booking price cent < 100',
+    await login()
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'frank@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
     }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
 
+    await factory.fire_stripe_webhook(action_id)
 
-async def test_request_cancelled(cli, url, dummy_server, factory: Factory, db_conn, loop, caplog):
-    await factory.create_company()
-    await factory.create_cat()
-    await factory.create_user()
-    await factory.create_event(price=12.5, name='slow-request')
-
-    res: Reservation = await factory.create_reservation()
-    app = cli.app['main_app']
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=encrypt_json(app, res.dict()),
-    )
-
-    t = loop.create_task(cli.json_post(url('event-buy-tickets'), data=data))
-    await sleep(0.1)
-    t.cancel()
-
-    await sleep(0.4)
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
+        'POST stripe_root_url/payment_intents',
         (
             'email_send_endpoint',
-            'Subject: "slow-request Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
         ),
     ]
     assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
-    assert 'CancelledError' in caplog.text
+
+
+async def test_existing_customer(cli, url, login, dummy_server, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='xxx')
+    await factory.create_event(status='published', price=10)
+
+    await login()
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'frank@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        'GET stripe_root_url/customers/xxx',
+        'POST stripe_root_url/payment_intents',
+    ]
+
+
+async def test_existing_customer_no_customer(cli, url, login, dummy_server, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='missing')
+    await factory.create_event(status='published', price=10)
+
+    await login()
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'frank@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    assert dummy_server.app['log'] == [
+        'GET stripe_root_url/customers/missing',
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/payment_intents',
+    ]
+
+
+async def test_price_low(cli, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    res: Reservation = await factory.create_reservation()
+    res.price_cent = 1
+    with pytest.raises(JsonErrors.HTTPBadRequest) as exc_info:
+        await stripe_buy_intent(res, factory.company_id, cli.app['main_app'], db_conn)
+
+    assert exc_info.value.text == '{\n  "message": "booking price cent < 100"\n}\n'

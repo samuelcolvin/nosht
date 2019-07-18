@@ -62,30 +62,14 @@ async def facebook_siw(request):
         return json_response({}, status=400)
 
 
-async def stripe_get_customer_sources(request):
+async def stripe_get_customer(request):
     if request.match_info['stripe_customer_id'] == 'xxx':
         return json_response({
-            'object': 'list',
-            'data': [
-                {
-                    'last4': '4242',
-                    'brand': 'Visa',
-                    'exp_month': 8,
-                    'exp_year': 2019,
-                    'id': 'testing-source-id',
-                },
-            ],
-            'has_more': False,
+            'id': 'stripe_customer_id',
             'url': '/v1/customers/xxx/sources',
         })
     else:
         return Response(status=404)
-
-
-async def stripe_post_customer_sources(request):
-    return json_response({
-        'id': 'src_id_123456',
-    })
 
 
 async def stripe_post_customers(request):
@@ -319,8 +303,7 @@ async def create_dummy_server(create_server):
         web.get('/google_siw_url/', google_siw),
         web.get('/facebook_siw_url/', facebook_siw),
 
-        web.get('/stripe_root_url/customers/{stripe_customer_id}/sources', stripe_get_customer_sources),
-        web.post('/stripe_root_url/customers/{stripe_customer_id}/sources', stripe_post_customer_sources),
+        web.get('/stripe_root_url/customers/{stripe_customer_id}', stripe_get_customer),
         web.post('/stripe_root_url/customers', stripe_post_customers),
         web.post('/stripe_root_url/charges', stripe_post_charges),
         web.post('/stripe_root_url/refunds', stripe_post_refund),
