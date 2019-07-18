@@ -42,7 +42,6 @@ async def stripe_webhook(request):
     data = webhook['data']['object']
     amount_cents = data['amount']
     metadata = MetadataModel(**data['metadata'])
-    debug(metadata)
 
     charge = data['charges']['data'][0]
     card = charge['payment_method_details']['card']

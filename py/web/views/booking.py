@@ -163,7 +163,10 @@ class ReserveTickets(UpdateViewAuth):
             ticket_count=ticket_count,
             event_name=event_name,
         )
-        client_secret = await stripe_buy_intent(res, self.request['company_id'], self.app, self.conn)
+        if total_price:
+            client_secret = await stripe_buy_intent(res, self.request['company_id'], self.app, self.conn)
+        else:
+            client_secret = None
         if update_user_preferences:
             # has to happen after the transactions is finished
             await self.app['donorfy_actor'].update_user(self.request['session']['user_id'], update_user=False)

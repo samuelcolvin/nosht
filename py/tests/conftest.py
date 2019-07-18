@@ -17,7 +17,7 @@ import aiodns
 import lorem
 import pytest
 import pytz
-from aiohttp.test_utils import teardown_test_loop
+from aiohttp.test_utils import teardown_test_loop, TestClient
 from aioredis import create_redis
 from async_timeout import timeout
 from buildpg import MultipleValues, Values, asyncpg
@@ -438,18 +438,13 @@ async def pre_cleanup(app):
         await donorfy_actor.client.close()
 
 
-@pytest.fixture(name='app')
-def _fix_app(settings, db_conn, redis):
+@pytest.fixture(name='cli')
+async def _fix_cli(settings, db_conn, aiohttp_client, redis):
     app = create_app(settings=settings)
     app['test_conn'] = db_conn
     app.on_startup.insert(0, pre_startup_app)
     app.on_startup.append(post_startup_app)
     app.on_cleanup.insert(0, pre_cleanup)
-    return app
-
-
-@pytest.fixture(name='cli')
-async def _fix_cli(app, aiohttp_client):
     cli = await aiohttp_client(app)
 
     def json_post(url, *, data=None, headers=None, origin_null=False):
@@ -511,9 +506,9 @@ def _setup_static(tmpdir):
     tmpdir.join('iframes').join('login.html').write('this is iframes/login.html')
 
 
-@pytest.fixture(name='fire_stripe_webhook')
-async def _fix_fire_stripe_webhook(app, url, settings, aiohttp_client):
-    webhook_cli = await aiohttp_client(app)
+@pytest.yield_fixture(name='fire_stripe_webhook')
+async def _fix_fire_stripe_webhook(url, settings, cli, loop):
+    webhook_cli = TestClient(cli.server, loop=loop)
 
     async def fire(
             *,
@@ -558,10 +553,13 @@ async def _fix_fire_stripe_webhook(app, url, settings, aiohttp_client):
         t = int(time())
         sig = hmac.new(settings.stripe_webhook_secret, f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
 
-        r = await webhook_cli.post(url('stripe-webhook'), data=body, headers={'Stripe-Signature': f't={t},v1={sig}'})
+        r = await cli.post(url('stripe-webhook'), data=body, headers={'Stripe-Signature': f't={t},v1={sig}'})
         assert r.status == 204, await r.text()
         return r
-    return fire
+
+    yield fire
+
+    await webhook_cli.close()
 
 
 class Offline:
