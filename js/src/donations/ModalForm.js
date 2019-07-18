@@ -38,8 +38,6 @@ class DonateForm extends React.Component {
       payment: {},
     }
     this.stripe_pay = stripe_pay.bind(this)
-    this.donation_action_id = null
-    this.client_secret = null
   }
 
   async componentDidMount () {

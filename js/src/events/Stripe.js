@@ -76,18 +76,19 @@ export async function stripe_pay (client_secret) {
       },
       save_payment_method: true
     })
-    if (!r.error) {
-      record_payment_method(this.props.ctx.user, r.paymentIntent.payment_method)
-    }
   }
   if (r.error) {
-    // happens at least when you use a test card on live stripe
-    console.warn('create token response:', r)
+    // happens for any stripe or card error
+    console.warn('handleCardPayment response:', r)
     const payment = {...this.state.payment, error: r.error.message || 'Invalid Card'}
     this.setState({payment, submitting: false})
     return false
+  } else {
+    if (!payment_method) {
+      record_payment_method(this.props.ctx.user, r.paymentIntent.payment_method)
+    }
+    return true
   }
-  return true
 }
 
 export const stripe_form_valid = payment_details => (
@@ -158,7 +159,6 @@ class StripeForm_ extends React.Component {
     this.setPaymentState = this.setPaymentState.bind(this)
     this.radioChange = this.radioChange.bind(this)
     this.stored_payment_method = {}
-    this.state = {overlay_style: null}
   }
 
   async componentDidMount () {
@@ -177,19 +177,6 @@ class StripeForm_ extends React.Component {
       postal_code_error: null,
       payment_method_id: this.stored_payment_method.payment_method_id || null,
     })
-  }
-
-  componentDidUpdate () {
-    this.clear_timer = setTimeout(() => {
-      const el = document.getElementById('stripe-form')
-      if (el) {
-        this.setState({overlay_style: {height: el.offsetHeight, width: el.offsetWidth}})
-      }
-    }, 100)
-  }
-
-  componentWillUnmount () {
-    clearInterval(this.clear_timer)
   }
 
   setPaymentState (change) {
