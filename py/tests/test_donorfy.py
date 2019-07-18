@@ -1,7 +1,9 @@
 import pytest
+from buildpg import Values
 from pytest import fixture
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
+from shared.actions import ActionTypes
 from shared.donorfy import DonorfyActor
 from shared.utils import RequestError
 
@@ -91,17 +93,18 @@ async def test_book_tickets(donorfy: DonorfyActor, factory: Factory, dummy_serve
     await factory.create_event(price=10)
 
     res = await factory.create_reservation()
-    action_id, _ = await factory.buy_tickets(res)
+    await factory.buy_tickets(res)
 
-    await donorfy.tickets_booked(action_id)
     assert dummy_server.app['log'] == [
-        f'POST stripe_root_url/customers',
-        f'POST stripe_root_url/charges',
         f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
         f'POST donorfy_api_root/standard/transactions',
+        (
+            'email_send_endpoint',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
+        ),
     ]
 
 
@@ -155,17 +158,27 @@ async def test_book_tickets_multiple(donorfy: DonorfyActor, factory: Factory, du
 async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy_server, db_conn):
     await factory.create_company()
     await factory.create_user()
-    await factory.create_cat()
-    await factory.create_event(price=10)
+    await factory.create_cat(cover_costs_percentage=10)
+    await factory.create_event(status='published', price=100)
 
     res = await factory.create_reservation()
-    action_id, _ = await factory.buy_tickets(res)
+    action_id = await db_conn.fetchval_b(
+        'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
+        values=Values(
+            company=factory.company_id,
+            user_id=factory.user_id,
+            type=ActionTypes.buy_tickets,
+            event=factory.event_id,
+        )
+    )
+    await db_conn.execute(
+        "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
+        action_id, res.action_id,
+    )
     await db_conn.execute('update tickets set extra_donated=10')
 
     await donorfy.tickets_booked(action_id)
     assert set(dummy_server.app['log']) == {
-        f'POST stripe_root_url/customers',
-        f'POST stripe_root_url/charges',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
@@ -177,7 +190,7 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
     }
 
 
-async def test_book_multiple(donorfy: DonorfyActor, factory: Factory, dummy_server, db_conn, cli, url, login):
+async def test_book_multiple(donorfy: DonorfyActor, factory: Factory, dummy_server, cli, url, login):
     await factory.create_company()
     await factory.create_user()
     await factory.create_cat()
@@ -194,13 +207,8 @@ async def test_book_multiple(donorfy: DonorfyActor, factory: Factory, dummy_serv
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
-
-    data = {
-        'stripe': {'token': 'tok_visa', 'client_ip': '0.0.0.0', 'card_ref': '4242-32-01'},
-        'booking_token': (await r.json())['booking_token']
-    }
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+    await factory.fire_stripe_webhook(action_id)
 
     trans_data = dummy_server.app['post_data']['POST donorfy_api_root/standard/transactions']
     assert len(trans_data) == 1
@@ -233,25 +241,30 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
     await factory.create_donation_option()
     await login()
 
-    data = dict(
-        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-        donation_option_id=factory.donation_option_id,
-        event_id=factory.event_id,
-        gift_aid=True,
-        title='Ms',
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    post_data = dict(
+        title='Mr',
         first_name='Joe',
         last_name='Blogs',
         address='Testing Street',
         city='Testingville',
         postcode='TE11 0ST',
     )
-    r = await cli.json_post(url('donate'), data=data)
+    r = await cli.json_post(url('donation-gift-aid', action_id=action_id), data=post_data)
     assert r.status == 200, await r.text()
+
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
+
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
 
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
+        'POST stripe_root_url/payment_intents',
         'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         'GET donorfy_api_root/standard/constituents/123456',
@@ -269,19 +282,17 @@ async def test_donate_no_gift_aid(donorfy: DonorfyActor, factory: Factory, dummy
     await factory.create_donation_option()
     await login()
 
-    data = dict(
-        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-        donation_option_id=factory.donation_option_id,
-        event_id=factory.event_id,
-        gift_aid=False,
-    )
-    r = await cli.json_post(url('donate'), data=data)
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
     assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
+
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
 
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
+        'POST stripe_root_url/payment_intents',
         'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         'GET donorfy_api_root/standard/constituents/123456',

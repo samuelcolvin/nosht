@@ -287,8 +287,8 @@ async def test_send_ticket_email_cover_costs(factory: Factory, dummy_server, cli
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
     data = await r.json()
-    action_id = int(re.search(r'_(\d+)', data['client_secret']).group(1))
-    await factory.fire_stripe_webhook(reserve_action_id=action_id, )
+    action_id = data['action_id']
+    await factory.fire_stripe_webhook(action_id)
 
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]

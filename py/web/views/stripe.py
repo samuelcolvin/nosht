@@ -74,11 +74,11 @@ async def stripe_webhook(request):
                     extra=action_extra
                 )
             )
+            await conn.execute('SELECT check_tickets_remaining($1, $2)', metadata.event_id, settings.ticket_ttl)
             await conn.execute(
                 "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
                 action_id, metadata.reserve_action_id,
             )
-            await conn.execute('SELECT check_tickets_remaining($1, $2)', metadata.event_id, settings.ticket_ttl)
         else:
             gift_aid_info, donation_option_id, complete = await conn.fetchrow(
                 """

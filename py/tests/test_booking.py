@@ -141,6 +141,8 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         'item_price': 10.0,
         'total_price': 20.0,
         'timeout': AnyInt(),
+        'client_secret': RegexStr(r'payment_intent_secret_\d+'),
+        'action_id': AnyInt(),
     }
     booking_token = decrypt_json(cli.app['main_app'], data['booking_token'].encode())
     reserve_action_id = await db_conn.fetchval("SELECT id FROM actions WHERE type='reserve-tickets'")
@@ -235,6 +237,8 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
         'item_price': 10.0,
         'total_price': 20.0,
         'timeout': AnyInt(),
+        'client_secret': RegexStr(r'payment_intent_secret_\d+'),
+        'action_id': AnyInt(),
     }
 
     users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
@@ -310,6 +314,8 @@ async def test_reserve_tickets_cover_costs(cli, url, factory: Factory, login):
         'item_price': 10.0,
         'total_price': 22.50,
         'timeout': AnyInt(),
+        'client_secret': RegexStr(r'payment_intent_secret_\d+'),
+        'action_id': AnyInt(),
     }
     assert decrypt_json(cli.app['main_app'], data['booking_token'].encode()) == {
         'user_id': factory.user_id,
@@ -349,6 +355,8 @@ async def test_reserve_tickets_free(cli, url, factory: Factory, login):
         'item_price': None,
         'total_price': None,
         'timeout': AnyInt(),
+        'client_secret': None,
+        'action_id': AnyInt(),
     }
     assert decrypt_json(cli.app['main_app'], data['booking_token'].encode()) == {
         'user_id': factory.user_id,
@@ -689,21 +697,18 @@ async def test_buy_repeat(factory: Factory, cli, url, login, db_conn):
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
-    data = await r.json()
+    action_id = (await r.json())['action_id']
 
-    data = dict(
-        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-        booking_token=data['booking_token'],
-    )
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 400, await r.text()
-    data = await r.json()
-    assert data == {'message': 'invalid reservation'}
+    await factory.fire_stripe_webhook(action_id)
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
+    assert 'booked' == await db_conn.fetchval('select status from tickets')
+
+    await factory.fire_stripe_webhook(action_id)
+
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
     assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
+    assert 'booked' == await db_conn.fetchval('select status from tickets')
 
 
 @pytest.fixture
@@ -718,14 +723,9 @@ def buy_tickets(cli, url, login):
         }
         r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
         assert r.status == 200, await r.text()
-        data = await r.json()
 
-        data = dict(
-            stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-            booking_token=data['booking_token'],
-        )
-        r = await cli.json_post(url('event-buy-tickets'), data=data)
-        assert r.status == 200, await r.text()
+        action_id = (await r.json())['action_id']
+        await factory.fire_stripe_webhook(action_id)
     return run
 
 

@@ -17,7 +17,7 @@ import aiodns
 import lorem
 import pytest
 import pytz
-from aiohttp.test_utils import teardown_test_loop, TestClient
+from aiohttp.test_utils import TestClient, teardown_test_loop
 from aioredis import create_redis
 from async_timeout import timeout
 from buildpg import MultipleValues, Values, asyncpg
@@ -320,8 +320,8 @@ class Factory:
 
     async def fire_stripe_webhook(
             self,
-            *,
             reserve_action_id,
+            *,
             event_id=None,
             user_id=None,
             amount=10_00,
@@ -533,12 +533,12 @@ async def _fix_fire_stripe_webhook(url, settings, cli, loop):
                     'charges': {
                         'data': [
                             {
-                                'id': 'charge_id',
+                                'id': 'charge-id',
                                 'payment_method_details': {
                                     'card': {
-                                        'brand': 'visa',
+                                        'brand': 'Visa',
                                         'last4': '1234',
-                                        'exp_month': 6,
+                                        'exp_month': 12,
                                         'exp_year': 2032,
                                         'three_d_secure': True,
                                     }

@@ -18,6 +18,14 @@ stripe_secret_key = 'sk_test_WZT0Ntpze4QB8oeQIGeXAYsG'
 real_stripe_test = pytest.mark.skipif(not os.getenv('REAL_STRIPE_TESTS'), reason='requires REAL_STRIPE_TESTS env var')
 
 
+def StripeBuyModel(**kwargs):
+    pass
+
+
+def stripe_buy(*args, **kwargs):
+    pass
+
+
 @real_stripe_test
 async def test_real_successful(cli, db_conn, factory: Factory):
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)

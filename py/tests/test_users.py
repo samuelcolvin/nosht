@@ -283,7 +283,7 @@ async def test_user_tickets(cli, url, login, factory: Factory):
     assert data == {'tickets': []}
 
     res = await factory.create_reservation(factory.user_id)
-    await factory.buy_tickets(res, factory.user_id)
+    await factory.buy_tickets(res)
 
     r = await cli.get(url('user-tickets', pk=factory.user_id))
     assert r.status == 200, await r.text()

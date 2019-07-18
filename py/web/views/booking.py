@@ -172,6 +172,7 @@ class ReserveTickets(UpdateViewAuth):
             await self.app['donorfy_actor'].update_user(self.request['session']['user_id'], update_user=False)
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
+            'action_id': action_id,
             'ticket_count': ticket_count,
             'item_price': item_price and float(item_price),
             'extra_donated': item_extra_donated and float(item_extra_donated * ticket_count),
