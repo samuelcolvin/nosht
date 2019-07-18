@@ -183,12 +183,15 @@ async def stripe_webhook_body(request) -> dict:
     check the signature of a stripe webhook, then decode and return the body
     """
     ts, sig = '1', 'missing'
-    for part in request.headers.get('Stripe-Signature', '').split(','):
-        key, value = part.split('=', 1)
-        if key == 't':
-            ts = value
-        elif key == 'v1':
-            sig = value
+    try:
+        for part in request.headers['Stripe-Signature'].split(','):
+            key, value = part.split('=', 1)
+            if key == 't':
+                ts = value
+            elif key == 'v1':
+                sig = value
+    except (ValueError, KeyError):
+        raise JsonErrors.HTTPForbidden(message='Invalid signature')
 
     text = await request.text()
     settings: Settings = request.app['settings']
@@ -266,21 +269,7 @@ async def stripe_payment_intent(
         metadata=metadata,
         statement_descriptor=_clean_descriptor(f'{settings.stripe_descriptor_prefix}: {description}')
     )
-    client_secret = payment_intent['client_secret']
-    await app['redis'].setex(payment_intent_key(client_secret), 900, payment_intent['id'])
-    return client_secret
-
-
-def payment_intent_key(client_secret):
-    return f'payment-intent:{client_secret}'
-
-
-def _card_ref(c):
-    return '{last4}-{exp_year}-{exp_month}'.format(**c)
-
-
-def _hash_src(source_id):
-    return hashlib.sha1(source_id.encode()).hexdigest()
+    return payment_intent['client_secret']
 
 
 descriptor_remove = re.compile(r"""[<>'"*]""")

@@ -33,7 +33,7 @@ async def stripe_webhook(request):
 
     if hook_type != 'payment_intent.succeeded':
         logger.warning('unknown webhook %r', hook_type, extra={'webhook': webhook})
-        return Response(status=204)
+        return Response(text='unknown webhook type', status=200)
 
     settings: Settings = request.app['settings']
     conn: BuildPgConnection = request['conn']

@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import os
 
 import pytest
@@ -126,6 +128,37 @@ async def test_real_refund(cli, url, login, db_conn, factory: Factory):
     assert refund['reason'] == 'requested_by_customer'
 
 
+@real_stripe_test
+async def test_get_payment_method(cli, url, login, factory: Factory):
+    await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=10)
+
+    await login()
+
+    r = await cli.get(url('payment-method-details', payment_method='pm_card_amex'))
+    assert r.status == 200, await r.text()  # both db customer_id and payment_method customer_id are None
+    data = await r.json()
+    assert data == {
+        'card': {
+            'brand': 'amex',
+            'exp_month': AnyInt(),
+            'exp_year': AnyInt(),
+            'last4': '8431',
+        },
+        'address': {
+            'city': None,
+            'country': None,
+            'line1': None,
+            'line2': None,
+            'postal_code': None,
+            'state': None,
+        },
+        'name': None,
+    }
+
+
 async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_cat()
@@ -213,3 +246,96 @@ async def test_price_low(cli, factory: Factory, db_conn):
         await stripe_buy_intent(res, factory.company_id, cli.app['main_app'], db_conn)
 
     assert exc_info.value.text == '{\n  "message": "booking price cent < 100"\n}\n'
+
+
+async def test_get_payment_method_good(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='cus_123')
+    await factory.create_event(status='published', price=10)
+
+    await login()
+
+    r = await cli.get(url('payment-method-details', payment_method='good'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'card': {
+            'brand': 'Visa',
+            'exp_month': 12,
+            'exp_year': 2032,
+            'last4': 1234,
+        },
+        'address': {
+            'line1': 'hello,',
+        },
+        'name': 'Testing Calls',
+    }
+
+
+async def test_get_payment_method_wrong_customer(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='other')
+    await factory.create_event(status='published', price=10)
+
+    await login()
+
+    r = await cli.get(url('payment-method-details', payment_method='good'))
+    assert r.status == 404, await r.text()
+    data = await r.json()
+    assert data == {'message': 'payment method not found for this customer'}
+
+
+async def test_get_payment_method_404(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=10)
+
+    await login()
+
+    r = await cli.get(url('payment-method-details', payment_method='missing'))
+    assert r.status == 404, await r.text()
+    data = await r.json()
+    assert data == {'message': 'payment method not found'}
+
+
+async def test_webhook_bad_signature1(cli, url, factory: Factory):
+    await factory.create_company()
+    r = await cli.post(url('stripe-webhook'), data='testing')
+    assert r.status == 403, await r.text()
+    assert await r.json() == {'message': 'Invalid signature'}
+
+
+async def test_webhook_bad_signature2(cli, url, factory: Factory):
+    await factory.create_company()
+    r = await cli.post(url('stripe-webhook'), data='testing', headers={'Stripe-Signature': 'foobar'})
+    assert r.status == 403, await r.text()
+    assert await r.json() == {'message': 'Invalid signature'}
+
+
+async def test_webhook_bad_signature3(cli, url, factory: Factory):
+    await factory.create_company()
+    r = await cli.post(url('stripe-webhook'), data='testing', headers={'Stripe-Signature': f't=x,v1=y,v5=a'})
+    assert r.status == 403, await r.text()
+    assert await r.json() == {'message': 'Invalid signature'}
+
+
+async def test_webhook_bad_signature4(cli, url, factory: Factory, settings):
+    await factory.create_company()
+
+    body = 'whatever'
+    t = 123456
+    sig = hmac.new(settings.stripe_webhook_secret, f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
+
+    r = await cli.post(url('stripe-webhook'), data=body, headers={'Stripe-Signature': f't={t},v1={sig}'})
+    assert r.status == 400, await r.text()
+    assert await r.json() == {'message': 'webhook too old', 'age': AnyInt()}
+
+
+async def test_webhook_bad_type(factory: Factory):
+    await factory.create_company()
+
+    r = await factory.fire_stripe_webhook(123, webhook_type='payment_intent.other', expected_status=200)
+    assert await r.text() == 'unknown webhook type'

@@ -1,5 +1,4 @@
 import base64
-from asyncio import sleep
 from email import message_from_bytes
 from io import BytesIO
 
@@ -85,41 +84,34 @@ async def stripe_post_customers(request):
     })
 
 
-async def stripe_post_charges(request):
-    data = await request.post()
-    idempotency_key = request.headers['Idempotency-Key']
-    if idempotency_key in request.app['stripe_idempotency_keys']:
-        request.app['log'].append('Idempotency match')
-    request.app['stripe_idempotency_keys'].add(idempotency_key)
-    if 'decline' in data['description']:
-        return json_response({
-            'error': {
-                'code': 'card_declined',
-                'message': 'Your card was declined.',
-                'type': 'card_error'
-            }
-        }, status=402)
-    else:
-        if 'slow-request' in data['description']:
-            await sleep(0.2)
-        return json_response({
-            'id': 'charge-id',
-            'source': {
-                'id': 'source-id',
-                'last4': '1234',
-                'brand': 'Visa',
-                'exp_month': '12',
-                'exp_year': 2032,
-            }
-        })
-
-
 async def stripe_create_payment_intent(request):
     data = await request.post()
     action_id = data['metadata[reserve_action_id]']
     return json_response({
         'id': f'payment_intent_{action_id}',
         'client_secret': f'payment_intent_secret_{action_id}'
+    })
+
+
+async def stripe_get_payment_methods(request):
+    if request.match_info['payment_method_id'] == 'missing':
+        return Response(status=404)
+
+    return json_response({
+        'id': f'pm_123',
+        'customer': 'cus_123',
+        'card': {
+            'brand': 'Visa',
+            'exp_month': 12,
+            'exp_year': 2032,
+            'last4': 1234,
+        },
+        'billing_details': {
+            'address': {
+                'line1': 'hello,'
+            },
+            'name': 'Testing Calls'
+        }
     })
 
 
@@ -305,9 +297,9 @@ async def create_dummy_server(create_server):
 
         web.get('/stripe_root_url/customers/{stripe_customer_id}', stripe_get_customer),
         web.post('/stripe_root_url/customers', stripe_post_customers),
-        web.post('/stripe_root_url/charges', stripe_post_charges),
         web.post('/stripe_root_url/refunds', stripe_post_refund),
         web.post('/stripe_root_url/payment_intents', stripe_create_payment_intent),
+        web.get('/stripe_root_url/payment_methods/{payment_method_id}', stripe_get_payment_methods),
 
         web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
         web.get('/s3_demo_image_url/{image:.*}', s3_demo_image),
