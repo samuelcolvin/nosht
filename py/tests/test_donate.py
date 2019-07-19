@@ -511,3 +511,69 @@ async def test_donate_gift_aid_no_name(factory: Factory, cli, url, login):
             },
         ],
     }
+
+
+async def test_gift_aid_good(factory: Factory, cli, url, login, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    extra = json.loads(await db_conn.fetchval('select extra from actions where id=$1', action_id))
+    assert extra.keys() == {'ip', 'ua', 'url', 'donation_option_id'}
+
+    post_data = dict(title='0', first_name='1', last_name='2', address='3', city='4', postcode='5')
+    r = await cli.json_post(url('donation-gift-aid', action_id=action_id), data=post_data)
+    assert r.status == 200, await r.text()
+
+    extra = json.loads(await db_conn.fetchval('select extra from actions where id=$1', action_id))
+    assert extra.keys() == {'ip', 'ua', 'url', 'donation_option_id', 'gift_aid'}
+    assert extra['gift_aid'] == {
+        'title': '0',
+        'first_name': '1',
+        'last_name': '2',
+        'address': '3',
+        'city': '4',
+        'postcode': '5',
+    }
+
+
+async def test_gift_aid_no_action(factory: Factory, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    post_data = dict(title='0', first_name='1', last_name='2', address='3', city='4', postcode='5')
+    r = await cli.json_post(url('donation-gift-aid', action_id=0), data=post_data)
+    assert r.status == 404, await r.text()
+    assert await r.json() == {'message': 'action not found'}
+
+
+async def test_gift_aid_wrong_user(factory: Factory, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    await factory.create_user(email='other@example.com')
+    await login(email='other@example.com')
+
+    post_data = dict(title='0', first_name='1', last_name='2', address='3', city='4', postcode='5')
+    r = await cli.json_post(url('donation-gift-aid', action_id=action_id), data=post_data)
+    assert r.status == 404, await r.text()
+    assert await r.json() == {'message': 'action not found'}
