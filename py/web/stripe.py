@@ -196,6 +196,9 @@ async def stripe_webhook_body(request) -> dict:
     stripe_webhook_secret = await request['conn'].fetchval(
         'select stripe_webhook_secret from companies where id=$1', request['company_id']
     )
+    if not stripe_webhook_secret:
+        raise JsonErrors.HTTPBadRequest(message='stripe webhooks not configured')
+
     text = await request.text()
     payload = f'{ts}.{text}'.encode()
     if not secrets.compare_digest(hmac.new(stripe_webhook_secret.encode(), payload, hashlib.sha256).hexdigest(), sig):

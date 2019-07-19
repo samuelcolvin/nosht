@@ -462,6 +462,15 @@ async def test_webhook_bad_signature4(cli, url, factory: Factory, settings, db_c
     assert await r.json() == {'message': 'webhook too old', 'age': AnyInt()}
 
 
+async def test_webhook_not_configured(factory: Factory, db_conn):
+    await factory.create_company()
+
+    await db_conn.execute('update companies set stripe_webhook_secret=null')
+
+    r = await factory.fire_stripe_webhook(1, expected_status=400)
+    assert await r.json() == {'message': 'stripe webhooks not configured'}
+
+
 async def test_webhook_bad_type(factory: Factory):
     await factory.create_company()
 
