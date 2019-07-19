@@ -57,9 +57,14 @@ class DonateForm extends React.Component {
       city_error: null,
       postcode_error: null,
     })
-    const r = await requests.post(
-      `/donation-options/${this.props.donation_option.id}/prepare/${this.props.event.id}/`
-    )
+
+    let r
+    try {
+      r = await requests.post(`/donation-options/${this.props.donation_option.id}/prepare/${this.props.event.id}/`)
+    } catch (error) {
+      this.props.ctx.setError(error)
+      return
+    }
     this.setState({
       donation_action_id: r.action_id,
       client_secret: r.client_secret,
@@ -92,7 +97,12 @@ class DonateForm extends React.Component {
         city: this.state.city,
         postcode: this.state.postcode,
       }
-      await requests.post(`/donation/${this.state.donation_action_id}/gift-aid/`, data)
+      try {
+        await requests.post(`/donation/${this.state.donation_action_id}/gift-aid/`, data)
+      } catch (error) {
+        this.props.ctx.setError(error)
+        return
+      }
     }
     const ok = await this.stripe_pay(this.state.client_secret)
     if (ok) {

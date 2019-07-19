@@ -104,10 +104,14 @@ export const get_payment_method = async (user) => {
   const payment_method_id = window.sessionStorage[`payment_method_${user.id}`]
   if (payment_method_id) {
     const config = {expected_statuses: [200, 404]}
-    const data = await requests.get(`/stripe/payment-method-details/${payment_method_id}/`, null, config)
-    if (data._response_status === 200) {
-      delete data._response_status
-      return {payment_method_id, ...data}
+    try {
+      const data = await requests.get(`/stripe/payment-method-details/${payment_method_id}/`, null, config)
+      if (data._response_status === 200) {
+        delete data._response_status
+        return {payment_method_id, ...data}
+      }
+    } catch (e) {
+      console.error('error getting payment method details', e)
     }
   }
   return {}
