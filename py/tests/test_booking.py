@@ -680,37 +680,6 @@ async def test_buy_offline_host(cli, url, factory: Factory, login, db_conn):
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
 
 
-async def test_buy_repeat(factory: Factory, cli, url, login, db_conn):
-    await factory.create_company()
-    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
-    await factory.create_user()
-    await factory.create_event(status='published', price=100)
-
-    await factory.create_user(email='ticket.buyer@example.org')
-    await login(email='ticket.buyer@example.org')
-
-    data = {
-        'tickets': [
-            {'t': True, 'email': 'ticket.buyer@example.org', 'cover_costs': True},
-        ],
-        'ticket_type': factory.ticket_type_id,
-    }
-    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
-    assert r.status == 200, await r.text()
-    action_id = (await r.json())['action_id']
-
-    await factory.fire_stripe_webhook(action_id)
-    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
-    assert 'booked' == await db_conn.fetchval('select status from tickets')
-
-    await factory.fire_stripe_webhook(action_id)
-
-    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
-    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
-    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
-    assert 'booked' == await db_conn.fetchval('select status from tickets')
-
-
 async def test_free_repeat(factory: Factory, cli, url, login, db_conn):
     await factory.create_company()
     await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)

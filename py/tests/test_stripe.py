@@ -234,6 +234,65 @@ async def test_existing_customer_no_customer(cli, url, login, dummy_server, fact
     ]
 
 
+async def test_buy_webhook_repeat(factory: Factory, cli, url, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(status='published', price=100)
+
+    await factory.create_user(email='ticket.buyer@example.org')
+    await login(email='ticket.buyer@example.org')
+
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'ticket.buyer@example.org', 'cover_costs': True},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    await factory.fire_stripe_webhook(action_id)
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
+    assert 'booked' == await db_conn.fetchval('select status from tickets')
+
+    r = await factory.fire_stripe_webhook(action_id, expected_status=231)
+    assert await r.text() == 'ticket not reserved'
+
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
+    assert 'booked' == await db_conn.fetchval('select status from tickets')
+
+
+async def test_donate_webhook_repeat(factory: Factory, dummy_server, db_conn, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
+
+    r = await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate', expected_status=232)
+    assert await r.text() == 'donation already performed'
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    assert dummy_server.app['log'] == [
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/payment_intents',
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
+    ]
+
+
 async def test_price_low(cli, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_cat()
@@ -337,5 +396,5 @@ async def test_webhook_bad_signature4(cli, url, factory: Factory, settings):
 async def test_webhook_bad_type(factory: Factory):
     await factory.create_company()
 
-    r = await factory.fire_stripe_webhook(123, webhook_type='payment_intent.other', expected_status=200)
+    r = await factory.fire_stripe_webhook(123, webhook_type='payment_intent.other', expected_status=230)
     assert await r.text() == 'unknown webhook type'

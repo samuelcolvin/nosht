@@ -33,7 +33,7 @@ async def stripe_webhook(request):
 
     if hook_type != 'payment_intent.succeeded':
         logger.warning('unknown webhook %r', hook_type, extra={'webhook': webhook})
-        return Response(text='unknown webhook type', status=200)
+        return Response(text='unknown webhook type', status=230)
 
     settings: Settings = request.app['settings']
     conn: BuildPgConnection = request['conn']
@@ -61,9 +61,9 @@ async def stripe_webhook(request):
                 'select status from tickets where reserve_action=$1 for update', metadata.reserve_action_id
             )
             if ticket_status != 'reserved':
-                logger.warning('ticket not in reserved status %r', ticket_status, extra={'webhook': webhook})
-                return Response(status=204)
-            # TODO make sure this can't be duplicated
+                logger.warning('ticket not in reserved state %r', ticket_status, extra={'webhook': webhook})
+                return Response(text='ticket not reserved', status=231)
+
             action_id = await conn.fetchval_b(
                 'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
                 values=Values(
@@ -91,7 +91,7 @@ async def stripe_webhook(request):
             if complete:
                 logger.warning('donation already performed with action %s', metadata.reserve_action_id,
                                extra={'webhook': webhook})
-                return Response(status=204)
+                return Response(text='donation already performed', status=232)
 
             action_id = await conn.fetchval_b(
                 'INSERT INTO actions (:values__names) VALUES :values RETURNING id',

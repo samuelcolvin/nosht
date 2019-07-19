@@ -428,31 +428,6 @@ async def test_list_donations_wrong_role(cli, url, factory: Factory, login):
     assert data == {'message': 'role must be: admin'}
 
 
-async def test_donate_idempotency(factory: Factory, dummy_server, db_conn, cli, url, login):
-    await factory.create_company()
-    await factory.create_user()
-    await factory.create_cat()
-    await factory.create_event(price=10)
-    await factory.create_donation_option()
-    await login()
-
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
-    assert r.status == 200, await r.text()
-    action_id = (await r.json())['action_id']
-
-    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
-    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
-    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
-
-    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
-
-    assert dummy_server.app['log'] == [
-        'POST stripe_root_url/customers',
-        'POST stripe_root_url/payment_intents',
-        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
-    ]
-
-
 async def test_wrong_donation_option(factory: Factory, cli, url, login):
     await factory.create_company()
     await factory.create_user()
