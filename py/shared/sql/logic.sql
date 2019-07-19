@@ -14,13 +14,16 @@ CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT, ttl INT) RETURN
   DECLARE
     tickets_taken_ INT;
   BEGIN
+    -- delete reserved tickets after a week,
+    -- this allows time for webhooks to succeed even after the reservation has "expired"
     DELETE FROM tickets
-    WHERE status='reserved' AND event=event_id AND now() - created_ts > (ttl || ' seconds')::interval;
+    WHERE status='reserved' AND event=event_id AND now() - created_ts > '604800 seconds'::interval;
 
     SELECT coalesce(SUM(tt.slots_used), 0) INTO tickets_taken_
     FROM tickets
     JOIN ticket_types AS tt ON tickets.ticket_type=tt.id
-    WHERE tickets.event=event_id AND status != 'cancelled';
+    WHERE tickets.event=event_id AND
+          (status='booked' or (status='reserved' and now() - created_ts < (ttl || ' seconds')::interval));
 
     UPDATE events SET tickets_taken=tickets_taken_ WHERE id=event_id;
 

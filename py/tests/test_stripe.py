@@ -189,6 +189,74 @@ async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn)
     assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
 
 
+async def test_webhook_fired_late(factory: Factory, db_conn, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=10, ticket_limit=2)
+
+    res = await factory.create_reservation()
+    ticket_id = await db_conn.fetchval('select id from tickets where reserve_action=$1', res.action_id)
+
+    assert 1 == await db_conn.fetchval('select check_tickets_remaining($1, $2)', factory.event_id, settings.ticket_ttl)
+    await db_conn.execute("update tickets set created_ts=now() - '3600 seconds'::interval where id=$1", ticket_id)
+    assert 2 == await db_conn.fetchval('select check_tickets_remaining($1, $2)', factory.event_id, settings.ticket_ttl)
+
+    await factory.fire_stripe_webhook(res.action_id, fire_delay=3590)
+
+    assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+
+
+async def test_webhook_bought_late(factory: Factory, db_conn, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=10, ticket_limit=2)
+
+    res = await factory.create_reservation()
+    ticket_id = await db_conn.fetchval('select id from tickets where reserve_action=$1', res.action_id)
+
+    await db_conn.execute("update tickets set created_ts=now() - '3600 seconds'::interval where id=$1", ticket_id)
+
+    assert 2 == await db_conn.fetchval('select check_tickets_remaining($1, $2)', factory.event_id, settings.ticket_ttl)
+    r = await factory.fire_stripe_webhook(res.action_id, expected_status=233)
+    assert await r.text() == 'ticket bought too late'
+
+    assert not await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+
+
+async def test_webhook_ticket_not_found(factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=10, ticket_limit=2)
+
+    r = await factory.fire_stripe_webhook(0, expected_status=231)
+    assert await r.text() == 'ticket not found'
+
+    assert not await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+
+
+async def test_webhook_fired_late_exceeded_limit(factory: Factory, db_conn, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=10, ticket_limit=2)
+
+    res = await factory.create_reservation()
+    ticket_id = await db_conn.fetchval('select id from tickets where reserve_action=$1', res.action_id)
+
+    await db_conn.execute("update tickets set created_ts=now() - '3600 seconds'::interval where id=$1", ticket_id)
+    await factory.create_reservation()
+    await factory.create_reservation()
+    assert 0 == await db_conn.fetchval('select check_tickets_remaining($1, $2)', factory.event_id, settings.ticket_ttl)
+
+    r = await factory.fire_stripe_webhook(res.action_id, fire_delay=3590, expected_status=234)
+    assert await r.text() == 'ticket limit exceeded'
+
+    assert not await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+
+
 async def test_existing_customer(cli, url, login, dummy_server, factory: Factory):
     await factory.create_company()
     await factory.create_cat()
@@ -257,7 +325,7 @@ async def test_buy_webhook_repeat(factory: Factory, cli, url, login, db_conn):
     assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
     assert 'booked' == await db_conn.fetchval('select status from tickets')
 
-    r = await factory.fire_stripe_webhook(action_id, expected_status=231)
+    r = await factory.fire_stripe_webhook(action_id, expected_status=232)
     assert await r.text() == 'ticket not reserved'
 
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
@@ -281,7 +349,7 @@ async def test_donate_webhook_repeat(factory: Factory, dummy_server, db_conn, cl
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
     await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
 
-    r = await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate', expected_status=232)
+    r = await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate', expected_status=240)
     assert await r.text() == 'donation already performed'
 
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
