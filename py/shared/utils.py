@@ -50,9 +50,6 @@ class RequestError(RuntimeError):
     def __str__(self):
         return f'response {self.status} from "{self.url}"' + (f':\n{self.text[:400]}' if self.text else '')
 
-    def json(self):
-        return json.loads(self.text)
-
     def extra(self):
         return self.text
 
