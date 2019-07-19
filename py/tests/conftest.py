@@ -154,6 +154,7 @@ class Factory:
                              domain='127.0.0.1',
                              stripe_public_key='stripe_key_xxx',
                              stripe_secret_key='stripe_secret_xxx',
+                             stripe_webhook_secret='stripe_webhook_secret_xxx',
                              **kwargs):
         company_id = await self.conn.fetchval_b(
             'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
@@ -164,6 +165,7 @@ class Factory:
                 domain=domain,
                 stripe_public_key=stripe_public_key,
                 stripe_secret_key=stripe_secret_key,
+                stripe_webhook_secret=stripe_webhook_secret,
                 **kwargs,
             )
         )
@@ -551,7 +553,7 @@ async def _fix_fire_stripe_webhook(url, settings, cli, loop):
         }
         body = json.dumps(data)
         t = int(time())
-        sig = hmac.new(settings.stripe_webhook_secret, f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
+        sig = hmac.new(b'stripe_webhook_secret_xxx', f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
 
         r = await cli.post(url('stripe-webhook'), data=body, headers={'Stripe-Signature': f't={t},v1={sig}'})
         assert r.status == expected_status, await r.text()

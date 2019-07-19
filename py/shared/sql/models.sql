@@ -9,6 +9,7 @@ CREATE TABLE companies (
   domain VARCHAR(255) NOT NULL,
   stripe_public_key VARCHAR(63),
   stripe_secret_key VARCHAR(63),
+  stripe_webhook_secret VARCHAR(63),
   currency CURRENCY NOT NULL DEFAULT 'gbp',
   display_timezone VARCHAR(63) NOT NULL DEFAULT 'Europe/London',
   image VARCHAR(255),

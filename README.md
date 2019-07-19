@@ -292,6 +292,13 @@ To set from Sentry:
 * heroku config `RAVEN_DSN`
 * `.env.production` > `REACT_APP_SENTRY_DSN`
 
+### Stripe Setup
+
+Setup the the stripe account, create a webhook with the following settings:
+* event types, just `payment_intent.succeeded`
+* url `https://events.example.org/api/stripe/webhook/`
+
+Enter the stripe public key, stripe secret key and stripe webhook secret into the company edit form.
 
 # Setting up a local testing environment
 

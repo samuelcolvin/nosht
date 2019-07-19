@@ -14,6 +14,7 @@ const CO_FIELDS = [
   {name: 'domain', required: true},
   {name: 'stripe_public_key', required: true},
   {name: 'stripe_secret_key', required: true},
+  {name: 'stripe_webhook_secret', required: true},
   {
     name: 'currency',
     type: 'select',

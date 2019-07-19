@@ -193,10 +193,12 @@ async def stripe_webhook_body(request) -> dict:
     except (ValueError, KeyError):
         raise JsonErrors.HTTPForbidden(message='Invalid signature')
 
+    stripe_webhook_secret = await request['conn'].fetchval(
+        'select stripe_webhook_secret from companies where id=$1', request['company_id']
+    )
     text = await request.text()
-    settings: Settings = request.app['settings']
     payload = f'{ts}.{text}'.encode()
-    if not secrets.compare_digest(hmac.new(settings.stripe_webhook_secret, payload, hashlib.sha256).hexdigest(), sig):
+    if not secrets.compare_digest(hmac.new(stripe_webhook_secret.encode(), payload, hashlib.sha256).hexdigest(), sig):
         raise JsonErrors.HTTPForbidden(message='Invalid signature')
 
     age = int(time()) - int(ts)

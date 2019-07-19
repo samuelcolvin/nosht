@@ -449,12 +449,13 @@ async def test_webhook_bad_signature3(cli, url, factory: Factory):
     assert await r.json() == {'message': 'Invalid signature'}
 
 
-async def test_webhook_bad_signature4(cli, url, factory: Factory, settings):
+async def test_webhook_bad_signature4(cli, url, factory: Factory, settings, db_conn):
     await factory.create_company()
 
     body = 'whatever'
     t = 123456
-    sig = hmac.new(settings.stripe_webhook_secret, f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
+    stripe_webhook_secret = await db_conn.fetchval('select stripe_webhook_secret from companies')
+    sig = hmac.new(stripe_webhook_secret.encode(), f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
 
     r = await cli.post(url('stripe-webhook'), data=body, headers={'Stripe-Signature': f't={t},v1={sig}'})
     assert r.status == 400, await r.text()

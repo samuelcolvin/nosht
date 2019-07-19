@@ -20,6 +20,7 @@ async def test_company_details(cli, url, login, factory: Factory):
         'domain': '127.0.0.1',
         'stripe_public_key': 'stripe_key_xxx',
         'stripe_secret_key': 'stripe_secret_xxx',
+        'stripe_webhook_secret': 'stripe_webhook_secret_xxx',
         'currency': 'gbp',
         'email_from': None,
         'email_reply_to': None,
