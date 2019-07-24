@@ -262,7 +262,6 @@ async def stripe_payment_intent(
         )
         stripe_customer_id = customer['id']
         await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, user_id)
-    settings: Settings = app['settings']
     payment_intent = await stripe.post(
         'payment_intents',
         idempotency_key=idempotency_key,
@@ -272,7 +271,6 @@ async def stripe_payment_intent(
         customer=stripe_customer_id,
         description=description,
         metadata=metadata,
-        statement_descriptor=_clean_descriptor(f'{settings.stripe_descriptor_prefix}: {description}')
     )
     return payment_intent['client_secret']
 
