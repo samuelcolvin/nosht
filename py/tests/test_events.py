@@ -737,7 +737,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
     user2_id = await factory.create_user(first_name='guest', last_name='guest', email='guest@example.org', role='guest')
 
     res = await factory.create_reservation(user2_id)
-    await factory.buy_tickets(res, user2_id)
+    await factory.buy_tickets(res)
 
     await login()
 
@@ -846,12 +846,8 @@ async def test_tickets_dont_repeat(cli, url, db_conn, factory: Factory, login):
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
 
-    data = {
-        'stripe': {'token': 'tok_visa', 'client_ip': '0.0.0.0', 'card_ref': '4242-32-01'},
-        'booking_token': (await r.json())['booking_token']
-    }
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+    await factory.fire_stripe_webhook(action_id)
 
     assert 2 == await db_conn.fetchval('select count(*) from tickets')
 
@@ -1140,8 +1136,9 @@ async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_serve
     await login()
 
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
-    await factory.buy_tickets(await factory.create_reservation(anne, None), anne)
+    await factory.buy_tickets(await factory.create_reservation(anne, None))
 
+    assert len(dummy_server.app['emails']) == 1
     data = dict(
         subject='This is a test email & whatever',
         message='this is the **message**.'
@@ -1150,7 +1147,7 @@ async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_serve
     r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
 
-    assert len(dummy_server.app['emails']) == 1
+    assert len(dummy_server.app['emails']) == 2
 
     r = await cli.get(url('event-updates-sent', id=factory.event_id))
     assert r.status == 200, await r.text()

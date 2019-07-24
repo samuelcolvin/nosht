@@ -31,7 +31,6 @@ class StripeBookingForm extends React.Component {
     this.state = {
       time_left: 0,
       submitting: false,
-      submitted: false,
       cancelled: false,
       terms_and_conditions: false,
       buy_offline: false,
@@ -88,7 +87,11 @@ class StripeBookingForm extends React.Component {
   }
 
   async take_payment () {
-    const ok = await this.stripe_pay('events/buy/', {booking_token: this.props.reservation.booking_token})
+    if (this.state.submitting) {
+      return
+    }
+    this.setState({submitting: true})
+    const ok = await this.stripe_pay(this.props.reservation.client_secret)
     if (ok) {
       this.props.ctx.setMessage({icon: ['fas', 'check-circle'], message: 'Payment successful, check your email'})
       ReactGA.event({
@@ -100,7 +103,7 @@ class StripeBookingForm extends React.Component {
   }
 
   async book_free (book_action) {
-    this.setState({submitted: true})
+    this.setState({submitting: true})
 
     try {
       await requests.post('events/book-free/',
@@ -136,11 +139,11 @@ class StripeBookingForm extends React.Component {
     if (expired) {
       return <h4 className="has-error">Rervation expired</h4>
     } else if (!this.props.reservation.total_price || this.state.buy_offline) {
-      return tncs_field && <div style={{height: 40}}>{this.state.submitted ? null : tncs_field}</div>
+      return tncs_field && <div style={{height: 40}}>{this.state.submitting ? null : tncs_field}</div>
     } else {
       return (
         <div>
-          <StripeForm submitted={this.state.submitted} payment_state={this.state.payment}
+          <StripeForm submitting={this.state.submitting} payment_state={this.state.payment}
                       setPaymentState={payment => this.setState({payment})}/>
           {tncs_field}
         </div>
@@ -178,7 +181,7 @@ class StripeBookingForm extends React.Component {
         <Input
           field={f}
           value={this.state.buy_offline}
-          disabled={this.state.submitting || this.state.submitted}
+          disabled={this.state.submitting}
           onChange={v => this.setState({buy_offline: v})}
         />
       )
@@ -187,7 +190,10 @@ class StripeBookingForm extends React.Component {
       (!this.state.terms_and_conditions && this.props.event.terms_and_conditions_message) ||
       expired ||
       this.state.submitting ||
-      (res.total_price && !this.state.payment.complete && !this.state.payment.source_hash && !this.state.buy_offline)
+      (res.total_price &&
+        !this.state.payment.complete &&
+        !this.state.payment.payment_method_id &&
+        !this.state.buy_offline)
     )
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>

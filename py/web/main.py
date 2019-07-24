@@ -20,11 +20,12 @@ from .middleware import csrf_middleware, error_middleware, pg_middleware, user_m
 from .views import index, ses_webhook, sitemap
 from .views.auth import (authenticate_token, guest_signup, host_signup, login, login_captcha_required, login_with,
                          logout, reset_password_request, set_password, unsubscribe)
-from .views.booking import BookFreeTickets, BuyTickets, CancelReservedTickets, ReserveTickets, booking_info
+from .views.booking import BookFreeTickets, CancelReservedTickets, ReserveTickets, booking_info
 from .views.categories import (CategoryBread, category_add_image, category_delete_image, category_images,
                                category_public, category_set_image)
 from .views.company import CompanyBread, company_set_footer_link, company_upload
-from .views.donate import Donate, DonationOptionBread, donation_image_upload, donation_options, opt_donations
+from .views.donate import (DonationGiftAid, DonationOptionBread, donation_image_upload, donation_options,
+                           donation_prepare, opt_donations)
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
 from .views.events import (CancelTickets, EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories,
                            event_get, event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
@@ -32,6 +33,7 @@ from .views.events import (CancelTickets, EventBread, EventUpdate, SetEventStatu
                            set_event_secondary_image, switch_highlight)
 from .views.export import export
 from .views.static import get_csp_headers, static_handler
+from .views.stripe import get_payment_method_details, stripe_webhook
 from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_tickets
 
 logger = logging.getLogger('nosht.web')
@@ -113,14 +115,15 @@ def create_app(*, settings: Settings = None, logging_client=None):
 
         # event public views
         web.post(r'/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
-        web.post(r'/events/buy/', BuyTickets.view(), name='event-buy-tickets'),
         web.post(r'/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
         web.get(r'/events/{category}/{event}/', event_get, name='event-get-public'),
         web.get(r'/events/{category}/{event}/booking-info/', booking_info, name='event-booking-info-public'),
         web.get(r'/events/{category}/{event}/{sig}/', event_get, name='event-get-private'),
         web.get(r'/events/{category}/{event}/{sig}/booking-info/', booking_info, name='event-booking-info-private'),
 
-        web.post(r'/donate/', Donate.view(), name='donate'),
+        web.post(r'/stripe/webhook/', stripe_webhook, name='stripe-webhook'),
+        web.get(r'/stripe/payment-method-details/{payment_method}/', get_payment_method_details,
+                name='payment-method-details'),
 
         web.post(r'/login/', login, name='login'),
         web.get(r'/login/captcha/', login_captcha_required, name='login-captcha-required'),
@@ -162,6 +165,9 @@ def create_app(*, settings: Settings = None, logging_client=None):
         web.get(r'/categories/{cat_id:\d+}/donation-options/', donation_options, name='donation-options'),
         web.post(r'/donation-options/{pk:\d+}/upload-image/', donation_image_upload, name='donation-image-upload'),
         web.get(r'/donation-options/{pk:\d+}/donations/', opt_donations, name='donation-opt-donations'),
+        web.post(r'/donation-options/{don_opt_id:\d+}/prepare/{event_id:\d+}/', donation_prepare,
+                 name='donation-prepare'),
+        web.post(r'/donation/{action_id:\d+}/gift-aid/', DonationGiftAid.view(), name='donation-gift-aid')
     ])
 
     wrapper_app = web.Application(

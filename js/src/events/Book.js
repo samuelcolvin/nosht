@@ -70,6 +70,9 @@ class BookForm extends React.Component {
 
   async reserve (e) {
     e.preventDefault()
+    if (!this.state.booking_info) {
+      return
+    }
     this.setState({submitting_reservation: true})
     const tickets = [...Array(this.state.ticket_count).keys()]
       .map(index => this.state[`ticket_${index}`] || {})

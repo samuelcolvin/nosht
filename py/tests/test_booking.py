@@ -141,6 +141,8 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         'item_price': 10.0,
         'total_price': 20.0,
         'timeout': AnyInt(),
+        'client_secret': RegexStr(r'payment_intent_secret_\d+'),
+        'action_id': AnyInt(),
     }
     booking_token = decrypt_json(cli.app['main_app'], data['booking_token'].encode())
     reserve_action_id = await db_conn.fetchval("SELECT id FROM actions WHERE type='reserve-tickets'")
@@ -235,6 +237,8 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
         'item_price': 10.0,
         'total_price': 20.0,
         'timeout': AnyInt(),
+        'client_secret': RegexStr(r'payment_intent_secret_\d+'),
+        'action_id': AnyInt(),
     }
 
     users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
@@ -310,6 +314,8 @@ async def test_reserve_tickets_cover_costs(cli, url, factory: Factory, login):
         'item_price': 10.0,
         'total_price': 22.50,
         'timeout': AnyInt(),
+        'client_secret': RegexStr(r'payment_intent_secret_\d+'),
+        'action_id': AnyInt(),
     }
     assert decrypt_json(cli.app['main_app'], data['booking_token'].encode()) == {
         'user_id': factory.user_id,
@@ -349,6 +355,8 @@ async def test_reserve_tickets_free(cli, url, factory: Factory, login):
         'item_price': None,
         'total_price': None,
         'timeout': AnyInt(),
+        'client_secret': None,
+        'action_id': AnyInt(),
     }
     assert decrypt_json(cli.app['main_app'], data['booking_token'].encode()) == {
         'user_id': factory.user_id,
@@ -672,18 +680,18 @@ async def test_buy_offline_host(cli, url, factory: Factory, login, db_conn):
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
 
 
-async def test_buy_repeat(factory: Factory, cli, url, login, db_conn):
+async def test_free_repeat(factory: Factory, cli, url, login, db_conn):
     await factory.create_company()
     await factory.create_cat(cover_costs_message='Help!', cover_costs_percentage=5)
     await factory.create_user()
-    await factory.create_event(status='published', price=100)
+    await factory.create_event(status='published')
 
     await factory.create_user(email='ticket.buyer@example.org')
     await login(email='ticket.buyer@example.org')
 
     data = {
         'tickets': [
-            {'t': True, 'email': 'ticket.buyer@example.org', 'cover_costs': True},
+            {'t': True, 'email': 'ticket.buyer@example.org'},
         ],
         'ticket_type': factory.ticket_type_id,
     }
@@ -691,19 +699,18 @@ async def test_buy_repeat(factory: Factory, cli, url, login, db_conn):
     assert r.status == 200, await r.text()
     data = await r.json()
 
-    data = dict(
-        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-        booking_token=data['booking_token'],
-    )
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
+    data = dict(booking_token=data['booking_token'], book_action='book-free-tickets')
+    r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
+
+    r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {'message': 'invalid reservation'}
-    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
+
+    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
-    assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
+    assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
 
 
 @pytest.fixture
@@ -718,14 +725,9 @@ def buy_tickets(cli, url, login):
         }
         r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
         assert r.status == 200, await r.text()
-        data = await r.json()
 
-        data = dict(
-            stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-            booking_token=data['booking_token'],
-        )
-        r = await cli.json_post(url('event-buy-tickets'), data=data)
-        assert r.status == 200, await r.text()
+        action_id = (await r.json())['action_id']
+        await factory.fire_stripe_webhook(action_id)
     return run
 
 
@@ -828,3 +830,26 @@ async def test_cancel_ticket_refund_too_much(factory: Factory, cli, url, buy_tic
     data = await r.json()
     assert data == {'message': 'Refund amount must not exceed 100.00.'}
     assert 'POST stripe_root_url/refunds' not in dummy_server.app['log']
+
+
+async def test_ticket_expiry(factory: Factory, db_conn, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=10, ticket_limit=2)
+
+    res = await factory.create_reservation()
+    assert await db_conn.fetchval('select count(*) from tickets') == 1
+    ticket_id = await db_conn.fetchval('select id from tickets where reserve_action=$1', res.action_id)
+
+    assert 1 == await db_conn.fetchval('select check_tickets_remaining($1, $2)', factory.event_id, settings.ticket_ttl)
+
+    await db_conn.execute("update tickets set created_ts=now() - '3600 seconds'::interval where id=$1", ticket_id)
+
+    assert 2 == await db_conn.fetchval('select check_tickets_remaining($1, $2)', factory.event_id, settings.ticket_ttl)
+    assert await db_conn.fetchval('select count(*) from tickets') == 1
+
+    await db_conn.execute("update tickets set created_ts=now() - '10 days'::interval where id=$1", ticket_id)
+
+    assert 2 == await db_conn.fetchval('select check_tickets_remaining($1, $2)', factory.event_id, settings.ticket_ttl)
+    assert await db_conn.fetchval('select count(*) from tickets') == 0

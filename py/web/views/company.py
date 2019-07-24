@@ -19,6 +19,7 @@ class CompanyBread(Bread):
         domain: str
         stripe_public_key: str
         stripe_secret_key: str
+        stripe_webhook_secret: str
         currency: Currencies
         email_from: NameEmail = None
         email_reply_to: NameEmail = None
@@ -36,6 +37,7 @@ class CompanyBread(Bread):
         'domain',
         'stripe_public_key',
         'stripe_secret_key',
+        'stripe_webhook_secret',
         'currency',
         'email_from',
         'email_reply_to',

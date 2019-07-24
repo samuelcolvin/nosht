@@ -1,21 +1,23 @@
 import hashlib
+import hmac
 import json
 import logging
-from contextlib import contextmanager
+import re
+import secrets
 from enum import Enum
-from typing import Optional, Tuple, Union, cast
+from time import time
+from typing import Optional
 
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.abc import Application
 from aiohttp.hdrs import METH_GET, METH_POST
 from buildpg import Values
 from buildpg.asyncpg import BuildPgConnection
-from pydantic import BaseModel, MissingError, constr, validator
+from pydantic import BaseModel
 
 from shared.settings import Settings
-from shared.utils import RequestError, pseudo_random_str
+from shared.utils import RequestError
 
-from .actions import ActionTypes
 from .utils import JsonErrors, decrypt_json
 
 logger = logging.getLogger('nosht.stripe')
@@ -30,62 +32,38 @@ class Reservation(BaseModel):
     event_name: str
 
 
-class Donation(BaseModel):
-    user_id: int
-    price_cent: int
-    donation_option_name: str
-
-
-class BookingModel(BaseModel):
-    booking_token: bytes
-
-
 class BookActions(str, Enum):
     buy_tickets_offline = 'buy-tickets-offline'
     book_free_tickets = 'book-free-tickets'
 
 
-class BookFreeModel(BookingModel):
+class BookFreeModel(BaseModel):
+    booking_token: bytes
     book_action: BookActions
 
 
-class StripeNewCard(BaseModel):
-    token: str
-    card_ref: str
-    client_ip: str
+async def stripe_buy_intent(res: Reservation, company_id: int, app, conn: BuildPgConnection) -> str:
+    return await stripe_payment_intent(
+        user_id=res.user_id,
+        price_cents=res.price_cent,
+        description=f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})',
+        metadata={
+            'purpose': 'buy-tickets',
+            'event_id': res.event_id,
+            'tickets_bought': res.ticket_count,
+            'reserve_action_id': res.action_id,
+            'user_id': res.user_id,
+        },
+        company_id=company_id,
+        idempotency_key=f'buy-reservation-{res.action_id}',
+        app=app,
+        conn=conn,
+    )
 
 
-class StripeOldCard(BaseModel):
-    source_hash: str
+async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn: BuildPgConnection) -> int:
+    user_id = session.get('user_id')
 
-
-class StripeModel(BaseModel):
-    stripe: Union[StripeNewCard, StripeOldCard]
-
-
-class StripeBuyModel(StripeModel, BookingModel):
-    pass
-
-
-class StripeDonateModel(StripeModel):
-    donation_option_id: int
-    event_id: int
-    gift_aid: bool
-    title: constr(max_length=31) = None
-    first_name: constr(max_length=255) = None
-    last_name: constr(max_length=255) = None
-    address: constr(max_length=255) = None
-    city: constr(max_length=255) = None
-    postcode: constr(max_length=31) = None
-
-    @validator('title', 'first_name', 'last_name', 'address', 'city', 'postcode', always=True, pre=True)
-    def check_required_fields(cls, v, values, **kwargs):
-        if v is None and values.get('gift_aid'):
-            raise MissingError()
-        return v or ''  # https://github.com/samuelcolvin/pydantic/issues/132
-
-
-async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection) -> Reservation:
     res = Reservation(**decrypt_json(app, m.booking_token, ttl=app['settings'].ticket_ttl - 10))
     assert user_id in {None, res.user_id}, "user ids don't match"
 
@@ -102,12 +80,6 @@ async def get_reservation(m: BookingModel, user_id, app, conn: BuildPgConnection
         logger.warning('res ticket count %d, db reserved tickets %d', res.ticket_count, reserved_tickets)
         raise JsonErrors.HTTPBadRequest(message='invalid reservation')
 
-    return res
-
-
-async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn: BuildPgConnection) -> int:
-    user_id = session.get('user_id')
-    res = await get_reservation(m, user_id, app, conn)
     if m.book_action is BookActions.book_free_tickets:
         if res.price_cent is not None:
             raise JsonErrors.HTTPBadRequest(message='booking not free')
@@ -136,39 +108,39 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
     return confirm_action_id
 
 
-async def stripe_buy(m: StripeBuyModel, company_id: int, user_id: Optional[int], app,
-                     conn: BuildPgConnection) -> Tuple[int, str]:
-    res = await get_reservation(m, user_id, app, conn)
-    with _catch_stripe_errors():
-        return await _stripe_pay(m=m, company_id=company_id, app=app, conn=conn, res=res)
-
-
-async def stripe_donate(m: StripeDonateModel, company_id: int, user_id: Optional[int], app,
-                        conn: BuildPgConnection) -> Tuple[int, str]:
-    r = await conn.fetchrow(
+async def get_stripe_payment_method(
+    *,
+    payment_method_id: str,
+    company_id: int,
+    user_id: int,
+    app,
+    conn: BuildPgConnection
+) -> dict:
+    stripe_customer_id, stripe_secret_key = await conn.fetchrow(
         """
-        SELECT opt.name, opt.amount, cat.id
-        FROM donation_options AS opt
-        JOIN categories AS cat ON opt.category = cat.id
-        WHERE opt.id = $1 AND opt.live AND cat.company = $2
+        SELECT stripe_customer_id, stripe_secret_key
+        FROM users AS u
+        JOIN companies c on u.company = c.id
+        WHERE u.id=$1 AND c.id=$2
         """,
-        m.donation_option_id, company_id
+        user_id, company_id
     )
-    if not r:
-        raise JsonErrors.HTTPBadRequest(message='donation option not found')
-
-    name, amount, cat_id = r
-    event = await conn.fetchval('SELECT 1 FROM events WHERE id=$1 AND category=$2', m.event_id, cat_id)
-    if not event:
-        raise JsonErrors.HTTPBadRequest(message='event not found on the same category as donation_option')
-
-    don = Donation(
-        user_id=user_id,
-        price_cent=int(amount * 100),
-        donation_option_name=name
-    )
-    with _catch_stripe_errors():
-        return await _stripe_pay(m=m, company_id=company_id, app=app, conn=conn, don=don)
+    stripe = StripeClient(app, stripe_secret_key)
+    try:
+        data = await stripe.get(f'payment_methods/{payment_method_id}')
+    except RequestError as e:
+        if e.status == 404:
+            raise JsonErrors.HTTPNotFound(message='payment method not found')
+        else:
+            raise
+    else:
+        if data['customer'] != stripe_customer_id:
+            raise JsonErrors.HTTPNotFound(message='payment method not found for this customer')
+        return {
+            'card': {k: data['card'][k] for k in ('brand', 'exp_month', 'exp_year', 'last4')},
+            'address': data['billing_details']['address'],
+            'name': data['billing_details']['name']
+        }
 
 
 async def stripe_refund(
@@ -206,20 +178,50 @@ async def stripe_refund(
     )
 
 
-async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
-        m: StripeModel,
-        company_id: int,
-        app: Application,
-        conn: BuildPgConnection,
-        res: Optional[Reservation] = None,
-        don: Optional[Donation] = None) -> Tuple[int, str]:
+async def stripe_webhook_body(request) -> dict:
+    """
+    check the signature of a stripe webhook, then decode and return the body
+    """
+    ts, sig = '1', 'missing'
+    try:
+        for part in request.headers['Stripe-Signature'].split(','):
+            key, value = part.split('=', 1)
+            if key == 't':
+                ts = value
+            elif key == 'v1':
+                sig = value
+    except (ValueError, KeyError):
+        raise JsonErrors.HTTPForbidden(message='Invalid signature')
 
-    if res:
-        user_id = res.user_id
-        price_cents = res.price_cent
-    else:
-        user_id = don.user_id
-        price_cents = don.price_cent
+    stripe_webhook_secret = await request['conn'].fetchval(
+        'select stripe_webhook_secret from companies where id=$1', request['company_id']
+    )
+    if not stripe_webhook_secret:
+        raise JsonErrors.HTTPBadRequest(message='stripe webhooks not configured')
+
+    text = await request.text()
+    payload = f'{ts}.{text}'.encode()
+    if not secrets.compare_digest(hmac.new(stripe_webhook_secret.encode(), payload, hashlib.sha256).hexdigest(), sig):
+        raise JsonErrors.HTTPForbidden(message='Invalid signature')
+
+    age = int(time()) - int(ts)
+    if age > 300:
+        raise JsonErrors.HTTPBadRequest(message='webhook too old', age=age)
+
+    return json.loads(text)
+
+
+async def stripe_payment_intent(
+    *,
+    user_id: int,
+    price_cents: int,
+    description: str,
+    metadata: dict,
+    company_id: int,
+    idempotency_key: str,
+    app: Application,
+    conn: BuildPgConnection,
+) -> str:
 
     if price_cents is None or price_cents < 100:
         raise JsonErrors.HTTPBadRequest(message='booking price cent < 100')
@@ -234,45 +236,23 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
         """,
         user_id, company_id
     )
-    use_saved_card = hasattr(m.stripe, 'source_hash')
 
-    source_id = None
-    new_customer, new_card = True, True
+    # could move the customer stuff to the worker
+    new_customer = True
     stripe = StripeClient(app, stripe_secret_key)
     if stripe_customer_id:
         try:
-            cards = await stripe.get(f'customers/{stripe_customer_id}/sources?object=card')
+            await stripe.get(f'customers/{stripe_customer_id}')
         except RequestError as e:
             # 404 is ok, it happens when the customer has been deleted, we create a new customer below
             if e.status != 404:
                 raise
         else:
             new_customer = False
-            if use_saved_card:
-                try:
-                    source_id = next(c['id'] for c in cards['data'] if _hash_src(c['id']) == m.stripe.source_hash)
-                except StopIteration:
-                    raise JsonErrors.HTTPBadRequest(message='source not found')
-            else:
-                try:
-                    source_id = next(c['id'] for c in cards['data'] if _card_ref(c) == m.stripe.card_ref)
-                except StopIteration:
-                    # card not found on customer, create a new source
-                    source = await stripe.post(
-                        f'customers/{stripe_customer_id}/sources',
-                        source=m.stripe.token,
-                    )
-                    source_id = source['id']
-                else:
-                    new_card = False
-
-    if new_customer and use_saved_card:
-        raise JsonErrors.HTTPBadRequest(message='using saved card but stripe customer not found')
 
     if new_customer:
         customer = await stripe.post(
             'customers',
-            source=m.stripe.token,
             email=user_email,
             description=f'{user_name} ({user_role})',
             metadata={
@@ -281,128 +261,27 @@ async def _stripe_pay(*,  # noqa: C901 (ignore complexity)
             }
         )
         stripe_customer_id = customer['id']
-        source_id = customer['sources']['data'][0]['id']
-
-    async with conn.transaction():
-        # mark the tickets paid in DB, then create charge in stripe, then finish transaction
-        if res:
-            action_id = await conn.fetchval_b(
-                'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-                values=Values(
-                    company=company_id,
-                    user_id=user_id,
-                    type=ActionTypes.buy_tickets,
-                    event=res.event_id,
-                )
-            )
-            await conn.execute(
-                "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
-                action_id, res.action_id,
-            )
-            await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
-            idempotency_key = f'buy-reservation-{res.action_id}'
-            metadata = {
-                'purpose': 'buy-tickets',
-                'event': res.event_id,
-                'tickets_bought': res.ticket_count,
-                'booked_action': action_id,
-                'reserve_action': res.action_id,
-            }
-            description = f'{res.ticket_count} tickets for {res.event_name} ({res.event_id})'
-        else:
-            assert don
-            m = cast(StripeDonateModel, m)
-            action_id = await conn.fetchval_b(
-                'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-                values=Values(
-                    company=company_id,
-                    user_id=user_id,
-                    type=ActionTypes.donate,
-                    event=m.event_id,
-                )
-            )
-            don_values = dict(
-                donation_option=m.donation_option_id,
-                amount=price_cents / 100,
-                gift_aid=m.gift_aid,
-                action=action_id,
-            )
-            if m.gift_aid:
-                don_values.update(
-                    first_name=m.first_name,
-                    last_name=m.last_name,
-                    title=m.title,
-                    address=m.address,
-                    city=m.city,
-                    postcode=m.postcode,
-                )
-            don_id = await conn.fetchval_b(
-                'INSERT INTO donations (:values__names) VALUES :values RETURNING id',
-                values=Values(**don_values)
-            )
-            cache_key = f'idempotency-donate-{m.donation_option_id}-{user_id}'
-            with await app['redis'] as redis:
-                idempotency_key = await redis.get(cache_key)
-                if idempotency_key:
-                    idempotency_key = idempotency_key.decode()
-                else:
-                    idempotency_key = f'{cache_key}-{pseudo_random_str()}'
-                    await redis.setex(cache_key, 20, idempotency_key)
-            metadata = {
-                'purpose': 'donate',
-                'donation_option': m.donation_option_id,
-                'donation_id': don_id,
-                'event': m.event_id,
-            }
-            description = f'donation towards {don.donation_option_name} ({don_id})'
-
-        charge = await stripe.post(
-            'charges',
-            idempotency_key=idempotency_key,
-            amount=price_cents,
-            currency=currency,
-            customer=stripe_customer_id,
-            source=source_id,
-            description=description,
-            metadata=metadata
-        )
-    await conn.execute(
-        'UPDATE actions SET extra=$1 WHERE id=$2',
-        json.dumps({
-            'new_customer': new_customer,
-            'new_card': new_card,
-            'charge_id': charge['id'],
-            'brand': charge['source']['brand'],
-            'card_last4': charge['source']['last4'],
-            'card_expiry': f"{charge['source']['exp_month']}/{charge['source']['exp_year'] - 2000}",
-        }),
-        action_id,
-    )
-    if new_customer:
         await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, user_id)
-    return action_id, None if use_saved_card else _hash_src(source_id)
+    settings: Settings = app['settings']
+    payment_intent = await stripe.post(
+        'payment_intents',
+        idempotency_key=idempotency_key,
+        amount=price_cents,
+        currency=currency,
+        setup_future_usage='on_session',
+        customer=stripe_customer_id,
+        description=description,
+        metadata=metadata,
+        statement_descriptor=_clean_descriptor(f'{settings.stripe_descriptor_prefix}: {description}')
+    )
+    return payment_intent['client_secret']
 
 
-@contextmanager
-def _catch_stripe_errors():
-    try:
-        yield
-    except RequestError as e:
-        if e.status != 402:
-            raise
-        data = e.json()
-        code = data['error']['code']
-        message = data['error']['message']
-        logger.info('stripe payment failed: %s, %s', code, message)
-        raise JsonErrors.HTTPPaymentRequired(message=message, code=code) from e
+descriptor_remove = re.compile(r"""[<>'"*]""")
 
 
-def _card_ref(c):
-    return '{last4}-{exp_year}-{exp_month}'.format(**c)
-
-
-def _hash_src(source_id):
-    return hashlib.sha1(source_id.encode()).hexdigest()
+def _clean_descriptor(s: str) -> str:
+    return descriptor_remove.sub('', s)[:22]
 
 
 class StripeClient:
@@ -418,14 +297,17 @@ class StripeClient:
         return await self._request(METH_POST, path, idempotency_key=idempotency_key, **data)
 
     async def _request(self, method, path, *, idempotency_key=None, **data):
-        metadata = data.pop('metadata', None)
-        if metadata:
-            data.update({f'metadata[{k}]': v for k, v in metadata.items()})
+        post = {}
+        for k, v in data.items():
+            if isinstance(v, dict):
+                post.update({f'{k}[{kk}]': str(vv) for kk, vv in v.items()})
+            else:
+                post[k] = str(v)
         headers = {'Stripe-Version': self._settings.stripe_api_version}
         if idempotency_key:
             headers['Idempotency-Key'] = idempotency_key + self._settings.stripe_idempotency_extra
         full_path = self._settings.stripe_root_url + path
-        async with self._client.request(method, full_path, data=data or None, auth=self._auth, headers=headers) as r:
+        async with self._client.request(method, full_path, data=post or None, auth=self._auth, headers=headers) as r:
             if r.status == 200:
                 return await r.json()
             else:

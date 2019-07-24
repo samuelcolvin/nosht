@@ -113,8 +113,8 @@ async def test_value_error(cli, caplog):
     assert record.tags == {}
 
 
-async def test_user(cli, caplog, db_conn):
-    factory = Factory(db_conn, cli.app)
+async def test_user(cli, caplog, db_conn, fire_stripe_webhook):
+    factory = Factory(db_conn, cli.app, fire_stripe_webhook)
     await factory.create_company()
     await factory.create_user()
 

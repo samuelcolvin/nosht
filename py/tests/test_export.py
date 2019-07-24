@@ -115,10 +115,18 @@ async def test_user_export(cli, url, login, factory: Factory):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(receive_emails=False)
-    await factory.create_event(price=10)
-    await factory.buy_tickets(await factory.create_reservation())
-    await factory.buy_tickets(await factory.create_reservation())
+    await factory.create_event(status='published', price=10)
     await login()
+
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'frank@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    await factory.buy_tickets(await factory.create_reservation())
 
     r = await cli.get(url('export', type='users'))
     assert r.status == 200

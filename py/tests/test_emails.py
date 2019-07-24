@@ -98,14 +98,9 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
                                start_ts=london.localize(datetime(2020, 6, 3)), duration=None)
 
     res = await factory.create_reservation(factory.user_id)
-    booked_action_id, _ = await factory.buy_tickets(res)
-    assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET extra_info='snip snap '")
-
-    await email_actor.send_event_conf(booked_action_id)
+    await factory.buy_tickets(res)
 
     assert dummy_server.app['log'] == [
-        'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
         ('email_send_endpoint', 'Subject: "The Event Name Ticket Confirmation", '
                                 'To: "Frank Spencer <testing@scolvin.com>"'),
     ]
@@ -123,7 +118,6 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
         '<li>Tickets Purchased: <strong>1</strong></li>\n'
         '<li>Total Amount Charged: <strong>£10.00</strong></li>\n'
     ) in html
-    assert '<p>Extra Information: <strong>snip snap</strong></p>\n' in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Start Time: <strong>3rd Jun 2020</strong></li>\n' in html
     assert '<li>Duration: <strong>All day</strong></li>' in html
@@ -139,7 +133,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     )
 
 
-async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Factory, dummy_server):
+async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(email='testing@scolvin.com')
@@ -147,13 +141,9 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
                                location_lat=51.5, location_lng=-0.2, duration=timedelta(hours=1.5))
 
     res = await factory.create_reservation()
-    booked_action_id, _ = await factory.buy_tickets(res)
-
-    await email_actor.send_event_conf(booked_action_id)
+    await factory.buy_tickets(res)
 
     assert dummy_server.app['log'] == [
-        'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
         ('email_send_endpoint', 'Subject: "The Event Name Ticket Confirmation", '
                                 'To: "Frank Spencer <testing@scolvin.com>"'),
     ]
@@ -283,7 +273,7 @@ async def test_send_ticket_email_cover_costs(factory: Factory, dummy_server, cli
     await factory.create_user()
     await factory.create_event(status='published', price=100)
 
-    await factory.create_user(email='ticket.buyer@example.org')
+    factory.user_id = await factory.create_user(email='ticket.buyer@example.org')
     await login(email='ticket.buyer@example.org')
 
     data = {
@@ -297,17 +287,8 @@ async def test_send_ticket_email_cover_costs(factory: Factory, dummy_server, cli
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
     data = await r.json()
-
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        booking_token=data['booking_token']
-    )
-    r = await cli.json_post(url('event-buy-tickets'), data=data)
-    assert r.status == 200, await r.text()
+    action_id = data['action_id']
+    await factory.fire_stripe_webhook(action_id)
 
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
@@ -403,13 +384,14 @@ async def test_event_reminder(email_actor: EmailActor, factory: Factory, dummy_s
 
     u2 = await factory.create_user(first_name=None, last_name=None, email='guest@example.org')
     res = await factory.create_reservation(u2)
-    await factory.buy_tickets(res, u2)
+    await factory.buy_tickets(res)
     assert 'UPDATE 1' == await db_conn.execute("UPDATE tickets SET first_name='Cat', last_name='Dog'")
 
+    assert len(dummy_server.app['emails']) == 1
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='event-guest-reminder'")
     assert 1 == await email_actor.send_event_reminders.direct()
-    assert len(dummy_server.app['emails']) == 1
-    email = dummy_server.app['emails'][0]
+    assert len(dummy_server.app['emails']) == 2
+    email = dummy_server.app['emails'][1]
     assert email['To'] == 'Cat Dog <guest@example.org>'
     text = email['part:text/plain']
     now = datetime.utcnow().replace(tzinfo=timezone.utc).astimezone(london)
@@ -446,23 +428,24 @@ async def test_event_reminder_many(email_actor: EmailActor, factory: Factory, du
 
     e1 = await factory.create_event(start_ts=offset_from_now(hours=12),
                                     duration=timedelta(hours=1), price=10, status='published', name='event1')
-    await factory.buy_tickets(await factory.create_reservation(anne, ben, event_id=e1), anne)
-    await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e1), charlie)
+    await factory.buy_tickets(await factory.create_reservation(anne, ben, event_id=e1))
+    await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e1))
 
     e2 = await factory.create_event(start_ts=offset_from_now(hours=12), price=10,
                                     status='published', name='event2', slug='event2')
     tt = await db_conn.fetchval('SELECT id FROM ticket_types WHERE event=$1', e2)
-    await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e2, ticket_type_id=tt), charlie)
+    await factory.buy_tickets(await factory.create_reservation(charlie, event_id=e2, ticket_type_id=tt))
 
     await factory.create_event(start_ts=offset_from_now(hours=12), price=10,
                                status='published', name='event3', slug='event3')
 
     assert 4 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
 
+    assert len(dummy_server.app['emails']) == 4
     assert 4 == await email_actor.send_event_reminders.direct()
 
-    assert len(dummy_server.app['emails']) == 4
-    assert {(e['To'], e['Subject']) for e in dummy_server.app['emails']} == {
+    assert len(dummy_server.app['emails']) == 8
+    assert {(e['To'], e['Subject']) for e in dummy_server.app['emails'][4:]} == {
         ('ben Spencer <ben@example.org>', 'event1 Upcoming'),
         ('anne Spencer <anne@example.org>', 'event1 Upcoming'),
         ('charlie Spencer <charlie@example.org>', 'event1 Upcoming'),
@@ -479,7 +462,8 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
     await login()
 
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
-    await factory.buy_tickets(await factory.create_reservation(anne, None), anne)
+    await factory.buy_tickets(await factory.create_reservation(anne, None))
+    assert len(dummy_server.app['emails']) == 1
 
     data = dict(
         subject='This is a test email & whatever',
@@ -489,9 +473,9 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
     r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
 
-    assert len(dummy_server.app['emails']) == 1
+    assert len(dummy_server.app['emails']) == 2
 
-    email = dummy_server.app['emails'][0]
+    email = dummy_server.app['emails'][1]
     assert email['Subject'] == 'This is a test email & whatever'
     assert email['To'] == 'anne Spencer <anne@example.org>'
     html = email['part:text/html']
@@ -516,11 +500,12 @@ async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dum
     )
 
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
-    await factory.buy_tickets(await factory.create_reservation(anne), anne)
+    await factory.buy_tickets(await factory.create_reservation(anne))
 
-    assert 1 == await email_actor.send_event_host_updates.direct()
     assert len(dummy_server.app['emails']) == 1
-    email = dummy_server.app['emails'][0]
+    assert 1 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 2
+    email = dummy_server.app['emails'][1]
     # debug(email)
     # from pathlib import Path
     # Path('email.html').write_text(email['part:text/html'])
@@ -573,12 +558,13 @@ async def test_event_host_updates_full(email_actor: EmailActor, factory: Factory
     )
 
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
-    await factory.buy_tickets(await factory.create_reservation(anne), anne)
+    await factory.buy_tickets(await factory.create_reservation(anne))
     await db_conn.execute("UPDATE tickets SET created_ts=now() - '2 days'::interval")
 
-    assert 1 == await email_actor.send_event_host_updates.direct()
     assert len(dummy_server.app['emails']) == 1
-    email = dummy_server.app['emails'][0]
+    assert 1 == await email_actor.send_event_host_updates.direct()
+    assert len(dummy_server.app['emails']) == 2
+    email = dummy_server.app['emails'][1]
     html = email['part:text/html']
     assert '<strong>Congratulations, all tickets have been booked - your event is full.</strong>' in html
     assert '<span class="large">1</span> of 1.\n' in html

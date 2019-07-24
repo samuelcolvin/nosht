@@ -621,3 +621,11 @@ async def add_external_ticketing(conn, **kwargs):
     add the external_ticket_url column to events
     """
     await conn.execute('ALTER TABLE events ADD COLUMN external_ticket_url VARCHAR(255)')
+
+
+@patch
+async def add_stripe_webhook_secret(conn, **kwargs):
+    """
+    add the stripe_webhook_secret column to companies
+    """
+    await conn.execute('ALTER TABLE companies ADD COLUMN stripe_webhook_secret VARCHAR(63)')

@@ -11,12 +11,13 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from pprint import pformat
 from textwrap import shorten
+from time import time
 
 import aiodns
 import lorem
 import pytest
 import pytz
-from aiohttp.test_utils import teardown_test_loop
+from aiohttp.test_utils import TestClient, teardown_test_loop
 from aioredis import create_redis
 from async_timeout import timeout
 from buildpg import MultipleValues, Values, asyncpg
@@ -29,7 +30,7 @@ from shared.db import prepare_database
 from shared.settings import Settings
 from shared.utils import encrypt_json, mk_password, slugify
 from web.main import create_app
-from web.stripe import BookFreeModel, Reservation, StripeBuyModel, book_free, stripe_buy
+from web.stripe import BookFreeModel, Reservation, book_free
 
 from .dummy_server import create_dummy_server
 
@@ -133,9 +134,10 @@ london = pytz.timezone('Europe/London')
 
 
 class Factory:
-    def __init__(self, conn, app):
+    def __init__(self, conn, app, fire_stripe_webhook):
         self.conn = conn
         self.app = app
+        self._fire_stripe_webhook = fire_stripe_webhook
         self.settings: Settings = app['settings']
         self.company_id = None
         self.category_id = None
@@ -152,6 +154,7 @@ class Factory:
                              domain='127.0.0.1',
                              stripe_public_key='stripe_key_xxx',
                              stripe_secret_key='stripe_secret_xxx',
+                             stripe_webhook_secret='stripe_webhook_secret_xxx',
                              **kwargs):
         company_id = await self.conn.fetchval_b(
             'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
@@ -162,6 +165,7 @@ class Factory:
                 domain=domain,
                 stripe_public_key=stripe_public_key,
                 stripe_secret_key=stripe_secret_key,
+                stripe_webhook_secret=stripe_webhook_secret,
                 **kwargs,
             )
         )
@@ -313,16 +317,32 @@ class Factory:
             event_name=await self.conn.fetchval('SELECT name FROM events WHERE id=$1', event_id),
         )
 
-    async def buy_tickets(self, reservation: Reservation, user_id=None):
-        m = StripeBuyModel(
-            stripe=dict(
-                token='tok_visa',
-                client_ip='0.0.0.0',
-                card_ref='4242-32-01',
-            ),
-            booking_token=encrypt_json(reservation.dict(), auth_fernet=self.app['auth_fernet']),
+    async def buy_tickets(self, res: Reservation):
+        await self.fire_stripe_webhook(reserve_action_id=res.action_id, event_id=res.event_id, user_id=res.user_id)
+
+    async def fire_stripe_webhook(
+            self,
+            reserve_action_id,
+            *,
+            event_id=None,
+            user_id=None,
+            amount=10_00,
+            purpose='buy-tickets',
+            webhook_type='payment_intent.succeeded',
+            charge_id='charge-id',
+            expected_status=204,
+            fire_delay=0):
+        return await self._fire_stripe_webhook(
+            user_id=user_id or self.user_id,
+            event_id=event_id or self.event_id,
+            reserve_action_id=reserve_action_id,
+            amount=amount,
+            purpose=purpose,
+            webhook_type=webhook_type,
+            charge_id=charge_id,
+            expected_status=expected_status,
+            fire_delay=fire_delay,
         )
-        return await stripe_buy(m, self.company_id, user_id or self.user_id, self.app, self.conn)
 
     async def book_free(self, reservation: Reservation, user_id=None):
         m = BookFreeModel(
@@ -374,8 +394,8 @@ class Factory:
 
 
 @pytest.fixture
-async def factory(db_conn, cli):
-    return Factory(db_conn, cli.app['main_app'])
+async def factory(db_conn, cli, fire_stripe_webhook):
+    return Factory(db_conn, cli.app['main_app'], fire_stripe_webhook)
 
 
 @pytest.fixture
@@ -492,6 +512,56 @@ def _setup_static(tmpdir):
     tmpdir.join('test.js').write('this is test.js')
     tmpdir.join('iframes').mkdir()
     tmpdir.join('iframes').join('login.html').write('this is iframes/login.html')
+
+
+@pytest.yield_fixture(name='fire_stripe_webhook')
+async def _fix_fire_stripe_webhook(url, settings, cli, loop):
+    webhook_cli = TestClient(cli.server, loop=loop)
+
+    async def fire(*, user_id, event_id, reserve_action_id, amount, purpose, webhook_type, charge_id, expected_status,
+                   fire_delay):
+        data = {
+            'type': webhook_type,
+            'data': {
+                'object': {
+                    'amount': amount,
+                    'metadata': {
+                        'purpose': purpose,
+                        'user_id': user_id,
+                        'event_id': event_id,
+                        'reserve_action_id': reserve_action_id,
+                    },
+                    'charges': {
+                        'data': [
+                            {
+                                'id': charge_id,
+                                'created': time() - fire_delay,
+                                'payment_method_details': {
+                                    'card': {
+                                        'brand': 'Visa',
+                                        'last4': '1234',
+                                        'exp_month': 12,
+                                        'exp_year': 2032,
+                                        'three_d_secure': True,
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        body = json.dumps(data)
+        t = int(time())
+        sig = hmac.new(b'stripe_webhook_secret_xxx', f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
+
+        r = await cli.post(url('stripe-webhook'), data=body, headers={'Stripe-Signature': f't={t},v1={sig}'})
+        assert r.status == expected_status, await r.text()
+        return r
+
+    yield fire
+
+    await webhook_cli.close()
 
 
 class Offline:

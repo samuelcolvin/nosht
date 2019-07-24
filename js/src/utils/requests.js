@@ -78,14 +78,6 @@ const request = (method, path, config) => {
 }
 
 export default {
-  get: (path, args, config) => {
-    config = config || {}
-    config.args = args
-    return request('GET', path, config)
-  },
-  post: (path, data, config) => {
-    config = config || {}
-    config.send_data = data
-    return request('POST', path, config)
-  }
+  get: (path, args, config) => request('GET', path, {args, ...config}),
+  post: (path, send_data, config) => request('POST', path, {send_data, ...config}),
 }

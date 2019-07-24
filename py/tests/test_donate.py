@@ -3,6 +3,8 @@ import json
 from aiohttp import FormData
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
+from shared.actions import ActionTypes
+
 from .conftest import Factory, create_image
 
 
@@ -44,18 +46,19 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     await factory.create_event()
     await factory.create_donation_option()
 
-    u2 = await factory.create_user(first_name='other', last_name='person', email='other.person@example.org')
+    factory.user_id = await factory.create_user(first_name='other', last_name='person',
+                                                email='other.person@example.org')
     await login('other.person@example.org')
 
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        donation_option_id=factory.donation_option_id,
-        event_id=factory.event_id,
-        gift_aid=True,
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    assert r.status == 200, await r.text()
+    action_id = await db_conn.fetchval('select id from actions where type=$1', ActionTypes.donate_prepare)
+    data = await r.json()
+    assert data == {
+        'client_secret': f'payment_intent_secret_{action_id}',
+        'action_id': action_id,
+    }
+    post_data = dict(
         title='Mr',
         first_name='Joe',
         last_name='Blogs',
@@ -63,14 +66,16 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
         city='Testingville',
         postcode='TE11 0ST',
     )
+    r = await cli.json_post(url('donation-gift-aid', action_id=action_id), data=post_data)
+    assert r.status == 200, await r.text()
+
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
 
-    r = await cli.json_post(url('donate'), data=data)
-    assert r.status == 200, await r.text()
+    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
 
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
+        'POST stripe_root_url/payment_intents',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "other person <other.person@example.org>"')
     ]
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
@@ -92,19 +97,24 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     assert dict(action) == {
         'id': AnyInt(),
         'company': factory.company_id,
-        'user_id': u2,
+        'user_id': factory.user_id,
         'event': factory.event_id,
         'ts': CloseToNow(),
         'type': 'donate',
         'extra': RegexStr(r'{.*}'),
     }
     assert json.loads(action['extra']) == {
-        'new_card': True,
         'charge_id': 'charge-id',
+        '3DS': True,
         'brand': 'Visa',
         'card_last4': '1234',
         'card_expiry': '12/32',
-        'new_customer': True,
+        'payment_metadata': {
+            'purpose': 'donate',
+            'user_id': factory.user_id,
+            'event_id': factory.event_id,
+            'reserve_action_id': action_id,
+        },
     }
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
@@ -129,24 +139,16 @@ async def test_donate_no_gift_aid(cli, url, dummy_server, factory: Factory, logi
 
     await login()
 
-    data = dict(
-        stripe=dict(
-            token='tok_visa',
-            client_ip='0.0.0.0',
-            card_ref='4242-32-01',
-        ),
-        donation_option_id=factory.donation_option_id,
-        event_id=factory.event_id,
-        gift_aid=False,
-    )
-    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
-
-    r = await cli.json_post(url('donate'), data=data)
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
     assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
 
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
+        'POST stripe_root_url/payment_intents',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"')
     ]
     r = await db_conn.fetchrow('SELECT donation_option, amount, gift_aid, address, city, postcode FROM donations')
@@ -426,40 +428,6 @@ async def test_list_donations_wrong_role(cli, url, factory: Factory, login):
     assert data == {'message': 'role must be: admin'}
 
 
-async def test_donate_idempotency(factory: Factory, dummy_server, db_conn, cli, url, login):
-    await factory.create_company()
-    await factory.create_user()
-    await factory.create_cat()
-    await factory.create_event(price=10)
-    await factory.create_donation_option()
-    await login()
-
-    data = dict(
-        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-        donation_option_id=factory.donation_option_id,
-        event_id=factory.event_id,
-        gift_aid=False,
-    )
-    r = await cli.json_post(url('donate'), data=data)
-    assert r.status == 200, await r.text()
-
-    r = await cli.json_post(url('donate'), data=data)
-    assert r.status == 200, await r.text()
-
-    assert 2 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
-
-    assert dummy_server.app['log'] == [
-        'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
-        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
-        'GET stripe_root_url/customers/customer-id/sources',
-        'POST stripe_root_url/customers',
-        'POST stripe_root_url/charges',
-        'Idempotency match',
-        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
-    ]
-
-
 async def test_wrong_donation_option(factory: Factory, cli, url, login):
     await factory.create_company()
     await factory.create_user()
@@ -467,13 +435,7 @@ async def test_wrong_donation_option(factory: Factory, cli, url, login):
     await factory.create_event(price=10)
     await login()
 
-    data = dict(
-        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-        donation_option_id=999,
-        event_id=factory.event_id,
-        gift_aid=False,
-    )
-    r = await cli.json_post(url('donate'), data=data)
+    r = await cli.json_post(url('donation-prepare', don_opt_id=999, event_id=factory.event_id))
     assert r.status == 400, await r.text()
     assert {'message': 'donation option not found'} == await r.json()
 
@@ -487,13 +449,7 @@ async def test_wrong_event(factory: Factory, cli, url, login):
     cat2 = await factory.create_cat(slug='cat2')
     await factory.create_event(price=10, category_id=cat2)
 
-    data = dict(
-        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-        donation_option_id=factory.donation_option_id,
-        event_id=factory.event_id,
-        gift_aid=False,
-    )
-    r = await cli.json_post(url('donate'), data=data)
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
     assert r.status == 400, await r.text()
     assert {'message': 'event not found on the same category as donation_option'} == await r.json()
 
@@ -506,18 +462,18 @@ async def test_donate_gift_aid_no_name(factory: Factory, cli, url, login):
     await factory.create_donation_option()
     await login()
 
-    data = dict(
-        stripe=dict(token='tok_visa', client_ip='0.0.0.0', card_ref='4242-32-01'),
-        donation_option_id=factory.donation_option_id,
-        event_id=factory.event_id,
-        gift_aid=True,
-        title='Ms',
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+
+    post_data = dict(
+        title='Mr',
         first_name='Joe',
         address='Testing Street',
         city='Testingville',
         postcode='TE11 0ST',
     )
-    r = await cli.json_post(url('donate'), data=data)
+    r = await cli.json_post(url('donation-gift-aid', action_id=data['action_id']), data=post_data)
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {
@@ -530,3 +486,69 @@ async def test_donate_gift_aid_no_name(factory: Factory, cli, url, login):
             },
         ],
     }
+
+
+async def test_gift_aid_good(factory: Factory, cli, url, login, db_conn):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    extra = json.loads(await db_conn.fetchval('select extra from actions where id=$1', action_id))
+    assert extra.keys() == {'ip', 'ua', 'url', 'donation_option_id'}
+
+    post_data = dict(title='0', first_name='1', last_name='2', address='3', city='4', postcode='5')
+    r = await cli.json_post(url('donation-gift-aid', action_id=action_id), data=post_data)
+    assert r.status == 200, await r.text()
+
+    extra = json.loads(await db_conn.fetchval('select extra from actions where id=$1', action_id))
+    assert extra.keys() == {'ip', 'ua', 'url', 'donation_option_id', 'gift_aid'}
+    assert extra['gift_aid'] == {
+        'title': '0',
+        'first_name': '1',
+        'last_name': '2',
+        'address': '3',
+        'city': '4',
+        'postcode': '5',
+    }
+
+
+async def test_gift_aid_no_action(factory: Factory, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    post_data = dict(title='0', first_name='1', last_name='2', address='3', city='4', postcode='5')
+    r = await cli.json_post(url('donation-gift-aid', action_id=0), data=post_data)
+    assert r.status == 404, await r.text()
+    assert await r.json() == {'message': 'action not found'}
+
+
+async def test_gift_aid_wrong_user(factory: Factory, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10)
+    await factory.create_donation_option()
+    await login()
+
+    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    await factory.create_user(email='other@example.com')
+    await login(email='other@example.com')
+
+    post_data = dict(title='0', first_name='1', last_name='2', address='3', city='4', postcode='5')
+    r = await cli.json_post(url('donation-gift-aid', action_id=action_id), data=post_data)
+    assert r.status == 404, await r.text()
+    assert await r.json() == {'message': 'action not found'}
