@@ -381,6 +381,11 @@ class DonorfyActor(BaseActor):
                     PreferredChannel='Email',
                     PreferencesList=[
                         {
+                            'PreferenceType': 'Channel',
+                            'PreferenceName': 'Email',
+                            'PreferenceAllowed': allow_marketing
+                        },
+                        {
                             'PreferenceType': 'Purpose',
                             'PreferenceName': 'All',
                             'PreferenceAllowed': allow_marketing
