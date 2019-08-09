@@ -51,9 +51,9 @@ class DonorfyClient:
             raise
 
         time_taken = time() - start
-
-        if r.status not in allowed_statuses:
-            data = {
+        log_extra = {
+            'fingerprint': ['donorfy', r.request_info.real_url, str(r.status)],
+            'data': {
                 'request_real_url': str(r.request_info.real_url),
                 'request_headers': dict(r.request_info.headers),
                 'request_method': method,
@@ -63,14 +63,13 @@ class DonorfyClient:
                 'response_content': lenient_json(response_text),
                 'time_taken': time_taken,
             }
-            # debug(data)
-            logger.warning('%s %s > %d unexpected response', method, r.request_info.real_url, r.status, extra={
-                'fingerprint': ['donorfy', r.request_info.real_url, str(r.status)],
-                'data': data
-            })
+        }
+
+        if r.status not in allowed_statuses:
+            logger.warning('%s %s > %d unexpected response', method, r.request_info.real_url, r.status, extra=log_extra)
             raise RequestError(r.status, full_path)
         else:
-            logger.info('successful request %s %s > %d (%0.2fs)', method, path, r.status, time_taken)
+            logger.info('successful request %s %s > %d (%0.2fs)', method, path, r.status, time_taken, extra=log_extra)
             return r
 
 
@@ -262,7 +261,7 @@ class DonorfyActor(BaseActor):
         r = await self.client.get(f'/transactions/{trans_id}/Allocations')
         data = await r.json()
         allocation_id = data['AllocationsList'][0]['AllocationId']
-        update_data = dict(
+        allocation_data = dict(
             Product='Event Ticket(s)',
             Quantity=ticket_count,
             Amount=price,
@@ -273,7 +272,13 @@ class DonorfyActor(BaseActor):
             Comments=f'{cat_slug} {event_slug}',
             BeneficiaryConstituentId=buyer_constituent_id,
         )
-        add_data = dict(
+        try:
+            await self.client.put(f'/transactions/Allocation/{allocation_id}', data=allocation_data)
+        except RequestError:
+            # happens with 400 response and body '{"Message":""}',
+            # donorfy problem, will still get logged as warning by _request
+            pass
+        await self.client.post(f'/transactions/{trans_id}/AddAllocation', data=dict(
             Product='Donation',
             Quantity=ticket_count,
             Amount=extra,
@@ -283,12 +288,7 @@ class DonorfyActor(BaseActor):
             CanRecoverTax=False,
             Comments=f'{cat_slug} {event_slug}',
             BeneficiaryConstituentId=buyer_constituent_id,
-        )
-        # PUT request seems to be currently broken and returns 405
-        await asyncio.gather(
-            self.client.put(f'/transactions/Allocation/{allocation_id}', data=update_data),
-            self.client.post(f'/transactions/{trans_id}/AddAllocation', data=add_data),
-        )
+        ))
 
     @concurrent
     async def donation(self, action_id):
