@@ -274,7 +274,7 @@ class DonorfyActor(BaseActor):
         )
         try:
             await self.client.put(f'/transactions/Allocation/{allocation_id}', data=allocation_data)
-        except RequestError:
+        except RequestError:  # pragma: no cover
             # happens with 400 response and body '{"Message":""}',
             # donorfy problem, will still get logged as warning by _request
             pass
