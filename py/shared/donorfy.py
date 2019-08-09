@@ -384,6 +384,11 @@ class DonorfyActor(BaseActor):
                             'PreferenceType': 'Channel',
                             'PreferenceName': 'Email',
                             'PreferenceAllowed': allow_marketing
+                        },
+                        {
+                            'PreferenceType': 'Purpose',
+                            'PreferenceName': 'All',
+                            'PreferenceAllowed': allow_marketing
                         }
                     ]
                 ))
