@@ -51,9 +51,9 @@ class DonorfyClient:
             raise
 
         time_taken = time() - start
-
-        if r.status not in allowed_statuses:
-            data = {
+        log_extra = {
+            'fingerprint': ['donorfy', r.request_info.real_url, str(r.status)],
+            'data': {
                 'request_real_url': str(r.request_info.real_url),
                 'request_headers': dict(r.request_info.headers),
                 'request_method': method,
@@ -63,14 +63,13 @@ class DonorfyClient:
                 'response_content': lenient_json(response_text),
                 'time_taken': time_taken,
             }
-            # debug(data)
-            logger.warning('%s %s > %d unexpected response', method, r.request_info.real_url, r.status, extra={
-                'fingerprint': ['donorfy', r.request_info.real_url, str(r.status)],
-                'data': data
-            })
+        }
+
+        if r.status not in allowed_statuses:
+            logger.warning('%s %s > %d unexpected response', method, r.request_info.real_url, r.status, extra=log_extra)
             raise RequestError(r.status, full_path)
         else:
-            logger.info('successful request %s %s > %d (%0.2fs)', method, path, r.status, time_taken)
+            logger.info('successful request %s %s > %d (%0.2fs)', method, path, r.status, time_taken, extra=log_extra)
             return r
 
 
@@ -233,7 +232,6 @@ class DonorfyActor(BaseActor):
             action_id,
         )
         price = float(price)
-        extra = float(extra or 0)
         ticket_id = ticket_id or tickets[0]['ticket_id']
         r = await self.client.post('/transactions', data=dict(
             ExistingConstituentId=buyer_constituent_id,
@@ -246,7 +244,7 @@ class DonorfyActor(BaseActor):
             Department=self.settings.donorfy_account_salies,
             BankAccount=self.settings.donorfy_bank_account,
             DatePaid=format_dt(action_ts),
-            Amount=price + extra,
+            Amount=price,
             Quantity=ticket_count,
             Acknowledgement=f'{cat_slug}-thanks',
             AcknowledgementText=f'Ticket ID: {ticket_id_signed(ticket_id, self.settings)}',
@@ -254,41 +252,19 @@ class DonorfyActor(BaseActor):
             AddGiftAidDeclaration=False,
             GiftAidClaimed=False,
         ))
-        trans_id = (await r.json())['Id']
-        if not extra:
-            # no need to update or add allocations
-            return
-
-        r = await self.client.get(f'/transactions/{trans_id}/Allocations')
-        data = await r.json()
-        allocation_id = data['AllocationsList'][0]['AllocationId']
-        update_data = dict(
-            Product='Event Ticket(s)',
-            Quantity=ticket_count,
-            Amount=price,
-            Department=self.settings.donorfy_account_salies,
-            Fund=self.settings.donorfy_fund,
-            AllocationDate=format_dt(action_ts),
-            CanRecoverTax=False,
-            Comments=f'{cat_slug} {event_slug}',
-            BeneficiaryConstituentId=buyer_constituent_id,
-        )
-        add_data = dict(
-            Product='Donation',
-            Quantity=ticket_count,
-            Amount=extra,
-            Department=self.settings.donorfy_account_donations,
-            Fund=self.settings.donorfy_fund,
-            AllocationDate=format_dt(action_ts),
-            CanRecoverTax=False,
-            Comments=f'{cat_slug} {event_slug}',
-            BeneficiaryConstituentId=buyer_constituent_id,
-        )
-        # PUT request seems to be currently broken and returns 405
-        await asyncio.gather(
-            self.client.put(f'/transactions/Allocation/{allocation_id}', data=update_data),
-            self.client.post(f'/transactions/{trans_id}/AddAllocation', data=add_data),
-        )
+        if extra:
+            trans_id = (await r.json())['Id']
+            await self.client.post(f'/transactions/{trans_id}/AddAllocation', data=dict(
+                Product='Donation',
+                Quantity=ticket_count,
+                Amount=float(extra),
+                Department=self.settings.donorfy_account_donations,
+                Fund=self.settings.donorfy_fund,
+                AllocationDate=format_dt(action_ts),
+                CanRecoverTax=False,
+                Comments=f'{cat_slug} {event_slug}',
+                BeneficiaryConstituentId=buyer_constituent_id,
+            ))
 
     @concurrent
     async def donation(self, action_id):
