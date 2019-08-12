@@ -232,7 +232,6 @@ class DonorfyActor(BaseActor):
             action_id,
         )
         price = float(price)
-        extra = float(extra or 0)
         ticket_id = ticket_id or tickets[0]['ticket_id']
         r = await self.client.post('/transactions', data=dict(
             ExistingConstituentId=buyer_constituent_id,
@@ -245,7 +244,7 @@ class DonorfyActor(BaseActor):
             Department=self.settings.donorfy_account_salies,
             BankAccount=self.settings.donorfy_bank_account,
             DatePaid=format_dt(action_ts),
-            Amount=price + extra,
+            Amount=price,
             Quantity=ticket_count,
             Acknowledgement=f'{cat_slug}-thanks',
             AcknowledgementText=f'Ticket ID: {ticket_id_signed(ticket_id, self.settings)}',
@@ -253,42 +252,19 @@ class DonorfyActor(BaseActor):
             AddGiftAidDeclaration=False,
             GiftAidClaimed=False,
         ))
-        trans_id = (await r.json())['Id']
-        if not extra:
-            # no need to update or add allocations
-            return
-
-        r = await self.client.get(f'/transactions/{trans_id}/Allocations')
-        data = await r.json()
-        allocation_id = data['AllocationsList'][0]['AllocationId']
-        allocation_data = dict(
-            Product='Event Ticket(s)',
-            Quantity=ticket_count,
-            Amount=price,
-            Department=self.settings.donorfy_account_salies,
-            Fund=self.settings.donorfy_fund,
-            AllocationDate=format_dt(action_ts),
-            CanRecoverTax=False,
-            Comments=f'{cat_slug} {event_slug}',
-            BeneficiaryConstituentId=buyer_constituent_id,
-        )
-        try:
-            await self.client.put(f'/transactions/Allocation/{allocation_id}', data=allocation_data)
-        except RequestError:  # pragma: no cover
-            # happens with 400 response and body '{"Message":""}',
-            # donorfy problem, will still get logged as warning by _request
-            pass
-        await self.client.post(f'/transactions/{trans_id}/AddAllocation', data=dict(
-            Product='Donation',
-            Quantity=ticket_count,
-            Amount=extra,
-            Department=self.settings.donorfy_account_donations,
-            Fund=self.settings.donorfy_fund,
-            AllocationDate=format_dt(action_ts),
-            CanRecoverTax=False,
-            Comments=f'{cat_slug} {event_slug}',
-            BeneficiaryConstituentId=buyer_constituent_id,
-        ))
+        if extra:
+            trans_id = (await r.json())['Id']
+            await self.client.post(f'/transactions/{trans_id}/AddAllocation', data=dict(
+                Product='Donation',
+                Quantity=ticket_count,
+                Amount=float(extra),
+                Department=self.settings.donorfy_account_donations,
+                Fund=self.settings.donorfy_fund,
+                AllocationDate=format_dt(action_ts),
+                CanRecoverTax=False,
+                Comments=f'{cat_slug} {event_slug}',
+                BeneficiaryConstituentId=buyer_constituent_id,
+            ))
 
     @concurrent
     async def donation(self, action_id):
