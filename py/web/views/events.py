@@ -443,6 +443,7 @@ class CancelTickets(UpdateView):
             await self.conn.execute(
                 "update tickets set status='cancelled', cancel_action=$1 where id=$2", action_id, ticket_id
             )
+            await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
             if m.refund_amount is not None:
                 await stripe_refund(
                     refund_charge_id=charge_id,
