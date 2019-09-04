@@ -2,20 +2,17 @@ import hashlib
 import hmac
 import json
 import logging
-import re
 import secrets
 from enum import Enum
 from time import time
 from typing import Optional
 
-from aiohttp import BasicAuth, ClientSession
 from aiohttp.abc import Application
-from aiohttp.hdrs import METH_GET, METH_POST
 from buildpg import Values
 from buildpg.asyncpg import BuildPgConnection
 from pydantic import BaseModel
 
-from shared.settings import Settings
+from shared.stripe_base import StripeClient
 from shared.utils import RequestError
 
 from .utils import JsonErrors, decrypt_json
@@ -273,42 +270,3 @@ async def stripe_payment_intent(
         metadata=metadata,
     )
     return payment_intent['client_secret']
-
-
-descriptor_remove = re.compile(r"""[<>'"*]""")
-
-
-def _clean_descriptor(s: str) -> str:
-    return descriptor_remove.sub('', s)[:22]
-
-
-class StripeClient:
-    def __init__(self, app, stripe_secret_key):
-        self._client: ClientSession = app['stripe_client']
-        self._settings: Settings = app['settings']
-        self._auth = BasicAuth(stripe_secret_key)
-
-    async def get(self, path, *, idempotency_key=None, **data):
-        return await self._request(METH_GET, path, idempotency_key=idempotency_key, **data)
-
-    async def post(self, path, *, idempotency_key=None, **data):
-        return await self._request(METH_POST, path, idempotency_key=idempotency_key, **data)
-
-    async def _request(self, method, path, *, idempotency_key=None, **data):
-        post = {}
-        for k, v in data.items():
-            if isinstance(v, dict):
-                post.update({f'{k}[{kk}]': str(vv) for kk, vv in v.items()})
-            else:
-                post[k] = str(v)
-        headers = {'Stripe-Version': self._settings.stripe_api_version}
-        if idempotency_key:
-            headers['Idempotency-Key'] = idempotency_key + self._settings.stripe_idempotency_extra
-        full_path = self._settings.stripe_root_url + path
-        async with self._client.request(method, full_path, data=post or None, auth=self._auth, headers=headers) as r:
-            if r.status == 200:
-                return await r.json()
-            else:
-                # check stripe > developer > logs for more info
-                text = await r.text()
-                raise RequestError(r.status, full_path, text=text)

@@ -535,6 +535,7 @@ async def _fix_fire_stripe_webhook(url, settings, cli, loop):
                         'data': [
                             {
                                 'id': charge_id,
+                                'balance_transaction': 'txn_' + charge_id,
                                 'created': time() - fire_delay,
                                 'payment_method_details': {
                                     'card': {

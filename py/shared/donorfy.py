@@ -13,6 +13,7 @@ from arq import concurrent
 from .actions import ActionTypes
 from .actor import BaseActor
 from .settings import Settings
+from .stripe_base import get_stripe_processing_fee
 from .utils import RequestError, display_cash, lenient_json, ticket_id_signed
 
 logger = logging.getLogger('nosht.donorfy')
@@ -26,6 +27,10 @@ class DonorfyClient:
             loop=loop,
             auth=BasicAuth('nosht', settings.donorfy_access_key),
         )
+
+    @property
+    def client_session(self):
+        return self._client
 
     async def close(self):
         await self._client.close()
@@ -233,6 +238,11 @@ class DonorfyActor(BaseActor):
         )
         price = float(price)
         ticket_id = ticket_id or tickets[0]['ticket_id']
+        if action_type == ActionTypes.buy_tickets:
+            processing_fee = await self._get_stripe_processing_fee(action_id)
+        else:
+            processing_fee = 0
+
         r = await self.client.post('/transactions', data=dict(
             ExistingConstituentId=buyer_constituent_id,
             Channel=f'nosht-{cat_slug}',
@@ -245,6 +255,7 @@ class DonorfyActor(BaseActor):
             BankAccount=self.settings.donorfy_bank_account,
             DatePaid=format_dt(action_ts),
             Amount=price,
+            ProcessingCostsAmount=processing_fee,
             Quantity=ticket_count,
             Acknowledgement=f'{cat_slug}-thanks',
             AcknowledgementText=f'Ticket ID: {ticket_id_signed(ticket_id, self.settings)}',
@@ -292,6 +303,8 @@ class DonorfyActor(BaseActor):
 
         constituent_id = await self._get_or_create_constituent(d['user_id'], campaign)
         datestamp = format_dt(d['action_ts'])
+        processing_fee = await self._get_stripe_processing_fee(action_id)
+
         await self.client.post('/transactions', data=dict(
             ExistingConstituentId=constituent_id,
             Channel=f'nosht-{cat_slug}',
@@ -304,6 +317,7 @@ class DonorfyActor(BaseActor):
             BankAccount=self.settings.donorfy_bank_account,
             DatePaid=datestamp,
             Amount=float(d['amount']),
+            ProcessingCostsAmount=processing_fee,
             Acknowledgement=f'{cat_slug}-thanks',
             AcknowledgementText=f'{d["cat_name"]} Donation Thanks',
             Reference=f'Events.HUF:{cat_slug} donation {d["donopt"]}',
@@ -457,6 +471,9 @@ class DonorfyActor(BaseActor):
             await self.client.post('/System/LookUpTypes/Campaigns', data=dict(LookUpDescription=description))
         await redis.setex(cache_key, 86400, '1')
         return description
+
+    async def _get_stripe_processing_fee(self, action_id: int) -> float:
+        return await get_stripe_processing_fee(action_id, self.client.client_session, self.settings, self.pg)
 
 
 def format_dt(dt: datetime):

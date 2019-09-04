@@ -115,6 +115,16 @@ async def stripe_get_payment_methods(request):
     })
 
 
+async def stripe_get_transaction(request):
+    return json_response({
+        'id': request.match_info['transaction_id'],
+        'currency': 'gbp',
+        'object': 'balance_transaction',
+        'amount': -1,
+        'fee': 50,
+    })
+
+
 async def stripe_post_refund(request):
     return json_response({'id': 'xyz'})
 
@@ -300,6 +310,7 @@ async def create_dummy_server(create_server):
         web.post('/stripe_root_url/refunds', stripe_post_refund),
         web.post('/stripe_root_url/payment_intents', stripe_create_payment_intent),
         web.get('/stripe_root_url/payment_methods/{payment_method_id}', stripe_get_payment_methods),
+        web.get('/stripe_root_url/balance/history/{transaction_id}', stripe_get_transaction),
 
         web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
         web.get('/s3_demo_image_url/{image:.*}', s3_demo_image),

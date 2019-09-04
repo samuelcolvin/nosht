@@ -1,11 +1,14 @@
 import hashlib
 import hmac
+import json
 import os
+from time import time
 
 import pytest
 from pytest_toolbox.comparison import AnyInt, RegexStr
 
 from shared.actions import ActionTypes
+from shared.stripe_base import get_stripe_processing_fee
 from web.stripe import Reservation, StripeClient, stripe_buy_intent, stripe_refund
 from web.utils import JsonErrors
 
@@ -157,6 +160,57 @@ async def test_get_payment_method(cli, url, login, factory: Factory):
         },
         'name': None,
     }
+
+
+@real_stripe_test
+async def test_real_webhook(cli, url, login, db_conn, factory: Factory, settings):
+    await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=100)
+
+    # so we can use the payment method below
+    await db_conn.execute('update users set stripe_customer_id=$1 where id=$2', 'cus_FkTgDBtMnWyl3S', factory.user_id)
+
+    await login()
+    data = {
+        'tickets': [
+            {'t': True, 'email': 'frank@example.org'},
+        ],
+        'ticket_type': factory.ticket_type_id,
+    }
+    r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    client_secret = data['client_secret']
+    payment_intent_id = client_secret[:client_secret.index('_secret_')]
+
+    app = cli.app['main_app']
+    stripe = StripeClient(app, stripe_secret_key)
+    await stripe.post(f'payment_intents/{payment_intent_id}', payment_method='card_1FEzKsC8giHSw9x7rBL3xl0j')
+    payment_intent = await stripe.post(f'payment_intents/{payment_intent_id}/confirm')
+
+    data = {
+        'type': 'payment_intent.succeeded',
+        'data': {'object': payment_intent}
+    }
+    body = json.dumps(data)
+    t = int(time())
+    sig = hmac.new(b'stripe_webhook_secret_xxx', f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
+
+    assert not await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+
+    r = await cli.post(url('stripe-webhook'), data=body, headers={'Stripe-Signature': f't={t},v1={sig}'})
+    assert r.status == 204, await r.text()
+
+    buy_action_id = await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+    assert buy_action_id
+
+    fee = await get_stripe_processing_fee(buy_action_id, stripe._client, settings, db_conn)
+    assert f'{fee:0.2f}' == '1.60'
+
+    await db_conn.execute("update companies set currency='usd'")
+    assert 0 == await get_stripe_processing_fee(buy_action_id, stripe._client, settings, db_conn)
 
 
 async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn):

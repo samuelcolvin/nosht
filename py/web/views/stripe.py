@@ -46,6 +46,7 @@ async def stripe_webhook(request):
     card = charge['payment_method_details']['card']
     action_extra = json.dumps({
         'charge_id': charge['id'],
+        'stripe_balance_transaction': charge['balance_transaction'],
         'brand': card['brand'],
         'card_last4': card['last4'],
         'card_expiry': f"{card['exp_month']}/{card['exp_year'] - 2000}",

@@ -105,6 +105,7 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     }
     assert json.loads(action['extra']) == {
         'charge_id': 'charge-id',
+        'stripe_balance_transaction': 'txn_charge-id',
         '3DS': True,
         'brand': 'Visa',
         'card_last4': '1234',
