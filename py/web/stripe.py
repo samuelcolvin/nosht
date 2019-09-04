@@ -277,9 +277,9 @@ async def stripe_payment_intent(
 
 
 async def get_stripe_processing_fee(action_id: int, client, settings, conn: BuildPgConnection) -> float:
-    stripe_transaction_id, action_type, currency, stripe_secret_key = await conn.fetchrow(
+    stripe_transaction_id, currency, stripe_secret_key = await conn.fetchrow(
         """
-        select extra->>'stripe_balance_transaction', a.type, currency, stripe_secret_key
+        select extra->>'stripe_balance_transaction', currency, stripe_secret_key
         from actions a
         join events as e on a.event = e.id
         join categories cat on e.category = cat.id
@@ -288,15 +288,13 @@ async def get_stripe_processing_fee(action_id: int, client, settings, conn: Buil
         """,
         action_id
     )
-    if action_type != ActionTypes.buy_tickets:
-        return 0
     assert stripe_transaction_id and stripe_transaction_id.startswith('txn_'), stripe_transaction_id
 
     stripe = StripeClient({'stripe_client': client, 'settings': settings}, stripe_secret_key)
     r = await stripe.get(f'balance/history/{stripe_transaction_id}')
     if r['currency'] != currency:
         logger.warning(
-            'transaction currency does not match company, trans_currency=%r company_currency% transaction_id=%r',
+            'transaction currency does not match company, trans_currency=%r company_currency=%r transaction_id=%r',
             r['currency'], currency, stripe_transaction_id,
         )
         return 0

@@ -239,7 +239,10 @@ class DonorfyActor(BaseActor):
         )
         price = float(price)
         ticket_id = ticket_id or tickets[0]['ticket_id']
-        processing_fee = await self._get_stripe_processing_fee(action_id)
+        if action_type == ActionTypes.buy_tickets:
+            processing_fee = await self._get_stripe_processing_fee(action_id)
+        else:
+            processing_fee = 0
 
         r = await self.client.post('/transactions', data=dict(
             ExistingConstituentId=buyer_constituent_id,

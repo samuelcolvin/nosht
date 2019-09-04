@@ -208,6 +208,9 @@ async def test_real_webhook(cli, url, login, db_conn, factory: Factory, settings
     fee = await get_stripe_processing_fee(buy_action_id, stripe._client, settings, db_conn)
     assert f'{fee:0.2f}' == '1.60'
 
+    await db_conn.execute("update companies set currency='usd'")
+    assert 0 == await get_stripe_processing_fee(buy_action_id, stripe._client, settings, db_conn)
+
 
 async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn):
     await factory.create_company()
