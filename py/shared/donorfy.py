@@ -10,11 +10,10 @@ from aiohttp import BasicAuth, ClientResponse, ClientSession, ClientTimeout
 from aiohttp.hdrs import METH_GET, METH_POST, METH_PUT
 from arq import concurrent
 
-from web.stripe import get_stripe_processing_fee
-
 from .actions import ActionTypes
 from .actor import BaseActor
 from .settings import Settings
+from .stripe_base import get_stripe_processing_fee
 from .utils import RequestError, display_cash, lenient_json, ticket_id_signed
 
 logger = logging.getLogger('nosht.donorfy')

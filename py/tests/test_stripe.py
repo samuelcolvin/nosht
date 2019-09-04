@@ -8,7 +8,8 @@ import pytest
 from pytest_toolbox.comparison import AnyInt, RegexStr
 
 from shared.actions import ActionTypes
-from web.stripe import Reservation, StripeClient, get_stripe_processing_fee, stripe_buy_intent, stripe_refund
+from shared.stripe_base import get_stripe_processing_fee
+from web.stripe import Reservation, StripeClient, stripe_buy_intent, stripe_refund
 from web.utils import JsonErrors
 
 from .conftest import Factory
