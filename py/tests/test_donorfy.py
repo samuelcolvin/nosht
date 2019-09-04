@@ -8,6 +8,7 @@ from pytest_toolbox.comparison import CloseToNow, RegexStr
 from shared.actions import ActionTypes
 from shared.donorfy import DonorfyActor
 from shared.utils import RequestError
+from web.utils import encrypt_json
 
 from .conftest import Factory
 
@@ -229,6 +230,47 @@ async def test_book_multiple(donorfy: DonorfyActor, factory: Factory, dummy_serv
         'Amount': 20.0,
         'ProcessingCostsAmount': 0.5,
         'Quantity': 2,
+        'Acknowledgement': 'supper-clubs-thanks',
+        'AcknowledgementText': RegexStr('Ticket ID: .*'),
+        'Reference': 'Events.HUF:supper-clubs the-event-name',
+        'AddGiftAidDeclaration': False,
+        'GiftAidClaimed': False,
+    }
+
+
+async def test_book_free_no_fee(donorfy: DonorfyActor, factory: Factory, dummy_server, cli, url, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event(price=10)
+
+    await login()
+
+    res = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    data = dict(
+        booking_token=encrypt_json(app, res.dict()),
+        book_action='buy-tickets-offline',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 200, await r.text()
+    trans_data = dummy_server.app['post_data']['POST donorfy_api_root/standard/transactions']
+    assert len(trans_data) == 1
+    assert trans_data[0] == {
+        'ExistingConstituentId': '123456',
+        'Channel': 'nosht-supper-clubs',
+        'Currency': 'gbp',
+        'Campaign': 'supper-clubs:the-event-name',
+        'PaymentMethod': 'Offline Payment',
+        'Product': 'Event Ticket(s)',
+        'Fund': 'Unrestricted General',
+        'Department': '220 Ticket Sales',
+        'BankAccount': 'Unrestricted Account',
+        'DatePaid': CloseToNow(),
+        'Amount': 10.0,
+        'ProcessingCostsAmount': 0,
+        'Quantity': 1,
         'Acknowledgement': 'supper-clubs-thanks',
         'AcknowledgementText': RegexStr('Ticket ID: .*'),
         'Reference': 'Events.HUF:supper-clubs the-event-name',
