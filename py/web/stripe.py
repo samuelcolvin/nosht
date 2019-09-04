@@ -15,6 +15,7 @@ from buildpg import Values
 from buildpg.asyncpg import BuildPgConnection
 from pydantic import BaseModel
 
+from shared.actions import ActionTypes
 from shared.settings import Settings
 from shared.utils import RequestError
 
@@ -273,6 +274,27 @@ async def stripe_payment_intent(
         metadata=metadata,
     )
     return payment_intent['client_secret']
+
+
+async def get_stripe_processing_fee(action_id: int, client, settings, conn: BuildPgConnection) -> float:
+    stripe_transaction_id, action_type, stripe_secret_key = await conn.fetchrow(
+        """
+        select extra->>'stripe_balance_transaction', a.type, stripe_secret_key
+        from actions a
+        join events as e on a.event = e.id
+        join categories cat on e.category = cat.id
+        join companies co on cat.company = co.id
+        where a.id=$1
+        """,
+        action_id
+    )
+    if action_type != ActionTypes.buy_tickets:
+        return 0
+    assert stripe_transaction_id and stripe_transaction_id.startswith('txn_'), stripe_transaction_id
+
+    stripe = StripeClient({'stripe_client': client, 'settings': settings}, stripe_secret_key)
+    r = await stripe.get(f'balance/history/{stripe_transaction_id}')
+    return r['fee'] / 100
 
 
 descriptor_remove = re.compile(r"""[<>'"*]""")

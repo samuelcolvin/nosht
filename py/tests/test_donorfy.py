@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from buildpg import Values
 from pytest import fixture
@@ -100,6 +102,7 @@ async def test_book_tickets(donorfy: DonorfyActor, factory: Factory, dummy_serve
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
+        f'GET stripe_root_url/balance/history/txn_charge-id',
         f'POST donorfy_api_root/standard/transactions',
         (
             'email_send_endpoint',
@@ -169,6 +172,7 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
             user_id=factory.user_id,
             type=ActionTypes.buy_tickets,
             event=factory.event_id,
+            extra=json.dumps({'stripe_balance_transaction': 'txn_testing'})
         )
     )
     await db_conn.execute(
@@ -182,6 +186,7 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         f'GET donorfy_api_root/standard/constituents/123456',
         f'POST donorfy_api_root/standard/activities',
+        f'GET stripe_root_url/balance/history/txn_testing',
         f'POST donorfy_api_root/standard/transactions',
         f'POST donorfy_api_root/standard/transactions/trans_123/AddAllocation',
         f'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
@@ -222,6 +227,7 @@ async def test_book_multiple(donorfy: DonorfyActor, factory: Factory, dummy_serv
         'BankAccount': 'Unrestricted Account',
         'DatePaid': CloseToNow(),
         'Amount': 20.0,
+        'ProcessingCostsAmount': 0.5,
         'Quantity': 2,
         'Acknowledgement': 'supper-clubs-thanks',
         'AcknowledgementText': RegexStr('Ticket ID: .*'),
