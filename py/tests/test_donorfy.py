@@ -272,6 +272,7 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
         'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         'GET donorfy_api_root/standard/constituents/123456',
+        'GET stripe_root_url/balance/history/txn_charge-id',
         'POST donorfy_api_root/standard/transactions',
         'POST donorfy_api_root/standard/constituents/123456/GiftAidDeclarations',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
@@ -300,6 +301,7 @@ async def test_donate_no_gift_aid(donorfy: DonorfyActor, factory: Factory, dummy
         'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
         f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
         'GET donorfy_api_root/standard/constituents/123456',
+        'GET stripe_root_url/balance/history/txn_charge-id',
         'POST donorfy_api_root/standard/transactions',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
     ]

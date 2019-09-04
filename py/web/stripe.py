@@ -15,7 +15,6 @@ from buildpg import Values
 from buildpg.asyncpg import BuildPgConnection
 from pydantic import BaseModel
 
-from shared.actions import ActionTypes
 from shared.settings import Settings
 from shared.utils import RequestError
 

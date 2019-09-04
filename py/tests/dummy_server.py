@@ -118,6 +118,7 @@ async def stripe_get_payment_methods(request):
 async def stripe_get_transaction(request):
     return json_response({
         'id': request.match_info['transaction_id'],
+        'currency': 'gbp',
         'object': 'balance_transaction',
         'amount': -1,
         'fee': 50,
