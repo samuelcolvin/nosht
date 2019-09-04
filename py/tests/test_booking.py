@@ -746,13 +746,13 @@ async def test_cancel_ticket(factory: Factory, cli, url, buy_tickets, db_conn, d
     assert tickets_remaining == 9
     assert 0 == await db_conn.fetchval('select count(*) from actions where type=$1', ActionTypes.cancel_booked_tickets)
 
+    assert 1 == await db_conn.fetchval('select tickets_taken from events where id=$1', factory.event_id)
     ticket_id, status = await db_conn.fetchrow('select id, status from tickets')
     assert status == 'booked'
     r = await cli.json_post(url('event-tickets-cancel', id=factory.event_id, tid=ticket_id), data='{}')
     assert r.status == 200, await r.text()
+    assert 0 == await db_conn.fetchval('select tickets_taken from events where id=$1', factory.event_id)
 
-    tickets_remaining = await db_conn.fetchval('SELECT check_tickets_remaining($1, $2)', factory.event_id, 600)
-    assert tickets_remaining == 10
     status = await db_conn.fetchval('select status from tickets where id=$1', ticket_id)
     assert status == 'cancelled'
     assert 1 == await db_conn.fetchval('select count(*) from actions where type=$1', ActionTypes.cancel_booked_tickets)
