@@ -166,7 +166,7 @@ async def test_real_webhook(cli, url, login, db_conn, factory: Factory, settings
     await factory.create_company(stripe_public_key=stripe_public_key, stripe_secret_key=stripe_secret_key)
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(status='published', price=12.45)
+    await factory.create_event(status='published', price=100)
 
     # so we can use the payment method below
     await db_conn.execute('update users set stripe_customer_id=$1 where id=$2', 'cus_FkTgDBtMnWyl3S', factory.user_id)
@@ -186,7 +186,7 @@ async def test_real_webhook(cli, url, login, db_conn, factory: Factory, settings
 
     app = cli.app['main_app']
     stripe = StripeClient(app, stripe_secret_key)
-    await stripe.post(f'payment_intents/{payment_intent_id}', payment_method='card_1FEyj2C8giHSw9x7l9DdddZT')
+    await stripe.post(f'payment_intents/{payment_intent_id}', payment_method='card_1FEzKsC8giHSw9x7rBL3xl0j')
     payment_intent = await stripe.post(f'payment_intents/{payment_intent_id}/confirm')
 
     data = {
@@ -206,7 +206,7 @@ async def test_real_webhook(cli, url, login, db_conn, factory: Factory, settings
     assert buy_action_id
 
     fee = await get_stripe_processing_fee(buy_action_id, stripe._client, settings, db_conn)
-    assert 0.73 < fee < 0.75
+    assert f'{fee:0.2f}' == '1.60'
 
 
 async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn):
