@@ -377,9 +377,12 @@ async def test_update_user_no_user(donorfy: DonorfyActor, factory: Factory, dumm
     donorfy.settings.donorfy_api_key = 'no-user'
 
     await donorfy.update_user(factory.user_id)
-    assert dummy_server.app['log'] == [
+    assert set(dummy_server.app['log']) == {
         f'GET donorfy_api_root/no-user/constituents/ExternalKey/nosht_{factory.user_id}',
-    ]
+        'GET donorfy_api_root/no-user/constituents/EmailAddress/frank@example.org',
+        'POST donorfy_api_root/no-user/constituents',
+        'POST donorfy_api_root/no-user/constituents/456789/Preferences',
+    }
 
 
 async def test_get_user_update(donorfy: DonorfyActor, factory: Factory, dummy_server):
