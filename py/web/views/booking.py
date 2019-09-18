@@ -40,7 +40,9 @@ async def booking_info(request):
         event_id,
         request['session']['user_id']
     )
-    ticket_types = await conn.fetch('SELECT id, name, price::float FROM ticket_types WHERE event=$1', event_id)
+    ticket_types = await conn.fetch(
+        'SELECT id, name, price::float FROM ticket_types WHERE event=$1 ORDER BY id', event_id
+    )
     return json_response(
         tickets_remaining=tickets_remaining if (tickets_remaining and tickets_remaining < 10) else None,
         existing_tickets=existing_tickets or 0,
