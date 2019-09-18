@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from textwrap import shorten
 from time import time
-from typing import Sequence
+from typing import Sequence, Tuple
 
 import pytz
 from aiohttp import BasicAuth, ClientResponse, ClientSession, ClientTimeout
@@ -119,7 +119,7 @@ class DonorfyActor(BaseActor):
                 event_id
             )
         campaign = await self._get_or_create_campaign(evt['cat_slug'], evt['event_slug'])
-        constituent_id = await self._get_or_create_constituent(evt['host_user_id'], campaign)
+        constituent_id, _ = await self._get_or_create_constituent(evt['host_user_id'], campaign)
 
         await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
                                data=f'Hosting and helper volunteers_{evt["cat_slug"]}-host')
@@ -196,7 +196,7 @@ class DonorfyActor(BaseActor):
             )
         ticket_count = len(tickets)
         campaign = await self._get_or_create_campaign(cat_slug, event_slug)
-        buyer_constituent_id = await self._get_or_create_constituent(buyer_user_id, campaign)
+        buyer_constituent_id, _ = await self._get_or_create_constituent(buyer_user_id, campaign)
         ticket_id = None
 
         async def create_ticket_constituent(row):
@@ -301,7 +301,7 @@ class DonorfyActor(BaseActor):
         cat_slug, evt_slug = d['cat_slug'], d['evt_slug']
         campaign = await self._get_or_create_campaign(cat_slug, evt_slug)
 
-        constituent_id = await self._get_or_create_constituent(d['user_id'], campaign)
+        constituent_id, _ = await self._get_or_create_constituent(d['user_id'], campaign)
         datestamp = format_dt(d['action_ts'])
         processing_fee = await self._get_stripe_processing_fee(action_id)
 
@@ -347,14 +347,13 @@ class DonorfyActor(BaseActor):
     async def update_user(self, user_id, update_user=True, update_marketing=True):
         if not self.client:
             return
-        constituent_id = await self._get_constituent(user_id=user_id)
-        if not constituent_id:
-            return
+        constituent_id, created = await self._get_or_create_constituent(user_id=user_id)
+
         first_name, last_name, email, allow_marketing = await self.pg.fetchrow(
             'select first_name, last_name, email, allow_marketing from users where id=$1', user_id)
 
         requests = []
-        if update_user:
+        if update_user and not created:
             requests.append(
                 self.client.put(f'/constituents/{constituent_id}', data=dict(
                     FirstName=first_name,
@@ -385,14 +384,14 @@ class DonorfyActor(BaseActor):
             )
         requests and await asyncio.gather(*requests)
 
-    async def _get_or_create_constituent(self, user_id, campaign=None):
+    async def _get_or_create_constituent(self, user_id, campaign=None) -> Tuple[str, bool]:
         email, first_name, last_name = await self.pg.fetchrow(
             'select email, first_name, last_name from users where id=$1', user_id
         )
 
         constituent_id = await self._get_constituent(user_id=user_id, email=email, campaign=campaign)
         if constituent_id:
-            return constituent_id
+            return constituent_id, False
 
         data = dict(
             FirstName=first_name,
@@ -413,7 +412,7 @@ class DonorfyActor(BaseActor):
 
         redis = await self.get_redis()
         await redis.setex(self._constituent_cache_key(user_id, email, campaign), 3600, constituent_id)
-        return constituent_id
+        return constituent_id, True
 
     @staticmethod
     def _constituent_cache_key(user_id, email, campaign):
