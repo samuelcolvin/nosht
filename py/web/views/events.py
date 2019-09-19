@@ -82,6 +82,7 @@ FROM (
     FROM ticket_types AS tt
     JOIN events AS e ON tt.event = e.id
     WHERE e.id = $1 AND tt.active = TRUE
+    ORDER BY tt.id
   ) AS t
 ) AS ticket_types;
 """
