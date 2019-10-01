@@ -7,7 +7,7 @@ from aiohttp.web_exceptions import HTTPSuccessful
 from aiohttp.web_response import Response
 from buildpg import Values
 from buildpg.asyncpg import BuildPgConnection, CheckViolationError
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from shared.actions import ActionTypes
 from shared.settings import Settings
@@ -40,7 +40,16 @@ async def stripe_webhook(request):
     company_id: int = request['company_id']
 
     data = webhook['data']['object']
-    metadata = MetadataModel(**data['metadata'])
+    metadata = data['metadata']
+    if 'purpose' not in metadata:
+        logger.info('no purpose in webhook metadata, probably not a nosht payment intent')
+        return Response(text='no purpose in metadata', status=240)
+
+    try:
+        metadata = MetadataModel(**metadata)
+    except ValidationError as e:
+        logger.warning('invalid webhook metadata: %s', e, extra={'webhook': webhook, 'error': e.errors()})
+        return Response(text=f'invalid metadata: {e}', status=250)
 
     charge = data['charges']['data'][0]
     card = charge['payment_method_details']['card']

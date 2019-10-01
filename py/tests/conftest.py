@@ -331,7 +331,8 @@ class Factory:
             webhook_type='payment_intent.succeeded',
             charge_id='charge-id',
             expected_status=204,
-            fire_delay=0):
+            fire_delay=0,
+            metadata=None):
         return await self._fire_stripe_webhook(
             user_id=user_id or self.user_id,
             event_id=event_id or self.event_id,
@@ -342,6 +343,7 @@ class Factory:
             charge_id=charge_id,
             expected_status=expected_status,
             fire_delay=fire_delay,
+            metadata=metadata,
         )
 
     async def book_free(self, reservation: Reservation, user_id=None):
@@ -519,18 +521,20 @@ async def _fix_fire_stripe_webhook(url, settings, cli, loop):
     webhook_cli = TestClient(cli.server, loop=loop)
 
     async def fire(*, user_id, event_id, reserve_action_id, amount, purpose, webhook_type, charge_id, expected_status,
-                   fire_delay):
+                   fire_delay, metadata):
+        if metadata is None:
+            metadata = {
+                'purpose': purpose,
+                'user_id': user_id,
+                'event_id': event_id,
+                'reserve_action_id': reserve_action_id,
+            }
         data = {
             'type': webhook_type,
             'data': {
                 'object': {
                     'amount': amount,
-                    'metadata': {
-                        'purpose': purpose,
-                        'user_id': user_id,
-                        'event_id': event_id,
-                        'reserve_action_id': reserve_action_id,
-                    },
+                    'metadata': metadata,
                     'charges': {
                         'data': [
                             {
