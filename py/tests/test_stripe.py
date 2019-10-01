@@ -530,3 +530,17 @@ async def test_webhook_bad_type(factory: Factory):
 
     r = await factory.fire_stripe_webhook(123, webhook_type='payment_intent.other', expected_status=230)
     assert await r.text() == 'unknown webhook type'
+
+
+async def test_webhook_no_metadata(factory: Factory):
+    await factory.create_company()
+
+    r = await factory.fire_stripe_webhook(123, metadata={}, expected_status=240)
+    assert await r.text() == 'no purpose in metadata'
+
+
+async def test_webhook_invalid_metadata(factory: Factory):
+    await factory.create_company()
+
+    r = await factory.fire_stripe_webhook(123, metadata={'purpose': 'foobar'}, expected_status=250)
+    assert (await r.text()).startswith('invalid metadata: 4 validation errors')
