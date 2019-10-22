@@ -230,6 +230,9 @@ async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn)
     assert r.status == 200, await r.text()
     action_id = (await r.json())['action_id']
 
+    assert 1 == await db_conn.fetchval('SELECT count(*) FROM tickets')
+    assert 10 == await db_conn.fetchval('SELECT price FROM tickets')
+
     await factory.fire_stripe_webhook(action_id)
 
     assert dummy_server.app['log'] == [
@@ -240,7 +243,9 @@ async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn)
             'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <frank@example.org>"',
         ),
     ]
-    assert await db_conn.fetchval("SELECT id FROM actions WHERE type='buy-tickets'")
+    assert 1 == await db_conn.fetchval("SELECT count(*) FROM actions WHERE type='buy-tickets'")
+    assert 1 == await db_conn.fetchval('SELECT count(*) FROM tickets')
+    assert 10 == await db_conn.fetchval('SELECT price FROM tickets')
 
 
 async def test_webhook_fired_late(factory: Factory, db_conn, settings):
