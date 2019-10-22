@@ -454,6 +454,20 @@ async def test_get_payment_method_good(cli, url, login, factory: Factory):
     }
 
 
+async def test_get_payment_method_expired(cli, url, login, factory: Factory):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(stripe_customer_id='cus_123')
+    await factory.create_event(status='published', price=10)
+
+    await login()
+
+    r = await cli.get(url('payment-method-details', payment_method='expired'))
+    assert r.status == 404, await r.text()
+    data = await r.json()
+    assert data == {'message': 'payment method expired'}
+
+
 async def test_get_payment_method_wrong_customer(cli, url, login, factory: Factory):
     await factory.create_company()
     await factory.create_cat()

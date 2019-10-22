@@ -42,7 +42,7 @@ async def stripe_webhook(request):
     data = webhook['data']['object']
     metadata = data['metadata']
     if 'purpose' not in metadata:
-        logger.info('no purpose in webhook metadata, probably not a nosht payment intent')
+        logger.info('no "purpose" in webhook metadata, probably not a nosht payment intent')
         return Response(text='no purpose in metadata', status=240)
 
     try:
