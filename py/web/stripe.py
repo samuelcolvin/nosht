@@ -96,7 +96,8 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
                 type=m.book_action,
             )
         )
-        # market the tickets a price=0 although they could all already be zero, this avoids reporting false revenue
+        # mark the tickets as price=0 although they could all already be zero,
+        # this avoids reporting false revenue for buy-tickets-offline, see #237
         await conn.execute(
             """
             UPDATE tickets SET status='booked', booked_action=$1, price=null, extra_donated=null
