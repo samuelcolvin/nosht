@@ -13,7 +13,7 @@ from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
-from pydantic import BaseModel, UrlStr, condecimal, conint, constr, validator
+from pydantic import BaseModel, AnyHttpUrl, condecimal, conint, constr, validator
 from pytz.tzinfo import BaseTzInfo
 
 from shared.images import delete_image, upload_background, upload_force_shape
@@ -90,7 +90,7 @@ FROM (
 
 class TzInfo(BaseTzInfo):
     @classmethod
-    def get_validators(cls):
+    def __get_validators__(cls):
         yield cls.validate
 
     @classmethod
@@ -175,7 +175,7 @@ class EventBread(Bread):
         price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
         long_description: str
         short_description: str = None
-        external_ticket_url: UrlStr = None
+        external_ticket_url: AnyHttpUrl = None
 
     browse_enabled = True
     retrieve_enabled = True

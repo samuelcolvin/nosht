@@ -679,8 +679,9 @@ async def test_set_event_status_bad(cli, url, db_conn, factory: Factory, login):
         'details': [
             {
                 'loc': ['status'],
-                'msg': 'value is not a valid enumeration member',
+                'msg': "value is not a valid enumeration member; permitted: 'pending', 'published', 'suspended'",
                 'type': 'type_error.enum',
+                'ctx': {'enum_values': ['pending', 'published', 'suspended']},
             },
         ],
     }
