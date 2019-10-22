@@ -5,6 +5,7 @@ from io import StringIO
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
 from web.utils import encrypt_json
+
 from .conftest import Factory
 
 

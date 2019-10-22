@@ -22,8 +22,10 @@ cache:
   yarn: true
   directories:
   - node_modules
+  - docker_images
 
 install:
+- ls docker_images/*.tar | xargs -i sh -c "docker load -i {}"
 - pip install -U pip setuptools
 - pip install -r py/tests/requirements.txt
 - pip install -r py/requirements.txt
@@ -40,3 +42,7 @@ script:
 #- bash <(curl -s https://codecov.io/bash)
 - make build
 - ls -lha
+
+before_cache:
+- docker images -a
+- docker save -o docker_images/images.tar $(docker images -a -q)
