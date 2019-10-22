@@ -101,13 +101,15 @@ export const record_payment_method = (user, payment_method) => {
 }
 
 export const get_payment_method = async (user) => {
-  const payment_method_id = window.sessionStorage[`payment_method_${user.id}`]
+  const storage_key = `payment_method_${user.id}`
+  const payment_method_id = window.sessionStorage[storage_key]
   if (payment_method_id) {
     try {
-      const data = await requests.get(`/stripe/payment-method-details/${payment_method_id}/`, null)
+      const data = await requests.get(`/stripe/payment-method-details/${payment_method_id}/`)
       delete data._response_status
       return {payment_method_id, ...data}
     } catch (e) {
+      window.sessionStorage.removeItem(storage_key)
       console.info('error getting payment method details', e)
     }
   }

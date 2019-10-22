@@ -3,6 +3,7 @@ import hmac
 import json
 import logging
 import secrets
+from datetime import datetime
 from enum import Enum
 from time import time
 from typing import Optional
@@ -133,6 +134,9 @@ async def get_stripe_payment_method(
     else:
         if data['customer'] != stripe_customer_id:
             raise JsonErrors.HTTPNotFound(message='payment method not found for this customer')
+        payment_method_age = datetime.now() - datetime.fromtimestamp(data['created'])
+        if payment_method_age.total_seconds() > 3600:
+            raise JsonErrors.HTTPNotFound(message='payment method expired')
         return {
             'card': {k: data['card'][k] for k in ('brand', 'exp_month', 'exp_year', 'last4')},
             'address': data['billing_details']['address'],

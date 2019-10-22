@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime
 from email import message_from_bytes
 from io import BytesIO
 
@@ -96,10 +97,15 @@ async def stripe_create_payment_intent(request):
 async def stripe_get_payment_methods(request):
     if request.match_info['payment_method_id'] == 'missing':
         return Response(status=404)
+    elif request.match_info['payment_method_id'] == 'expired':
+        created = datetime(2015, 1, 1)
+    else:
+        created = datetime.utcnow()
 
     return json_response({
         'id': f'pm_123',
         'customer': 'cus_123',
+        'created': int((created - datetime(1970, 1, 1)).total_seconds()),
         'card': {
             'brand': 'Visa',
             'exp_month': 12,
