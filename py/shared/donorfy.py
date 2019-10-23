@@ -229,7 +229,8 @@ class DonorfyActor(BaseActor):
 
         await asyncio.gather(*[create_ticket_constituent(r) for r in tickets])
 
-        if action_type == ActionTypes.book_free_tickets:
+        if action_type in (ActionTypes.book_free_tickets, ActionTypes.buy_tickets_offline):
+            # for both free tickets and offline purchases we don't want to report any revenue to donorfy
             return
 
         ticket_count, price, extra = await self.pg.fetchrow(
@@ -238,17 +239,14 @@ class DonorfyActor(BaseActor):
         )
         price = float(price)
         ticket_id = ticket_id or tickets[0]['ticket_id']
-        if action_type == ActionTypes.buy_tickets:
-            processing_fee = await self._get_stripe_processing_fee(action_id)
-        else:
-            processing_fee = 0
+        processing_fee = await self._get_stripe_processing_fee(action_id)
 
         r = await self.client.post('/transactions', data=dict(
             ExistingConstituentId=buyer_constituent_id,
             Channel=f'nosht-{cat_slug}',
             Currency=currency,
             Campaign=campaign,
-            PaymentMethod='Payment Card via Stripe' if action_type == ActionTypes.buy_tickets else 'Offline Payment',
+            PaymentMethod='Payment Card via Stripe',
             Product='Event Ticket(s)',
             Fund=self.settings.donorfy_fund,
             Department=self.settings.donorfy_account_salies,

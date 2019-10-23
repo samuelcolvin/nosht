@@ -4,6 +4,8 @@ from io import StringIO
 
 from pytest_toolbox.comparison import CloseToNow, RegexStr
 
+from web.utils import encrypt_json
+
 from .conftest import Factory
 
 
@@ -165,9 +167,19 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
     )
     await factory.buy_tickets(await factory.create_reservation())
     await factory.buy_tickets(await factory.create_reservation())
-    await login()
+
     ticket_id = await db_conn.fetchval('SELECT id FROM tickets ORDER BY id DESC LIMIT 1')
     await db_conn.execute('UPDATE tickets SET user_id=NULL WHERE id=$1', ticket_id)
+
+    admin_user_id = await factory.create_user(email='admin@example.com', first_name='Admin', last_name='Istrator')
+    await login(email='admin@example.com')
+    res = await factory.create_reservation(admin_user_id)
+    data = dict(
+        booking_token=encrypt_json(cli.app['main_app'], res.dict()),
+        book_action='buy-tickets-offline',
+    )
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 200, await r.text()
 
     r = await cli.get(url('export', type='tickets'))
     assert r.status == 200
@@ -216,6 +228,27 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
             'buyer_user_id': str(factory.user_id),
             'buyer_first_name': 'Frank',
             'buyer_last_name': 'Spencer',
+        },
+        {
+            'id': RegexStr(r'\d+'),
+            'ticket_first_name': '',
+            'ticket_last_name': '',
+            'status': 'booked',
+            'booking_action': 'buy-tickets-offline',
+            'price': '',
+            'extra_donated': '',
+            'created_ts': RegexStr(r'\d{4}.*'),
+            'extra_info': '',
+            'ticket_type_id': ticket_type,
+            'ticket_type_name': 'Standard',
+            'event_id': str(factory.event_id),
+            'event_slug': 'the-event-name',
+            'guest_user_id': str(admin_user_id),
+            'guest_first_name': 'Admin',
+            'guest_last_name': 'Istrator',
+            'buyer_user_id': str(admin_user_id),
+            'buyer_first_name': 'Admin',
+            'buyer_last_name': 'Istrator',
         },
     ]
 

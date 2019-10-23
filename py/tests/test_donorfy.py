@@ -238,7 +238,7 @@ async def test_book_multiple(donorfy: DonorfyActor, factory: Factory, dummy_serv
     }
 
 
-async def test_book_free_no_fee(donorfy: DonorfyActor, factory: Factory, dummy_server, cli, url, login):
+async def test_book_offline(donorfy: DonorfyActor, factory: Factory, dummy_server, cli, url, login):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user(role='host')
@@ -255,28 +255,7 @@ async def test_book_free_no_fee(donorfy: DonorfyActor, factory: Factory, dummy_s
     )
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
-    trans_data = dummy_server.app['post_data']['POST donorfy_api_root/standard/transactions']
-    assert len(trans_data) == 1
-    assert trans_data[0] == {
-        'ExistingConstituentId': '123456',
-        'Channel': 'nosht-supper-clubs',
-        'Currency': 'gbp',
-        'Campaign': 'supper-clubs:the-event-name',
-        'PaymentMethod': 'Offline Payment',
-        'Product': 'Event Ticket(s)',
-        'Fund': 'Unrestricted General',
-        'Department': '220 Ticket Sales',
-        'BankAccount': 'Unrestricted Account',
-        'DatePaid': CloseToNow(),
-        'Amount': 10.0,
-        'ProcessingCostsAmount': 0,
-        'Quantity': 1,
-        'Acknowledgement': 'supper-clubs-thanks',
-        'AcknowledgementText': RegexStr('Ticket ID: .*'),
-        'Reference': 'Events.HUF:supper-clubs the-event-name',
-        'AddGiftAidDeclaration': False,
-        'GiftAidClaimed': False,
-    }
+    assert 'POST donorfy_api_root/standard/transactions' not in dummy_server.app['post_data']
 
 
 async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_conn, cli, url, login):

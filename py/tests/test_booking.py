@@ -585,6 +585,7 @@ async def test_buy_offline(cli, url, dummy_server, factory: Factory, login, db_c
 
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
+    assert 10 == await db_conn.fetchval('SELECT price FROM tickets')
 
     data = dict(
         booking_token=encrypt_json(app, res.dict()),
@@ -601,6 +602,8 @@ async def test_buy_offline(cli, url, dummy_server, factory: Factory, login, db_c
     ]
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
     assert 1 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets-offline'")
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM tickets')
+    assert None is await db_conn.fetchval('SELECT price FROM tickets')
 
 
 async def test_buy_offline_other_admin(cli, url, dummy_server, factory: Factory, login, db_conn):

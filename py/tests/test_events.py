@@ -765,6 +765,13 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
             },
         ],
     }
+    await db_conn.execute('update tickets set price=null')
+
+    r = await cli.get(url('event-tickets', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert len(data['tickets']) == 1
+    assert data['tickets'][0]['price'] is None
 
 
 async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
