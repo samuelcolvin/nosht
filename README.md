@@ -15,7 +15,7 @@ If you have any questions please create an issue on github.
 # Technical Summary
 
 The platform is built using the following tools:
-* the server side is built using **aiohttp** web framework and **python 3**
+* the server side is built using the **aiohttp** web framework and **python 3**
 * the main database is **postgres** with **redis** as a cache and queuing system
 * the front end uses **react** and "create react app"
 * the system is deployed at present using **heroku**'s container runtime although nothing in the system should rely
