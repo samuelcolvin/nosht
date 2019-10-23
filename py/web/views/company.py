@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 
 from buildpg import V
-from pydantic import AnyHttpUrl, BaseModel, NameEmail
+from pydantic import BaseModel, HttpUrl, NameEmail
 
 from shared.images import delete_image, upload_background, upload_other
 from shared.utils import Currencies
@@ -90,7 +90,7 @@ async def company_upload(request):
 
 class LinkModel(BaseModel):
     title: str
-    url: AnyHttpUrl
+    url: HttpUrl
     new_tab: bool = True
 
 
