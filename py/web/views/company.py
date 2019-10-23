@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 
 from buildpg import V
-from pydantic import BaseModel, NameEmail, AnyHttpUrl
+from pydantic import AnyHttpUrl, BaseModel, NameEmail
 
 from shared.images import delete_image, upload_background, upload_other
 from shared.utils import Currencies

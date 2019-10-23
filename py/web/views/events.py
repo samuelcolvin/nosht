@@ -13,7 +13,7 @@ from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
-from pydantic import BaseModel, AnyHttpUrl, condecimal, conint, constr, validator
+from pydantic import AnyHttpUrl, BaseModel, condecimal, conint, constr, validator
 from pytz.tzinfo import BaseTzInfo
 
 from shared.images import delete_image, upload_background, upload_force_shape

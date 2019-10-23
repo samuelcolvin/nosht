@@ -2,8 +2,7 @@ import datetime
 import json
 import re
 from decimal import Decimal
-
-from typing import Any, Tuple, Type, TypeVar
+from typing import Any, Type, TypeVar
 from uuid import UUID
 
 from aiohttp.web import HTTPRequestEntityTooLarge, Response
@@ -91,7 +90,7 @@ async def parse_request(request, model: Type[T], *, headers_=None) -> T:
     )
 
 
-async def parse_request_ignore_missing(request, model: Type[T], *, headers_=None) -> Tuple[T, dict]:
+async def parse_request_ignore_missing(request, model: Type[T], *, headers_=None) -> T:
     try:
         raw_data = await request.json()
     except ValueError:
@@ -99,13 +98,13 @@ async def parse_request_ignore_missing(request, model: Type[T], *, headers_=None
     if not isinstance(raw_data, dict):
         raise JsonErrors.HTTPBadRequest(message='data not a dictionary', headers_=headers_)
 
-    data, _, e = validate_model(model, raw_data)
+    data, fields_set, e = validate_model(model, raw_data)
     if e:
         errors = [e for e in e.errors() if not (e['type'] == 'value_error.missing' and len(e['loc']) == 1)]
         if errors:
             raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=errors, headers_=headers_)
 
-    return model.construct(values=data, fields_set=set(data.keys())), raw_data
+    return model.construct(_fields_set=fields_set, **data)
 
 
 IP_HEADER = 'X-Forwarded-For'
