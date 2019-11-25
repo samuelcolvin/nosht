@@ -2,13 +2,14 @@ import datetime
 import json
 import re
 from decimal import Decimal
-from typing import Any, Tuple, Type, TypeVar
+from typing import Any, Type, TypeVar
 from uuid import UUID
 
 from aiohttp.web import HTTPRequestEntityTooLarge, Response
 from aiohttp.web_exceptions import HTTPClientError
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel, ValidationError, validate_model
+from pydantic.json import pydantic_encoder
 
 from shared.images import check_image_size
 from shared.utils import encrypt_json as _encrypt_json
@@ -41,7 +42,7 @@ class UniversalEncoder(json.JSONEncoder):
         try:
             encoder = self.ENCODER_BY_TYPE[type(obj)]
         except KeyError:
-            return super().default(obj)
+            return pydantic_encoder(obj)
         return encoder(obj)
 
 
@@ -89,7 +90,7 @@ async def parse_request(request, model: Type[T], *, headers_=None) -> T:
     )
 
 
-async def parse_request_ignore_missing(request, model: Type[T], *, headers_=None) -> Tuple[T, dict]:
+async def parse_request_ignore_missing(request, model: Type[T], *, headers_=None) -> T:
     try:
         raw_data = await request.json()
     except ValueError:
@@ -97,13 +98,13 @@ async def parse_request_ignore_missing(request, model: Type[T], *, headers_=None
     if not isinstance(raw_data, dict):
         raise JsonErrors.HTTPBadRequest(message='data not a dictionary', headers_=headers_)
 
-    data, e = validate_model(model, raw_data, raise_exc=False)
+    data, fields_set, e = validate_model(model, raw_data)
     if e:
         errors = [e for e in e.errors() if not (e['type'] == 'value_error.missing' and len(e['loc']) == 1)]
         if errors:
             raise JsonErrors.HTTPBadRequest(message='Invalid Data', details=errors, headers_=headers_)
 
-    return model.construct(values=data, fields_set=set(data.keys())), raw_data
+    return model.construct(_fields_set=fields_set, **data)
 
 
 IP_HEADER = 'X-Forwarded-For'
