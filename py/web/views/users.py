@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 
 from buildpg import Func, V
@@ -198,3 +199,48 @@ async def switch_user_status(request):
     new_status = 'suspended' if status == 'active' else 'active'
     await request['conn'].execute('UPDATE users SET status=$1 WHERE id=$2', new_status, user_id)
     return json_response(new_status=new_status)
+
+
+search_sql = """
+SELECT coalesce(array_to_json(array_agg(json_strip_nulls(row_to_json(t)))), '[]') FROM (
+  SELECT v.id, v.label, v.type
+  FROM (
+    SELECT
+      coalesce(user_id, event) as id,
+      label,
+      CASE WHEN user_id IS NOT NULL THEN 'user' ELSE 'event' END as type,
+      ts_rank_cd(vector, q_tsv, 16) AS rank
+    FROM search, to_tsquery(:query) q_tsv
+    WHERE company=:company AND vector @@ q_tsv
+    ORDER BY rank DESC
+    LIMIT 30
+  ) v
+) AS t
+"""
+min_length = 3
+max_length = 100
+re_null = re.compile('\x00')
+# characters that cause syntax errors in to_tsquery and/or should be used to split
+pg_tsquery_split = ''.join((':', '&', '|', '%', '"', "'", '<', '>', '!', '*', '(', ')', r'\s'))
+re_tsquery = re.compile(f'[^{pg_tsquery_split}]{{2,}}')
+
+
+@is_admin
+async def search(request):
+    query = request.query.get('q', '')
+
+    query = re_null.sub('', query)[:max_length]
+    if len(query) < min_length:
+        return raw_json_response('[]')
+
+    words = re_tsquery.findall(query)
+    if not words:
+        return raw_json_response('[]')
+
+    json_str = await request['conn'].fetchval_b(
+        search_sql,
+        company=request['company_id'],
+        # just using a "foo & bar:*"
+        query=' & '.join(words) + ':*',
+    )
+    return raw_json_response(json_str)

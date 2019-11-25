@@ -34,7 +34,7 @@ from .views.events import (CancelTickets, EventBread, EventUpdate, SetEventStatu
 from .views.export import export
 from .views.static import get_csp_headers, static_handler
 from .views.stripe import get_payment_method_details, stripe_webhook
-from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_tickets
+from .views.users import UserBread, UserSelfBread, search, switch_user_status, user_actions, user_tickets
 
 logger = logging.getLogger('nosht.web')
 
@@ -112,6 +112,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
         web.post(r'/events/{id:\d+}/updates/send/', EventUpdate.view(), name='event-send-update'),
         web.get(r'/events/{id:\d+}/updates/list/', event_updates_sent, name='event-updates-sent'),
         web.post(r'/events/{id:\d+}/switch-highlight/', switch_highlight, name='event-switch-highlight'),
+        web.get(r'/search/', search, name='search'),
 
         # event public views
         web.post(r'/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),

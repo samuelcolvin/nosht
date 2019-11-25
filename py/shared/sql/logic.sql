@@ -92,13 +92,20 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION update_user_search() RETURNS trigger AS $$
   DECLARE
     name TEXT = full_name(NEW.first_name, NEW.last_name, NEW.email);
+    label TEXT;
     email TEXT = coalesce(NEW.email, '');
   BEGIN
     IF name IS NOT NULL THEN
-      INSERT INTO search (user_id, label, vector) VALUES (
+      IF (NEW.first_name IS NOT NULL OR NEW.last_name IS NOT NULL) AND NEW.email IS NOT NULL THEN
+        SELECT format('%s (%s)', name, NEW.email) INTO label;
+      ELSE
+        SELECT name INTO label;
+      END IF;
+      INSERT INTO search (company, user_id, label, vector) VALUES (
+        NEW.company,
         NEW.id,
-        name,
-        setweight(to_tsvector(name), 'A') || setweight(to_tsvector(email), 'B') || to_tsvector(replace(email, '@', ' @'))
+        label,
+        setweight(to_tsvector(name), 'A') || setweight(to_tsvector(email), 'B') || to_tsvector(replace(email, '@', ' '))
       ) ON CONFLICT (user_id) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector;
     END IF;
     return NULL;
@@ -112,8 +119,12 @@ CREATE TRIGGER user_updated AFTER UPDATE ON users FOR EACH ROW EXECUTE PROCEDURE
 
 
 CREATE OR REPLACE FUNCTION update_event_search() RETURNS trigger AS $$
+  DECLARE
+    company INT;
   BEGIN
-    INSERT INTO search (event, label, vector) VALUES (
+    SELECT c.company INTO company FROM categories c WHERE id=NEW.category;
+    INSERT INTO search (company, event, label, vector) VALUES (
+      company,
       NEW.id,
       NEW.name,
       setweight(to_tsvector(NEW.name), 'A') ||
