@@ -629,3 +629,12 @@ async def add_stripe_webhook_secret(conn, **kwargs):
     add the stripe_webhook_secret column to companies
     """
     await conn.execute('ALTER TABLE companies ADD COLUMN stripe_webhook_secret VARCHAR(63)')
+
+
+@patch
+async def update_search_index(conn, **kwargs):
+    """
+    update the search index by running a pointless update on users and events
+    """
+    await conn.execute('UPDATE users SET phone_number=phone_number')
+    await conn.execute('UPDATE events SET short_description=short_description')

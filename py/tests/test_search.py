@@ -14,7 +14,7 @@ async def test_create_update_user(factory: Factory, db_conn):
     event, label, vector = await db_conn.fetchrow('select event, label, vector from search where user_id=$1', user_id)
     assert event is None
     assert label == 'John Doe (testing@example.com)'
-    assert vector == "'doe':2A 'example.com':5 'john':1A 'test':4 'testing@example.com':3B"
+    assert vector == "'activ':4C 'admin':5C 'doe':2A 'example.com':7 'john':1A 'test':6 'testing@example.com':3B"
     assert await db_conn.fetchval('select company from search where user_id=$1', user_id) == company_id
 
     await db_conn.execute('update users set last_name=$1 where id=$2', 'DiffErent', user_id)
@@ -22,7 +22,9 @@ async def test_create_update_user(factory: Factory, db_conn):
     assert await db_conn.fetchval('select count(*) from search') == 1
     r = await db_conn.fetchrow('select label, vector, company, active_ts from search where user_id=$1', user_id)
     assert r['label'] == 'John DiffErent (testing@example.com)'
-    assert r['vector'] == "'differ':2A 'example.com':5 'john':1A 'test':4 'testing@example.com':3B"
+    assert r['vector'] == (
+        "'activ':4C 'admin':5C 'differ':2A 'example.com':7 'john':1A 'test':6 'testing@example.com':3B"
+    )
     assert r['company'] == company_id
     assert r['active_ts'] == CloseToNow()
 
@@ -34,12 +36,12 @@ async def test_create_update_user(factory: Factory, db_conn):
 
     await db_conn.execute("INSERT INTO users (company, role, email) VALUES ($1, 'guest', 'x@y')", company_id)
     assert await db_conn.fetchval('select count(*) from search') == 1
-    assert await db_conn.fetchval('select vector from search') == "'x':1A,3B,5 'y':2A,4B,6"
+    assert await db_conn.fetchval('select vector from search') == "'guest':6C 'pend':5C 'x':1A,3B,7 'y':2A,4B,8"
     await db_conn.execute('delete from users')
 
     await db_conn.execute("INSERT INTO users (company, role, first_name) VALUES ($1, 'guest', 'xx')", company_id)
     assert await db_conn.fetchval('select count(*) from search') == 1
-    assert await db_conn.fetchval('select vector from search') == "'xx':1A"
+    assert await db_conn.fetchval('select vector from search') == "'guest':3C 'pend':2C 'xx':1A"
     assert await db_conn.fetchval('select company from search') == company_id
 
 
@@ -74,7 +76,7 @@ async def test_create_update_event(factory: Factory, db_conn):
     user, label, vector = await db_conn.fetchrow('select user_id, label, vector from search where event=$1', event_id)
     assert user is None
     assert label == 'Foo Event'
-    assert vector == "'appleton':5B 'event':2A,4B 'foo':1A,3B 'sausag':6"
+    assert vector == "'appleton':5B 'club':8C 'event':2A,4B 'foo':1A,3B 'pend':6C 'sausag':9 'supper':7C"
     assert await db_conn.fetchval('select company from search where event=$1', event_id) == company_id
 
     await db_conn.execute('delete from events')
@@ -103,7 +105,8 @@ async def test_search_for_users(factory: Factory, db_conn, cli, url, login):
         ],
     }
 
-    for query in ('john', 'doe', 'john doe', 'testing@example.com', 'testing', '@example.com', 'example.com'):
+    for query in ('john', 'doe', 'john doe', 'testing@example.com', 'testing', '@example.com',
+                  'testing@example.com doe'):
         r = await cli.get(url('user-search', query={'q': query}))
         assert r.status == 200, await r.text()
         items = (await r.json())['items']

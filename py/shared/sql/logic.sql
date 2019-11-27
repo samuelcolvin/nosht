@@ -108,6 +108,7 @@ CREATE OR REPLACE FUNCTION update_user_search() RETURNS trigger AS $$
         NEW.active_ts,
         setweight(to_tsvector(name), 'A') ||
         setweight(to_tsvector(email), 'B') ||
+        setweight(to_tsvector(NEW.status || ' ' || NEW.role), 'C') ||
         to_tsvector(replace(email, '@', ' '))
       ) ON CONFLICT (user_id) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector, active_ts=EXCLUDED.active_ts;
     END IF;
@@ -124,8 +125,9 @@ CREATE TRIGGER user_updated AFTER UPDATE ON users FOR EACH ROW EXECUTE PROCEDURE
 CREATE OR REPLACE FUNCTION update_event_search() RETURNS trigger AS $$
   DECLARE
     company INT;
+    category_name TEXT;
   BEGIN
-    SELECT c.company INTO company FROM categories c WHERE id=NEW.category;
+    SELECT c.company, c.name INTO company, category_name FROM categories c WHERE id=NEW.category;
     INSERT INTO search (company, event, label, active_ts, vector) VALUES (
       company,
       NEW.id,
@@ -134,6 +136,7 @@ CREATE OR REPLACE FUNCTION update_event_search() RETURNS trigger AS $$
       setweight(to_tsvector(NEW.name), 'A') ||
       setweight(to_tsvector(coalesce(NEW.short_description, '')), 'B') ||
       setweight(to_tsvector(coalesce(NEW.location_name, '')), 'C') ||
+      setweight(to_tsvector(NEW.status || ' ' || category_name), 'C') ||
       to_tsvector(coalesce(NEW.long_description, ''))
     ) ON CONFLICT (event) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector, active_ts=EXCLUDED.active_ts;
     return NULL;
