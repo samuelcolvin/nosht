@@ -2,7 +2,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE OR REPLACE FUNCTION update_user_ts() RETURNS trigger AS $$
   BEGIN
-    UPDATE users SET active_ts=now() WHERE id=NEW.user_id;
+    UPDATE users SET active_ts=NEW.ts WHERE id=NEW.user_id;
     return NULL;
   END;
 $$ LANGUAGE plpgsql;
@@ -101,12 +101,15 @@ CREATE OR REPLACE FUNCTION update_user_search() RETURNS trigger AS $$
       ELSE
         SELECT name INTO label;
       END IF;
-      INSERT INTO search (company, user_id, label, vector) VALUES (
+      INSERT INTO search (company, user_id, label, active_ts, vector) VALUES (
         NEW.company,
         NEW.id,
         label,
-        setweight(to_tsvector(name), 'A') || setweight(to_tsvector(email), 'B') || to_tsvector(replace(email, '@', ' '))
-      ) ON CONFLICT (user_id) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector;
+        NEW.active_ts,
+        setweight(to_tsvector(name), 'A') ||
+        setweight(to_tsvector(email), 'B') ||
+        to_tsvector(replace(email, '@', ' '))
+      ) ON CONFLICT (user_id) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector, active_ts=EXCLUDED.active_ts;
     END IF;
     return NULL;
   END;
@@ -123,15 +126,16 @@ CREATE OR REPLACE FUNCTION update_event_search() RETURNS trigger AS $$
     company INT;
   BEGIN
     SELECT c.company INTO company FROM categories c WHERE id=NEW.category;
-    INSERT INTO search (company, event, label, vector) VALUES (
+    INSERT INTO search (company, event, label, active_ts, vector) VALUES (
       company,
       NEW.id,
       NEW.name,
+      NEW.start_ts,
       setweight(to_tsvector(NEW.name), 'A') ||
       setweight(to_tsvector(coalesce(NEW.short_description, '')), 'B') ||
       setweight(to_tsvector(coalesce(NEW.location_name, '')), 'C') ||
       to_tsvector(coalesce(NEW.long_description, ''))
-    ) ON CONFLICT (event) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector;
+    ) ON CONFLICT (event) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector, active_ts=EXCLUDED.active_ts;
     return NULL;
   END;
 $$ LANGUAGE plpgsql;

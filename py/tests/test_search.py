@@ -1,3 +1,7 @@
+from datetime import datetime, timezone
+
+from pytest_toolbox.comparison import CloseToNow
+
 from .conftest import Factory
 
 
@@ -16,10 +20,11 @@ async def test_create_update_user(factory: Factory, db_conn):
     await db_conn.execute('update users set last_name=$1 where id=$2', 'DiffErent', user_id)
 
     assert await db_conn.fetchval('select count(*) from search') == 1
-    new_label, new_vector = await db_conn.fetchrow('select label, vector from search where user_id=$1', user_id)
-    assert new_label == 'John DiffErent (testing@example.com)'
-    assert new_vector == "'differ':2A 'example.com':5 'john':1A 'test':4 'testing@example.com':3B"
-    assert await db_conn.fetchval('select company from search where user_id=$1', user_id) == company_id
+    r = await db_conn.fetchrow('select label, vector, company, active_ts from search where user_id=$1', user_id)
+    assert r['label'] == 'John DiffErent (testing@example.com)'
+    assert r['vector'] == "'differ':2A 'example.com':5 'john':1A 'test':4 'testing@example.com':3B"
+    assert r['company'] == company_id
+    assert r['active_ts'] == CloseToNow()
 
     await db_conn.execute('delete from users where id=$1', user_id)
     assert await db_conn.fetchval('select count(*) from search') == 0
@@ -36,6 +41,21 @@ async def test_create_update_user(factory: Factory, db_conn):
     assert await db_conn.fetchval('select count(*) from search') == 1
     assert await db_conn.fetchval('select vector from search') == "'xx':1A"
     assert await db_conn.fetchval('select company from search') == company_id
+
+
+async def test_active_ts_updated(factory: Factory, db_conn):
+    assert await db_conn.fetchval('select count(*) from search') == 0
+    company_id = await factory.create_company()
+    user_id = await factory.create_user(first_name='John', last_name='Doe', email='testing@example.com')
+    assert await db_conn.fetchval('select count(*) from search') == 1
+    assert await db_conn.fetchval('select active_ts from search where user_id=$1', user_id) == CloseToNow()
+    await db_conn.execute(
+        "insert into actions (company, user_id, ts, type) values ($1, $2, '2032-01-01', 'login')",
+        company_id,
+        user_id,
+    )
+    new_ts = await db_conn.fetchval('select active_ts from search where user_id=$1', user_id)
+    assert new_ts == datetime(2032, 1, 1, tzinfo=timezone.utc)
 
 
 async def test_create_update_event(factory: Factory, db_conn):
@@ -68,14 +88,33 @@ async def test_search_for_users(factory: Factory, db_conn, cli, url, login):
 
     await login(email='testing@example.com')
 
-    for query in ('john', 'doe', 'john doe', 'testing@example.com', 'testing', '@example.com', 'example.com'):
-        r = await cli.get(url('search', query={'q': query}))
-        assert r.status == 200, await r.text()
-        assert await r.json() == [{'id': user_id, 'label': 'John Doe (testing@example.com)', 'type': 'user'}], query
-
-    r = await cli.get(url('search', query={'q': 'missing'}))
+    r = await cli.get(url('user-search', query={'q': 'john'}))
     assert r.status == 200, await r.text()
-    assert await r.json() == []
+    assert await r.json() == {
+        'items': [
+            {
+                'id': user_id,
+                'name': 'John Doe',
+                'role_type': 'admin',
+                'status': 'active',
+                'email': 'testing@example.com',
+                'active_ts': CloseToNow(),
+            },
+        ],
+    }
+
+    for query in ('john', 'doe', 'john doe', 'testing@example.com', 'testing', '@example.com', 'example.com'):
+        r = await cli.get(url('user-search', query={'q': query}))
+        assert r.status == 200, await r.text()
+        items = (await r.json())['items']
+        assert len(items) == 1, query
+        assert items[0]['id'] == user_id, query
+        assert items[0]['name'] == 'John Doe', query
+
+    for query in ({'q': 'missing'}, {'q': ''}, None):
+        r = await cli.get(url('user-search', query=query))
+        assert r.status == 200, await r.text()
+        assert await r.json() == {'items': []}, query
 
 
 async def test_search_for_users_order(factory: Factory, db_conn, cli, url, login):
@@ -86,12 +125,14 @@ async def test_search_for_users_order(factory: Factory, db_conn, cli, url, login
 
     await login(email='foobar@example.com')
 
-    r = await cli.get(url('search', query={'q': 'foobar'}))
+    await db_conn.execute("update search set active_ts='2015-01-01' where user_id=$1", user_id)
+    r = await cli.get(url('user-search', query={'q': 'foobar'}))
     assert r.status == 200, await r.text()
-    assert await r.json() == [
-        {'id': user2_id, 'label': 'foobar xxx', 'type': 'user'},
-        {'id': user_id, 'label': 'John Doe (foobar@example.com)', 'type': 'user'},
-    ]
+    assert [v['id'] for v in (await r.json())['items']] == [user2_id, user_id]
+    await db_conn.execute("update search set active_ts='2032-01-01' where user_id=$1", user_id)
+    r = await cli.get(url('user-search', query={'q': 'foobar'}))
+    assert r.status == 200, await r.text()
+    assert [v['id'] for v in (await r.json())['items']] == [user_id, user2_id]
 
 
 async def test_search_for_users_company(factory: Factory, db_conn, cli, url, login):
@@ -104,9 +145,20 @@ async def test_search_for_users_company(factory: Factory, db_conn, cli, url, log
 
     await login()
 
-    r = await cli.get(url('search', query={'q': 'John'}))
+    r = await cli.get(url('user-search', query={'q': 'John'}))
     assert r.status == 200, await r.text()
-    assert await r.json() == [{'id': user_id, 'label': 'John Doe (frank@example.org)', 'type': 'user'}]
+    assert await r.json() == {
+        'items': [
+            {
+                'id': user_id,
+                'name': 'John Doe',
+                'role_type': 'admin',
+                'status': 'active',
+                'email': 'frank@example.org',
+                'active_ts': CloseToNow(),
+            },
+        ],
+    }
 
 
 async def test_search_for_event(factory: Factory, db_conn, cli, url, login):
@@ -119,10 +171,22 @@ async def test_search_for_event(factory: Factory, db_conn, cli, url, login):
 
     await login()
 
-    r = await cli.get(url('search', query={'q': 'Foobar'}))
+    r = await cli.get(url('event-search', query={'q': 'Foobar'}))
     assert r.status == 200, await r.text()
-    assert await r.json() == [{'id': event_id, 'label': 'Foobar', 'type': 'event'}]
+    assert await r.json() == {
+        'items': [
+            {
+                'id': event_id,
+                'name': 'Foobar',
+                'category': 'Supper Clubs',
+                'status': 'pending',
+                'highlight': False,
+                'start_ts': '2020-06-28T18:00:00+00:00',
+                'duration': 3600,
+            },
+        ],
+    }
 
-    r = await cli.get(url('search', query={'q': 'apple'}))
+    r = await cli.get(url('event-search', query={'q': 'apple'}))
     assert r.status == 200, await r.text()
-    assert await r.json() == [{'id': event_id, 'label': 'Foobar', 'type': 'event'}]
+    assert len((await r.json())['items']) == 1

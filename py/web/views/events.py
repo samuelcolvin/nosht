@@ -22,8 +22,8 @@ from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread, Method, UpdateView
 from web.stripe import stripe_refund
-from web.utils import (ImageModel, JsonErrors, clean_markdown, json_response, parse_request, raw_json_response,
-                       request_image)
+from web.utils import (ImageModel, JsonErrors, clean_markdown, json_response, parse_request, prepare_search_query,
+                       raw_json_response, request_image)
 from web.views.export import export_plumbing
 
 logger = logging.getLogger('nosht.events')
@@ -742,3 +742,28 @@ async def switch_highlight(request):
     await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
                         event_id=event_id, subtype='switch-highlight')
     return json_response(status='ok')
+
+
+search_sql = """
+SELECT json_build_object(
+  'items', coalesce(array_to_json(array_agg(json_strip_nulls(row_to_json(t)))), '[]')
+) FROM (
+  SELECT e.id, e.name, c.name category, e.status, e.highlight, e.start_ts, extract(epoch from e.duration) duration
+  FROM search s
+  JOIN events e ON s.event = e.id
+  JOIN categories c on e.category = c.id
+  WHERE s.company=:company AND s.vector @@ to_tsquery(:query)
+  ORDER BY s.active_ts DESC
+  LIMIT 30
+) t
+"""
+
+
+@is_admin
+async def event_search(request):
+    query = prepare_search_query(request)
+    if query is None:
+        return raw_json_response('{"items": []}')
+
+    json_str = await request['conn'].fetchval_b(search_sql, company=request['company_id'], query=query)
+    return raw_json_response(json_str)

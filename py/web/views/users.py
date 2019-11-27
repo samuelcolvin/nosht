@@ -1,4 +1,3 @@
-import re
 from enum import Enum
 
 from buildpg import Func, V
@@ -8,7 +7,7 @@ from pydantic import BaseModel, EmailStr
 from web.actions import ActionTypes, record_action
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread
-from web.utils import JsonErrors, get_offset, json_response, raw_json_response
+from web.utils import JsonErrors, get_offset, json_response, prepare_search_query, raw_json_response
 
 
 class UserRoles(str, Enum):
@@ -202,45 +201,30 @@ async def switch_user_status(request):
 
 
 search_sql = """
-SELECT coalesce(array_to_json(array_agg(json_strip_nulls(row_to_json(t)))), '[]') FROM (
-  SELECT v.id, v.label, v.type
-  FROM (
-    SELECT
-      coalesce(user_id, event) as id,
-      label,
-      CASE WHEN user_id IS NOT NULL THEN 'user' ELSE 'event' END as type,
-      ts_rank_cd(vector, q_tsv, 16) AS rank
-    FROM search, to_tsquery(:query) q_tsv
-    WHERE company=:company AND vector @@ q_tsv
-    ORDER BY rank DESC
-    LIMIT 30
-  ) v
-) AS t
+SELECT json_build_object(
+  'items', coalesce(array_to_json(array_agg(json_strip_nulls(row_to_json(t)))), '[]')
+) FROM (
+  SELECT
+    u.id,
+    full_name(u.first_name, u.last_name, u.email) as name,
+    u.role role_type,
+    u.status,
+    u.email,
+    u.active_ts
+  FROM search s
+  JOIN users u on s.user_id = u.id
+  WHERE s.company=:company AND s.vector @@ to_tsquery(:query)
+  ORDER BY s.active_ts DESC
+  LIMIT 30
+) t
 """
-min_length = 3
-max_length = 100
-re_null = re.compile('\x00')
-# characters that cause syntax errors in to_tsquery and/or should be used to split
-pg_tsquery_split = ''.join((':', '&', '|', '%', '"', "'", '<', '>', '!', '*', '(', ')', r'\s'))
-re_tsquery = re.compile(f'[^{pg_tsquery_split}]{{2,}}')
 
 
 @is_admin
-async def search(request):
-    query = request.query.get('q', '')
+async def user_search(request):
+    query = prepare_search_query(request)
+    if query is None:
+        return raw_json_response('{"items": []}')
 
-    query = re_null.sub('', query)[:max_length]
-    if len(query) < min_length:
-        return raw_json_response('[]')
-
-    words = re_tsquery.findall(query)
-    if not words:
-        return raw_json_response('[]')
-
-    json_str = await request['conn'].fetchval_b(
-        search_sql,
-        company=request['company_id'],
-        # just using a "foo & bar:*"
-        query=' & '.join(words) + ':*',
-    )
+    json_str = await request['conn'].fetchval_b(search_sql, company=request['company_id'], query=query)
     return raw_json_response(json_str)

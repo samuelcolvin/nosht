@@ -34,6 +34,7 @@ export class EventsList extends RenderList {
     this.state.buttons = [
       {name: 'Create Event', link: '/create/'},
     ]
+    this.state.search_uri = '/events/search/'
   }
 
   no_items_msg () {

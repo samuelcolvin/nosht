@@ -2,7 +2,7 @@ import datetime
 import json
 import re
 from decimal import Decimal
-from typing import Any, Type, TypeVar
+from typing import Any, Optional, Type, TypeVar
 from uuid import UUID
 
 from aiohttp.web import HTTPRequestEntityTooLarge, Response
@@ -230,3 +230,26 @@ def get_offset(request, paginate_by=100):
         raise JsonErrors.HTTPBadRequest(message=f"invalid page '{page}'")
     else:
         return (p - 1) * paginate_by
+
+
+min_length = 3
+max_length = 100
+re_null = re.compile('\x00')
+# characters that cause syntax errors in to_tsquery and/or should be used to split
+pg_tsquery_split = ''.join((':', '&', '|', '%', '"', "'", '<', '>', '!', '*', '(', ')', r'\s'))
+re_tsquery = re.compile(f'[^{pg_tsquery_split}]{{2,}}')
+
+
+def prepare_search_query(request) -> Optional[str]:
+    query = request.query.get('q', '')
+
+    query = re_null.sub('', query)[:max_length]
+    if len(query) < min_length:
+        return None
+
+    words = re_tsquery.findall(query)
+    if not words:
+        return None
+
+    # just using a "foo & bar:*"
+    return ' & '.join(words) + ':*'

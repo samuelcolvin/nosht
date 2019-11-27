@@ -28,13 +28,13 @@ from .views.donate import (DonationGiftAid, DonationOptionBread, donation_image_
                            donation_prepare, opt_donations)
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
 from .views.events import (CancelTickets, EventBread, EventUpdate, SetEventStatus, SetTicketTypes, event_categories,
-                           event_get, event_ticket_types, event_tickets, event_tickets_export, event_updates_sent,
-                           remove_event_secondary_image, set_event_image_existing, set_event_image_new,
-                           set_event_secondary_image, switch_highlight)
+                           event_get, event_search, event_ticket_types, event_tickets, event_tickets_export,
+                           event_updates_sent, remove_event_secondary_image, set_event_image_existing,
+                           set_event_image_new, set_event_secondary_image, switch_highlight)
 from .views.export import export
 from .views.static import get_csp_headers, static_handler
 from .views.stripe import get_payment_method_details, stripe_webhook
-from .views.users import UserBread, UserSelfBread, search, switch_user_status, user_actions, user_tickets
+from .views.users import UserBread, UserSelfBread, switch_user_status, user_actions, user_search, user_tickets
 
 logger = logging.getLogger('nosht.web')
 
@@ -97,6 +97,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
         # event admin
         web.get(r'/events/categories/', event_categories, name='event-categories'),
         *EventBread.routes(r'/events/'),
+        web.get(r'/events/search/', event_search, name='event-search'),
         web.post(r'/events/{id:\d+}/set-status/', SetEventStatus.view(), name='event-set-status'),
         web.post(r'/events/{id:\d+}/set-image/new/', set_event_image_new, name='event-set-image-new'),
         web.post(r'/events/{id:\d+}/set-image/existing/', set_event_image_existing, name='event-set-image-existing'),
@@ -112,7 +113,6 @@ def create_app(*, settings: Settings = None, logging_client=None):
         web.post(r'/events/{id:\d+}/updates/send/', EventUpdate.view(), name='event-send-update'),
         web.get(r'/events/{id:\d+}/updates/list/', event_updates_sent, name='event-updates-sent'),
         web.post(r'/events/{id:\d+}/switch-highlight/', switch_highlight, name='event-switch-highlight'),
-        web.get(r'/search/', search, name='search'),
 
         # event public views
         web.post(r'/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
@@ -150,6 +150,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
 
         *UserBread.routes(r'/users/'),
         *UserSelfBread.routes(r'/account/', name='account'),
+        web.get(r'/users/search/', user_search, name='user-search'),
         web.get(r'/users/{pk:\d+}/actions/', user_actions, name='user-actions'),
         web.get(r'/users/{pk:\d+}/tickets/', user_tickets, name='user-tickets'),
         web.post(r'/users/{pk:\d+}/switch-status/', switch_user_status, name='user-switch-status'),

@@ -56,6 +56,7 @@ export class UsersList extends RenderList {
       role_type: {render: as_title},
       status: {render: as_title},
     }
+    this.state.search_uri = '/users/search/'
   }
 
   extra () {

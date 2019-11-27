@@ -286,10 +286,12 @@ CREATE TABLE search (
   user_id INT REFERENCES users ON DELETE CASCADE UNIQUE,
   event INT REFERENCES events ON DELETE CASCADE UNIQUE,
   label VARCHAR(255) NOT NULL,
+  active_ts TIMESTAMPTZ NOT NULL,
   vector TSVECTOR NOT NULL
 );
 CREATE INDEX IF NOT EXISTS search_company ON search USING btree (company);
 CREATE INDEX IF NOT EXISTS search_user ON search USING btree (user_id);
 CREATE INDEX IF NOT EXISTS search_event ON search USING btree (event);
-CREATE INDEX IF NOT EXISTS idx_search_vector ON search USING gin (vector);
+CREATE INDEX IF NOT EXISTS search_vector ON search USING gin (vector);
+CREATE INDEX IF NOT EXISTS search_active_ts ON search USING btree (active_ts);
 -- } search
