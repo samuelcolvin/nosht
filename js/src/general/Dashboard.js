@@ -147,7 +147,6 @@ export class RenderList extends RenderItem {
     super(props)
     this.state = {
       items: null,
-      count: null,
       pages: null,
       buttons: null,
       formats: {},
@@ -181,7 +180,7 @@ export class RenderList extends RenderItem {
     }
     try {
       const data = await requests.get(this.state.search_uri, {q: this.state.search_input})
-      this.got_data(data)
+      this.got_data(Object.assign(data, {pages: null}))
     } catch (error) {
       this.props.ctx.setError(error)
     }
@@ -265,7 +264,10 @@ export class RenderList extends RenderItem {
       this.state.pages > 1 ? (
         <nav key="p" aria-label="Page navigation example">
           <ul className="pagination justify-content-center">
-            {[...Array(this.state.pages).keys()].map(i => i + 1).map(p => (
+            {[...Array(this.state.pages).keys()]
+              .map(i => i + 1)
+              .filter(i => i > current_page - 5 && i < current_page + 5)
+              .map(p => (
               <li key={p} className={'page-item' + (p === current_page ? ' active' : '')}>
                 <Link className="page-link" to={`?page=${p}`}>{p}</Link>
               </li>
