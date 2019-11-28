@@ -280,7 +280,7 @@ CREATE INDEX IF NOT EXISTS email_event_ts ON email_events USING btree (ts);
 -- } email change
 
 -- { search
-CREATE TABLE search (
+CREATE TABLE IF NOT EXISTS search (
   id SERIAL PRIMARY KEY,
   company INT NOT NULL REFERENCES companies ON DELETE CASCADE,
   user_id INT REFERENCES users ON DELETE CASCADE UNIQUE,

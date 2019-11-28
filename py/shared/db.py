@@ -632,6 +632,20 @@ async def add_stripe_webhook_secret(conn, **kwargs):
 
 
 @patch
+async def add_search_table(conn, settings, **kwargs):
+    """
+    create search table and indexes, also runs logic.sql to create triggers
+    """
+    models_sql = settings.models_sql
+    m = re.search('-- { search(.*)-- } search', models_sql, flags=re.DOTALL)
+    search_sql = m.group(1).strip(' \n')
+    print('running search table sql...')
+    await conn.execute(search_sql)
+    print('running logic.sql...')
+    await conn.execute(settings.logic_sql)
+
+
+@patch
 async def update_search_index(conn, **kwargs):
     """
     update the search index by running a pointless update on users and events
