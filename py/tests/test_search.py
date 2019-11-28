@@ -88,6 +88,9 @@ async def test_search_for_users(factory: Factory, db_conn, cli, url, login):
     await factory.create_company()
     user_id = await factory.create_user(first_name='John', last_name='Doe', email='testing@example.com')
 
+    r = await cli.get(url('event-search', query={'q': 'Foobar'}))
+    assert r.status == 401, await r.text()
+
     await login(email='testing@example.com')
 
     r = await cli.get(url('user-search', query={'q': 'john'}))
@@ -172,7 +175,14 @@ async def test_search_for_event(factory: Factory, db_conn, cli, url, login):
     assert await db_conn.fetchval('select count(*) from search') == 1
     event_id = await factory.create_event(name='Foobar', short_description='Foo Event Appleton')
 
+    r = await cli.get(url('event-search', query={'q': 'Foobar'}))
+    assert r.status == 401, await r.text()
+
     await login()
+
+    r = await cli.get(url('event-search'))
+    assert r.status == 200, await r.text()
+    assert await r.json() == {'items': []}
 
     r = await cli.get(url('event-search', query={'q': 'Foobar'}))
     assert r.status == 200, await r.text()

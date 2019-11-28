@@ -1,10 +1,12 @@
+import json
 from datetime import datetime, timedelta
 
 import pytest
 from aiohttp.test_utils import make_mocked_request
 
 from shared.utils import RequestError, format_duration, ticket_id_signed
-from web.utils import clean_markdown, get_ip, pretty_lenient_json, split_name
+from web.utils import clean_markdown, get_ip, pretty_lenient_json, split_name, get_offset, JsonErrors, \
+    prepare_search_query
 
 
 def test_pretty_json():
@@ -98,3 +100,39 @@ def test_clean_markdown_unchanged(input):
 ])
 def test_ticket_id_signed(ticket_id, expected, settings):
     assert expected == ticket_id_signed(ticket_id, settings)
+
+
+class Request:
+    def __init__(self, **query):
+        self.query = query
+
+
+def test_get_offset():
+    assert get_offset(Request()) == 0
+    assert get_offset(Request(page='1')) == 0
+    assert get_offset(Request(page='2')) == 100
+    assert get_offset(Request(page='3')) == 200
+
+    with pytest.raises(JsonErrors.HTTPBadRequest) as exc_info:
+        get_offset(Request(page='-1'))
+    assert json.loads(exc_info.value.text) == {'message': "invalid page '-1'"}
+
+    with pytest.raises(JsonErrors.HTTPBadRequest) as exc_info:
+        get_offset(Request(page='foo'))
+    assert json.loads(exc_info.value.text) == {'message': "invalid page 'foo'"}
+
+
+@pytest.mark.parametrize('input,output', [
+    (dict(q='foobar'), 'foobar:*'),
+    (dict(q='foobar:*'), 'foobar:*'),
+    (dict(q='foo bar'), 'foo & bar:*'),
+    (dict(q='@@@@'), '@@@@:*'),
+    (dict(q='apple & pie'), 'apple & pie:*'),
+    (dict(q='(apple pie)'), 'apple & pie:*'),
+    (dict(), None),
+    (dict(q=''), None),
+    (dict(q='&&&&'), None),
+    (dict(q='!!!'), None),
+])
+def test_prepare_search_query(input, output):
+    assert prepare_search_query(Request(**input)) == output
