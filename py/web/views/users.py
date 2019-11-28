@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr
 from web.actions import ActionTypes, record_action
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread
-from web.utils import JsonErrors, get_offset, json_response, raw_json_response
+from web.utils import JsonErrors, get_offset, json_response, prepare_search_query, raw_json_response
 
 
 class UserRoles(str, Enum):
@@ -198,3 +198,33 @@ async def switch_user_status(request):
     new_status = 'suspended' if status == 'active' else 'active'
     await request['conn'].execute('UPDATE users SET status=$1 WHERE id=$2', new_status, user_id)
     return json_response(new_status=new_status)
+
+
+search_sql = """
+SELECT json_build_object(
+  'items', coalesce(array_to_json(array_agg(json_strip_nulls(row_to_json(t)))), '[]')
+) FROM (
+  SELECT
+    u.id,
+    full_name(u.first_name, u.last_name, u.email) as name,
+    u.role role_type,
+    u.status,
+    u.email,
+    u.active_ts
+  FROM search s
+  JOIN users u on s.user_id = u.id
+  WHERE s.company=:company AND s.vector @@ to_tsquery(:query)
+  ORDER BY s.active_ts DESC
+  LIMIT 30
+) t
+"""
+
+
+@is_admin
+async def user_search(request):
+    query = prepare_search_query(request)
+    if query is None:
+        return raw_json_response('{"items": []}')
+
+    json_str = await request['conn'].fetchval_b(search_sql, company=request['company_id'], query=query)
+    return raw_json_response(json_str)

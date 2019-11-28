@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {ButtonGroup, Button} from 'reactstrap'
+import {ButtonGroup, Button, InputGroup, Input, InputGroupAddon} from 'reactstrap'
 import requests from '../utils/requests'
 import {as_title, image_thumb} from '../utils'
 import MarkdownRender from './Markdown'
@@ -147,10 +147,10 @@ export class RenderList extends RenderItem {
     super(props)
     this.state = {
       items: null,
-      count: null,
       pages: null,
       buttons: null,
       formats: {},
+      search_input: '',
     }
     this.get_page = this.get_page.bind(this)
   }
@@ -172,12 +172,57 @@ export class RenderList extends RenderItem {
     return `No ${as_title(this.props.page.name)} found`
   }
 
+  search_run = async e => {
+    e && e.preventDefault()
+    if (this.state.search_input === '') {
+      this.update()
+      return
+    }
+    try {
+      const data = await requests.get(this.state.search_uri, {q: this.state.search_input})
+      this.got_data(Object.assign(data, {pages: null}))
+    } catch (error) {
+      this.props.ctx.setError(error)
+    }
+  }
+
+  search_clear = e => {
+    e && e.preventDefault()
+    this.setState({search_input: ''})
+    this.update()
+  }
+
+  search_box = () => {
+    if (!this.state.search_uri) {
+      return null
+    }
+    return (
+      <div key="search" className="my-3">
+        <InputGroup>
+          <Input
+            placeholder="Search..."
+            value={this.state.search_input}
+            onChange={e => this.setState({search_input: e.target.value})}
+            onKeyDown={e => e.key === 'Enter' && this.search_run()}
+          />
+          <InputGroupAddon addonType="append">
+            <Button color="secondary" onClick={this.search_clear}>Clear Search</Button>
+          </InputGroupAddon>
+          <InputGroupAddon addonType="append">
+            <Button color="primary" onClick={this.search_run}>Search</Button>
+          </InputGroupAddon>
+        </InputGroup>
+      </div>
+    )
+  }
+
   render () {
     if (!this.state.items) {
       return <Loading/>
     } else if (this.state.items.length === 0) {
       return [
         <Buttons key="b" buttons={this.state.buttons}/>,
+        this.search_box(),
         <div key="f" className="text-muted text-center h5 mt-4">
           {this.no_items_msg()}
         </div>,
@@ -191,6 +236,7 @@ export class RenderList extends RenderItem {
     const current_page = this.get_page()
     return [
       <Buttons key="b" buttons={this.state.buttons}/>,
+      <div key="search">{this.search_box()}</div>,
       <table key="t" className="table dashboard">
         <thead>
           <tr>
@@ -218,7 +264,10 @@ export class RenderList extends RenderItem {
       this.state.pages > 1 ? (
         <nav key="p" aria-label="Page navigation example">
           <ul className="pagination justify-content-center">
-            {[...Array(this.state.pages).keys()].map(i => i + 1).map(p => (
+            {[...Array(this.state.pages).keys()]
+              .map(i => i + 1)
+              .filter(i => i > current_page - 5 && i < current_page + 5)
+              .map(p => (
               <li key={p} className={'page-item' + (p === current_page ? ' active' : '')}>
                 <Link className="page-link" to={`?page=${p}`}>{p}</Link>
               </li>

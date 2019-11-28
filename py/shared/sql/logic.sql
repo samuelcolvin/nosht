@@ -2,7 +2,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE OR REPLACE FUNCTION update_user_ts() RETURNS trigger AS $$
   BEGIN
-    UPDATE users SET active_ts=now() WHERE id=NEW.user_id;
+    UPDATE users SET active_ts=NEW.ts WHERE id=NEW.user_id;
     return NULL;
   END;
 $$ LANGUAGE plpgsql;
@@ -87,3 +87,63 @@ CREATE OR REPLACE FUNCTION as_time_zone(v TIMESTAMPTZ, tz VARCHAR(63)) RETURNS T
     return v AT TIME ZONE tz;
   END;
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION update_user_search() RETURNS trigger AS $$
+  DECLARE
+    name TEXT = full_name(NEW.first_name, NEW.last_name, NEW.email);
+    label TEXT;
+    email TEXT = coalesce(NEW.email, '');
+  BEGIN
+    IF name IS NOT NULL THEN
+      IF (NEW.first_name IS NOT NULL OR NEW.last_name IS NOT NULL) AND NEW.email IS NOT NULL THEN
+        SELECT format('%s (%s)', name, NEW.email) INTO label;
+      ELSE
+        SELECT name INTO label;
+      END IF;
+      INSERT INTO search (company, user_id, label, active_ts, vector) VALUES (
+        NEW.company,
+        NEW.id,
+        label,
+        NEW.active_ts,
+        setweight(to_tsvector(name), 'A') ||
+        setweight(to_tsvector(email), 'B') ||
+        setweight(to_tsvector(NEW.status || ' ' || NEW.role), 'C') ||
+        to_tsvector(replace(email, '@', ' '))
+      ) ON CONFLICT (user_id) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector, active_ts=EXCLUDED.active_ts;
+    END IF;
+    return NULL;
+  END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS user_inserted ON users;
+CREATE TRIGGER user_inserted AFTER INSERT ON users FOR EACH ROW EXECUTE PROCEDURE update_user_search();
+DROP TRIGGER IF EXISTS user_updated ON users;
+CREATE TRIGGER user_updated AFTER UPDATE ON users FOR EACH ROW EXECUTE PROCEDURE update_user_search();
+
+
+CREATE OR REPLACE FUNCTION update_event_search() RETURNS trigger AS $$
+  DECLARE
+    company INT;
+    category_name TEXT;
+  BEGIN
+    SELECT c.company, c.name INTO company, category_name FROM categories c WHERE id=NEW.category;
+    INSERT INTO search (company, event, label, active_ts, vector) VALUES (
+      company,
+      NEW.id,
+      NEW.name,
+      NEW.start_ts,
+      setweight(to_tsvector(NEW.name), 'A') ||
+      setweight(to_tsvector(coalesce(NEW.short_description, '')), 'B') ||
+      setweight(to_tsvector(coalesce(NEW.location_name, '')), 'C') ||
+      setweight(to_tsvector(NEW.status || ' ' || category_name), 'C') ||
+      to_tsvector(coalesce(NEW.long_description, ''))
+    ) ON CONFLICT (event) DO UPDATE SET label=EXCLUDED.label, vector=EXCLUDED.vector, active_ts=EXCLUDED.active_ts;
+    return NULL;
+  END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS event_inserted ON events;
+CREATE TRIGGER event_inserted AFTER INSERT ON events FOR EACH ROW EXECUTE PROCEDURE update_event_search();
+DROP TRIGGER IF EXISTS event_updated ON events;
+CREATE TRIGGER event_updated AFTER UPDATE ON events FOR EACH ROW EXECUTE PROCEDURE update_event_search();

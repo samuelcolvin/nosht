@@ -34,15 +34,20 @@ export class EventsList extends RenderList {
     this.state.buttons = [
       {name: 'Create Event', link: '/create/'},
     ]
+    this.state.search_uri = '/events/search/'
   }
 
   no_items_msg () {
-    return (
-      <div>
-        Thank you for signing up - click "Create Event" to get started.
-        You may need to confirm your email address, so please check your emails and spam.
-      </div>
-    )
+    if (this.state.search_input) {
+      return <div>No events found.</div>
+    } else {
+      return (
+        <div>
+          Thank you for signing up - click "Create Event" to get started.
+          You may need to confirm your email address, so please check your emails and spam.
+        </div>
+      )
+    }
   }
 }
 

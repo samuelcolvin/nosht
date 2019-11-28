@@ -42,8 +42,8 @@ def pytest_addoption(parser):
 
 
 settings_args = dict(
-    DATABASE_URL='postgres://postgres:waffle@localhost:5432/nosht_testing',
-    REDISCLOUD_URL='redis://localhost:6379/6',
+    pg_dsn='postgres://postgres:waffle@localhost:5432/nosht_testing',
+    redis_settings='redis://localhost:6379/6',
     bcrypt_work_factor=6,
     stripe_idempotency_extra=str(uuid.uuid4()),
     s3_bucket='testingbucket.example.org',
