@@ -5,8 +5,8 @@ import pytest
 from aiohttp.test_utils import make_mocked_request
 
 from shared.utils import RequestError, format_duration, ticket_id_signed
-from web.utils import clean_markdown, get_ip, pretty_lenient_json, split_name, get_offset, JsonErrors, \
-    prepare_search_query
+from web.utils import (JsonErrors, clean_markdown, get_ip, get_offset, prepare_search_query, pretty_lenient_json,
+                       split_name)
 
 
 def test_pretty_json():
