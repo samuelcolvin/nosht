@@ -4,7 +4,7 @@ from pathlib import Path
 
 from buildpg import V
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, condecimal, constr
+from pydantic import BaseModel, condecimal, constr, validator
 
 from shared.actions import ActionTypes
 from shared.images import delete_image, upload_other
@@ -94,6 +94,10 @@ class DonationOptionBread(Bread):
         short_description: str
         long_description: str
         sort_index: int = None
+
+        @validator('live', pre=True)
+        def none_bool(cls, v):
+            return v or False
 
     browse_enabled = True
     retrieve_enabled = True

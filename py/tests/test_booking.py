@@ -126,7 +126,9 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
                 'first_name': 'Other',
                 'last_name': 'Person',
                 'email': 'other.person@example.org',
-                'extra_info': 'I love to party'
+                'extra_info': 'I love to party',
+                'cover_costs': None,
+                'allow_marketing': None,
             },
         ],
         'ticket_type': factory.ticket_type_id,

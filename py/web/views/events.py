@@ -177,6 +177,10 @@ class EventBread(Bread):
         short_description: str = None
         external_ticket_url: HttpUrl = None
 
+        @validator('public', pre=True)
+        def none_bool(cls, v):
+            return v or False
+
     browse_enabled = True
     retrieve_enabled = True
     add_enabled = True
@@ -536,6 +540,10 @@ class SetTicketTypes(UpdateView):
             slots_used: conint(ge=1)
             active: bool
             price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+
+            @validator('active', pre=True)
+            def none_bool(cls, v):
+                return v or False
 
         ticket_types: List[TicketType]
 

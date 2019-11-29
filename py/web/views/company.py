@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 
 from buildpg import V
-from pydantic import BaseModel, HttpUrl, NameEmail
+from pydantic import BaseModel, HttpUrl, NameEmail, validator
 
 from shared.images import delete_image, upload_background, upload_other
 from shared.utils import Currencies
@@ -92,6 +92,10 @@ class LinkModel(BaseModel):
     title: str
     url: HttpUrl
     new_tab: bool = True
+
+    @validator('new_tab', pre=True)
+    def none_bool(cls, v):
+        return v or False
 
 
 class FooterLinksModel(BaseModel):
