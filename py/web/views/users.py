@@ -2,7 +2,7 @@ from enum import Enum
 
 from buildpg import Func, V
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr
 
 from web.actions import ActionTypes, record_action
 from web.auth import check_session, is_admin, is_admin_or_host
@@ -25,10 +25,6 @@ class UserBread(Bread):
         phone_number: str = None
         receive_emails: bool = True
         allow_marketing: bool = False
-
-        @validator('receive_emails', 'allow_marketing', pre=True)
-        def none_bool(cls, v):
-            return v or False
 
     browse_enabled = True
     retrieve_enabled = True
@@ -101,10 +97,6 @@ class UserSelfBread(Bread):
         phone_number: str = None
         receive_emails: bool = None
         allow_marketing: bool = None
-
-        @validator('receive_emails', 'allow_marketing', pre=True)
-        def none_bool(cls, v):
-            return v or False
 
     retrieve_enabled = True
     edit_enabled = True
