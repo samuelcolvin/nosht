@@ -93,6 +93,17 @@ async def test_create_cat(cli, url, db_conn, factory: Factory, login):
     }
 
 
+async def test_create_cat_no_live(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_user()
+    await login()
+
+    data = dict(name='foobar', description='x', live=None)
+    r = await cli.json_post(url('category-add'), data=data)
+    assert r.status == 201, await r.text()
+    assert await db_conn.fetchval('SELECT live FROM categories') is False
+
+
 async def test_edit_cat(cli, url, db_conn, factory: Factory, login):
     await factory.create_company()
     await factory.create_user()

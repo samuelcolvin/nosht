@@ -59,13 +59,17 @@ class TicketModel(BaseModel):
     allow_marketing: bool = None
     cover_costs: bool = False
 
+    @validator('t', 'allow_marketing', 'cover_costs', pre=True)
+    def none_bool(cls, v):
+        return v or False
+
 
 class ReserveTickets(UpdateViewAuth):
     class Model(BaseModel):
         tickets: List[TicketModel]
         ticket_type: int
 
-        @validator('tickets', whole=True)
+        @validator('tickets')
         def check_ticket_count(cls, v):
             if not v:
                 raise ValueError('at least one ticket must be purchased')

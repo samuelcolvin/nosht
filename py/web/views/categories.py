@@ -3,7 +3,7 @@ from pathlib import Path
 from buildpg import V
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Where
-from pydantic import BaseModel, condecimal, constr
+from pydantic import BaseModel, condecimal, constr, validator
 
 from shared.images import delete_image, list_images, upload_background
 from shared.utils import slugify
@@ -120,6 +120,10 @@ class CategoryBread(Bread):
         post_booking_message: str = None
         ticket_extra_title: constr(max_length=140) = None
         ticket_extra_help_text: str = None
+
+        @validator('live', pre=True)
+        def none_bool(cls, v):
+            return v or False
 
     browse_enabled = True
     retrieve_enabled = True

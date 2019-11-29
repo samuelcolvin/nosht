@@ -77,6 +77,10 @@ class EmailDefModel(BaseModel):
             raise ValueError('invalid mustache template')
         return v
 
+    @validator('active', pre=True)
+    def none_bool(cls, v):
+        return v or False
+
 
 @is_admin
 async def email_def_edit(request):
