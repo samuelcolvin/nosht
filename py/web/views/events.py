@@ -361,6 +361,8 @@ class EventBread(Bread):
                 event_id=pk,
                 subtype='edit-event',
             )
+            if 'ticket_limit' in data:
+                await self.app['email_actor'].send_tickets_available(pk)
 
 
 async def _check_event_permissions(request, check_upcoming=False):
@@ -472,6 +474,7 @@ class CancelTickets(UpdateView):
                     app=self.app,
                     conn=self.conn,
                 )
+        await self.app['email_actor'].send_tickets_available(event_id)
 
 
 @is_admin_or_host

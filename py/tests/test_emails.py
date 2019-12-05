@@ -748,3 +748,81 @@ async def test_custom_email_def_ok(email_actor: EmailActor, factory: Factory, du
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
     assert '<p>DETAILS: <h1>details</h1></p>' in email['part:text/html']
+
+
+async def test_send_tickets_available(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat(ticket_extra_title='Foo Bar')
+    await factory.create_user()
+    await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)))
+
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
+
+    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert email['To'] == 'anne anne <anne@example.org>'
+    assert 'trigger=event-tickets-available' in email['X-SES-MESSAGE-TAGS']
+    plain = email['part:text/plain']
+    assert 'Great news! New tickets have become available for **The Event Name**.\n' in plain
+    assert '<a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>' in plain
+
+
+async def test_send_tickets_available_one_left(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat(ticket_extra_title='Foo Bar')
+    await factory.create_user()
+    await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)), ticket_limit=1)
+
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
+
+    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert email['To'] == 'anne anne <anne@example.org>'
+    assert 'trigger=event-tickets-available' in email['X-SES-MESSAGE-TAGS']
+
+
+async def test_tickets_available_none(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat(ticket_extra_title='Foo Bar')
+    await factory.create_user()
+    await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)), ticket_limit=1)
+
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+    res = await factory.create_reservation(anne)
+    await factory.book_free(res, anne)
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, ben)
+
+    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert len(dummy_server.app['emails']) == 0
+
+
+async def test_send_tickets_available_paste(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat(ticket_extra_title='Foo Bar')
+    await factory.create_user()
+    await factory.create_event(start_ts=london.localize(datetime(2010, 6, 28, 19, 0)))
+
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
+
+    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert len(dummy_server.app['emails']) == 0
+
+
+async def test_send_tickets_available_no_one(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat(ticket_extra_title='Foo Bar')
+    await factory.create_user()
+    await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)))
+
+    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert len(dummy_server.app['emails']) == 0

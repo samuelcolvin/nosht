@@ -191,7 +191,7 @@ CREATE INDEX ticket_created_ts ON tickets USING btree (created_ts);
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (
   'ticket-buyer', 'ticket-other', 'event-update', 'event-reminder', 'donation-thanks', 'event-booking',
   'event-host-created', 'event-host-update', 'event-host-final-update', 'password-reset', 'account-created',
-  'admin-notification'
+  'admin-notification', 'event-tickets-available'
 );
 
 CREATE TABLE email_definitions (
