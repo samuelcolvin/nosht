@@ -2,16 +2,19 @@ import logging
 from time import time
 from typing import List
 
+from aiohttp.web_exceptions import HTTPTemporaryRedirect
 from asyncpg import CheckViolationError
 from buildpg import MultipleValues, Values
 from buildpg.asyncpg import BuildPgConnection
 from pydantic import BaseModel, EmailStr, constr, validator
+from websocket._handshake import compare_digest
 
+from shared.utils import waiting_list_sig
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_auth
 from web.bread import UpdateView
 from web.stripe import BookFreeModel, Reservation, book_free, stripe_buy_intent
-from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, request_root
 
 from .events import check_event_sig
 
@@ -260,3 +263,17 @@ async def waiting_list_add(request):
         user_id,
     )
     return json_response(status='ok')
+
+
+async def waiting_list_remove(request):
+    event_id = int(request.match_info['id'])
+    user_id = int(request.match_info['user_id'])
+    url_base = request_root(request)
+
+    given_sig = request.query.get('sig', '')
+    expected_sig = waiting_list_sig(event_id, user_id, request.app['settings'])
+    if not compare_digest(given_sig, expected_sig):
+        raise HTTPTemporaryRedirect(location=url_base + '/unsubscribe-invalid/')
+
+    await request['conn'].execute('delete from waiting_list where event=$1 and user_id=$2', event_id, user_id)
+    raise HTTPTemporaryRedirect(location=url_base + '/waiting-list-removed/')

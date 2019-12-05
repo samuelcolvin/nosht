@@ -30,7 +30,14 @@ from .views.auth import (
     set_password,
     unsubscribe,
 )
-from .views.booking import BookFreeTickets, CancelReservedTickets, ReserveTickets, booking_info, waiting_list_add
+from .views.booking import (
+    BookFreeTickets,
+    CancelReservedTickets,
+    ReserveTickets,
+    booking_info,
+    waiting_list_add,
+    waiting_list_remove,
+)
 from .views.categories import (
     CategoryBread,
     category_add_image,
@@ -155,6 +162,11 @@ def create_app(*, settings: Settings = None, logging_client=None):
             web.get(r'/events/{id:\d+}/updates/list/', event_updates_sent, name='event-updates-sent'),
             web.post(r'/events/{id:\d+}/switch-highlight/', switch_highlight, name='event-switch-highlight'),
             web.post(r'/events/{id:\d+}/waiting-list/add/', waiting_list_add, name='event-waiting-list-add'),
+            web.get(
+                r'/events/{id:\d+}/waiting-list/remove/{user_id:\d+}/',
+                waiting_list_remove,
+                name='event-waiting-list-remove',
+            ),
             # event public views
             web.post(r'/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
             web.post(r'/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),

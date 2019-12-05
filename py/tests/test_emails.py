@@ -750,7 +750,7 @@ async def test_custom_email_def_ok(email_actor: EmailActor, factory: Factory, du
     assert '<p>DETAILS: <h1>details</h1></p>' in email['part:text/html']
 
 
-async def test_send_tickets_available(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+async def test_send_tickets_available(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):
     await factory.create_company()
     await factory.create_cat(ticket_extra_title='Foo Bar')
     await factory.create_user()
@@ -768,6 +768,13 @@ async def test_send_tickets_available(email_actor: EmailActor, factory: Factory,
     plain = email['part:text/plain']
     assert 'Great news! New tickets have become available for **The Event Name**.\n' in plain
     assert '<a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>' in plain
+    remove_link = re.search(r'(/api/events/.*?/waiting-list/.*?)\)', plain).group(1)
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+    r = await cli.get(remove_link, allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/waiting-list-removed/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0
 
 
 async def test_send_tickets_available_one_left(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):

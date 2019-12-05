@@ -59,6 +59,12 @@ def unsubscribe_sig(user_id, settings: Settings):
     return hmac.new(settings.auth_key.encode(), b'unsub:%d' % user_id, digestmod=hashlib.md5).hexdigest()
 
 
+def waiting_list_sig(event_id, user_id, settings: Settings):
+    # md5 is fine here as it doesn't have to be especially secure and md5 will yield a shorter signature
+    msg = b'waiting-list:%d,%d' % (event_id, user_id)
+    return hmac.new(settings.auth_key.encode(), msg, digestmod=hashlib.md5).hexdigest()
+
+
 def display_cash(amount: Optional[float], currency: Currencies):
     symbol = CURRENCY_LOOKUP[currency]
     return f'{symbol}{amount:0,.2f}'

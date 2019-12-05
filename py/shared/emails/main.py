@@ -18,6 +18,7 @@ from ..utils import (
     password_reset_link,
     static_map_link,
     ticket_id_signed,
+    waiting_list_sig,
 )
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail
@@ -282,8 +283,8 @@ class EmailActor(BaseEmailActor):
                 # no tickets remaining, don't send
                 return
 
-            users = await conn.fetch('select user_id from waiting_list where event=$1', event_id)
-            if not users:
+            user_ids = await conn.fetchval('select array_agg(user_id) from waiting_list where event=$1', event_id)
+            if not user_ids:
                 # no one on the waiting list
                 return
 
@@ -309,9 +310,16 @@ class EmailActor(BaseEmailActor):
         ctx = {
             'event_link': data['event_link'],
             'event_name': data['event_name'],
-            'remove_link': '/testing',
         }
-        users = [UserEmail(r[0], ctx) for r in users]
+        event_id = data['event_id']
+
+        def remove_link(user_id):
+            return (
+                f'/api/events/{event_id}/waiting-list/remove/{user_id}/'
+                f'?sig={waiting_list_sig(event_id, user_id, self.settings)}'
+            )
+
+        users = [UserEmail(uid, {'remove_link': remove_link(uid), **ctx},) for uid in user_ids]
         await self.send_emails.direct(data['company_id'], Triggers.event_tickets_available, users)
 
     @cron(minute=30)
