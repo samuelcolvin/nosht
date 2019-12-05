@@ -143,6 +143,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
                 remove_event_secondary_image,
                 name='event-remove-image-secondary',
             ),
+            web.post(r'/events/{id:\d+}/waiting-list/add/', WaitingListAdd.view(), name='event-waiting-list-add'),
             web.get(r'/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
             web.post(r'/events/{id:\d+}/tickets/{tid:\d+}/cancel/', CancelTickets.view(), name='event-tickets-cancel'),
             web.get(r'/events/{id:\d+}/tickets/export.csv', event_tickets_export, name='event-tickets-export'),

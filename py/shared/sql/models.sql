@@ -295,3 +295,12 @@ CREATE INDEX IF NOT EXISTS search_event ON search USING btree (event);
 CREATE INDEX IF NOT EXISTS search_vector ON search USING gin (vector);
 CREATE INDEX IF NOT EXISTS search_active_ts ON search USING btree (active_ts);
 -- } search
+
+-- { waiting-list
+CREATE TABLE IF NOT EXISTS waiting_list (
+  id SERIAL PRIMARY KEY,
+  event INT REFERENCES events ON DELETE CASCADE,
+  user_id INT REFERENCES users ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS waiting_list_event_users ON waiting_list USING btree (event, user_id);
+-- } waiting-list
