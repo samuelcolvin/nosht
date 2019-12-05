@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from copy import deepcopy
 from pathlib import Path
 
 from aiohttp.web import Response
@@ -56,7 +57,7 @@ CSP = {
 
 
 def get_csp_headers(settings: Settings):
-    csp = dict(CSP)
+    csp = deepcopy(CSP)
     csp['img-src'].append(settings.csp_image_source)
 
     raven_dsn = os.getenv('RAVEN_DSN_CSP', None) or os.getenv('RAVEN_DSN', None)

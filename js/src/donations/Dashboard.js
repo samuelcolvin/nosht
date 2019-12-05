@@ -127,7 +127,7 @@ class Donations extends React.Component {
 export class DonationOptionDetails extends RenderDetails {
   constructor (props) {
     super(props)
-    this.uri = `/dashboard/donation-options/${this.id}/`
+    this.uri = `/dashboard/donation-options/${this.id()}/`
     this.state.formats = {
       amount: {render: v => <Money>{v}</Money>},
       category_name: {title: 'Category'},
@@ -143,7 +143,7 @@ export class DonationOptionDetails extends RenderDetails {
       {name: 'Edit', link: this.uri + 'edit/'},
       {
         name: 'Delete Donation Option',
-        action: `/donation-options/${this.id}/delete/`,
+        action: `/donation-options/${this.id()}/delete/`,
         btn_color: 'danger',
         confirm_msg: 'Are you sure you want to permanently delete this donation option? This cannot be undone.',
         success_msg: 'Category deleted.',
@@ -158,7 +158,7 @@ export class DonationOptionDetails extends RenderDetails {
     try {
       r = await Promise.all([
         requests.get('/events/categories/'),
-        requests.get(`/donation-options/${this.id}/donations/`),
+        requests.get(`/donation-options/${this.id()}/donations/`),
       ])
     } catch (error) {
       this.props.ctx.setError(error)
@@ -177,14 +177,14 @@ export class DonationOptionDetails extends RenderDetails {
                  success_msg="Donation Option Updated"
                  initial={this.state.item}
                  update={this.update}
-                 action={`/donation-options/${this.id}/`}
+                 action={`/donation-options/${this.id()}/`}
                  fields={get_fields(this.state.categories)}/>,
       <ModalDropzoneForm key="d"
                          parent_uri={this.uri}
                          regex={/set-image\/$/}
                          update={this.update}
                          title="Upload Image"
-                         action={`donation-options/${this.id}/upload-image/`}
+                         action={`donation-options/${this.id()}/upload-image/`}
                          help_text="Images must be at least 640px x 480px."/>,
     ]
   }
