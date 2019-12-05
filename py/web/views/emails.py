@@ -11,18 +11,15 @@ from web.utils import JsonErrors, json_response, parse_request
 @is_admin
 async def email_def_browse(request):
     results = await request['conn'].fetch(
-        'SELECT trigger, active FROM email_definitions WHERE company=$1',
-        request['company_id']
+        'SELECT trigger, active FROM email_definitions WHERE company=$1', request['company_id']
     )
     lookup = {r['trigger']: r for r in results}
-    return json_response(items=[
-        {
-            'trigger': t,
-            'customised': t in lookup,
-            'active': lookup[t]['active'] if t in lookup else True,
-        }
-        for t in Triggers
-    ])
+    return json_response(
+        items=[
+            {'trigger': t, 'customised': t in lookup, 'active': lookup[t]['active'] if t in lookup else True}
+            for t in Triggers
+        ]
+    )
 
 
 def get_trigger(request):
@@ -95,11 +92,7 @@ async def email_def_edit(request):
           body=EXCLUDED.body,
           active=EXCLUDED.active
         """,
-        values=Values(
-            trigger=trigger,
-            company=request['company_id'],
-            **m.dict()
-        )
+        values=Values(trigger=trigger, company=request['company_id'], **m.dict()),
     )
     return json_response(status='ok')
 
@@ -108,9 +101,7 @@ async def email_def_edit(request):
 async def clear_email_def(request):
     trigger = get_trigger(request)
     r = await request['conn'].execute(
-        'DELETE FROM email_definitions WHERE trigger=$1 AND company=$2',
-        trigger,
-        request['company_id'],
+        'DELETE FROM email_definitions WHERE trigger=$1 AND company=$2', trigger, request['company_id'],
     )
     if r == 'DELETE 1':
         return json_response(status='ok')

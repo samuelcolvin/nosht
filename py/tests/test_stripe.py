@@ -77,9 +77,7 @@ async def test_real_refund(cli, url, login, db_conn, factory: Factory):
 
     await login()
     data = {
-        'tickets': [
-            {'t': True, 'first_name': 'Ticket', 'last_name': 'Buyer', 'email': 'ticket.buyer@example.org'},
-        ],
+        'tickets': [{'t': True, 'first_name': 'Ticket', 'last_name': 'Buyer', 'email': 'ticket.buyer@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -94,10 +92,7 @@ async def test_real_refund(cli, url, login, db_conn, factory: Factory):
     assert len(r['data']) == 1
     payment_intent_id = r['data'][0]['id']
 
-    r = await stripe.post(
-        f'payment_intents/{payment_intent_id}/confirm',
-        payment_method='pm_card_visa'
-    )
+    r = await stripe.post(f'payment_intents/{payment_intent_id}/confirm', payment_method='pm_card_visa')
     assert r['status'] == 'succeeded'
     charge_id = r['charges']['data'][0]['id']
 
@@ -144,20 +139,8 @@ async def test_get_payment_method(cli, url, login, factory: Factory):
     assert r.status == 200, await r.text()  # both db customer_id and payment_method customer_id are None
     data = await r.json()
     assert data == {
-        'card': {
-            'brand': 'amex',
-            'exp_month': AnyInt(),
-            'exp_year': AnyInt(),
-            'last4': '8431',
-        },
-        'address': {
-            'city': None,
-            'country': None,
-            'line1': None,
-            'line2': None,
-            'postal_code': None,
-            'state': None,
-        },
+        'card': {'brand': 'amex', 'exp_month': AnyInt(), 'exp_year': AnyInt(), 'last4': '8431'},
+        'address': {'city': None, 'country': None, 'line1': None, 'line2': None, 'postal_code': None, 'state': None},
         'name': None,
     }
 
@@ -174,26 +157,21 @@ async def test_real_webhook(cli, url, login, db_conn, factory: Factory, settings
 
     await login()
     data = {
-        'tickets': [
-            {'t': True, 'email': 'frank@example.org'},
-        ],
+        'tickets': [{'t': True, 'email': 'frank@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
     data = await r.json()
     client_secret = data['client_secret']
-    payment_intent_id = client_secret[:client_secret.index('_secret_')]
+    payment_intent_id = client_secret[: client_secret.index('_secret_')]
 
     app = cli.app['main_app']
     stripe = StripeClient(app, stripe_secret_key)
     await stripe.post(f'payment_intents/{payment_intent_id}', payment_method='card_1FEzKsC8giHSw9x7rBL3xl0j')
     payment_intent = await stripe.post(f'payment_intents/{payment_intent_id}/confirm')
 
-    data = {
-        'type': 'payment_intent.succeeded',
-        'data': {'object': payment_intent}
-    }
+    data = {'type': 'payment_intent.succeeded', 'data': {'object': payment_intent}}
     body = json.dumps(data)
     t = int(time())
     sig = hmac.new(b'stripe_webhook_secret_xxx', f'{t}.{body}'.encode(), hashlib.sha256).hexdigest()
@@ -221,9 +199,7 @@ async def test_pay_cli(cli, url, login, dummy_server, factory: Factory, db_conn)
 
     await login()
     data = {
-        'tickets': [
-            {'t': True, 'email': 'frank@example.org'},
-        ],
+        'tickets': [{'t': True, 'email': 'frank@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -324,9 +300,7 @@ async def test_existing_customer(cli, url, login, dummy_server, factory: Factory
 
     await login()
     data = {
-        'tickets': [
-            {'t': True, 'email': 'frank@example.org'},
-        ],
+        'tickets': [{'t': True, 'email': 'frank@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -346,9 +320,7 @@ async def test_existing_customer_no_customer(cli, url, login, dummy_server, fact
 
     await login()
     data = {
-        'tickets': [
-            {'t': True, 'email': 'frank@example.org'},
-        ],
+        'tickets': [{'t': True, 'email': 'frank@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -371,9 +343,7 @@ async def test_buy_webhook_repeat(factory: Factory, cli, url, login, db_conn):
     await login(email='ticket.buyer@example.org')
 
     data = {
-        'tickets': [
-            {'t': True, 'email': 'ticket.buyer@example.org', 'cover_costs': True},
-        ],
+        'tickets': [{'t': True, 'email': 'ticket.buyer@example.org', 'cover_costs': True}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -446,15 +416,8 @@ async def test_get_payment_method_good(cli, url, login, factory: Factory):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'card': {
-            'brand': 'Visa',
-            'exp_month': 12,
-            'exp_year': 2032,
-            'last4': 1234,
-        },
-        'address': {
-            'line1': 'hello,',
-        },
+        'card': {'brand': 'Visa', 'exp_month': 12, 'exp_year': 2032, 'last4': 1234},
+        'address': {'line1': 'hello,'},
         'name': 'Testing Calls',
     }
 

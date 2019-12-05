@@ -51,11 +51,7 @@ def pretty_lenient_json(data):
 
 
 def raw_json_response(json_str, status_=200):
-    return Response(
-        body=json_str.encode() + b'\n',
-        status=status_,
-        content_type=JSON_CONTENT_TYPE,
-    )
+    return Response(body=json_str.encode() + b'\n', status=status_, content_type=JSON_CONTENT_TYPE,)
 
 
 def json_response(*, status_=200, list_=None, headers_=None, **data):
@@ -63,7 +59,7 @@ def json_response(*, status_=200, list_=None, headers_=None, **data):
         body=json.dumps(data if list_ is None else list_).encode(),
         status=status_,
         content_type=JSON_CONTENT_TYPE,
-        headers=headers_
+        headers=headers_,
     )
 
 
@@ -83,11 +79,7 @@ async def parse_request(request, model: Type[T], *, headers_=None) -> T:
             error_msg = 'Invalid Data'
             error_details = e.errors()
 
-    raise JsonErrors.HTTPBadRequest(
-        message=error_msg,
-        details=error_details,
-        headers_=headers_
-    )
+    raise JsonErrors.HTTPBadRequest(message=error_msg, details=error_details, headers_=headers_)
 
 
 async def parse_request_ignore_missing(request, model: Type[T], *, headers_=None) -> T:
@@ -133,7 +125,7 @@ class JsonErrors:
                 text=pretty_lenient_json(data),
                 content_type=JSON_CONTENT_TYPE,
                 headers=headers_,
-                reason=self.custom_reason
+                reason=self.custom_reason,
             )
 
     class HTTPBadRequest(_HTTPClientErrorJson):

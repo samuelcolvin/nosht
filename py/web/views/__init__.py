@@ -88,22 +88,24 @@ async def sitemap(request):
     await response.prepare(request)
 
     await response.write(
-        b'<?xml version="1.0" encoding="UTF-8"?>\n'
-        b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        b'<?xml version="1.0" encoding="UTF-8"?>\n' b'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     )
     try:
         company_domain = await request['conn'].fetchval(
-            'SELECT domain FROM companies WHERE id=$1', request['company_id'])
+            'SELECT domain FROM companies WHERE id=$1', request['company_id']
+        )
 
         async def write_url(uri_, latest_update_, priority):
-            await response.write((
-                f'<url>'
-                f'<loc>https://{company_domain}/{uri_}</loc>'
-                f'<lastmod>{latest_update_:%Y-%m-%d}</lastmod>'
-                f'<changefreq>daily</changefreq>'
-                f'<priority>{priority:0.1f}</priority>'
-                f'</url>\n'
-            ).encode())
+            await response.write(
+                (
+                    f'<url>'
+                    f'<loc>https://{company_domain}/{uri_}</loc>'
+                    f'<lastmod>{latest_update_:%Y-%m-%d}</lastmod>'
+                    f'<changefreq>daily</changefreq>'
+                    f'<priority>{priority:0.1f}</priority>'
+                    f'</url>\n'
+                ).encode()
+            )
 
         cats = {}
         async with request['conn'].transaction():

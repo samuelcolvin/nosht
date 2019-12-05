@@ -5,6 +5,7 @@ class Triggers(str, Enum):
     """
     Must match EMAIL_TRIGGERS in sql/models.sql
     """
+
     ticket_buyer = 'ticket-buyer'
     ticket_other = 'ticket-other'
     event_update = 'event-update'
@@ -67,7 +68,7 @@ Payment:
 {{#card_details}}
 _(Card Charged: {{ card_details }})_
 {{/card_details}}
-"""
+""",
     },
     Triggers.ticket_other: {
         'subject': '{{{ event_name }}} Ticket',
@@ -101,7 +102,7 @@ Event:
 
 **This is your ticket**, please bring the email (and particularly the ticket reference above) \
 to the event.
-"""
+""",
     },
     Triggers.event_update: {
         'subject': '{{{ subject }}}',
@@ -112,7 +113,7 @@ Hi {{ first_name }},
 {{{ message }}}
 
 {{ primary_button(View Event | {{ event_link }}) }}
-"""
+""",
     },
     Triggers.event_reminder: {
         'subject': '{{{ event_name }}} Upcoming',
@@ -133,10 +134,9 @@ Event:
 {{#static_map}}
 [![{{ event_location }}]({{{ static_map }}})]({{{ google_maps_url }}})
 {{/static_map}}
-"""
+""",
     },
     Triggers.donation_thanks: {
-
         'subject': 'Thanks for your donation',
         'title': '{{ company_name }}',
         'body': """
@@ -152,7 +152,7 @@ You did not enable gift aid.
 {{/gift_aid_enabled}}
 
 _(Card Charged: {{ card_details }})_
-"""
+""",
     },
     Triggers.event_host_update: {
         'subject': '{{{ event_name }}} Update from {{{ company_name }}}',
@@ -191,7 +191,7 @@ Share this link via email or social media to garner further bookings.
 {{/fully_booked}}
 
 {{ primary_button(Event Dashboard | {{ event_dashboard_link }}) }}
-"""
+""",
     },
     Triggers.event_host_created: {
         'subject': '{{{ event_name }}} Created for {{{ company_name }}}',
@@ -206,7 +206,7 @@ You can access all information, including tickets sold, guest lists etc... \
 related to your event at any time by using the following link:
 
 {{ primary_button(Event Dashboard | {{ event_dashboard_link }}) }}
-"""
+""",
     },
     Triggers.event_host_final_update: {
         'subject': '{{{ event_name }}} Final Update from {{{ company_name }}}',
@@ -227,7 +227,7 @@ by visiting the event page:
 We hope everything goes well and we look forward to hearing about it afterwards.
 
 Good luck!
-"""
+""",
     },
     Triggers.password_reset: {
         'subject': '{{{ company_name }}} Password Reset',
@@ -238,7 +238,7 @@ Hi {{ first_name }},
 Please use the link below to reset your password for {{ company_name }}.
 
 {{ primary_button(Reset Your Password | {{ reset_link }}) }}
-"""
+""",
     },
     Triggers.account_created: {
         'subject': (
@@ -266,7 +266,7 @@ You can now create and publish events whenever you wish.
 
 {{ primary_button(Create & Publish Events | {{ events_link }}) }}
 {{/confirm_email_link}}
-"""
+""",
     },
     Triggers.admin_notification: {
         'subject': 'Update: {{{ summary }}}',
@@ -279,6 +279,6 @@ You can now create and publish events whenever you wish.
 {{#action_link}}
 {{ primary_button({{ action_label }} | {{ action_link }}) }}
 {{/action_link}}
-"""
+""",
     },
 }

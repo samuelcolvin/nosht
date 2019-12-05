@@ -31,11 +31,7 @@ def remove_port(url):
 
 async def invalidate_session(request, reason):
     session = request['session']
-    extra = {
-        'age': int(time()) - session.created,
-        'reason': reason,
-        'email': session.get('email')
-    }
+    extra = {'age': int(time()) - session.created, 'reason': reason, 'email': session.get('email')}
     user_id = session.get('user_id')
     session.invalidate()
     await record_action(request, user_id, ActionTypes.logout, **extra)
@@ -138,11 +134,7 @@ class FacebookSiwModel(BaseModel):
     user_id: str
 
     class Config:
-        fields = {
-            'signed_request': 'signedRequest',
-            'access_token': 'accessToken',
-            'user_id': 'userID'
-        }
+        fields = {'signed_request': 'signedRequest', 'access_token': 'accessToken', 'user_id': 'userID'}
 
 
 async def facebook_get_details(m: FacebookSiwModel, app):
@@ -159,10 +151,11 @@ async def facebook_get_details(m: FacebookSiwModel, app):
     signed_data = json.loads(padded_urlsafe_b64decode(data).decode())
 
     # can add 'picture' here, but it seems to be low res.
-    details_url = settings.facebook_siw_url + '?' + urlencode({
-        'access_token': m.access_token,
-        'fields': ['email', 'first_name', 'last_name']
-    })
+    details_url = (
+        settings.facebook_siw_url
+        + '?'
+        + urlencode({'access_token': m.access_token, 'fields': ['email', 'first_name', 'last_name']})
+    )
     async with app['http_client'].get(details_url) as r:
         if r.status != 200:
             raise RequestError(r.status, details_url, text=await r.text())
@@ -171,8 +164,9 @@ async def facebook_get_details(m: FacebookSiwModel, app):
     if not (response_data['id'] == signed_data['user_id'] == m.user_id):
         raise JsonErrors.HTTPBadRequest(message='facebook userID not consistent')
     if not response_data.get('email') or not response_data.get('last_name'):
-        raise JsonErrors.HTTPBadRequest(message='Your Facebook profile needs to have both a last name and '
-                                                'email address associated with it.')
+        raise JsonErrors.HTTPBadRequest(
+            message='Your Facebook profile needs to have both a last name and ' 'email address associated with it.'
+        )
 
     return {
         'email': response_data['email'].lower(),
@@ -201,6 +195,11 @@ async def check_grecaptcha(m: GrecaptchaModel, request, *, error_headers=None):
     if data['success'] and remove_port(request.host) == data['hostname']:
         logger.info('grecaptcha success')
     else:
-        logger.warning('grecaptcha failure, path="%s" ip=%s response=%s', request.path, client_ip, data,
-                       extra={'data': {'grecaptcha_response': data}})
+        logger.warning(
+            'grecaptcha failure, path="%s" ip=%s response=%s',
+            request.path,
+            client_ip,
+            data,
+            extra={'data': {'grecaptcha_response': data}},
+        )
         raise JsonErrors.HTTPBadRequest(message='Invalid recaptcha value', headers_=error_headers)

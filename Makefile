@@ -1,5 +1,7 @@
 .DEFAULT_GOAL:=all
 HEROKU_APP?=nosht
+isort = isort -rc py
+black = black -S -l 120 --target-version py36 py
 
 .PHONY: install
 install:
@@ -7,14 +9,16 @@ install:
 	pip install -r py/requirements.txt
 	pip install -r py/requirements-dev.txt
 
-.PHONY: isort
-isort:
-	isort -rc -w 120 py
+.PHONY: format
+format:
+	$(isort)
+	$(black)
 
 .PHONY: lint
 lint:
 	flake8 py
-	isort -rc -w 120 py --check-only
+	$(isort) --check-only
+	$(black) --check
 	./py/tests/check_debug.sh
 	cd js && yarn lint && cd ..
 

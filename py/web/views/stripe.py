@@ -53,15 +53,17 @@ async def stripe_webhook(request):
 
     charge = data['charges']['data'][0]
     card = charge['payment_method_details']['card']
-    action_extra = json.dumps({
-        'charge_id': charge['id'],
-        'stripe_balance_transaction': charge['balance_transaction'],
-        'brand': card['brand'],
-        'card_last4': card['last4'],
-        'card_expiry': f"{card['exp_month']}/{card['exp_year'] - 2000}",
-        '3DS': card['three_d_secure'],
-        'payment_metadata': metadata.dict(),
-    })
+    action_extra = json.dumps(
+        {
+            'charge_id': charge['id'],
+            'stripe_balance_transaction': charge['balance_transaction'],
+            'brand': card['brand'],
+            'card_last4': card['last4'],
+            'card_expiry': f"{card['exp_month']}/{card['exp_year'] - 2000}",
+            '3DS': card['three_d_secure'],
+            'payment_metadata': metadata.dict(),
+        }
+    )
 
     if metadata.purpose == MetadataPurpose.buy_tickets:
         try:
@@ -115,12 +117,13 @@ async def _complete_purchase(
             user_id=metadata.user_id,
             type=ActionTypes.buy_tickets,
             event=metadata.event_id,
-            extra=action_extra
-        )
+            extra=action_extra,
+        ),
     )
     await conn.execute(
         "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
-        action_id, metadata.reserve_action_id,
+        action_id,
+        metadata.reserve_action_id,
     )
     await conn.execute('select check_tickets_remaining($1, $2)', metadata.event_id, settings.ticket_ttl)
     return action_id
@@ -139,11 +142,12 @@ async def _complete_donation(
         from actions where id=$1
         for update
         """,
-        metadata.reserve_action_id
+        metadata.reserve_action_id,
     )
     if complete:
-        logger.warning('donation already performed with action %s', metadata.reserve_action_id,
-                       extra={'webhook': webhook})
+        logger.warning(
+            'donation already performed with action %s', metadata.reserve_action_id, extra={'webhook': webhook}
+        )
         raise http_exc(text='donation already performed', status=240)
 
     action_id = await conn.fetchval_b(
@@ -154,24 +158,17 @@ async def _complete_donation(
             type=ActionTypes.donate,
             event=metadata.event_id,
             extra=action_extra,
-        )
+        ),
     )
     gift_aid = bool(gift_aid_info)
     don_values = dict(
-        donation_option=int(donation_option_id),
-        amount=amount_cents / 100,
-        gift_aid=gift_aid,
-        action=action_id,
+        donation_option=int(donation_option_id), amount=amount_cents / 100, gift_aid=gift_aid, action=action_id,
     )
     if gift_aid:
         don_values.update(json.loads(gift_aid_info))
-    await conn.fetchval_b(
-        'INSERT INTO donations (:values__names) VALUES :values',
-        values=Values(**don_values)
-    )
+    await conn.fetchval_b('INSERT INTO donations (:values__names) VALUES :values', values=Values(**don_values))
     await conn.execute(
-        """update actions set extra=extra || '{"complete": true}' where id=$1""",
-        metadata.reserve_action_id,
+        """update actions set extra=extra || '{"complete": true}' where id=$1""", metadata.reserve_action_id,
     )
     return action_id
 
@@ -190,6 +187,6 @@ async def get_payment_method_details(request):
         company_id=request['company_id'],
         user_id=request['session']['user_id'],
         app=request.app,
-        conn=request['conn']
+        conn=request['conn'],
     )
     return json_response(**data)

@@ -13,14 +13,11 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
     await factory.create_cat()
     await factory.create_user()
     await factory.create_event(
-        status='published',
-        location_name='Testing Location',
-        location_lat=51.5,
-        location_lng=-0.5
+        status='published', location_name='Testing Location', location_lat=51.5, location_lng=-0.5
     )
     cat_slug, event_slug = await db_conn.fetchrow(
         'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
-        factory.event_id
+        factory.event_id,
     )
     r = await cli.get(url('event-get-public', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
@@ -37,11 +34,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'long_description': RegexStr(r'.*'),
             'external_ticket_url': None,
             'category_content': None,
-            'location': {
-                'name': 'Testing Location',
-                'lat': 51.5,
-                'lng': -0.5,
-            },
+            'location': {'name': 'Testing Location', 'lat': 51.5, 'lng': -0.5},
             'start_ts': '2020-06-28T19:00:00',
             'tz': 'BST',
             'duration': 3600,
@@ -74,7 +67,7 @@ async def test_event_not_public(cli, url, factory: Factory, db_conn):
 
     cat_slug, event_slug = await db_conn.fetchrow(
         'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
-        factory.event_id
+        factory.event_id,
     )
     r = await cli.get(url('event-get-public', category=cat_slug, event=event_slug))
     assert r.status == 404, await r.text()
@@ -92,7 +85,8 @@ async def test_private_event_good(cli, url, factory: Factory, db_conn, settings)
         SELECT event_link(cat.slug, e.slug, e.public, $2)
         FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1
         """,
-        factory.event_id, settings.auth_key
+        factory.event_id,
+        settings.auth_key,
     )
     _, cat_slug, event_slug, sig = event_link.strip('/').split('/')
     r = await cli.get(url('event-get-private', category=cat_slug, event=event_slug, sig=sig))
@@ -112,7 +106,8 @@ async def test_private_event_bad_sig(cli, url, factory: Factory, db_conn, settin
         SELECT event_link(cat.slug, e.slug, e.public, $2)
         FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1
         """,
-        factory.event_id, settings.auth_key
+        factory.event_id,
+        settings.auth_key,
     )
     _, cat_slug, event_slug, sig = event_link.strip('/').split('/')
     r = await cli.get(url('event-get-private', category=cat_slug, event=event_slug, sig=sig + 'x'))
@@ -263,17 +258,10 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
     data = dict(
         name='foobar',
         category=factory.category_id,
-        location={
-            'lat': 50,
-            'lng': 0,
-            'name': 'London',
-        },
-        date={
-            'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'),
-            'dur': 7200,
-        },
+        location={'lat': 50, 'lng': 0, 'name': 'London'},
+        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 7200},
         timezone='Europe/London',
-        long_description='# title\nI love to **party**'
+        long_description='# title\nI love to **party**',
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
@@ -323,14 +311,14 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
     # debug(email)
     assert email['Subject'] == 'Update: Frank Spencer created an event "foobar"'
     assert email['part:text/plain'] == (
-        'Testing update:\n'
-        '\n'
-        'Event "foobar" (Supper Clubs) created by "Frank Spencer" (admin), click the link below to view the event.\n'
-        '\n'
-        '<div class="button">\n'
-        '  <a href="https://127.0.0.1/dashboard/events/%s/"><span>View Event</span></a>\n'
-        '</div>\n'
-    ) % event_id
+        f'Testing update:\n'
+        f'\n'
+        f'Event "foobar" (Supper Clubs) created by "Frank Spencer" (admin), click the link below to view the event.\n'
+        f'\n'
+        f'<div class="button">\n'
+        f'  <a href="https://127.0.0.1/dashboard/events/{event_id}/"><span>View Event</span></a>\n'
+        f'</div>\n'
+    )
 
 
 async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login):
@@ -344,12 +332,9 @@ async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login
         category=factory.category_id,
         public=False,
         location={'lat': 50, 'lng': 0, 'name': 'London'},
-        date={
-            'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'),
-            'dur': None,
-        },
+        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': None},
         timezone='Europe/London',
-        long_description='I love to party'
+        long_description='I love to party',
     )
     r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 201, await r.text()
@@ -416,17 +401,10 @@ async def test_create_timezone(cli, url, db_conn, factory: Factory, login):
     data = dict(
         name='foobar',
         category=factory.category_id,
-        location={
-            'lat': 50,
-            'lng': 0,
-            'name': 'London',
-        },
-        date={
-            'dt': datetime(2020, 6, 1, 19, 0).isoformat(),
-            'dur': 7200,
-        },
+        location={'lat': 50, 'lng': 0, 'name': 'London'},
+        date={'dt': datetime(2020, 6, 1, 19, 0).isoformat(), 'dur': 7200},
         timezone='America/New_York',
-        long_description='# title\nI love to **party**'
+        long_description='# title\nI love to **party**',
     )
     r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 201, await r.text()
@@ -450,7 +428,7 @@ async def test_create_external_ticketing(cli, url, db_conn, factory: Factory, lo
         date={'dt': datetime(2020, 6, 1, 19, 0).isoformat(), 'dur': 7200},
         external_ticket_url='https://www.example.com/the-test-event/',
         timezone='America/New_York',
-        long_description='# title\nI love to **party**'
+        long_description='# title\nI love to **party**',
     )
     r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 201, await r.text()
@@ -499,27 +477,16 @@ async def test_create_bad_timezone(cli, url, factory: Factory, login):
     data = dict(
         name='foobar',
         category=factory.category_id,
-        date={
-            'dt': datetime(2020, 6, 1, 19, 0).strftime('%s'),
-            'dur': 7200,
-        },
+        date={'dt': datetime(2020, 6, 1, 19, 0).strftime('%s'), 'dur': 7200},
         timezone='foobar',
-        long_description='# title\nI love to **party**'
+        long_description='# title\nI love to **party**',
     )
     r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {
         'message': 'Invalid Data',
-        'details': [
-            {
-                'loc': [
-                    'timezone',
-                ],
-                'msg': 'invalid timezone',
-                'type': 'value_error',
-            },
-        ],
+        'details': [{'loc': ['timezone'], 'msg': 'invalid timezone', 'type': 'value_error'}],
     }
 
 
@@ -533,7 +500,7 @@ async def test_not_auth(cli, url, db_conn, factory: Factory):
         category=factory.category_id,
         location={'lat': 50, 'lng': 0, 'name': 'London'},
         date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': None},
-        long_description='I love to party'
+        long_description='I love to party',
     )
     r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 401, await r.text()
@@ -550,14 +517,7 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
     ticket_limit, location_lat = await db_conn.fetchrow('SELECT ticket_limit, location_lat FROM events')
     assert ticket_limit is None
     assert location_lat is None
-    data = dict(
-        ticket_limit=12,
-        location={
-            'name': 'foobar',
-            'lat': 50,
-            'lng': 1,
-        }
-    )
+    data = dict(ticket_limit=12, location={'name': 'foobar', 'lat': 50, 'lng': 1})
     r = await cli.json_post(url('event-edit', pk=factory.event_id), data=data)
     assert r.status == 200, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
@@ -785,9 +745,11 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     ben = await factory.create_user(first_name='x', email='ben@example.org')
     await factory.book_free(await factory.create_reservation(anne, ben), anne)
     await db_conn.execute(
-        "UPDATE tickets SET first_name='anne', last_name='apple', extra_donated=1.23 WHERE user_id=$1", anne)
+        "UPDATE tickets SET first_name='anne', last_name='apple', extra_donated=1.23 WHERE user_id=$1", anne
+    )
     await db_conn.execute(
-        "UPDATE tickets SET first_name='ben', last_name='banana', extra_donated=1.23 WHERE user_id=$1", ben)
+        "UPDATE tickets SET first_name='ben', last_name='banana', extra_donated=1.23 WHERE user_id=$1", ben
+    )
 
     await login()
 
@@ -872,8 +834,10 @@ async def test_image_existing(cli, url, factory: Factory, db_conn, login, dummy_
     await factory.create_event()
     await login()
     assert dummy_server.app['log'] == []
-    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://testingbucket.example.org/testing.png'})
+    r = await cli.json_post(
+        url('event-set-image-existing', id=factory.event_id),
+        data={'image': 'https://testingbucket.example.org/testing.png'},
+    )
     assert r.status == 200, await r.text()
     assert 'https://testingbucket.example.org/testing.png' == await db_conn.fetchval('SELECT image FROM events')
 
@@ -886,8 +850,10 @@ async def test_image_existing_past(cli, url, factory: Factory, login):
     await factory.create_user(role='host')
     await factory.create_event(start_ts=datetime(2000, 1, 1))
     await login()
-    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://testingbucket.example.org/testing.png'})
+    r = await cli.json_post(
+        url('event-set-image-existing', id=factory.event_id),
+        data={'image': 'https://testingbucket.example.org/testing.png'},
+    )
     assert r.status == 403, await r.text()
     assert {'message': "you can't modify past events"} == await r.json()
 
@@ -898,8 +864,9 @@ async def test_image_existing_bad(cli, url, factory: Factory, db_conn, login, du
     await factory.create_user()
     await factory.create_event()
     await login()
-    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://foobar.example.org/testing.png'})
+    r = await cli.json_post(
+        url('event-set-image-existing', id=factory.event_id), data={'image': 'https://foobar.example.org/testing.png'}
+    )
     assert r.status == 400, await r.text()
     assert None is await db_conn.fetchval('SELECT image FROM events')
 
@@ -913,8 +880,10 @@ async def test_image_existing_wrong_host(cli, url, factory: Factory, db_conn, lo
     user_id = await factory.create_user(email='admin@example.org')
     await factory.create_event(host_user_id=user_id)
     await login()
-    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://testingbucket.example.org/testing.png'})
+    r = await cli.json_post(
+        url('event-set-image-existing', id=factory.event_id),
+        data={'image': 'https://testingbucket.example.org/testing.png'},
+    )
     assert r.status == 403, await r.text()
     assert None is await db_conn.fetchval('SELECT image FROM events')
     data = await r.json()
@@ -927,8 +896,9 @@ async def test_image_existing_wrong_id(cli, url, factory: Factory, login, dummy_
     await factory.create_company()
     await factory.create_user()
     await login()
-    r = await cli.json_post(url('event-set-image-existing', id=1),
-                            data={'image': 'https://testingbucket.example.org/testing.png'})
+    r = await cli.json_post(
+        url('event-set-image-existing', id=1), data={'image': 'https://testingbucket.example.org/testing.png'}
+    )
     assert r.status == 404, await r.text()
     assert dummy_server.app['log'] == []
 
@@ -940,14 +910,16 @@ async def test_image_existing_delete(cli, url, factory: Factory, db_conn, login,
     await factory.create_event(image='https://testingbucket.example.org/main.png')
     await login()
 
-    r = await cli.json_post(url('event-set-image-existing', id=factory.event_id),
-                            data={'image': 'https://testingbucket.example.org/testing.png'})
+    r = await cli.json_post(
+        url('event-set-image-existing', id=factory.event_id),
+        data={'image': 'https://testingbucket.example.org/testing.png'},
+    )
     assert r.status == 200, await r.text()
     assert 'https://testingbucket.example.org/testing.png' == await db_conn.fetchval('SELECT image FROM events')
 
     assert set(dummy_server.app['log']) == {
         'DELETE aws_endpoint_url/testingbucket.example.org/main.png',
-        'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png'
+        'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png',
     }
 
 
@@ -966,22 +938,27 @@ async def test_image_new(cli, url, factory: Factory, db_conn, login, dummy_serve
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
 
     img_path = await db_conn.fetchval('SELECT image FROM events')
-    assert img_path == RegexStr(r'https://testingbucket.example.org/tests/testing/'
-                                r'supper-clubs/the-event-name/\w+/main.png')
+    assert img_path == RegexStr(
+        r'https://testingbucket.example.org/tests/testing/' r'supper-clubs/the-event-name/\w+/main.png'
+    )
 
     # debug(dummy_server.app['log'])
     assert sorted(dummy_server.app['log']) == [
         'DELETE aws_endpoint_url/testingbucket.example.org/main.png',
         'DELETE aws_endpoint_url/testingbucket.example.org/thumb.png',
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
-                 r'the-event-name/\w+?/main.png'),
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
-                 r'the-event-name/\w+?/thumb.png'),
+        RegexStr(
+            r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
+            r'the-event-name/\w+?/main.png'
+        ),
+        RegexStr(
+            r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/supper-clubs/'
+            r'the-event-name/\w+?/thumb.png'
+        ),
     ]
 
 
@@ -998,12 +975,7 @@ async def test_add_ticket_type(cli, url, factory: Factory, db_conn, login):
     data = await r.json()
     ticket_types = data['ticket_types']
     assert len(ticket_types) == 1
-    ticket_types.append({
-        'name': 'Foobar',
-        'price': 123.5,
-        'slots_used': 2,
-        'active': False,
-    })
+    ticket_types.append({'name': 'Foobar', 'price': 123.5, 'slots_used': 2, 'active': False})
 
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
     assert r.status == 200, await r.text()
@@ -1080,17 +1052,7 @@ async def test_edit_ticket_type(cli, url, factory: Factory, db_conn, login):
     await login()
 
     tt_id = await db_conn.fetchval('SELECT id FROM ticket_types')
-    data = {
-        'ticket_types': [
-            {
-                'id': tt_id,
-                'name': 'xxx',
-                'price': 12.3,
-                'slots_used': 50,
-                'active': True,
-            }
-        ]
-    }
+    data = {'ticket_types': [{'id': tt_id, 'name': 'xxx', 'price': 12.3, 'slots_used': 50, 'active': True}]}
 
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
@@ -1107,20 +1069,20 @@ async def test_edit_ticket_type(cli, url, factory: Factory, db_conn, login):
     ]
 
 
-@pytest.mark.parametrize('get_input,response_contains', [
-    (
-        lambda tt_id: [{'id': tt_id, 'name': 'foobar'}],
-        '"msg": "field required"'
-    ),
-    (
-        lambda tt_id: [{'id': 999, 'name': 'x', 'slots_used': 1, 'active': True}],
-        '"message": "wrong ticket updated"'
-    ),
-    (
-        lambda tt_id: [{'id': tt_id, 'name': 'x', 'slots_used': 1, 'active': False}],
-        '"msg": "at least 1 ticket type must be active"'
-    ),
-])
+@pytest.mark.parametrize(
+    'get_input,response_contains',
+    [
+        (lambda tt_id: [{'id': tt_id, 'name': 'foobar'}], '"msg": "field required"'),
+        (
+            lambda tt_id: [{'id': 999, 'name': 'x', 'slots_used': 1, 'active': True}],
+            '"message": "wrong ticket updated"',
+        ),
+        (
+            lambda tt_id: [{'id': tt_id, 'name': 'x', 'slots_used': 1, 'active': False}],
+            '"msg": "at least 1 ticket type must be active"',
+        ),
+    ],
+)
 async def test_invalid_ticket_updates(get_input, response_contains, cli, url, factory: Factory, db_conn, login):
     await factory.create_company()
     await factory.create_cat()
@@ -1147,10 +1109,7 @@ async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_serve
     await factory.buy_tickets(await factory.create_reservation(anne, None))
 
     assert len(dummy_server.app['emails']) == 1
-    data = dict(
-        subject='This is a test email & whatever',
-        message='this is the **message**.'
-    )
+    data = dict(subject='This is a test email & whatever', message='this is the **message**.')
 
     r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
@@ -1160,13 +1119,11 @@ async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_serve
     r = await cli.get(url('event-updates-sent', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
-    assert data == {'event_updates': [
-        {
-            'message': 'this is the **message**.',
-            'subject': 'This is a test email & whatever',
-            'ts': CloseToNow(),
-        }
-    ]}
+    assert data == {
+        'event_updates': [
+            {'message': 'this is the **message**.', 'subject': 'This is a test email & whatever', 'ts': CloseToNow()}
+        ]
+    }
 
 
 async def test_event_updates_past(cli, url, login, factory: Factory, dummy_server, db_conn):
@@ -1179,10 +1136,7 @@ async def test_event_updates_past(cli, url, login, factory: Factory, dummy_serve
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
     await factory.book_free(await factory.create_reservation(anne, None), anne)
 
-    data = dict(
-        subject='This is a test email & whatever',
-        message='this is the **message**.'
-    )
+    data = dict(subject='This is a test email & whatever', message='this is the **message**.')
 
     r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
@@ -1208,10 +1162,7 @@ async def test_send_event_update_wrong_user(cli, url, login, factory: Factory):
     await factory.create_event(price=10, host_user_id=user2)
     await login()
 
-    data = dict(
-        subject='This is a test email & whatever',
-        message='this is the **message**.'
-    )
+    data = dict(subject='This is a test email & whatever', message='this is the **message**.')
 
     r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
     assert r.status == 403, await r.text()
@@ -1223,10 +1174,7 @@ async def test_send_event_update_no_event(cli, url, login, factory: Factory):
     await factory.create_user()
     await login()
 
-    data = dict(
-        subject='This is a test email & whatever',
-        message='this is the **message**.'
-    )
+    data = dict(subject='This is a test email & whatever', message='this is the **message**.')
 
     r = await cli.json_post(url('event-send-update', id=999), data=data)
     assert r.status == 404, await r.text()
@@ -1257,9 +1205,7 @@ async def test_event_updates_wrong_event(cli, url, login, factory: Factory):
     assert r.status == 403, await r.text()
 
 
-@pytest.mark.parametrize('previous_status', [
-    True, False
-])
+@pytest.mark.parametrize('previous_status', [True, False])
 async def test_event_switch_status(previous_status, cli, url, login, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_cat()
@@ -1331,7 +1277,7 @@ async def test_secondary_image(cli, url, factory: Factory, db_conn, login, dummy
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
 
@@ -1341,8 +1287,10 @@ async def test_secondary_image(cli, url, factory: Factory, db_conn, login, dummy
     )
 
     assert dummy_server.app['log'] == [
-        RegexStr(r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/'
-                 r'supper-clubs/the-event-name/secondary/\w+/main.png'),
+        RegexStr(
+            r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/'
+            r'supper-clubs/the-event-name/secondary/\w+/main.png'
+        ),
     ]
 
 
@@ -1364,7 +1312,7 @@ async def test_secondary_image_exists(cli, url, factory: Factory, db_conn, login
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
 

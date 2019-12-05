@@ -16,7 +16,10 @@ async def create_email(factory, db_conn):
         values ($1, $2, $3, $4, 'Testing', 'testing@example.org')
         returning id
         """,
-        factory.company_id, factory.user_id, '123456789', Triggers.ticket_buyer
+        factory.company_id,
+        factory.user_id,
+        '123456789',
+        Triggers.ticket_buyer,
     )
 
 
@@ -27,13 +30,9 @@ async def test_send_webhook(factory: Factory, db_conn, cli):
     email_id = await create_email(factory, db_conn)
     data = {
         'Type': 'Notification',
-        'Message': json.dumps({
-            'eventType': 'Send',
-            'mail': {
-                'messageId': '123456789',
-                'timestamp': '2032-10-16T12:00:00.000Z'
-            },
-        })
+        'Message': json.dumps(
+            {'eventType': 'Send', 'mail': {'messageId': '123456789', 'timestamp': '2032-10-16T12:00:00.000Z'}}
+        ),
     }
 
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic cHc6dGVzdHM='})
@@ -60,15 +59,9 @@ async def test_delivery(factory: Factory, db_conn, cli):
     email_id = await create_email(factory, db_conn)
     data = {
         'Type': 'Notification',
-        'Message': json.dumps({
-            'eventType': 'Delivery',
-            'mail': {
-                'messageId': '123456789',
-            },
-            'delivery': {
-                'processingTimeMillis': 789,
-            }
-        })
+        'Message': json.dumps(
+            {'eventType': 'Delivery', 'mail': {'messageId': '123456789'}, 'delivery': {'processingTimeMillis': 789}}
+        ),
     }
 
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic cHc6dGVzdHM='})
@@ -84,9 +77,7 @@ async def test_delivery(factory: Factory, db_conn, cli):
     }
 
 
-@pytest.mark.parametrize('status', [
-    'Send', 'Delivery', 'Open', 'Click', 'Bounce', 'Complaint', 'Unknown-status'
-])
+@pytest.mark.parametrize('status', ['Send', 'Delivery', 'Open', 'Click', 'Bounce', 'Complaint', 'Unknown-status'])
 async def test_all(status, factory: Factory, db_conn, cli):
     await factory.create_company()
     await factory.create_user(email='testing@example.org')
@@ -94,18 +85,18 @@ async def test_all(status, factory: Factory, db_conn, cli):
     await create_email(factory, db_conn)
     data = {
         'Type': 'Notification',
-        'Message': json.dumps({
-            'eventType': status,
-            'mail': {
-                'messageId': '123456789',
-            },
-            status.lower(): {
-                'timestamp': '2032-10-16T12:00:00.000Z',
-                # wrong for actual events, but good enough
-                'ipAddress': '195.224.18.3',
-                'userAgent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)',
+        'Message': json.dumps(
+            {
+                'eventType': status,
+                'mail': {'messageId': '123456789'},
+                status.lower(): {
+                    'timestamp': '2032-10-16T12:00:00.000Z',
+                    # wrong for actual events, but good enough
+                    'ipAddress': '195.224.18.3',
+                    'userAgent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)',
+                },
             }
-        })
+        ),
     }
 
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic cHc6dGVzdHM='})
@@ -123,13 +114,9 @@ async def test_email_not_found(factory: Factory, db_conn, cli):
     await create_email(factory, db_conn)
     data = {
         'Type': 'Notification',
-        'Message': json.dumps({
-            'eventType': 'Send',
-            'mail': {
-                'messageId': 'xxx',
-                'timestamp': '2032-10-16T12:00:00.000Z'
-            },
-        })
+        'Message': json.dumps(
+            {'eventType': 'Send', 'mail': {'messageId': 'xxx', 'timestamp': '2032-10-16T12:00:00.000Z'}}
+        ),
     }
 
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic cHc6dGVzdHM='})
@@ -148,15 +135,13 @@ async def test_unsubscribe(factory: Factory, db_conn, cli):
     email_id = await create_email(factory, db_conn)
     data = {
         'Type': 'Notification',
-        'Message': json.dumps({
-            'eventType': 'Complaint',
-            'mail': {
-                'messageId': '123456789',
-            },
-            'complaint': {
-                'timestamp': '2032-10-16T12:00:00.000Z'
+        'Message': json.dumps(
+            {
+                'eventType': 'Complaint',
+                'mail': {'messageId': '123456789'},
+                'complaint': {'timestamp': '2032-10-16T12:00:00.000Z'},
             }
-        })
+        ),
     }
 
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic cHc6dGVzdHM='})
@@ -182,13 +167,9 @@ async def test_old_event(factory: Factory, db_conn, cli):
     await create_email(factory, db_conn)
     data = {
         'Type': 'Notification',
-        'Message': json.dumps({
-            'eventType': 'Send',
-            'mail': {
-                'messageId': '123456789',
-                'timestamp': '2000-10-16T12:00:00.000Z'
-            },
-        })
+        'Message': json.dumps(
+            {'eventType': 'Send', 'mail': {'messageId': '123456789', 'timestamp': '2000-10-16T12:00:00.000Z'}}
+        ),
     }
 
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic cHc6dGVzdHM='})
@@ -204,13 +185,9 @@ async def test_bad_auth(factory: Factory, cli):
 
     data = {
         'Type': 'Notification',
-        'Message': json.dumps({
-            'eventType': 'Send',
-            'mail': {
-                'messageId': '123456789',
-                'timestamp': '2000-10-16T12:00:00.000Z'
-            },
-        })
+        'Message': json.dumps(
+            {'eventType': 'Send', 'mail': {'messageId': '123456789', 'timestamp': '2000-10-16T12:00:00.000Z'}}
+        ),
     }
 
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic wrong'})
@@ -222,10 +199,7 @@ async def test_subscribe(factory: Factory, db_conn, cli, dummy_server):
     await factory.create_user(email='testing@example.org')
 
     await create_email(factory, db_conn)
-    data = {
-        'Type': 'SubscriptionConfirmation',
-        'SubscribeURL': dummy_server.app['server_name'] + '/200/'
-    }
+    data = {'Type': 'SubscriptionConfirmation', 'SubscribeURL': dummy_server.app['server_name'] + '/200/'}
 
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic cHc6dGVzdHM='})
     assert r.status == 204, await r.text()

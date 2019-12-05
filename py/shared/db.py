@@ -162,9 +162,11 @@ def reset_database(settings: Settings):
 
 def run_patch(settings: Settings, live, patch_name):
     if patch_name is None:
-        print('available patches:\n{}'.format(
-            '\n'.join('  {}: {}'.format(p.func.__name__, p.func.__doc__.strip('\n ')) for p in patches)
-        ))
+        print(
+            'available patches:\n{}'.format(
+                '\n'.join('  {}: {}'.format(p.func.__name__, p.func.__doc__.strip('\n ')) for p in patches)
+            )
+        )
         return
     patch_lookup = {p.func.__name__: p for p in patches}
     try:
@@ -219,6 +221,7 @@ def patch(*args, direct=False):
         patches.append(Patch(func=func))
         return func
     else:
+
         def wrapper(func):
             patches.append(Patch(func=func, direct=direct))
             return func
@@ -304,7 +307,6 @@ CATS = [
         'ticket_extra_help_text': 'This is the help text for this field, tell us about your nut allergy',
         'sort_index': 1,
         'events': [
-
             {
                 'status': 'published',
                 'highlight': True,
@@ -316,12 +318,7 @@ CATS = [
                 'location_lng': -0.132098,
                 'ticket_limit': 40,
                 'host_email': 'frank@example.com',
-                'ticket_types': [
-                    {
-                        'name': 'Standard',
-                        'price': 30,
-                    }
-                ]
+                'ticket_types': [{'name': 'Standard', 'price': 30}],
             },
             {
                 'status': 'published',
@@ -334,18 +331,11 @@ CATS = [
                 'location_lng': -0.073994,
                 'ticket_limit': None,
                 'host_email': 'jane@example.com',
-                'ticket_types': [
-                    {
-                        'name': 'Standard',
-                        'price': 25,
-                        'slots_used': 5,
-                    }
-                ]
-            }
-        ]
+                'ticket_types': [{'name': 'Standard', 'price': 25, 'slots_used': 5}],
+            },
+        ],
     },
     {
-
         'name': 'Singing Events',
         'description': 'Sing loudly and badly in the company of other people too polite to comment',
         'ticket_extra_title': 'Extra Information',
@@ -361,13 +351,7 @@ CATS = [
                 'location_name': 'Big Church, London',
                 'ticket_limit': None,
                 'host_email': 'frank@example.com',
-                'ticket_types': [
-                    {
-                        'name': 'Standard',
-                        'price': None,
-                        'slots_used': 5,
-                    }
-                ]
+                'ticket_types': [{'name': 'Standard', 'price': None, 'slots_used': 5}],
             },
             {
                 'status': 'published',
@@ -378,15 +362,10 @@ CATS = [
                 'location_name': 'Small Church, London',
                 'ticket_limit': None,
                 'host_email': 'frank@example.com',
-                'ticket_types': [
-                    {
-                        'name': 'Standard',
-                        'price': None,
-                    }
-                ]
+                'ticket_types': [{'name': 'Standard', 'price': None}],
             },
-        ]
-    }
+        ],
+    },
 ]
 
 EVENT_LONG_DESCRIPTION = """
@@ -434,27 +413,33 @@ async def create_demo_data(conn, settings, **kwargs):
                 domain=kwargs.get('company_domain', os.getenv('NEW_COMPANY_DOMAIN', 'localhost')),
                 # from "Scolvin Testing" testing account
                 stripe_public_key='pk_test_efpfygU2qxGIwgcjn5T5DTTI',
-                stripe_secret_key='sk_test_GLQSaid6wFrYZp44d3dcTl8f'
-            )
+                stripe_secret_key='sk_test_GLQSaid6wFrYZp44d3dcTl8f',
+            ),
         )
 
         user_lookup = {}
         for user in USERS:
-            user_lookup[user['email']] = await conn.fetchval_b("""
+            user_lookup[user['email']] = await conn.fetchval_b(
+                """
             INSERT INTO users (:values__names) VALUES :values RETURNING id
-            """, values=Values(company=company_id, password_hash=mk_password(user.pop('password'), settings), **user))
+            """,
+                values=Values(company=company_id, password_hash=mk_password(user.pop('password'), settings), **user),
+            )
 
         for cat in CATS:
             events = cat.pop('events')
             cat_slug = slugify(cat['name'])
-            cat_id = await conn.fetchval_b("""
+            cat_id = await conn.fetchval_b(
+                """
         INSERT INTO categories (:values__names) VALUES :values RETURNING id
-        """, values=Values(
-                company=company_id,
-                slug=cat_slug,
-                image=await create_image(Path(co_slug) / cat_slug / 'option', client, settings),
-                **cat,
-            ))
+        """,
+                values=Values(
+                    company=company_id,
+                    slug=cat_slug,
+                    image=await create_image(Path(co_slug) / cat_slug / 'option', client, settings),
+                    **cat,
+                ),
+            )
 
             for event in events:
                 ticket_types = event.pop('ticket_types', [])
@@ -468,12 +453,12 @@ async def create_demo_data(conn, settings, **kwargs):
                         image=await create_image(Path(co_slug) / cat_slug / event_slug, client, settings),
                         short_description='Neque labore est numquam dolorem. Quiquia ipsum ut dolore dolore porro.',
                         long_description=EVENT_LONG_DESCRIPTION,
-                        **event
-                    )
+                        **event,
+                    ),
                 )
                 await conn.executemany_b(
                     'INSERT INTO ticket_types (:values__names) VALUES :values',
-                    [Values(event=event_id, **tt) for tt in ticket_types]
+                    [Values(event=event_id, **tt) for tt in ticket_types],
                 )
 
 
@@ -488,11 +473,7 @@ async def create_new_company(conn, settings, live, **kwargs):
 
     company_id = await conn.fetchval_b(
         'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
-        values=Values(
-            name=co_name,
-            slug=co_slug,
-            domain=co_domain,
-        )
+        values=Values(name=co_name, slug=co_slug, domain=co_domain,),
     )
     user_name = input("Enter the main admin's name: ").strip(' ')
     if ' ' in user_name:
@@ -503,13 +484,7 @@ async def create_new_company(conn, settings, live, **kwargs):
 
     user_id = await conn.fetchval_b(
         'INSERT INTO users (:values__names) VALUES :values RETURNING id',
-        values=Values(
-            company=company_id,
-            email=user_email,
-            first_name=first_name,
-            last_name=last_name,
-            role='admin',
-        ),
+        values=Values(company=company_id, email=user_email, first_name=first_name, last_name=last_name, role='admin',),
     )
     actor = EmailActor(settings=settings, pg=SimplePgPool(conn))
     await actor.startup()

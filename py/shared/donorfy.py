@@ -23,9 +23,7 @@ class DonorfyClient:
     def __init__(self, settings: Settings, loop):
         self._settings = settings
         self._client = ClientSession(
-            timeout=ClientTimeout(total=30),
-            loop=loop,
-            auth=BasicAuth('nosht', settings.donorfy_access_key),
+            timeout=ClientTimeout(total=30), loop=loop, auth=BasicAuth('nosht', settings.donorfy_access_key),
         )
 
     @property
@@ -67,7 +65,7 @@ class DonorfyClient:
                 'response_headers': dict(r.headers),
                 'response_content': lenient_json(response_text),
                 'time_taken': time_taken,
-            }
+            },
         }
 
         if r.status not in allowed_statuses:
@@ -111,18 +109,20 @@ class DonorfyActor(BaseActor):
                 join users host_user on e.host = host_user.id
                 where e.id=$1
                 """,
-                event_id, self.settings.auth_key
+                event_id,
+                self.settings.auth_key,
             )
             created = await conn.fetchval("select ts from actions where event=$1 and type='create-event'", event_id)
             prices = await conn.fetch(
-                'select price from ticket_types where event=$1 and active is true and price is not null',
-                event_id
+                'select price from ticket_types where event=$1 and active is true and price is not null', event_id
             )
         campaign = await self._get_or_create_campaign(evt['cat_slug'], evt['event_slug'])
         constituent_id, _ = await self._get_or_create_constituent(evt['host_user_id'], campaign)
 
-        await self.client.post(f'/constituents/{constituent_id}/AddActiveTags',
-                               data=f'Hosting and helper volunteers_{evt["cat_slug"]}-host')
+        await self.client.post(
+            f'/constituents/{constituent_id}/AddActiveTags',
+            data=f'Hosting and helper volunteers_{evt["cat_slug"]}-host',
+        )
 
         start_ts = evt['start_ts'].astimezone(pytz.utc)
         if not evt['duration']:
@@ -174,7 +174,7 @@ class DonorfyActor(BaseActor):
                 join companies co on cat.company = co.id
                 where a.id=$1
                 """,
-                action_id
+                action_id,
             )
             if not duration:
                 event_ts = event_ts.date()
@@ -192,7 +192,7 @@ class DonorfyActor(BaseActor):
                 left join users u on t.user_id = u.id
                 where t.booked_action = $1
                 """,
-                action_id
+                action_id,
             )
         ticket_count = len(tickets)
         campaign = await self._get_or_create_campaign(cat_slug, event_slug)
@@ -214,18 +214,21 @@ class DonorfyActor(BaseActor):
             if not constituent_id:
                 return
 
-            await self.client.post('/activities', data=dict(
-                ExistingConstituentId=constituent_id,
-                ActivityType='Event Booked',
-                ActivityDate=format_dt(action_ts),
-                Campaign=campaign,
-                Notes=extra_info,
-                Code1=buyer_user_id,
-                Number1=float(ticket_price or 0),
-                Number2=ticket_count,
-                YesNo1=user_id == buyer_user_id,
-                Date1=format_dt(event_ts)
-            ))
+            await self.client.post(
+                '/activities',
+                data=dict(
+                    ExistingConstituentId=constituent_id,
+                    ActivityType='Event Booked',
+                    ActivityDate=format_dt(action_ts),
+                    Campaign=campaign,
+                    Notes=extra_info,
+                    Code1=buyer_user_id,
+                    Number1=float(ticket_price or 0),
+                    Number2=ticket_count,
+                    YesNo1=user_id == buyer_user_id,
+                    Date1=format_dt(event_ts),
+                ),
+            )
 
         await asyncio.gather(*[create_ticket_constituent(r) for r in tickets])
 
@@ -234,46 +237,51 @@ class DonorfyActor(BaseActor):
             return
 
         ticket_count, price, extra = await self.pg.fetchrow(
-            'select count(*), sum(price), sum(extra_donated) from tickets where booked_action = $1',
-            action_id,
+            'select count(*), sum(price), sum(extra_donated) from tickets where booked_action = $1', action_id,
         )
         price = float(price)
         ticket_id = ticket_id or tickets[0]['ticket_id']
         processing_fee = await self._get_stripe_processing_fee(action_id)
 
-        r = await self.client.post('/transactions', data=dict(
-            ExistingConstituentId=buyer_constituent_id,
-            Channel=f'nosht-{cat_slug}',
-            Currency=currency,
-            Campaign=campaign,
-            PaymentMethod='Payment Card via Stripe',
-            Product='Event Ticket(s)',
-            Fund=self.settings.donorfy_fund,
-            Department=self.settings.donorfy_account_salies,
-            BankAccount=self.settings.donorfy_bank_account,
-            DatePaid=format_dt(action_ts),
-            Amount=price,
-            ProcessingCostsAmount=processing_fee,
-            Quantity=ticket_count,
-            Acknowledgement=f'{cat_slug}-thanks',
-            AcknowledgementText=f'Ticket ID: {ticket_id_signed(ticket_id, self.settings)}',
-            Reference=f'Events.HUF:{cat_slug} {event_slug}',
-            AddGiftAidDeclaration=False,
-            GiftAidClaimed=False,
-        ))
+        r = await self.client.post(
+            '/transactions',
+            data=dict(
+                ExistingConstituentId=buyer_constituent_id,
+                Channel=f'nosht-{cat_slug}',
+                Currency=currency,
+                Campaign=campaign,
+                PaymentMethod='Payment Card via Stripe',
+                Product='Event Ticket(s)',
+                Fund=self.settings.donorfy_fund,
+                Department=self.settings.donorfy_account_salies,
+                BankAccount=self.settings.donorfy_bank_account,
+                DatePaid=format_dt(action_ts),
+                Amount=price,
+                ProcessingCostsAmount=processing_fee,
+                Quantity=ticket_count,
+                Acknowledgement=f'{cat_slug}-thanks',
+                AcknowledgementText=f'Ticket ID: {ticket_id_signed(ticket_id, self.settings)}',
+                Reference=f'Events.HUF:{cat_slug} {event_slug}',
+                AddGiftAidDeclaration=False,
+                GiftAidClaimed=False,
+            ),
+        )
         if extra:
             trans_id = (await r.json())['Id']
-            await self.client.post(f'/transactions/{trans_id}/AddAllocation', data=dict(
-                Product='Donation',
-                Quantity=ticket_count,
-                Amount=float(extra),
-                Department=self.settings.donorfy_account_donations,
-                Fund=self.settings.donorfy_fund,
-                AllocationDate=format_dt(action_ts),
-                CanRecoverTax=False,
-                Comments=f'{cat_slug} {event_slug}',
-                BeneficiaryConstituentId=buyer_constituent_id,
-            ))
+            await self.client.post(
+                f'/transactions/{trans_id}/AddAllocation',
+                data=dict(
+                    Product='Donation',
+                    Quantity=ticket_count,
+                    Amount=float(extra),
+                    Department=self.settings.donorfy_account_donations,
+                    Fund=self.settings.donorfy_fund,
+                    AllocationDate=format_dt(action_ts),
+                    CanRecoverTax=False,
+                    Comments=f'{cat_slug} {event_slug}',
+                    BeneficiaryConstituentId=buyer_constituent_id,
+                ),
+            )
 
     @concurrent
     async def donation(self, action_id):
@@ -294,7 +302,7 @@ class DonorfyActor(BaseActor):
             join companies co on cat.company = co.id
             where a.id=$1
             """,
-            action_id
+            action_id,
         )
         cat_slug, evt_slug = d['cat_slug'], d['evt_slug']
         campaign = await self._get_or_create_campaign(cat_slug, evt_slug)
@@ -303,43 +311,49 @@ class DonorfyActor(BaseActor):
         datestamp = format_dt(d['action_ts'])
         processing_fee = await self._get_stripe_processing_fee(action_id)
 
-        await self.client.post('/transactions', data=dict(
-            ExistingConstituentId=constituent_id,
-            Channel=f'nosht-{cat_slug}',
-            Currency=d['currency'],
-            Campaign=campaign,
-            PaymentMethod='Payment Card via Stripe',
-            Product='Donation',
-            Fund=self.settings.donorfy_fund,
-            Department=self.settings.donorfy_account_donations,
-            BankAccount=self.settings.donorfy_bank_account,
-            DatePaid=datestamp,
-            Amount=float(d['amount']),
-            ProcessingCostsAmount=processing_fee,
-            Acknowledgement=f'{cat_slug}-thanks',
-            AcknowledgementText=f'{d["cat_name"]} Donation Thanks',
-            Reference=f'Events.HUF:{cat_slug} donation {d["donopt"]}',
-            AddGiftAidDeclaration=False,  # since we manually create the gift aid declaration below
-            GiftAidClaimed=d['gift_aid'],
-            Title=d['title'],
-            FirstName=d['first_name'],
-            LastName=d['last_name'],
-            AddressLine1=d['address'],
-            Town=d['city'],
-            PostalCode=d['postcode'],
-        ))
-        if d['gift_aid']:
-            await self.client.post(f'/constituents/{constituent_id}/GiftAidDeclarations', data=dict(
+        await self.client.post(
+            '/transactions',
+            data=dict(
+                ExistingConstituentId=constituent_id,
+                Channel=f'nosht-{cat_slug}',
+                Currency=d['currency'],
                 Campaign=campaign,
-                DeclarationMethod='Web',
-                DeclarationDate=datestamp,
-                DeclarationStartDate=datestamp,
-                DeclarationEndDate=datestamp,
-                TaxPayerTitle=d['title'],
-                TaxPayerFirstName=d['first_name'],
-                TaxPayerLastName=d['last_name'],
-                ConfirmationRequired=False
-            ))
+                PaymentMethod='Payment Card via Stripe',
+                Product='Donation',
+                Fund=self.settings.donorfy_fund,
+                Department=self.settings.donorfy_account_donations,
+                BankAccount=self.settings.donorfy_bank_account,
+                DatePaid=datestamp,
+                Amount=float(d['amount']),
+                ProcessingCostsAmount=processing_fee,
+                Acknowledgement=f'{cat_slug}-thanks',
+                AcknowledgementText=f'{d["cat_name"]} Donation Thanks',
+                Reference=f'Events.HUF:{cat_slug} donation {d["donopt"]}',
+                AddGiftAidDeclaration=False,  # since we manually create the gift aid declaration below
+                GiftAidClaimed=d['gift_aid'],
+                Title=d['title'],
+                FirstName=d['first_name'],
+                LastName=d['last_name'],
+                AddressLine1=d['address'],
+                Town=d['city'],
+                PostalCode=d['postcode'],
+            ),
+        )
+        if d['gift_aid']:
+            await self.client.post(
+                f'/constituents/{constituent_id}/GiftAidDeclarations',
+                data=dict(
+                    Campaign=campaign,
+                    DeclarationMethod='Web',
+                    DeclarationDate=datestamp,
+                    DeclarationStartDate=datestamp,
+                    DeclarationEndDate=datestamp,
+                    TaxPayerTitle=d['title'],
+                    TaxPayerFirstName=d['first_name'],
+                    TaxPayerLastName=d['last_name'],
+                    ConfirmationRequired=False,
+                ),
+            )
 
     @concurrent
     async def update_user(self, user_id, update_user=True, update_marketing=True):
@@ -348,37 +362,40 @@ class DonorfyActor(BaseActor):
         constituent_id, created = await self._get_or_create_constituent(user_id=user_id)
 
         first_name, last_name, email, allow_marketing = await self.pg.fetchrow(
-            'select first_name, last_name, email, allow_marketing from users where id=$1', user_id)
+            'select first_name, last_name, email, allow_marketing from users where id=$1', user_id
+        )
 
         requests = []
         if update_user and not created:
             requests.append(
-                self.client.put(f'/constituents/{constituent_id}', data=dict(
-                    FirstName=first_name,
-                    LastName=last_name,
-                    EmailAddress=email,
-                ))
+                self.client.put(
+                    f'/constituents/{constituent_id}',
+                    data=dict(FirstName=first_name, LastName=last_name, EmailAddress=email,),
+                )
             )
 
         if update_marketing:
             requests.append(
-                self.client.post(f'/constituents/{constituent_id}/Preferences', data=dict(
-                    ConsentStatement='Events.HUF website',
-                    Reason='Updated in Events.HUF booking',
-                    PreferredChannel='Email',
-                    PreferencesList=[
-                        {
-                            'PreferenceType': 'Channel',
-                            'PreferenceName': 'Email',
-                            'PreferenceAllowed': allow_marketing
-                        },
-                        {
-                            'PreferenceType': 'Purpose',
-                            'PreferenceName': 'All',
-                            'PreferenceAllowed': allow_marketing
-                        }
-                    ]
-                ))
+                self.client.post(
+                    f'/constituents/{constituent_id}/Preferences',
+                    data=dict(
+                        ConsentStatement='Events.HUF website',
+                        Reason='Updated in Events.HUF booking',
+                        PreferredChannel='Email',
+                        PreferencesList=[
+                            {
+                                'PreferenceType': 'Channel',
+                                'PreferenceName': 'Email',
+                                'PreferenceAllowed': allow_marketing,
+                            },
+                            {
+                                'PreferenceType': 'Purpose',
+                                'PreferenceName': 'All',
+                                'PreferenceAllowed': allow_marketing,
+                            },
+                        ],
+                    ),
+                )
             )
         requests and await asyncio.gather(*requests)
 
@@ -399,7 +416,7 @@ class DonorfyActor(BaseActor):
             AllowNameSwap=False,
             NoGiftAid=False,
             ExternalKey=f'nosht_{user_id}',
-            EmailFormat='HTML'
+            EmailFormat='HTML',
         )
         if campaign:
             data['RecruitmentCampaign'] = campaign
@@ -445,8 +462,12 @@ class DonorfyActor(BaseActor):
                 await self.client.put(f'/constituents/{constituent_id}', data=update_data)
 
             if constituent_data['ExternalKey'] is not None and constituent_data['ExternalKey'] != ext_key:
-                logger.warning('user with matching email but different external key %s: %r != %r',
-                               constituent_id, constituent_data['ExternalKey'], ext_key)
+                logger.warning(
+                    'user with matching email but different external key %s: %r != %r',
+                    constituent_id,
+                    constituent_data['ExternalKey'],
+                    ext_key,
+                )
             else:
                 await redis.setex(cache_key, 300, constituent_id)
                 return constituent_id

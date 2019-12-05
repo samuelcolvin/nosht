@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # used for hashing when the user in the db has no password
     dummy_password = '_dummy_password_'
 
-    max_request_size = 10 * 1024**2  # 10MB
+    max_request_size = 10 * 1024 ** 2  # 10MB
 
     aws_access_key: str = None
     aws_secret_key: str = None
@@ -91,10 +91,7 @@ class Settings(BaseSettings):
     def parse_redis_settings(cls, v):
         conf = urlparse(v)
         return RedisSettings(
-            host=conf.hostname,
-            port=conf.port,
-            password=conf.password,
-            database=int((conf.path or '0').strip('/')),
+            host=conf.hostname, port=conf.port, password=conf.password, database=int((conf.path or '0').strip('/')),
         )
 
     @property

@@ -22,8 +22,16 @@ from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin, is_admin_or_host
 from web.bread import Bread, Method, UpdateView
 from web.stripe import stripe_refund
-from web.utils import (ImageModel, JsonErrors, clean_markdown, json_response, parse_request, prepare_search_query,
-                       raw_json_response, request_image)
+from web.utils import (
+    ImageModel,
+    JsonErrors,
+    clean_markdown,
+    json_response,
+    parse_request,
+    prepare_search_query,
+    raw_json_response,
+    request_image,
+)
 from web.views.export import export_plumbing
 
 logger = logging.getLogger('nosht.events')
@@ -118,8 +126,7 @@ async def check_event_sig(request):
         if not url_sig:
             raise JsonErrors.HTTPNotFound(message='event not found')
         sig = hmac.new(
-            request.app['settings'].auth_key.encode(), f'/{category_slug}/{event_slug}/'.encode(),
-            digestmod=hashlib.md5
+            request.app['settings'].auth_key.encode(), f'/{category_slug}/{event_slug}/'.encode(), digestmod=hashlib.md5
         ).hexdigest()
         if not compare_digest(url_sig, sig):
             raise JsonErrors.HTTPNotFound(message='event not found')
@@ -200,7 +207,7 @@ class EventBread(Bread):
         Func('as_time_zone', V('e.start_ts'), V('e.timezone')).as_('start_ts'),
         funcs.extract(V('epoch').from_(V('e.duration'))).cast('int').as_('duration'),
     )
-    browse_order_by_fields = V('e.start_ts').desc(),
+    browse_order_by_fields = (V('e.start_ts').desc(),)
     retrieve_fields = browse_fields + (
         V('cat.id').as_('cat_id'),
         'e.public',
@@ -226,15 +233,15 @@ class EventBread(Bread):
 
     def select(self) -> Select:
         if self.method == Method.retrieve:
-            event_link = Func('event_link', V('cat.slug'), V('e.slug'), V('e.public'),
-                              funcs.cast(self.settings.auth_key, 'TEXT')).as_('link')
+            event_link = Func(
+                'event_link', V('cat.slug'), V('e.slug'), V('e.public'), funcs.cast(self.settings.auth_key, 'TEXT')
+            ).as_('link')
             return Select(self.retrieve_fields + (event_link,))
         return super().select()
 
     def join(self):
-        joins = (
-            Join(V('categories').as_('cat').on(V('cat.id') == V('e.category'))) +
-            Join(V('companies').as_('co').on(V('co.id') == V('cat.company')))
+        joins = Join(V('categories').as_('cat').on(V('cat.id') == V('e.category'))) + Join(
+            V('companies').as_('co').on(V('co.id') == V('cat.company'))
         )
         if self.method == Method.retrieve:
             joins += Join(V('users').as_('uh').on(V('uh.id') == V('e.host')))
@@ -265,16 +272,13 @@ class EventBread(Bread):
             else:
                 dt = datetime(dt.year, dt.month, dt.day)
             data.update(
-                start_ts=dt,
-                duration=duration,
+                start_ts=dt, duration=duration,
             )
 
         loc = data.pop('location', None)
         if loc:
             data.update(
-                location_name=loc['name'],
-                location_lat=loc['lat'],
-                location_lng=loc['lng'],
+                location_name=loc['name'], location_lat=loc['lat'], location_lng=loc['lng'],
             )
 
         return data
@@ -324,10 +328,11 @@ class EventBread(Bread):
                 pk = await super().add_execute(slug=slug + '-' + pseudo_random_str(4), **data)
             await self.conn.execute_b(
                 'INSERT INTO ticket_types (:values__names) VALUES :values',
-                values=Values(event=pk, name='Standard', price=price)
+                values=Values(event=pk, name='Standard', price=price),
             )
-            action_id = await record_action_id(self.request, self.request['session']['user_id'],
-                                               ActionTypes.create_event, event_id=pk)
+            action_id = await record_action_id(
+                self.request, self.request['session']['user_id'], ActionTypes.create_event, event_id=pk
+            )
         await self.app['email_actor'].send_event_created(action_id)
         await self.app['donorfy_actor'].event_created(pk)
         return pk
@@ -346,11 +351,16 @@ class EventBread(Bread):
                         'msg': f'May not be less than the number of tickets already booked.',
                         'type': 'value_error.too_low',
                     }
-                ]
+                ],
             )
         else:
-            await record_action(self.request, self.request['session']['user_id'], ActionTypes.edit_event,
-                                event_id=pk, subtype='edit-event')
+            await record_action(
+                self.request,
+                self.request['session']['user_id'],
+                ActionTypes.edit_event,
+                event_id=pk,
+                subtype='edit-event',
+            )
 
 
 async def _check_event_permissions(request, check_upcoming=False):
@@ -361,7 +371,10 @@ async def _check_event_permissions(request, check_upcoming=False):
         FROM events AS e
         JOIN categories AS cat ON e.category = cat.id
         WHERE e.id=$1 AND cat.company=$2
-        """, event_id, request['company_id'])
+        """,
+        event_id,
+        request['company_id'],
+    )
     if not r:
         raise JsonErrors.HTTPNotFound(message='event not found')
     host_id, start_ts = r
@@ -566,7 +579,9 @@ class SetTicketTypes(UpdateView):
             JOIN tickets AS t ON tt.id = t.ticket_type
             WHERE tt.event=$1 AND NOT (tt.id=ANY($2))
             GROUP BY tt.id
-            """, event_id, [tt.id for tt in existing]
+            """,
+            event_id,
+            [tt.id for tt in existing],
         )
         if deleted_with_tickets:
             raise JsonErrors.HTTPBadRequest(message='ticket types deleted which have ticket associated with them')
@@ -576,7 +591,9 @@ class SetTicketTypes(UpdateView):
                 """
                 DELETE FROM ticket_types
                 WHERE ticket_types.event=$1 AND NOT (ticket_types.id=ANY($2))
-                """, event_id, [tt.id for tt in existing]
+                """,
+                event_id,
+                [tt.id for tt in existing],
             )
 
             for tt in existing:
@@ -595,10 +612,15 @@ class SetTicketTypes(UpdateView):
                     """
                     INSERT INTO ticket_types (:values__names) VALUES :values
                     """,
-                    values=MultipleValues(*(Values(event=event_id, **tt.dict(exclude={'id'})) for tt in new))
+                    values=MultipleValues(*(Values(event=event_id, **tt.dict(exclude={'id'})) for tt in new)),
                 )
-            await record_action(self.request, self.request['session']['user_id'], ActionTypes.edit_event,
-                                event_id=event_id, subtype='edit-ticket-types')
+            await record_action(
+                self.request,
+                self.request['session']['user_id'],
+                ActionTypes.edit_event,
+                event_id=event_id,
+                subtype='edit-ticket-types',
+            )
 
 
 get_image_sql = """
@@ -640,8 +662,9 @@ async def set_event_image_new(request):
 
     image_url = await upload_background(content, upload_path, request.app['settings'])
     await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', image_url, event_id)
-    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
-                        event_id=event_id, subtype='set-image-new')
+    await record_action(
+        request, request['session']['user_id'], ActionTypes.edit_event, event_id=event_id, subtype='set-image-new'
+    )
     return json_response(status='success')
 
 
@@ -655,8 +678,9 @@ async def set_event_image_existing(request):
 
     event_id = int(request.match_info['id'])
     await request['conn'].execute('UPDATE events SET image=$1 WHERE id=$2', m.image, event_id)
-    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
-                        event_id=event_id, subtype='set-image-existing')
+    await record_action(
+        request, request['session']['user_id'], ActionTypes.edit_event, event_id=event_id, subtype='set-image-existing'
+    )
     return json_response(status='success')
 
 
@@ -680,8 +704,13 @@ async def set_event_secondary_image(request):
     )
     async with request['conn'].transaction():
         await request['conn'].execute('UPDATE events SET secondary_image=$1 WHERE id=$2', image_url, event_id)
-        await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
-                            event_id=event_id, subtype='set-image-secondary')
+        await record_action(
+            request,
+            request['session']['user_id'],
+            ActionTypes.edit_event,
+            event_id=event_id,
+            subtype='set-image-secondary',
+        )
     return json_response(status='success')
 
 
@@ -695,8 +724,13 @@ async def remove_event_secondary_image(request):
 
     async with request['conn'].transaction():
         await request['conn'].execute('update events set secondary_image=null where id=$1', event_id)
-        await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
-                            event_id=event_id, subtype='remove-image-secondary')
+        await record_action(
+            request,
+            request['session']['user_id'],
+            ActionTypes.edit_event,
+            event_id=event_id,
+            subtype='remove-image-secondary',
+        )
     return json_response(status='success')
 
 
@@ -720,12 +754,15 @@ class SetEventStatus(UpdateView):
     async def execute(self, m: Model):
         event_id = int(self.request.match_info['id'])
         await self.conn.execute_b(
-            'UPDATE events SET status=:status WHERE id=:id',
-            status=m.status.value,
-            id=event_id,
+            'UPDATE events SET status=:status WHERE id=:id', status=m.status.value, id=event_id,
         )
-        await record_action(self.request, self.request['session']['user_id'], ActionTypes.edit_event,
-                            event_id=event_id, subtype='change-status')
+        await record_action(
+            self.request,
+            self.request['session']['user_id'],
+            ActionTypes.edit_event,
+            event_id=event_id,
+            subtype='change-status',
+        )
 
 
 class EventUpdate(UpdateView):
@@ -738,8 +775,13 @@ class EventUpdate(UpdateView):
 
     async def execute(self, m: Model):
         event_id = await _check_event_permissions(self.request, check_upcoming=True)
-        action_id = await record_action_id(self.request, self.session['user_id'], ActionTypes.event_update,
-                                           event_id=event_id, **m.dict(include={'subject', 'message'}))
+        action_id = await record_action_id(
+            self.request,
+            self.session['user_id'],
+            ActionTypes.event_update,
+            event_id=event_id,
+            **m.dict(include={'subject', 'message'}),
+        )
         await self.app['email_actor'].send_event_update(action_id)
 
 
@@ -747,8 +789,9 @@ class EventUpdate(UpdateView):
 async def switch_highlight(request):
     event_id = await _check_event_permissions(request)
     await request['conn'].execute('UPDATE events SET highlight=NOT highlight WHERE id=$1', event_id)
-    await record_action(request, request['session']['user_id'], ActionTypes.edit_event,
-                        event_id=event_id, subtype='switch-highlight')
+    await record_action(
+        request, request['session']['user_id'], ActionTypes.edit_event, event_id=event_id, subtype='switch-highlight'
+    )
     return json_response(status='ok')
 
 

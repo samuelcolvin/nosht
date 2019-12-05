@@ -121,9 +121,7 @@ async def test_user_export(cli, url, login, factory: Factory):
     await login()
 
     data = {
-        'tickets': [
-            {'t': True, 'email': 'frank@example.org'},
-        ],
+        'tickets': [{'t': True, 'email': 'frank@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -174,10 +172,7 @@ async def test_ticket_export(cli, url, login, factory: Factory, db_conn):
     admin_user_id = await factory.create_user(email='admin@example.com', first_name='Admin', last_name='Istrator')
     await login(email='admin@example.com')
     res = await factory.create_reservation(admin_user_id)
-    data = dict(
-        booking_token=encrypt_json(cli.app['main_app'], res.dict()),
-        book_action='buy-tickets-offline',
-    )
+    data = dict(booking_token=encrypt_json(cli.app['main_app'], res.dict()), book_action='buy-tickets-offline',)
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 

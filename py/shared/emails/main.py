@@ -10,8 +10,15 @@ from buildpg import MultipleValues, Values
 from shared.emails.utils import start_tz_duration
 
 from ..actions import ActionTypes
-from ..utils import (display_cash, display_cash_free, format_dt, format_duration, password_reset_link, static_map_link,
-                     ticket_id_signed)
+from ..utils import (
+    display_cash,
+    display_cash_free,
+    format_dt,
+    format_duration,
+    password_reset_link,
+    static_map_link,
+    ticket_id_signed,
+)
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail
 
@@ -43,7 +50,8 @@ class EmailActor(BaseEmailActor):
                 JOIN companies co on cat.company = co.id
                 WHERE a.id = $1
                 """,
-                booked_action_id, self.settings.auth_key
+                booked_action_id,
+                self.settings.auth_key,
             )
             tickets = await conn.fetch(
                 """
@@ -51,12 +59,11 @@ class EmailActor(BaseEmailActor):
                 FROM tickets
                 WHERE booked_action = $1 and user_id is not null
                 """,
-                booked_action_id
+                booked_action_id,
             )
             # use max to get the price as they should all be the same
             ticket_count, total_ticket_price, extra_donated, price = await conn.fetchrow(
-                'select count(*), sum(price), sum(extra_donated), max(price) '
-                'from tickets where booked_action=$1',
+                'select count(*), sum(price), sum(extra_donated), max(price) ' 'from tickets where booked_action=$1',
                 booked_action_id,
             )
             total_price = total_ticket_price and total_ticket_price + (extra_donated or 0)
@@ -99,31 +106,26 @@ class EmailActor(BaseEmailActor):
         for ticket_id, user_id, extra_info, _ in tickets:
             if buyer_user_id == user_id:
                 ctx_buyer.update(
-                    ticket_id=ticket_id_signed(ticket_id, self.settings),
-                    extra_info=extra_info,
+                    ticket_id=ticket_id_signed(ticket_id, self.settings), extra_info=extra_info,
                 )
                 buyer_emails = [UserEmail(user_id, ctx_buyer, ticket_id)]
             else:
-                ctx_other = dict(
-                    **ctx,
-                    ticket_id=ticket_id_signed(ticket_id, self.settings),
-                    extra_info=extra_info,
-                )
-                other_emails.append(
-                    UserEmail(user_id, ctx_other, ticket_id)
-                )
+                ctx_other = dict(**ctx, ticket_id=ticket_id_signed(ticket_id, self.settings), extra_info=extra_info,)
+                other_emails.append(UserEmail(user_id, ctx_other, ticket_id))
 
         if not buyer_emails:
             # unusual case where the buyer is not an attendee
             user_id = await self.pg.fetchval('select user_id from actions where id=$1', booked_action_id)
             buyer_emails = [UserEmail(user_id, ctx_buyer)]
 
-        await self.send_emails.direct(data['company'], Triggers.ticket_buyer, buyer_emails,
-                                      attached_event_id=data['event_id'])
+        await self.send_emails.direct(
+            data['company'], Triggers.ticket_buyer, buyer_emails, attached_event_id=data['event_id']
+        )
 
         if other_emails:
-            await self.send_emails.direct(data['company'], Triggers.ticket_other, other_emails,
-                                          attached_event_id=data['event_id'])
+            await self.send_emails.direct(
+                data['company'], Triggers.ticket_other, other_emails, attached_event_id=data['event_id']
+            )
         return len(other_emails) + 1
 
     @concurrent
@@ -144,7 +146,7 @@ class EmailActor(BaseEmailActor):
                 JOIN companies AS co ON cat.company = co.id
                 WHERE a.id = $1 and a.type = 'donate'
                 """,
-                action_id
+                action_id,
             )
         action_extra = json.loads(data['extra'])
         ctx = {
@@ -152,7 +154,7 @@ class EmailActor(BaseEmailActor):
             'gift_aid_enabled': data['gift_aid'],
             'category_name': data['cat_name'],
             'amount_donated': display_cash_free(data['amount'], data['currency']),
-            'card_details': '{brand} {card_expiry} - ending {card_last4}'.format(**action_extra)
+            'card_details': '{brand} {card_expiry} - ending {card_last4}'.format(**action_extra),
         }
         await self.send_emails.direct(data['company'], Triggers.donation_thanks, [UserEmail(data['user_id'], ctx)])
 
@@ -163,14 +165,9 @@ class EmailActor(BaseEmailActor):
         """
         async with self.pg.acquire() as conn:
             company_id, status, role = await conn.fetchrow(
-                'SELECT company, status, role FROM users WHERE id=$1',
-                user_id
+                'SELECT company, status, role FROM users WHERE id=$1', user_id
             )
-        ctx = dict(
-            events_link='/dashboard/events/',
-            created_by_admin=created_by_admin,
-            is_admin=role == 'admin',
-        )
+        ctx = dict(events_link='/dashboard/events/', created_by_admin=created_by_admin, is_admin=role == 'admin',)
         if status == 'pending':
             ctx['confirm_email_link'] = password_reset_link(user_id, auth_fernet=self.auth_fernet)
 
@@ -196,7 +193,8 @@ class EmailActor(BaseEmailActor):
                 JOIN categories AS cat ON e.category = cat.id
                 WHERE a.id=$1
                 """,
-                action_id, self.settings.auth_key
+                action_id,
+                self.settings.auth_key,
             )
 
             link = f'/dashboard/events/{data["event_id"]}/'
@@ -210,8 +208,8 @@ class EmailActor(BaseEmailActor):
                 action_link=link,
             )
             users = [
-                UserEmail(id=r['id'], ctx=ctx) for r in
-                await conn.fetch("SELECT id FROM users WHERE role='admin' AND company=$1", data['company_id'])
+                UserEmail(id=r['id'], ctx=ctx)
+                for r in await conn.fetch("SELECT id FROM users WHERE role='admin' AND company=$1", data['company_id'])
             ]
         await self.send_emails.direct(data['company_id'], Triggers.admin_notification, users)
         if data['host_role'] != 'admin':
@@ -223,8 +221,9 @@ class EmailActor(BaseEmailActor):
                 'category_name': data['cat_name'],
                 is_cat(data['cat_slug']): True,
             }
-            await self.send_emails.direct(data['company_id'], Triggers.event_host_created,
-                                          [UserEmail(data['host_user_id'], ctx)])
+            await self.send_emails.direct(
+                data['company_id'], Triggers.event_host_created, [UserEmail(data['host_user_id'], ctx)]
+            )
 
     @concurrent
     async def send_event_update(self, action_id):
@@ -245,14 +244,16 @@ class EmailActor(BaseEmailActor):
                 JOIN categories AS cat ON e.category = cat.id
                 WHERE a.id=$1
                 """,
-                action_id, self.settings.auth_key
+                action_id,
+                self.settings.auth_key,
             )
             user_tickets = await conn.fetch(
                 """
                 SELECT DISTINCT user_id, id AS ticket_id
                 FROM tickets
                 WHERE status='booked' AND event=$1 AND user_id IS NOT NULL
-                """, data['event_id']
+                """,
+                data['event_id'],
             )
 
         ctx = {
@@ -264,8 +265,9 @@ class EmailActor(BaseEmailActor):
             is_cat(data['cat_slug']): True,
         }
         users = [UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in user_tickets]
-        await self.send_emails.direct(data['company_id'], Triggers.event_update, users,
-                                      attached_event_id=data['event_id'])
+        await self.send_emails.direct(
+            data['company_id'], Triggers.event_update, users, attached_event_id=data['event_id']
+        )
 
     @cron(minute=30)
     async def send_event_reminders(self):
@@ -295,20 +297,19 @@ class EmailActor(BaseEmailActor):
                       )
                 ORDER BY cat.company
                 """,
-                self.settings.auth_key
+                self.settings.auth_key,
             )
             if not events:
                 return 0
             # create the 'event-guest-reminder' action so the events won't receive multiple reminders
             await conn.execute_b(
                 'INSERT INTO actions (:values__names) VALUES :values',
-                values=MultipleValues(*[
-                    Values(
-                        company=e['company_id'],
-                        event=e['id'],
-                        type=ActionTypes.event_guest_reminder.value,
-                    ) for e in events
-                ]),
+                values=MultipleValues(
+                    *[
+                        Values(company=e['company_id'], event=e['id'], type=ActionTypes.event_guest_reminder.value,)
+                        for e in events
+                    ]
+                ),
             )
             # get all users expecting the email for all events
             r = await conn.fetch(
@@ -317,12 +318,12 @@ class EmailActor(BaseEmailActor):
                 FROM tickets
                 WHERE status='booked' AND event=ANY($1)
                 ORDER BY event
-                """, {e['id'] for e in events}
+                """,
+                {e['id'] for e in events},
             )
             # group the users by event
             users = {
-                event_id: {(t['user_id'], t['ticket_id']) for t in g}
-                for event_id, g in groupby(r, itemgetter('event'))
+                event_id: {(t['user_id'], t['ticket_id']) for t in g} for event_id, g in groupby(r, itemgetter('event'))
             }
 
         user_emails = 0
@@ -348,14 +349,9 @@ class EmailActor(BaseEmailActor):
                     static_map=static_map_link(lat, lng, settings=self.settings),
                     google_maps_url=f'https://www.google.com/maps/place/{lat},{lng}/@{lat},{lng},13z',
                 )
-            user_ctxs = [
-                UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in event_users
-            ]
+            user_ctxs = [UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in event_users]
             await self.send_emails(
-                d['company_id'],
-                Triggers.event_reminder.value,
-                user_ctxs,
-                attached_event_id=d['id'],
+                d['company_id'], Triggers.event_reminder.value, user_ctxs, attached_event_id=d['id'],
             )
             user_emails += len(event_users)
         return user_emails
@@ -397,7 +393,7 @@ class EmailActor(BaseEmailActor):
                       e.start_ts BETWEEN now() AND now() + '30 days'::interval
                 ORDER BY cat.company
                 """,
-                self.settings.auth_key
+                self.settings.auth_key,
             )
 
         if not events:
@@ -462,7 +458,7 @@ class EmailActor(BaseEmailActor):
                       e.start_ts BETWEEN now() + '4 hours'::interval AND now() + '5 hours'::interval
                 ORDER BY cat.company
                 """,
-                self.settings.auth_key
+                self.settings.auth_key,
             )
             if not events:
                 return 0

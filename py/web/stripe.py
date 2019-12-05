@@ -71,7 +71,8 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
         FROM tickets
         WHERE event=$1 AND reserve_action=$2 AND status='reserved' AND booked_action IS NULL
         """,
-        res.event_id, res.action_id,
+        res.event_id,
+        res.action_id,
     )
     if res.ticket_count != reserved_tickets:
         # reservation could have already been used or event id could be wrong
@@ -90,12 +91,7 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
     async with conn.transaction():
         confirm_action_id = await conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-            values=Values(
-                company=company_id,
-                user_id=res.user_id,
-                event=res.event_id,
-                type=m.book_action,
-            )
+            values=Values(company=company_id, user_id=res.user_id, event=res.event_id, type=m.book_action,),
         )
         # mark the tickets as price=0 although they could all already be zero,
         # this avoids reporting false revenue for buy-tickets-offline, see #237
@@ -104,7 +100,8 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
             UPDATE tickets SET status='booked', booked_action=$1, price=null, extra_donated=null
             WHERE reserve_action=$2
             """,
-            confirm_action_id, res.action_id,
+            confirm_action_id,
+            res.action_id,
         )
         await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
 
@@ -112,12 +109,7 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
 
 
 async def get_stripe_payment_method(
-    *,
-    payment_method_id: str,
-    company_id: int,
-    user_id: int,
-    app,
-    conn: BuildPgConnection
+    *, payment_method_id: str, company_id: int, user_id: int, app, conn: BuildPgConnection
 ) -> dict:
     stripe_customer_id, stripe_secret_key = await conn.fetchrow(
         """
@@ -126,7 +118,8 @@ async def get_stripe_payment_method(
         JOIN companies c on u.company = c.id
         WHERE u.id=$1 AND c.id=$2
         """,
-        user_id, company_id
+        user_id,
+        company_id,
     )
     stripe = StripeClient(app, stripe_secret_key)
     try:
@@ -145,7 +138,7 @@ async def get_stripe_payment_method(
         return {
             'card': {k: data['card'][k] for k in ('brand', 'exp_month', 'exp_year', 'last4')},
             'address': data['billing_details']['address'],
-            'name': data['billing_details']['name']
+            'name': data['billing_details']['name'],
         }
 
 
@@ -156,7 +149,7 @@ async def stripe_refund(
     user_id: int,
     company_id: int,
     app: Application,
-    conn: BuildPgConnection
+    conn: BuildPgConnection,
 ):
     """
     Should be called inside ticket cancellation transaction/
@@ -168,7 +161,8 @@ async def stripe_refund(
         JOIN companies c on u.company = c.id
         WHERE u.id=$1 AND c.id=$2
         """,
-        user_id, company_id
+        user_id,
+        company_id,
     )
     stripe = StripeClient(app, stripe_secret_key)
     return await stripe.post(
@@ -177,10 +171,7 @@ async def stripe_refund(
         charge=refund_charge_id,
         amount=amount,
         reason='requested_by_customer',
-        metadata={
-            'admin_email': user_email,
-            'admin_user_id': user_id,
-        }
+        metadata={'admin_email': user_email, 'admin_user_id': user_id},
     )
 
 
@@ -240,7 +231,8 @@ async def stripe_payment_intent(
         JOIN companies c on u.company = c.id
         WHERE u.id=$1 AND c.id=$2
         """,
-        user_id, company_id
+        user_id,
+        company_id,
     )
 
     # could move the customer stuff to the worker
@@ -261,10 +253,7 @@ async def stripe_payment_intent(
             'customers',
             email=user_email,
             description=f'{user_name} ({user_role})',
-            metadata={
-                'role': user_role,
-                'user_id': user_id,
-            }
+            metadata={'role': user_role, 'user_id': user_id},
         )
         stripe_customer_id = customer['id']
         await conn.execute('UPDATE users SET stripe_customer_id=$1 WHERE id=$2', stripe_customer_id, user_id)

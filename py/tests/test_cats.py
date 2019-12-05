@@ -55,11 +55,7 @@ async def test_create_cat(cli, url, db_conn, factory: Factory, login):
     await factory.create_user()
     await login()
 
-    data = dict(
-        name='foobar',
-        description='I love to party',
-        sort_index=42,
-    )
+    data = dict(name='foobar', description='I love to party', sort_index=42,)
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
     r = await cli.json_post(url('category-add'), data=data)
     assert r.status == 201, await r.text()
@@ -117,10 +113,7 @@ async def test_edit_cat(cli, url, db_conn, factory: Factory, login):
     assert cat['sort_index'] is None
     assert cat['description'] is None
 
-    data = dict(
-        description='x',
-        sort_index=42,
-    )
+    data = dict(description='x', sort_index=42,)
     r = await cli.json_post(url('category-edit', pk=factory.category_id), data=data)
     assert r.status == 200, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
@@ -172,15 +165,7 @@ async def test_edit_invalid(cli, url, factory: Factory, login):
     data = await r.json()
     assert data == {
         'message': 'Invalid Data',
-        'details': [
-            {
-                'loc': [
-                    'sort_index',
-                ],
-                'msg': 'value is not a valid integer',
-                'type': 'type_error.integer',
-            },
-        ],
+        'details': [{'loc': ['sort_index'], 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}],
     }
 
 
@@ -219,14 +204,7 @@ async def test_cats_browse(cli, url, factory: Factory, login):
     data = await r.json()
     # debug(data)
     assert data == {
-        'items': [
-            {
-                'id': factory.category_id,
-                'name': 'Supper Clubs',
-                'live': True,
-                'description': None,
-            },
-        ],
+        'items': [{'id': factory.category_id, 'name': 'Supper Clubs', 'live': True, 'description': None}],
         'count': 1,
         'pages': 1,
     }
@@ -259,7 +237,6 @@ async def test_cats_retrieve(cli, url, factory: Factory, login):
         'post_booking_message': None,
         'ticket_extra_title': None,
         'ticket_extra_help_text': None,
-
     }
 
 
@@ -276,7 +253,7 @@ async def test_upload_image(cli, url, factory: Factory, login, dummy_server):
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
     assert sorted(dummy_server.app['log']) == [
@@ -291,14 +268,14 @@ async def test_upload_too_large(cli, url, factory: Factory, login):
     await factory.create_cat()
     await login()
     data = FormData()
-    data.add_field('image', b'x' * (1024**2 + 1), filename='testing.png', content_type='application/octet-stream')
+    data.add_field('image', b'x' * (1024 ** 2 + 1), filename='testing.png', content_type='application/octet-stream')
     r = await cli.post(
         url('categories-add-image', cat_id=factory.category_id),
         data=data,
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 413, await r.text()
 
@@ -316,7 +293,7 @@ async def test_upload_no_image(cli, url, factory: Factory, login):
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 400, await r.text()
 
@@ -334,7 +311,7 @@ async def test_upload_image_invalid(cli, url, factory: Factory, login):
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 400, await r.text()
     data = await r.json()
@@ -356,7 +333,7 @@ async def test_upload_image_too_small(cli, url, factory: Factory, login):
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 400, await r.text()
     data = await r.json()
@@ -407,10 +384,7 @@ async def test_delete_image_default(cli, url, factory: Factory, login, db_conn):
 
     img = 'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png'
     await db_conn.execute('UPDATE categories SET image=$1', img)
-    r = await cli.json_post(
-        url('categories-delete-image', cat_id=factory.category_id),
-        data={'image': img},
-    )
+    r = await cli.json_post(url('categories-delete-image', cat_id=factory.category_id), data={'image': img},)
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {'message': 'default image may not be be deleted'}
@@ -424,10 +398,7 @@ async def test_set_default_image(cli, url, factory: Factory, login, dummy_server
 
     assert 'https://www.example.org/main.png' == await db_conn.fetchval('SELECT image FROM categories')
     img = 'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png'
-    r = await cli.json_post(
-        url('categories-set-image', cat_id=factory.category_id),
-        data={'image': img},
-    )
+    r = await cli.json_post(url('categories-set-image', cat_id=factory.category_id), data={'image': img},)
     assert r.status == 200, await r.text()
     assert dummy_server.app['log'] == ['GET aws_endpoint_url/testingbucket.example.org']
     assert img == await db_conn.fetchval('SELECT image FROM categories')

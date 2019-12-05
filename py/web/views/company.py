@@ -72,9 +72,7 @@ async def company_upload(request):
 
     co_id = request['company_id']
     co_slug, old_image = await request['conn'].fetchrow_b(
-        'SELECT slug, :image_field FROM companies WHERE id=:id',
-        image_field=V(field_name),
-        id=co_id
+        'SELECT slug, :image_field FROM companies WHERE id=:id', image_field=V(field_name), id=co_id
     )
 
     upload_path = Path(co_slug) / 'co' / field_name

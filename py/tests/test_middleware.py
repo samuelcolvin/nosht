@@ -28,26 +28,20 @@ async def handle_errors(request):
 
 
 async def pre_startup_app(app):
-    app['main_app'] = {
-        'pg': SimplePgPool(app['test_conn'])
-    }
+    app['main_app'] = {'pg': SimplePgPool(app['test_conn'])}
 
 
 @pytest.fixture(name='cli')
 async def _fix_cli(settings, db_conn, aiohttp_client, redis):
-    app = web.Application(middlewares=(
-        session_middleware(EncryptedCookieStorage(settings.auth_key, cookie_name='testing')),
-        error_middleware,
-    ))
-    app.add_routes([
-        web.get('/user', handle_user),
-        web.get('/{do}', handle_errors),
-    ])
-
-    app.update(
-        test_conn=db_conn,
-        settings=settings
+    app = web.Application(
+        middlewares=(
+            session_middleware(EncryptedCookieStorage(settings.auth_key, cookie_name='testing')),
+            error_middleware,
+        )
     )
+    app.add_routes([web.get('/user', handle_user), web.get('/{do}', handle_errors)])
+
+    app.update(test_conn=db_conn, settings=settings)
     app.on_startup.append(pre_startup_app)
     cli = await aiohttp_client(app)
 

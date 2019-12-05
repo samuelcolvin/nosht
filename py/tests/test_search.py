@@ -52,9 +52,7 @@ async def test_active_ts_updated(factory: Factory, db_conn):
     assert await db_conn.fetchval('select count(*) from search') == 1
     assert await db_conn.fetchval('select active_ts from search where user_id=$1', user_id) == CloseToNow()
     await db_conn.execute(
-        "insert into actions (company, user_id, ts, type) values ($1, $2, '2032-01-01', 'login')",
-        company_id,
-        user_id,
+        "insert into actions (company, user_id, ts, type) values ($1, $2, '2032-01-01', 'login')", company_id, user_id,
     )
     new_ts = await db_conn.fetchval('select active_ts from search where user_id=$1', user_id)
     assert new_ts == datetime(2032, 1, 1, tzinfo=timezone.utc)
@@ -68,9 +66,7 @@ async def test_create_update_event(factory: Factory, db_conn):
     await factory.create_user()
     assert await db_conn.fetchval('select count(*) from search') == 1
     event_id = await factory.create_event(
-        name='Foo Event',
-        short_description='Foo Event Appleton',
-        long_description='sausage',
+        name='Foo Event', short_description='Foo Event Appleton', long_description='sausage',
     )
     assert await db_conn.fetchval('select count(*) from search') == 2
     user, label, vector = await db_conn.fetchrow('select user_id, label, vector from search where event=$1', event_id)
@@ -108,8 +104,15 @@ async def test_search_for_users(factory: Factory, db_conn, cli, url, login):
         ],
     }
 
-    for query in ('john', 'doe', 'john doe', 'testing@example.com', 'testing', '@example.com',
-                  'testing@example.com doe'):
+    for query in (
+        'john',
+        'doe',
+        'john doe',
+        'testing@example.com',
+        'testing',
+        '@example.com',
+        'testing@example.com doe',
+    ):
         r = await cli.get(url('user-search', query={'q': query}))
         assert r.status == 200, await r.text()
         items = (await r.json())['items']

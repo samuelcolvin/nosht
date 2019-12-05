@@ -151,7 +151,6 @@ async def test_book_tickets_multiple(donorfy: DonorfyActor, factory: Factory, du
         f'GET donorfy_api_root/no-users/constituents/EmailAddress/frank@example.org',
         f'POST donorfy_api_root/no-users/constituents',
         f'POST donorfy_api_root/no-users/activities',
-
         f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{ben}',
         f'GET donorfy_api_root/no-users/constituents/EmailAddress/charlie@example.org',
         f'GET donorfy_api_root/no-users/constituents/ExternalKey/nosht_{charlie}',
@@ -173,12 +172,11 @@ async def test_book_tickets_extra(donorfy: DonorfyActor, factory: Factory, dummy
             user_id=factory.user_id,
             type=ActionTypes.buy_tickets,
             event=factory.event_id,
-            extra=json.dumps({'stripe_balance_transaction': 'txn_testing'})
-        )
+            extra=json.dumps({'stripe_balance_transaction': 'txn_testing'}),
+        ),
     )
     await db_conn.execute(
-        "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2",
-        action_id, res.action_id,
+        "UPDATE tickets SET status='booked', booked_action=$1 WHERE reserve_action=$2", action_id, res.action_id,
     )
     await db_conn.execute('update tickets set extra_donated=10')
 
@@ -249,10 +247,7 @@ async def test_book_offline(donorfy: DonorfyActor, factory: Factory, dummy_serve
     res = await factory.create_reservation()
     app = cli.app['main_app']
 
-    data = dict(
-        booking_token=encrypt_json(app, res.dict()),
-        book_action='buy-tickets-offline',
-    )
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline',)
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
     assert 'POST donorfy_api_root/standard/transactions' not in dummy_server.app['post_data']

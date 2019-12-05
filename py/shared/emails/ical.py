@@ -15,8 +15,7 @@ def _ical_escape(text):
     from https://github.com/collective/icalendar/blob/4.0.2/src/icalendar/parser.py#L20
     """
     return (
-        text
-        .replace(r'\N', '\n')
+        text.replace(r'\N', '\n')
         .replace('\\', '\\\\')
         .replace(';', r'\;')
         .replace(',', r'\,')
@@ -44,9 +43,7 @@ def foldline(line, limit=75, fold_sep='\r\n '):
     except (UnicodeEncodeError, UnicodeDecodeError):
         pass
     else:
-        return fold_sep.join(
-            line[i:i + limit - 1] for i in range(0, len(line), limit - 1)
-        )
+        return fold_sep.join(line[i : i + limit - 1] for i in range(0, len(line), limit - 1))
 
     ret_chars = []
     byte_count = 0
@@ -112,12 +109,15 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
         foldline('SUMMARY:' + _ical_escape(data['name'])),
         'DTSTAMP:' + dt_stamp() + 'Z',
         'UID:@nosht|' + data['ref'],
-        foldline('DESCRIPTION:' + _ical_escape(
-            '{name}\n\n'
-            '{short_description}\n\n'
-            'Hosted by {hosted_by}\n\n'
-            'For more information: {url}'.format(url=url, hosted_by=hosted_by, **data)
-        )),
+        foldline(
+            'DESCRIPTION:'
+            + _ical_escape(
+                '{name}\n\n'
+                '{short_description}\n\n'
+                'Hosted by {hosted_by}\n\n'
+                'For more information: {url}'.format(url=url, hosted_by=hosted_by, **data)
+            )
+        ),
         foldline('URL:' + _ical_escape(url)),
         foldline(f'ORGANIZER;CN={_ical_escape(hosted_by)}:MAILTO:{email}'),
     ]
@@ -149,8 +149,4 @@ async def ical_attachment(event_id, company_id, *, conn, settings: Settings):
         'END:VEVENT',
         'END:VCALENDAR\r\n',
     ]
-    return Attachment(
-        content='\r\n'.join(lines),
-        mime_type='text/calendar',
-        filename='event.ics'
-    )
+    return Attachment(content='\r\n'.join(lines), mime_type='text/calendar', filename='event.ics')

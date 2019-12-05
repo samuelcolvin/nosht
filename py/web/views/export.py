@@ -86,7 +86,7 @@ JOIN categories AS cat ON opts.category = cat.id
 JOIN companies AS co ON cat.company = co.id
 WHERE cat.company=$1
 ORDER BY d.id
-    """
+    """,
 }
 
 
@@ -118,9 +118,7 @@ class ResponsePseudoFile:
 
 
 async def export_plumbing(request, sql, *sql_args, filename, none_message, modify_records=None):
-    response = StreamResponse(headers={
-        'Content-Disposition': f'attachment;filename={filename}.csv'
-    })
+    response = StreamResponse(headers={'Content-Disposition': f'attachment;filename={filename}.csv'})
     response.content_type = 'text/csv'
     await response.prepare(request)
     try:
