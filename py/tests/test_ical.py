@@ -13,8 +13,7 @@ async def test_ical(factory: Factory, db_conn, settings, mock):
     await factory.create_cat()
     await factory.create_user()
     await factory.create_event(
-        short_description='This is the event short description',
-        start_ts=london.localize(datetime(2020, 6, 1, 10, 0)),
+        short_description='This is the event short description', start_ts=london.localize(datetime(2020, 6, 1, 10, 0)),
     )
 
     m = mock.patch('shared.emails.ical.dt_stamp')
@@ -79,10 +78,7 @@ async def test_utc(factory: Factory, db_conn, settings):
     )
 
     attachment = await ical_attachment(factory.event_id, factory.company_id, conn=db_conn, settings=settings)
-    assert (
-        'DTSTART:20200601T100000Z\r\n'
-        'DTEND:20200601T110000Z\r\n'
-    ) in attachment.content
+    assert ('DTSTART:20200601T100000Z\r\n' 'DTEND:20200601T110000Z\r\n') in attachment.content
 
 
 async def test_no_duration(factory: Factory, db_conn, settings):
@@ -112,7 +108,4 @@ async def test_unicode_wrap(factory: Factory, db_conn, settings):
     await factory.create_event(name='文' * 40)
 
     attachment = await ical_attachment(factory.event_id, factory.company_id, conn=db_conn, settings=settings)
-    assert (
-        'SUMMARY:文文文文文文文文文文文文文文文文文文文文文文\r\n'
-        ' 文文文文文文文文文文文文文文文文文文\r\n'
-    ) in attachment.content
+    assert ('SUMMARY:文文文文文文文文文文文文文文文文文文文文文文\r\n' ' 文文文文文文文文文文文文文文文文文文\r\n') in attachment.content

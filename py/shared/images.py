@@ -78,13 +78,15 @@ async def _upload(upload_path: Path, main_img: bytes, thumb_img: Optional[bytes]
             ),
         ]
         if thumb_img:
-            coros.append(s3.put_object(
-                Bucket=settings.s3_bucket,
-                Key=str(upload_path / 'thumb.png'),
-                Body=thumb_img,
-                ContentType='image/png',
-                ACL='public-read'
-            ))
+            coros.append(
+                s3.put_object(
+                    Bucket=settings.s3_bucket,
+                    Key=str(upload_path / 'thumb.png'),
+                    Body=thumb_img,
+                    ContentType='image/png',
+                    ACL='public-read',
+                )
+            )
         await asyncio.gather(*coros)
     return f'{settings.s3_domain}/{upload_path}/main.png'
 

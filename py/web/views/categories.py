@@ -133,7 +133,7 @@ class CategoryBread(Bread):
 
     model = Model
     table = 'categories'
-    browse_order_by_fields = 'sort_index',
+    browse_order_by_fields = ('sort_index',)
 
     browse_fields = (
         'id',
@@ -164,8 +164,5 @@ class CategoryBread(Bread):
         return Where(V('company') == self.request['company_id'])
 
     async def prepare_add_data(self, data):
-        data.update(
-            company=self.request['company_id'],
-            slug=slugify(data['name'])
-        )
+        data.update(company=self.request['company_id'], slug=slugify(data['name']))
         return data

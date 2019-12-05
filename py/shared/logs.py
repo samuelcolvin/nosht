@@ -21,43 +21,21 @@ def setup_logging(disable_existing=False):
     client = None
     if raven_dsn:
         client = Client(
-            transport=AioHttpTransport,
-            dsn=raven_dsn,
-            release=os.getenv('COMMIT', None),
-            name=os.getenv('DYNO', None),
+            transport=AioHttpTransport, dsn=raven_dsn, release=os.getenv('COMMIT', None), name=os.getenv('DYNO', None),
         )
     config = {
         'version': 1,
         'disable_existing_loggers': disable_existing,
-        'formatters': {
-            'nosht.default': {
-                'format': '%(levelname)-7s %(name)16s: %(message)s',
-            },
-        },
+        'formatters': {'nosht.default': {'format': '%(levelname)-7s %(name)16s: %(message)s'}},
         'handlers': {
-            'nosht.default': {
-                'level': log_level,
-                'class': 'logging.StreamHandler',
-                'formatter': 'nosht.default',
-            },
-            'sentry': {
-                'level': 'WARNING',
-                'class': 'raven.handlers.logging.SentryHandler',
-                'client': client,
-            } if client else {
-                'level': 'WARNING',
-                'class': 'logging.NullHandler',
-            }
+            'nosht.default': {'level': log_level, 'class': 'logging.StreamHandler', 'formatter': 'nosht.default'},
+            'sentry': {'level': 'WARNING', 'class': 'raven.handlers.logging.SentryHandler', 'client': client}
+            if client
+            else {'level': 'WARNING', 'class': 'logging.NullHandler'},
         },
         'loggers': {
-            'nosht': {
-                'handlers': ['nosht.default', 'sentry'],
-                'level': log_level,
-            },
-            'arq': {
-                'handlers': ['nosht.default', 'sentry'],
-                'level': log_level,
-            },
+            'nosht': {'handlers': ['nosht.default', 'sentry'], 'level': log_level},
+            'arq': {'handlers': ['nosht.default', 'sentry'], 'level': log_level},
         },
     }
     logging.config.dictConfig(config)

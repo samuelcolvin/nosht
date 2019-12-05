@@ -46,8 +46,9 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     await factory.create_event()
     await factory.create_donation_option()
 
-    factory.user_id = await factory.create_user(first_name='other', last_name='person',
-                                                email='other.person@example.org')
+    factory.user_id = await factory.create_user(
+        first_name='other', last_name='person', email='other.person@example.org'
+    )
     await login('other.person@example.org')
 
     r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
@@ -76,7 +77,7 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
         'POST stripe_root_url/payment_intents',
-        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "other person <other.person@example.org>"')
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "other person <other.person@example.org>"'),
     ]
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
     r = await db_conn.fetchrow('SELECT * FROM donations')
@@ -150,7 +151,7 @@ async def test_donate_no_gift_aid(cli, url, dummy_server, factory: Factory, logi
     assert dummy_server.app['log'] == [
         'POST stripe_root_url/customers',
         'POST stripe_root_url/payment_intents',
-        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"')
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
     ]
     r = await db_conn.fetchrow('SELECT donation_option, amount, gift_aid, address, city, postcode FROM donations')
     assert dict(r) == {
@@ -308,7 +309,7 @@ async def test_add_image(cli, url, factory: Factory, db_conn, login, dummy_serve
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
     assert sorted(dummy_server.app['images']) == [
@@ -322,7 +323,6 @@ async def test_add_image(cli, url, factory: Factory, db_conn, login, dummy_serve
             400,
             200,
         ),
-
     ]
     assert None is not await db_conn.fetchval('SELECT image FROM donation_options')
     assert sum('DELETE aws_endpoint_url/' in e for e in dummy_server.app['log']) == 0
@@ -343,7 +343,7 @@ async def test_add_image_delete_old(cli, url, factory: Factory, db_conn, login, 
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
     assert sum('DELETE aws_endpoint_url/' in e for e in dummy_server.app['log']) == 2
@@ -363,7 +363,7 @@ async def test_add_image_wrong_id(cli, url, factory: Factory, db_conn, login):
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 404, await r.text()
 
@@ -467,25 +467,13 @@ async def test_donate_gift_aid_no_name(factory: Factory, cli, url, login):
     assert r.status == 200, await r.text()
     data = await r.json()
 
-    post_data = dict(
-        title='Mr',
-        first_name='Joe',
-        address='Testing Street',
-        city='Testingville',
-        postcode='TE11 0ST',
-    )
+    post_data = dict(title='Mr', first_name='Joe', address='Testing Street', city='Testingville', postcode='TE11 0ST')
     r = await cli.json_post(url('donation-gift-aid', action_id=data['action_id']), data=post_data)
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {
         'message': 'Invalid Data',
-        'details': [
-            {
-                'loc': ['last_name'],
-                'msg': 'field required',
-                'type': 'value_error.missing',
-            },
-        ],
+        'details': [{'loc': ['last_name'], 'msg': 'field required', 'type': 'value_error.missing'}],
     }
 
 

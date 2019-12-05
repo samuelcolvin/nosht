@@ -63,7 +63,7 @@ async def test_upload_image(cli, url, factory: Factory, login, db_conn, dummy_se
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
     # debug(dummy_server.app['log'])
@@ -90,16 +90,11 @@ async def test_upload_logo(cli, url, factory: Factory, db_conn, login, dummy_ser
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
     assert dummy_server.app['images'] == [
-        (
-            RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/co/logo/\w+/main.png'),
-            341,
-            256,
-        ),
-
+        (RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/co/logo/\w+/main.png'), 341, 256),
     ]
     assert None is not await db_conn.fetchval('SELECT logo FROM companies')
 
@@ -117,7 +112,7 @@ async def test_upload_logo_too_small(cli, url, factory: Factory, db_conn, login,
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 400, await r.text()
     data = await r.json()
@@ -139,7 +134,7 @@ async def test_upload_logo_convert(cli, url, factory: Factory, db_conn, login):
         headers={
             'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
             'Origin': f'http://127.0.0.1:{cli.server.port}',
-        }
+        },
     )
     assert r.status == 200, await r.text()
     assert None is not await db_conn.fetchval('SELECT logo FROM companies')
@@ -152,29 +147,14 @@ async def test_set_footer_links(cli, url, factory: Factory, db_conn, login):
     assert None is await db_conn.fetchval('SELECT footer_links FROM companies')
     data = {
         'links': [
-            {
-                'title': 'Foo',
-                'url': 'https://www.example.com/testing/',
-                'new_tab': False,
-            },
-            {
-                'title': 'Bar',
-                'url': 'http://www.example.com/another/',
-            }
+            {'title': 'Foo', 'url': 'https://www.example.com/testing/', 'new_tab': False},
+            {'title': 'Bar', 'url': 'http://www.example.com/another/'},
         ]
     }
     r = await cli.json_post(url('company-footer-links'), data=data)
     assert r.status == 200, await r.text()
     links = json.loads(await db_conn.fetchval('SELECT footer_links FROM companies'))
     assert links == [
-        {
-            'url': 'https://www.example.com/testing/',
-            'title': 'Foo',
-            'new_tab': False,
-        },
-        {
-            'url': 'http://www.example.com/another/',
-            'title': 'Bar',
-            'new_tab': True,
-        },
+        {'url': 'https://www.example.com/testing/', 'title': 'Foo', 'new_tab': False},
+        {'url': 'http://www.example.com/another/', 'title': 'Bar', 'new_tab': True},
     ]

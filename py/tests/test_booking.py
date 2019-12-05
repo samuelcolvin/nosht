@@ -17,7 +17,7 @@ async def test_booking_info(cli, url, factory: Factory, login, db_conn):
 
     cat_slug, event_slug = await db_conn.fetchrow(
         'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
-        factory.event_id
+        factory.event_id,
     )
     r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
@@ -38,7 +38,7 @@ async def test_booking_info_limited(cli, url, factory: Factory, login, db_conn):
 
     cat_slug, event_slug = await db_conn.fetchrow(
         'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
-        factory.event_id
+        factory.event_id,
     )
     r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
@@ -63,7 +63,7 @@ async def test_booking_info_inactive(cli, url, factory: Factory, login, db_conn)
 
     cat_slug, event_slug = await db_conn.fetchrow(
         'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
-        factory.event_id
+        factory.event_id,
     )
     r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
     assert r.status == 200, await r.text()
@@ -100,7 +100,8 @@ async def test_booking_info_sig(cli, url, factory: Factory, login, settings, db_
         SELECT event_link(cat.slug, e.slug, e.public, $2)
         FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1
         """,
-        factory.event_id, settings.auth_key
+        factory.event_id,
+        settings.auth_key,
     )
     _, cat_slug, event_slug, sig = event_link.strip('/').split('/')
     r = await cli.get(url('event-booking-info-private', category=cat_slug, event=event_slug, sig=sig))
@@ -122,7 +123,7 @@ async def test_booking_info_private(cli, url, factory: Factory, login, db_conn):
 
     cat_slug, event_slug = await db_conn.fetchrow(
         'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
-        factory.event_id
+        factory.event_id,
     )
     r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
     assert r.status == 404, await r.text()
@@ -137,7 +138,7 @@ async def test_booking_info_sig_wrong(cli, url, factory: Factory, login, db_conn
 
     cat_slug, event_slug = await db_conn.fetchrow(
         'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
-        factory.event_id
+        factory.event_id,
     )
     r = await cli.get(url('event-booking-info-private', category=cat_slug, event=event_slug, sig='xxx'))
     assert r.status == 404, await r.text()
@@ -196,8 +197,10 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
     }
 
     users = [
-        dict(r) for r in
-        await db_conn.fetch('SELECT first_name, last_name, email, role, allow_marketing FROM users ORDER BY id')
+        dict(r)
+        for r in await db_conn.fetch(
+            'SELECT first_name, last_name, email, role, allow_marketing FROM users ORDER BY id'
+        )
     ]
     assert users == [
         {
@@ -215,13 +218,16 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
             'allow_marketing': False,
         },
     ]
-    users = [dict(r) for r in await db_conn.fetch(
-        """
+    users = [
+        dict(r)
+        for r in await db_conn.fetch(
+            """
         SELECT event, user_id, first_name, last_name, reserve_action, booked_action, status, extra_info
         FROM tickets
         ORDER BY user_id
         """
-    )]
+        )
+    ]
     assert users == [
         {
             'event': factory.event_id,
@@ -255,15 +261,8 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
 
     data = {
         'tickets': [
-            {
-                't': True,
-                'first_name': 'TT',
-                'last_name': 'BB',
-                'email': 'ticket.buyer@example.org',
-            },
-            {
-                't': True,
-            },
+            {'t': True, 'first_name': 'TT', 'last_name': 'BB', 'email': 'ticket.buyer@example.org'},
+            {'t': True},
         ],
         'ticket_type': factory.ticket_type_id,
     }
@@ -283,20 +282,18 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
 
     users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
     assert users == [
-        {
-            'first_name': 'T',
-            'last_name': 'B',
-            'email': 'ticket.buyer@example.org',
-            'role': 'admin',
-        },
+        {'first_name': 'T', 'last_name': 'B', 'email': 'ticket.buyer@example.org', 'role': 'admin'},
     ]
-    users = [dict(r) for r in await db_conn.fetch(
-        """
+    users = [
+        dict(r)
+        for r in await db_conn.fetch(
+            """
         SELECT event, user_id, first_name, last_name, reserve_action, booked_action, status, extra_info
         FROM tickets
         ORDER BY user_id
         """
-    )]
+        )
+    ]
     reserve_action_id = await db_conn.fetchval("SELECT id FROM actions WHERE type='reserve-tickets'")
     assert users == [
         {
@@ -338,9 +335,7 @@ async def test_reserve_tickets_cover_costs(cli, url, factory: Factory, login):
                 'email': 'ticket.buyer@example.org',
                 'cover_costs': True,
             },
-            {
-                't': True,
-            },
+            {'t': True},
         ],
         'ticket_type': factory.ticket_type_id,
     }
@@ -375,14 +370,7 @@ async def test_reserve_tickets_free(cli, url, factory: Factory, login):
     await login()
 
     data = {
-        'tickets': [
-            {
-                't': True,
-                'first_name': 'Ticket',
-                'last_name': 'Buyer',
-                'email': 'ticket.buyer@example.org',
-            },
-        ],
+        'tickets': [{'t': True, 'first_name': 'Ticket', 'last_name': 'Buyer', 'email': 'ticket.buyer@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -416,14 +404,7 @@ async def test_reserve_tickets_wrong_type(cli, url, factory: Factory, login):
     await login()
 
     data = {
-        'tickets': [
-            {
-                't': True,
-                'first_name': 'Ticket',
-                'last_name': 'Buyer',
-                'email': 'ticket.buyer@example.org',
-            },
-        ],
+        'tickets': [{'t': True, 'first_name': 'Ticket', 'last_name': 'Buyer', 'email': 'ticket.buyer@example.org'}],
         'ticket_type': 999,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -458,9 +439,7 @@ async def test_reserve_0_tickets(cli, url, factory: Factory, login):
     await factory.create_event(status='published', price=10)
     await login(email='ticket.buyer@example.org')
 
-    data = {
-        'tickets': []
-    }
+    data = {'tickets': []}
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
     assert r.status == 400, await r.text()
 
@@ -473,10 +452,7 @@ async def test_reserve_tickets_none_left(cli, url, factory: Factory, login):
     await login(email='ticket.buyer@example.org')
 
     data = {
-        'tickets': [
-            {'t': True, 'email': 'foo1@example.org'},
-            {'t': True, 'email': 'foo2@example.org'},
-        ],
+        'tickets': [{'t': True, 'email': 'foo1@example.org'}, {'t': True, 'email': 'foo2@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -497,10 +473,7 @@ async def test_reserve_tickets_none_left_no_precheck(cli, url, factory: Factory,
     await login(email='ticket.buyer@example.org')
 
     data = {
-        'tickets': [
-            {'t': True, 'email': 'foo1@example.org'},
-            {'t': True, 'email': 'foo2@example.org'},
-        ],
+        'tickets': [{'t': True, 'email': 'foo1@example.org'}, {'t': True, 'email': 'foo2@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -576,10 +549,7 @@ async def test_book_free(cli, url, dummy_server, factory: Factory, db_conn):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    data = dict(
-        booking_token=encrypt_json(app, res.dict()),
-        book_action='book-free-tickets',
-    )
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='book-free-tickets')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
@@ -602,10 +572,7 @@ async def test_book_free_with_price(cli, url, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    data = dict(
-        booking_token=encrypt_json(app, res.dict()),
-        book_action='book-free-tickets',
-    )
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='book-free-tickets')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 400, await r.text()
 
@@ -627,10 +594,7 @@ async def test_buy_offline(cli, url, dummy_server, factory: Factory, login, db_c
     app = cli.app['main_app']
     assert 10 == await db_conn.fetchval('SELECT price FROM tickets')
 
-    data = dict(
-        booking_token=encrypt_json(app, res.dict()),
-        book_action='buy-tickets-offline',
-    )
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
@@ -658,10 +622,7 @@ async def test_buy_offline_other_admin(cli, url, dummy_server, factory: Factory,
     res: Reservation = await factory.create_reservation(u2)
     app = cli.app['main_app']
 
-    data = dict(
-        booking_token=encrypt_json(app, res.dict()),
-        book_action='buy-tickets-offline',
-    )
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
@@ -687,10 +648,7 @@ async def test_buy_offline_other_not_admin(cli, url, dummy_server, factory: Fact
     res: Reservation = await factory.create_reservation(u2)
     app = cli.app['main_app']
 
-    data = dict(
-        booking_token=encrypt_json(app, res.dict()),
-        book_action='buy-tickets-offline',
-    )
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 400, await r.text()
     assert {'message': 'to buy tickets offline you must be the host or an admin'} == await r.json()
@@ -712,10 +670,7 @@ async def test_buy_offline_host(cli, url, factory: Factory, login, db_conn):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    data = dict(
-        booking_token=encrypt_json(app, res.dict()),
-        book_action='buy-tickets-offline',
-    )
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")
@@ -733,9 +688,7 @@ async def test_free_repeat(factory: Factory, cli, url, login, db_conn):
     await login(email='ticket.buyer@example.org')
 
     data = {
-        'tickets': [
-            {'t': True, 'email': 'ticket.buyer@example.org'},
-        ],
+        'tickets': [{'t': True, 'email': 'ticket.buyer@example.org'}],
         'ticket_type': factory.ticket_type_id,
     }
     r = await cli.json_post(url('event-reserve-tickets', id=factory.event_id), data=data)
@@ -771,6 +724,7 @@ def buy_tickets(cli, url, login):
 
         action_id = (await r.json())['action_id']
         await factory.fire_stripe_webhook(action_id)
+
     return run
 
 
@@ -844,7 +798,7 @@ async def test_cancel_ticket_refund_free(factory: Factory, cli, url, buy_tickets
     await buy_tickets(factory)
 
     v = await db_conn.execute(
-        'update actions set type=$1 where type=$2', ActionTypes.book_free_tickets,  ActionTypes.buy_tickets
+        'update actions set type=$1 where type=$2', ActionTypes.book_free_tickets, ActionTypes.buy_tickets
     )
     assert v == 'UPDATE 1'
     ticket_id, status = await db_conn.fetchrow('select id, status from tickets')

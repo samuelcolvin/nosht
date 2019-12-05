@@ -20,10 +20,7 @@ async def test_login_successful(cli, url, factory: Factory):
 
     assert len(cli.session.cookie_jar) == 0
 
-    data = dict(
-        email='frank@example.org',
-        password='testing',
-    )
+    data = dict(email='frank@example.org', password='testing')
     r = await cli.json_post(url('login'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
     data = await r.json()
@@ -61,12 +58,15 @@ async def test_login_not_json(cli, url, factory: Factory):
     }
 
 
-@pytest.mark.parametrize('post_data', [
-    dict(email='not-frank@example.org', password='testing', grecaptcha_token='__ok__'),
-    dict(email='frank@example.org', password='testing1', grecaptcha_token='__ok__'),
-    dict(email='not-frank@example.org', password='testing1', grecaptcha_token='__ok__'),
-    dict(email='frank@example.org', password='_dummy_password_', grecaptcha_token='__ok__'),
-])
+@pytest.mark.parametrize(
+    'post_data',
+    [
+        dict(email='not-frank@example.org', password='testing', grecaptcha_token='__ok__'),
+        dict(email='frank@example.org', password='testing1', grecaptcha_token='__ok__'),
+        dict(email='not-frank@example.org', password='testing1', grecaptcha_token='__ok__'),
+        dict(email='frank@example.org', password='_dummy_password_', grecaptcha_token='__ok__'),
+    ],
+)
 async def test_login_unsuccessful(post_data, cli, url, factory: Factory):
     await factory.create_company()
     await factory.create_user()
@@ -273,13 +273,16 @@ async def test_host_signup_email(cli, url, factory: Factory, db_conn, dummy_serv
 async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, dummy_server):
     await factory.create_company()
     data = {'id_token': 'good.test.token'}
-    mock_jwt_decode = mocker.patch('web.auth.google_jwt.decode', return_value={
-        'iss': 'accounts.google.com',
-        'email_verified': True,
-        'email': 'google-auth@EXAMPLE.org',
-        'given_name': 'Foo',
-        'family_name': 'Bar',
-    })
+    mock_jwt_decode = mocker.patch(
+        'web.auth.google_jwt.decode',
+        return_value={
+            'iss': 'accounts.google.com',
+            'email_verified': True,
+            'email': 'google-auth@EXAMPLE.org',
+            'given_name': 'Foo',
+            'family_name': 'Bar',
+        },
+    )
     r = await cli.json_post(url('signup-host', site='google'), data=data)
     assert r.status == 200, await r.text()
     response_data = await r.json()
@@ -302,10 +305,7 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
 
     assert dummy_server.app['log'] == [
         'GET google_siw_url',
-        (
-            'email_send_endpoint',
-            'Subject: "Testing Account Created", To: "Foo Bar <google-auth@example.org>"',
-        ),
+        ('email_send_endpoint', 'Subject: "Testing Account Created", To: "Foo Bar <google-auth@example.org>"'),
     ]
     email = dummy_server.app['emails'][0]['part:text/plain']
     assert 'Create &amp; Publish Events' in email
@@ -465,13 +465,16 @@ async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
 async def test_guest_signup_google(cli, url, factory: Factory, db_conn, mocker):
     await factory.create_company()
     data = {'id_token': 'good.test.token'}
-    mock_jwt_decode = mocker.patch('web.auth.google_jwt.decode', return_value={
-        'iss': 'accounts.google.com',
-        'email_verified': True,
-        'email': 'google-auth@example.org',
-        'given_name': 'Foo',
-        'family_name': 'Bar',
-    })
+    mock_jwt_decode = mocker.patch(
+        'web.auth.google_jwt.decode',
+        return_value={
+            'iss': 'accounts.google.com',
+            'email_verified': True,
+            'email': 'google-auth@example.org',
+            'given_name': 'Foo',
+            'family_name': 'Bar',
+        },
+    )
     r = await cli.json_post(url('signup-guest', site='google'), data=data)
     assert r.status == 200, await r.text()
     response_data = await r.json()
@@ -566,15 +569,7 @@ async def test_set_password_mismatch(cli, url, factory: Factory):
     data = await r.json()
     assert data == {
         'message': 'Invalid Data',
-        'details': [
-            {
-                'loc': [
-                    'password2',
-                ],
-                'msg': 'passwords do not match',
-                'type': 'value_error',
-            },
-        ],
+        'details': [{'loc': ['password2'], 'msg': 'passwords do not match', 'type': 'value_error'}],
     }
 
 
@@ -583,10 +578,7 @@ async def test_password_reset(cli, url, factory: Factory, dummy_server, db_conn)
     await factory.create_user()
     pw_before = await db_conn.fetchval('SELECT password_hash FROM users')
 
-    data = dict(
-        email='frank@example.org',
-        grecaptcha_token='__ok__',
-    )
+    data = dict(email='frank@example.org', grecaptcha_token='__ok__')
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
     r = await cli.json_post(url('reset-password-request'), data=data)
     assert r.status == 200, await r.text()
@@ -620,10 +612,7 @@ async def test_password_reset_wrong(cli, url, factory: Factory, dummy_server, db
     await factory.create_company()
     await factory.create_user()
 
-    data = dict(
-        email='foobar@example.org',
-        grecaptcha_token='__ok__',
-    )
+    data = dict(email='foobar@example.org', grecaptcha_token='__ok__')
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
     r = await cli.json_post(url('reset-password-request'), data=data)
     assert r.status == 200, await r.text()
@@ -695,11 +684,7 @@ async def test_captcha_required(cli, url, factory: Factory, dummy_server):
     assert data == {'message': 'No recaptcha value'}
     assert dummy_server.app['log'] == []
 
-    data = dict(
-        email='frank@example.org',
-        password='testing',
-        grecaptcha_token='__ok__',
-    )
+    data = dict(email='frank@example.org', password='testing', grecaptcha_token='__ok__')
     r = await cli.json_post(url('login'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
     assert dummy_server.app['log'] == [('grecaptcha', '__ok__')]

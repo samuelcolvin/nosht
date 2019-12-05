@@ -51,7 +51,7 @@ async def log_extra(request, response=None, **more):
             headers=dict(getattr(response, 'headers', {})),
             text=response_text,
         ),
-        **more
+        **more,
     )
 
     tags = dict()
@@ -69,27 +69,23 @@ async def log_extra(request, response=None, **more):
                     JOIN companies AS c ON u.company = c.id
                     WHERE u.id=$1
                     """,
-                    user_id
+                    user_id,
                 )
                 if user_info:
                     tags.update(
-                        user_status=user_info['status'],
-                        user_role=user_info['role'],
-                        company=user_info['company_id'],
+                        user_status=user_info['status'], user_role=user_info['role'], company=user_info['company_id'],
                     )
                     user.update(user_info)
-    return dict(
-        data=data,
-        user=user,
-        tags=tags,
-    )
+    return dict(data=data, user=user, tags=tags)
 
 
 async def log_warning(request, response):
-    logger.warning('%s %d', request.rel_url, response.status, extra={
-        'fingerprint': [request.rel_url, str(response.status)],
-        **await log_extra(request, response)
-    })
+    logger.warning(
+        '%s %d',
+        request.rel_url,
+        response.status,
+        extra={'fingerprint': [request.rel_url, str(response.status)], **await log_extra(request, response)},
+    )
 
 
 def should_warn(r):
@@ -113,10 +109,15 @@ async def error_middleware(request, handler):
             await log_warning(request, e)
         raise
     except Exception as exc:
-        logger.exception('%s: %s', exc.__class__.__name__, exc, extra={
-            'fingerprint': [exc.__class__.__name__, str(exc)],
-            **await log_extra(request, exception_extra=exc_extra(exc))
-        })
+        logger.exception(
+            '%s: %s',
+            exc.__class__.__name__,
+            exc,
+            extra={
+                'fingerprint': [exc.__class__.__name__, str(exc)],
+                **await log_extra(request, exception_extra=exc_extra(exc)),
+            },
+        )
         raise HTTPInternalServerError()
     else:
         if should_warn(r):
@@ -208,9 +209,11 @@ def csrf_checks(request):
 async def csrf_middleware(request, handler):
     if request.method == METH_OPTIONS:
         if 'Access-Control-Request-Method' in request.headers:
-            if (request.headers.get('Access-Control-Request-Method') == METH_POST and
-                    request.path in CROSS_ORIGIN_URLS and
-                    request.headers.get('Access-Control-Request-Headers').lower() == 'content-type'):
+            if (
+                request.headers.get('Access-Control-Request-Method') == METH_POST
+                and request.path in CROSS_ORIGIN_URLS
+                and request.headers.get('Access-Control-Request-Headers').lower() == 'content-type'
+            ):
                 # can't check origin here as it's null since the iframe's requests are "cross-origin"
                 headers = {'Access-Control-Allow-Headers': 'Content-Type', **HEADER_CROSS_ORIGIN}
                 return Response(text='ok', headers=headers)

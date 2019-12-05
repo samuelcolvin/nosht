@@ -91,10 +91,7 @@ async def test_create_user(cli, url, login, factory: Factory, db_conn, dummy_ser
     r = await cli.json_post(url('user-add'), data=data)
     assert r.status == 201, await r.text()
     data = await r.json()
-    assert data == {
-        'status': 'ok',
-        'pk': await db_conn.fetchval("SELECT id FROM users WHERE first_name='foo'")
-    }
+    assert data == {'status': 'ok', 'pk': await db_conn.fetchval("SELECT id FROM users WHERE first_name='foo'")}
     user = await db_conn.fetchrow(
         """
         SELECT company, role, status, first_name, last_name, email
@@ -189,11 +186,7 @@ async def test_duplicate_email(cli, url, login, factory: Factory):
     }
 
 
-@pytest.mark.parametrize('before,after', [
-    ('pending', 'active'),
-    ('active', 'suspended'),
-    ('suspended', 'active'),
-])
+@pytest.mark.parametrize('before,after', [('pending', 'active'), ('active', 'suspended'), ('suspended', 'active')])
 async def test_switch_status(before, after, cli, url, factory: Factory, login, db_conn):
     await factory.create_company()
     await factory.create_user()
@@ -321,15 +314,18 @@ async def test_pagination(cli, url, login, factory: Factory, db_conn, settings):
     pw = mk_password('testing', settings)
     await db_conn.execute_b(
         'INSERT INTO users (:values__names) VALUES :values RETURNING id',
-        values=MultipleValues(*(
-            Values(
-                company=factory.company_id,
-                password_hash=pw,
-                email=f'user+{i + 1}@example.org',
-                role='admin',
-                status='active',
-            ) for i in range(120)
-        ))
+        values=MultipleValues(
+            *(
+                Values(
+                    company=factory.company_id,
+                    password_hash=pw,
+                    email=f'user+{i + 1}@example.org',
+                    role='admin',
+                    status='active',
+                )
+                for i in range(120)
+            )
+        ),
     )
     await login('user+1@example.org')
 

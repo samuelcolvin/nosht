@@ -46,52 +46,30 @@ async def google_siw(request):
 async def facebook_siw(request):
     access_token = request.query['access_token']
     if access_token == '__ok__':
-        return json_response({
-            'id': '123456',
-            'email': 'facebook-auth@example.org',
-            'first_name': None,
-            'last_name': 'Book',
-        })
+        return json_response(
+            {'id': '123456', 'email': 'facebook-auth@example.org', 'first_name': None, 'last_name': 'Book'}
+        )
     elif access_token == '__no_user__':
-        return json_response({
-            'id': '123456',
-            'first_name': None,
-            'last_name': 'Book',
-        })
+        return json_response({'id': '123456', 'first_name': None, 'last_name': 'Book'})
     else:
         return json_response({}, status=400)
 
 
 async def stripe_get_customer(request):
     if request.match_info['stripe_customer_id'] == 'xxx':
-        return json_response({
-            'id': 'stripe_customer_id',
-            'url': '/v1/customers/xxx/sources',
-        })
+        return json_response({'id': 'stripe_customer_id', 'url': '/v1/customers/xxx/sources'})
     else:
         return Response(status=404)
 
 
 async def stripe_post_customers(request):
-    return json_response({
-        'id': 'customer-id',
-        'sources': {
-            'data': [
-                {
-                    'id': 'source-id-1'
-                }
-            ]
-        }
-    })
+    return json_response({'id': 'customer-id', 'sources': {'data': [{'id': 'source-id-1'}]}})
 
 
 async def stripe_create_payment_intent(request):
     data = await request.post()
     action_id = data['metadata[reserve_action_id]']
-    return json_response({
-        'id': f'payment_intent_{action_id}',
-        'client_secret': f'payment_intent_secret_{action_id}'
-    })
+    return json_response({'id': f'payment_intent_{action_id}', 'client_secret': f'payment_intent_secret_{action_id}'})
 
 
 async def stripe_get_payment_methods(request):
@@ -102,33 +80,27 @@ async def stripe_get_payment_methods(request):
     else:
         created = datetime.utcnow()
 
-    return json_response({
-        'id': f'pm_123',
-        'customer': 'cus_123',
-        'created': int((created - datetime(1970, 1, 1)).total_seconds()),
-        'card': {
-            'brand': 'Visa',
-            'exp_month': 12,
-            'exp_year': 2032,
-            'last4': 1234,
-        },
-        'billing_details': {
-            'address': {
-                'line1': 'hello,'
-            },
-            'name': 'Testing Calls'
+    return json_response(
+        {
+            'id': f'pm_123',
+            'customer': 'cus_123',
+            'created': int((created - datetime(1970, 1, 1)).total_seconds()),
+            'card': {'brand': 'Visa', 'exp_month': 12, 'exp_year': 2032, 'last4': 1234},
+            'billing_details': {'address': {'line1': 'hello,'}, 'name': 'Testing Calls'},
         }
-    })
+    )
 
 
 async def stripe_get_transaction(request):
-    return json_response({
-        'id': request.match_info['transaction_id'],
-        'currency': 'gbp',
-        'object': 'balance_transaction',
-        'amount': -1,
-        'fee': 50,
-    })
+    return json_response(
+        {
+            'id': request.match_info['transaction_id'],
+            'currency': 'gbp',
+            'object': 'balance_transaction',
+            'amount': -1,
+            'fee': 50,
+        }
+    )
 
 
 async def stripe_post_refund(request):
@@ -208,27 +180,24 @@ async def donorfy_200(request):
 
 async def donorfy_get_con_ext_id(request):
     if request.match_info['api_key'] in {'standard', 'default-campaign'}:
-        return json_response([{
-            'ConstituentId': '123456',
-            'ExternalKey': request.match_info['ext_key'],
-        }])
+        return json_response([{'ConstituentId': '123456', 'ExternalKey': request.match_info['ext_key']}])
     else:
         return Response(status=404)
 
 
 async def donorfy_get_con_id(request):
     if request.match_info['api_key'] == 'default-campaign':
-        return json_response({
-            'ConstituentId': request.match_info['const_id'],
-            'ExternalKey': None,
-            'RecruitmentCampaign': '',
-        })
+        return json_response(
+            {'ConstituentId': request.match_info['const_id'], 'ExternalKey': None, 'RecruitmentCampaign': ''}
+        )
     elif request.match_info['api_key'] == 'standard':
-        return json_response({
-            'ConstituentId': request.match_info['const_id'],
-            'ExternalKey': None,
-            'RecruitmentCampaign': 'supper-clubs:the-event-name',
-        })
+        return json_response(
+            {
+                'ConstituentId': request.match_info['const_id'],
+                'ExternalKey': None,
+                'RecruitmentCampaign': 'supper-clubs:the-event-name',
+            }
+        )
     else:
         return Response(status=404)
 
@@ -242,46 +211,26 @@ async def donorfy_get_con_email(request):
         ext_id = None
     elif request.match_info['api_key'] == 'wrong-ext-id':
         ext_id = 'foobar'
-    return json_response([{
-        'ConstituentId': '456789',
-        'ExternalKey': ext_id,
-        'RecruitmentCampaign': 'supper-clubs:the-event-name',
-    }])
+    return json_response(
+        [{'ConstituentId': '456789', 'ExternalKey': ext_id, 'RecruitmentCampaign': 'supper-clubs:the-event-name'}]
+    )
 
 
 async def donorfy_create_user(request):
     data = await request.json()
-    return json_response({
-        'ConstituentId': '456789',
-        'ExternalKey': data['ExternalKey'],
-    })
+    return json_response({'ConstituentId': '456789', 'ExternalKey': data['ExternalKey']})
 
 
 async def donorfy_transactions(request):
-    return json_response({
-        'Id': 'trans_123',
-    }, status=201)
+    return json_response({'Id': 'trans_123'}, status=201)
 
 
 async def donorfy_allocations(request):
-    return json_response({
-        'AllocationsList': [
-            {
-                'AllocationId': '123'
-            }
-        ]
-    })
+    return json_response({'AllocationsList': [{'AllocationId': '123'}]})
 
 
 async def donorfy_get_campaigns(request):
-    return json_response({
-        'LookUps': [
-            {
-                'LookUpDescription': 'supper-clubs:the-event-name',
-                'IsActive': True,
-            }
-        ]
-    })
+    return json_response({'LookUps': [{'LookUpDescription': 'supper-clubs:the-event-name', 'IsActive': True}]})
 
 
 @middleware
@@ -303,43 +252,38 @@ async def log_middleware(request, handler):
 
 async def create_dummy_server(create_server):
     app = web.Application(middlewares=(log_middleware,))
-    app.add_routes([
-        web.route('*', '/200/', return_200),
-
-        web.post('/aws_ses_endpoint/', aws_ses),
-        web.post('/grecaptcha_url/', grecaptcha),
-        web.get('/google_siw_url/', google_siw),
-        web.get('/facebook_siw_url/', facebook_siw),
-
-        web.get('/stripe_root_url/customers/{stripe_customer_id}', stripe_get_customer),
-        web.post('/stripe_root_url/customers', stripe_post_customers),
-        web.post('/stripe_root_url/refunds', stripe_post_refund),
-        web.post('/stripe_root_url/payment_intents', stripe_create_payment_intent),
-        web.get('/stripe_root_url/payment_methods/{payment_method_id}', stripe_get_payment_methods),
-        web.get('/stripe_root_url/balance/history/{transaction_id}', stripe_get_transaction),
-
-        web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
-        web.get('/s3_demo_image_url/{image:.*}', s3_demo_image),
-
-        web.get('/donorfy_api_root/{api_key}/constituents/ExternalKey/{ext_key}', donorfy_get_con_ext_id),
-        web.get('/donorfy_api_root/{api_key}/constituents/EmailAddress/{email}', donorfy_get_con_email),
-        web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/AddActiveTags', donorfy_201),
-        web.get('/donorfy_api_root/{api_key}/constituents/{const_id}', donorfy_get_con_id),
-        web.put('/donorfy_api_root/{api_key}/constituents/{const_id}', donorfy_200),
-        web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/Preferences', donorfy_201),
-        web.post('/donorfy_api_root/{api_key}/constituents', donorfy_create_user),
-        web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/GiftAidDeclarations', donorfy_201),
-
-        web.post('/donorfy_api_root/{api_key}/activities', donorfy_201),
-
-        web.post('/donorfy_api_root/{api_key}/transactions', donorfy_transactions),
-        web.get('/donorfy_api_root/{api_key}/transactions/{trans_id}/Allocations', donorfy_allocations),
-        web.put('/donorfy_api_root/{api_key}/transactions/Allocation/{alloc}', donorfy_200),
-        web.post('/donorfy_api_root/{api_key}/transactions/{trans_id}/AddAllocation', donorfy_201),
-
-        web.get('/donorfy_api_root/{api_key}/System/LookUpTypes/Campaigns', donorfy_get_campaigns),
-        web.post('/donorfy_api_root/{api_key}/System/LookUpTypes/Campaigns', donorfy_201),
-    ])
+    app.add_routes(
+        [
+            web.route('*', '/200/', return_200),
+            web.post('/aws_ses_endpoint/', aws_ses),
+            web.post('/grecaptcha_url/', grecaptcha),
+            web.get('/google_siw_url/', google_siw),
+            web.get('/facebook_siw_url/', facebook_siw),
+            web.get('/stripe_root_url/customers/{stripe_customer_id}', stripe_get_customer),
+            web.post('/stripe_root_url/customers', stripe_post_customers),
+            web.post('/stripe_root_url/refunds', stripe_post_refund),
+            web.post('/stripe_root_url/payment_intents', stripe_create_payment_intent),
+            web.get('/stripe_root_url/payment_methods/{payment_method_id}', stripe_get_payment_methods),
+            web.get('/stripe_root_url/balance/history/{transaction_id}', stripe_get_transaction),
+            web.route('*', '/aws_endpoint_url/{extra:.*}', aws_endpoint),
+            web.get('/s3_demo_image_url/{image:.*}', s3_demo_image),
+            web.get('/donorfy_api_root/{api_key}/constituents/ExternalKey/{ext_key}', donorfy_get_con_ext_id),
+            web.get('/donorfy_api_root/{api_key}/constituents/EmailAddress/{email}', donorfy_get_con_email),
+            web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/AddActiveTags', donorfy_201),
+            web.get('/donorfy_api_root/{api_key}/constituents/{const_id}', donorfy_get_con_id),
+            web.put('/donorfy_api_root/{api_key}/constituents/{const_id}', donorfy_200),
+            web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/Preferences', donorfy_201),
+            web.post('/donorfy_api_root/{api_key}/constituents', donorfy_create_user),
+            web.post('/donorfy_api_root/{api_key}/constituents/{const_id}/GiftAidDeclarations', donorfy_201),
+            web.post('/donorfy_api_root/{api_key}/activities', donorfy_201),
+            web.post('/donorfy_api_root/{api_key}/transactions', donorfy_transactions),
+            web.get('/donorfy_api_root/{api_key}/transactions/{trans_id}/Allocations', donorfy_allocations),
+            web.put('/donorfy_api_root/{api_key}/transactions/Allocation/{alloc}', donorfy_200),
+            web.post('/donorfy_api_root/{api_key}/transactions/{trans_id}/AddAllocation', donorfy_201),
+            web.get('/donorfy_api_root/{api_key}/System/LookUpTypes/Campaigns', donorfy_get_campaigns),
+            web.post('/donorfy_api_root/{api_key}/System/LookUpTypes/Campaigns', donorfy_201),
+        ]
+    )
     server = await create_server(app)
     app.update(
         log=[],
@@ -348,6 +292,6 @@ async def create_dummy_server(create_server):
         images=[],
         server_name=f'http://localhost:{server.port}',
         stripe_idempotency_keys=set(),
-        data={}
+        data={},
     )
     return server

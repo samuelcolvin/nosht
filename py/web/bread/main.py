@@ -30,8 +30,14 @@ from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Clause, Clauses, From, Join, Limit, OrderBy, Select, Where
 from pydantic import BaseModel
 
-from web.utils import (JsonErrors, get_offset, json_response, parse_request, parse_request_ignore_missing,
-                       raw_json_response)
+from web.utils import (
+    JsonErrors,
+    get_offset,
+    json_response,
+    parse_request,
+    parse_request_ignore_missing,
+    raw_json_response,
+)
 
 logger = logging.getLogger('nosht.bread')
 
@@ -159,6 +165,7 @@ class ReadBread(BaseBread):
     GET /?filter 200,403
     GET /{pk}/ 200,403,404
     """
+
     filter_model: BaseModel = None
 
     browse_enabled = False
@@ -249,9 +256,7 @@ class ReadBread(BaseBread):
 
     async def retrieve(self, pk) -> web.Response:
         return await self._fetchval_response(
-            self.retrieve_sql,
-            query=await self.retrieve_query(pk),
-            print_=self.print_queries,
+            self.retrieve_sql, query=await self.retrieve_query(pk), print_=self.print_queries,
         )
 
     async def options(self) -> web.Response:
@@ -272,6 +277,7 @@ class Bread(ReadBread):
     POST /{pk}/ 200,400,403,404
     DELETE /{pk}/ 200,400,403,404
     """
+
     add_enabled = False
     edit_enabled = False
     delete_enabled = False
@@ -329,9 +335,7 @@ class Bread(ReadBread):
 
     async def check_item_permissions(self, pk):
         v = await self.conn.fetchval_b(
-            ':query',
-            query=await self.check_item_permissions_query(pk),
-            print_=self.print_queries,
+            ':query', query=await self.check_item_permissions_query(pk), print_=self.print_queries,
         )
         if not v:
             raise JsonErrors.HTTPNotFound(message=f'{self.meta["single_title"]} not found')
@@ -369,10 +373,7 @@ class Bread(ReadBread):
     async def delete_execute(self, pk):
         logger.info('%s %s=%d deleted by user %s', self.table, self.pk_field, pk, self.request['session']['user_id'])
         await self.conn.execute_b(
-            self.delete_sql,
-            table=Var(self.table),
-            where=Where(Var(self.pk_field) == pk),
-            print_=self.print_queries,
+            self.delete_sql, table=Var(self.table), where=Where(Var(self.pk_field) == pk), print_=self.print_queries,
         )
 
     async def delete(self, pk) -> web.Response:
@@ -401,6 +402,8 @@ class Bread(ReadBread):
                     'loc': [col],
                     'msg': f'This value conflicts with an existing "{col}", try something else.',
                     'type': 'value_error.conflict',
-                } for col in columns if col in self.model.__fields__
-            ]
+                }
+                for col in columns
+                if col in self.model.__fields__
+            ],
         )

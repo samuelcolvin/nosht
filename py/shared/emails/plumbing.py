@@ -61,10 +61,7 @@ _AUTH_HEADER = (
 
 flags = ('hard-wrap',)
 extensions = ('no-intra-emphasis',)
-safe_markdown = Markdown(
-    HtmlRenderer(flags=flags),  # maybe should use SaferHtmlRenderer
-    extensions=extensions
-)
+safe_markdown = Markdown(HtmlRenderer(flags=flags), extensions=extensions)  # maybe should use SaferHtmlRenderer
 DEBUG_PRINT_REGEX = re.compile(r'{{ ?__debug_context__ ?}}')
 
 
@@ -100,9 +97,7 @@ class BaseEmailActor(BaseActor):
             service=_AWS_SERVICE,
             signed_headers=';'.join(_SIGNED_HEADERS),
         )
-        ctx.update(
-            credential_scope=_CREDENTIAL_SCOPE.format(**ctx),
-        )
+        ctx.update(credential_scope=_CREDENTIAL_SCOPE.format(**ctx))
         canonical_headers = ''.join('{}:{}\n'.format(h, ctx[h.replace('-', '_')]) for h in _SIGNED_HEADERS)
 
         canonical_request = _CANONICAL_REQUEST.format(canonical_headers=canonical_headers, **ctx).encode()
@@ -120,17 +115,13 @@ class BaseEmailActor(BaseActor):
         signature = reduce(lambda key, msg: hmac.new(key, msg.encode(), hashlib.sha256).digest(), key_parts)
 
         authorization_header = _AUTH_HEADER.format(signature=hexlify(signature).decode(), **ctx)
-        return {
-            'Content-Type': _CONTENT_TYPE,
-            'X-Amz-Date': x_amz_date,
-            'Authorization': authorization_header
-        }
+        return {'Content-Type': _CONTENT_TYPE, 'X-Amz-Date': x_amz_date, 'Authorization': authorization_header}
 
     async def aws_send(self, *, e_from: str, email_msg: EmailMessage, to: List[str]):
         data = {
             'Action': 'SendRawEmail',
             'Source': e_from,
-            'RawMessage.Data': base64.b64encode(email_msg.as_string().encode())
+            'RawMessage.Data': base64.b64encode(email_msg.as_string().encode()),
         }
         data.update({f'Destination.ToAddresses.member.{i + 1}': t.encode() for i, t in enumerate(to)})
         # data.update({f'Destination.BccAddresses.member.{i + 1}': t.encode() for i, t in enumerate(bcc)})
@@ -165,25 +156,26 @@ class BaseEmailActor(BaseActor):
             logger.info('"%s" %s -> %s', email_msg["subject"], e_from, to)
         return '-'
 
-    async def send_email(self,
-                         *,
-                         user: Dict[str, Any],
-                         user_ctx: Dict[str, Any],
-                         subject: str,
-                         title: str,
-                         body: str,
-                         template: str,
-                         e_from: str,
-                         reply_to: Optional[str],
-                         global_ctx: Dict[str, Any],
-                         attachment: Optional[Attachment],
-                         tags: Dict[str, str],
-                         company_id: int):
+    async def send_email(
+        self,
+        *,
+        user: Dict[str, Any],
+        user_ctx: Dict[str, Any],
+        subject: str,
+        title: str,
+        body: str,
+        template: str,
+        e_from: str,
+        reply_to: Optional[str],
+        global_ctx: Dict[str, Any],
+        attachment: Optional[Attachment],
+        tags: Dict[str, str],
+        company_id: int,
+    ):
         base_url = global_ctx['base_url']
 
         full_name = '{first_name} {last_name}'.format(
-            first_name=user['first_name'] or '',
-            last_name=user['last_name'] or '',
+            first_name=user['first_name'] or '', last_name=user['last_name'] or '',
         ).strip(' ')
         user_email = user['email']
         extra_ctx = dict(
@@ -225,10 +217,7 @@ class BaseEmailActor(BaseActor):
         if attachment:
             maintype, subtype = attachment.mime_type.split('/')
             e_msg.add_attachment(
-                attachment.content.encode(),
-                maintype=maintype,
-                subtype=subtype,
-                filename=attachment.filename,
+                attachment.content.encode(), maintype=maintype, subtype=subtype, filename=attachment.filename,
             )
 
         if self.send_via_aws and user_email.endswith('example.com'):
@@ -243,12 +232,18 @@ class BaseEmailActor(BaseActor):
             insert into emails (company, user_id, ext_id, trigger, subject, address)
             values ($1, $2, $3, $4, $5, $6)
             """,
-            company_id, user['id'], msg_id, tags['trigger'], subject, user_email
+            company_id,
+            user['id'],
+            msg_id,
+            tags['trigger'],
+            subject,
+            user_email,
         )
 
     @concurrent
-    async def send_emails(self, company_id: int, trigger: str, users_emails: List[UserEmail], *,
-                          force_send=False, attached_event_id=None):
+    async def send_emails(
+        self, company_id: int, trigger: str, users_emails: List[UserEmail], *, force_send=False, attached_event_id=None
+    ):
         trigger = Triggers(trigger)
 
         dft = EMAIL_DEFAULTS[trigger]
@@ -259,7 +254,7 @@ class BaseEmailActor(BaseActor):
             company_name, company_slug, e_from, reply_to, template, company_logo, company_domain = await conn.fetchrow(
                 'SELECT name, slug, email_from, email_reply_to, email_template, logo, domain '
                 'FROM companies WHERE id=$1',
-                company_id
+                company_id,
             )
             e_from = e_from or self.settings.default_email_address
             template = template or DEFAULT_EMAIL_TEMPLATE
@@ -270,7 +265,8 @@ class BaseEmailActor(BaseActor):
                 FROM email_definitions
                 WHERE company=$1 AND trigger=$2
                 """,
-                company_id, trigger.value
+                company_id,
+                trigger.value,
             )
             if r:
                 if not r['active']:
@@ -296,8 +292,8 @@ class BaseEmailActor(BaseActor):
             ticket_ids = [ue[2] for ue in users_emails if ue[2]]
             if ticket_ids:
                 ticket_name_lookup = {
-                    r['ticket_id']: r for r in
-                    await conn.fetch(
+                    r['ticket_id']: r
+                    for r in await conn.fetch(
                         'SELECT id AS ticket_id, first_name, last_name FROM tickets WHERE id=ANY($1)', ticket_ids
                     )
                 }
@@ -305,11 +301,7 @@ class BaseEmailActor(BaseActor):
             if attached_event_id:
                 attachment = await ical_attachment(attached_event_id, company_id, conn=conn, settings=self.settings)
 
-        global_ctx = dict(
-            company_name=company_name,
-            company_logo=company_logo,
-            base_url=f'https://{company_domain}',
-        )
+        global_ctx = dict(company_name=company_name, company_logo=company_logo, base_url=f'https://{company_domain}')
         coros = []
         tags = {
             'company': company_slug,
@@ -341,13 +333,14 @@ class BaseEmailActor(BaseActor):
                     global_ctx=global_ctx,
                     attachment=attachment,
                     tags=tags,
-                    company_id=company_id
+                    company_id=company_id,
                 )
             )
 
         await asyncio.gather(*coros)
-        logger.info('%d emails sent for trigger %s, company %s (%d)',
-                    len(user_data), trigger, company_domain, company_id)
+        logger.info(
+            '%d emails sent for trigger %s, company %s (%d)', len(user_data), trigger, company_domain, company_id
+        )
 
     @concurrent('low')  # noqa: C901 (ignore complexity)
     async def record_email_event(self, raw_message: str):
@@ -394,7 +387,7 @@ class BaseEmailActor(BaseActor):
                 'complaintFeedbackType': data.get('complaintFeedbackType'),
                 'feedbackId': data.get('feedbackId'),
                 'ua': data.get('userAgent'),
-                'unsubscribe': True
+                'unsubscribe': True,
             }
         else:
             logger.warning('unknown aws webhooks %s', event_type, extra={'data': {'message': message}})
@@ -410,8 +403,9 @@ class BaseEmailActor(BaseActor):
         async with self.pg.acquire() as conn:
             await conn.execute_b('insert into email_events (:values__names) values :values', values=Values(**values))
             if not ts:
-                await conn.execute('update emails set status=$1, update_ts=CURRENT_TIMESTAMP where id=$2',
-                                   event_type, email_id)
+                await conn.execute(
+                    'update emails set status=$1, update_ts=CURRENT_TIMESTAMP where id=$2', event_type, email_id
+                )
             elif last_updated < ts:
                 await conn.execute('update emails set status=$1, update_ts=$2 where id=$3', event_type, ts, email_id)
 
@@ -460,26 +454,21 @@ markdown_macros = [
     {
         'name': 'primary_button',
         'args': ('text', 'link'),
-        'body': (
-            '<div class="button">\n'
-            '  <a href="{{ link }}"><span>{{ text }}</span></a>\n'
-            '</div>\n'
-        )
+        'body': ('<div class="button">\n' '  <a href="{{ link }}"><span>{{ text }}</span></a>\n' '</div>\n'),
     },
     {
         'name': 'secondary_button',
         'args': ('text', 'link'),
         'body': (
-            '<div class="button">\n'
-            '  <a href="{{ link }}"><span class="secondary">{{ text }}</span></a>\n'
-            '</div>\n'
-        )
+            '<div class="button">\n' '  <a href="{{ link }}"><span class="secondary">{{ text }}</span></a>\n' '</div>\n'
+        ),
     },
 ]
 
 
 def apply_macros(s):
     for macro in markdown_macros:
+
         def replace_macro(m):
             arg_values = [a.strip(' ') for a in m.group(1).split('|') if a.strip(' ')]
             if len(macro['args']) != len(arg_values):

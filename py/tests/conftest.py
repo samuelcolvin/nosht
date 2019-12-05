@@ -24,9 +24,7 @@ from buildpg import MultipleValues, Values, asyncpg
 from PIL import Image, ImageDraw
 
 from shared.actions import ActionTypes
-from shared.db import SimplePgPool
-from shared.db import create_demo_data as _create_demo_data
-from shared.db import prepare_database
+from shared.db import SimplePgPool, create_demo_data as _create_demo_data, prepare_database
 from shared.settings import Settings
 from shared.utils import encrypt_json, mk_password, slugify
 from web.main import create_app
@@ -36,9 +34,7 @@ from .dummy_server import create_dummy_server
 
 
 def pytest_addoption(parser):
-    parser.addoption(
-        '--reuse-db', action='store_true', default=False, help='keep the existing database if it exists'
-    )
+    parser.addoption('--reuse-db', action='store_true', default=False, help='keep the existing database if it exists')
 
 
 settings_args = dict(
@@ -54,10 +50,10 @@ settings_args = dict(
     facebook_siw_app_secret='testing',
     print_emails=False,
     s3_prefix='tests',
-    max_request_size=1024**2,
+    max_request_size=1024 ** 2,
     donorfy_api_key=None,
     donorfy_access_key=None,
-    aws_ses_webhook_auth=b'pw:tests'
+    aws_ses_webhook_auth=b'pw:tests',
 )
 
 
@@ -100,11 +96,7 @@ def _fix_settings(dummy_server, request, tmpdir):
     if real_stripe:
         fields.remove('stripe_root_url')
     server_name = dummy_server.app['server_name']
-    return Settings(
-        custom_static_dir=str(tmpdir),
-        **{f: f'{server_name}/{f}/' for f in fields},
-        **settings_args
-    )
+    return Settings(custom_static_dir=str(tmpdir), **{f: f'{server_name}/{f}/' for f in fields}, **settings_args)
 
 
 @pytest.fixture(name='db_conn')
@@ -147,15 +139,17 @@ class Factory:
         self.donation_option_id = None
         self.donation_id = None
 
-    async def create_company(self,
-                             name='Testing',
-                             slug=None,
-                             image='https://www.example.org/main.png',
-                             domain='127.0.0.1',
-                             stripe_public_key='stripe_key_xxx',
-                             stripe_secret_key='stripe_secret_xxx',
-                             stripe_webhook_secret='stripe_webhook_secret_xxx',
-                             **kwargs):
+    async def create_company(
+        self,
+        name='Testing',
+        slug=None,
+        image='https://www.example.org/main.png',
+        domain='127.0.0.1',
+        stripe_public_key='stripe_key_xxx',
+        stripe_secret_key='stripe_secret_xxx',
+        stripe_webhook_secret='stripe_webhook_secret_xxx',
+        **kwargs,
+    ):
         company_id = await self.conn.fetchval_b(
             'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
             values=Values(
@@ -167,20 +161,23 @@ class Factory:
                 stripe_secret_key=stripe_secret_key,
                 stripe_webhook_secret=stripe_webhook_secret,
                 **kwargs,
-            )
+            ),
         )
         self.company_id = self.company_id or company_id
         return company_id
 
-    async def create_user(self, *,
-                          company_id=None,
-                          password='testing',
-                          first_name='Frank',
-                          last_name='Spencer',
-                          email='frank@example.org',
-                          role='admin',
-                          status='active',
-                          **kwargs):
+    async def create_user(
+        self,
+        *,
+        company_id=None,
+        password='testing',
+        first_name='Frank',
+        last_name='Spencer',
+        email='frank@example.org',
+        role='admin',
+        status='active',
+        **kwargs,
+    ):
         user_id = await self.conn.fetchval_b(
             'INSERT INTO users (:values__names) VALUES :values RETURNING id',
             values=Values(
@@ -192,42 +189,38 @@ class Factory:
                 role=role,
                 status=status,
                 **kwargs,
-            )
+            ),
         )
         self.user_id = self.user_id or user_id
         return user_id
 
-    async def create_cat(self, *,
-                         company_id=None,
-                         name='Supper Clubs',
-                         slug=None,
-                         image='https://www.example.org/main.png',
-                         **kwargs):
+    async def create_cat(
+        self, *, company_id=None, name='Supper Clubs', slug=None, image='https://www.example.org/main.png', **kwargs
+    ):
         cat_id = await self.conn.fetchval_b(
             'INSERT INTO categories (:values__names) VALUES :values RETURNING id',
             values=Values(
-                company=company_id or self.company_id,
-                name=name,
-                image=image,
-                slug=slug or slugify(name),
-                **kwargs
-            )
+                company=company_id or self.company_id, name=name, image=image, slug=slug or slugify(name), **kwargs
+            ),
         )
         self.category_id = self.category_id or cat_id
         return cat_id
 
-    async def create_event(self, *,
-                           category_id=None,
-                           host_user_id=None,
-                           name='The Event Name',
-                           slug=None,
-                           start_ts=london.localize(datetime(2020, 6, 28, 19, 0)),
-                           timezone='Europe/London',
-                           duration=timedelta(hours=1),
-                           short_description=None,
-                           long_description=None,
-                           price=None,
-                           **kwargs):
+    async def create_event(
+        self,
+        *,
+        category_id=None,
+        host_user_id=None,
+        name='The Event Name',
+        slug=None,
+        start_ts=london.localize(datetime(2020, 6, 28, 19, 0)),
+        timezone='Europe/London',
+        duration=timedelta(hours=1),
+        short_description=None,
+        long_description=None,
+        price=None,
+        **kwargs,
+    ):
         long_description = long_description or lorem.paragraph()
         event_id = await self.conn.fetchval_b(
             'INSERT INTO events (:values__names) VALUES :values RETURNING id',
@@ -241,20 +234,15 @@ class Factory:
                 timezone=timezone,
                 duration=duration,
                 short_description=(
-                    short_description or
-                    shorten(long_description, width=random.randint(100, 140), placeholder='...')
+                    short_description or shorten(long_description, width=random.randint(100, 140), placeholder='...')
                 ),
-                **kwargs
-            )
+                **kwargs,
+            ),
         )
         self.event_id = self.event_id or event_id
         ticket_type_id = await self.conn.fetchval_b(
             'INSERT INTO ticket_types (:values__names) VALUES :values RETURNING id',
-            values=Values(
-                event=event_id,
-                price=price,
-                name='Standard',
-            )
+            values=Values(event=event_id, price=price, name='Standard'),
         )
         self.ticket_type_id = self.ticket_type_id or ticket_type_id
 
@@ -265,7 +253,7 @@ class Factory:
                 user_id=host_user_id or self.user_id,
                 type=ActionTypes.create_event,
                 event=event_id,
-            )
+            ),
         )
         return event_id
 
@@ -273,11 +261,7 @@ class Factory:
         user_id = user_id or self.user_id
         action_id = await self.conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-            values=Values(
-                company=self.company_id,
-                user_id=user_id,
-                type=ActionTypes.reserve_tickets
-            )
+            values=Values(company=self.company_id, user_id=user_id, type=ActionTypes.reserve_tickets),
         )
         ticket_type_id = ticket_type_id or self.ticket_type_id
         event_id = event_id or self.event_id
@@ -285,13 +269,7 @@ class Factory:
         assert event_id == await self.conn.fetchval('SELECT event FROM ticket_types WHERE id=$1', ticket_type_id)
         price = await self.conn.fetchval('SELECT price FROM ticket_types WHERE id=$1', ticket_type_id)
         ticket_values = [
-            Values(
-                event=event_id,
-                user_id=user_id,
-                reserve_action=action_id,
-                ticket_type=ticket_type_id,
-                price=price,
-            )
+            Values(event=event_id, user_id=user_id, reserve_action=action_id, ticket_type=ticket_type_id, price=price)
         ]
         for extra_user_id in extra_user_ids:
             ticket_values.append(
@@ -304,8 +282,7 @@ class Factory:
                 )
             )
         await self.conn.execute_b(
-            'INSERT INTO tickets (:values__names) VALUES :values',
-            values=MultipleValues(*ticket_values)
+            'INSERT INTO tickets (:values__names) VALUES :values', values=MultipleValues(*ticket_values)
         )
         await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
         return Reservation(
@@ -321,18 +298,19 @@ class Factory:
         await self.fire_stripe_webhook(reserve_action_id=res.action_id, event_id=res.event_id, user_id=res.user_id)
 
     async def fire_stripe_webhook(
-            self,
-            reserve_action_id,
-            *,
-            event_id=None,
-            user_id=None,
-            amount=10_00,
-            purpose='buy-tickets',
-            webhook_type='payment_intent.succeeded',
-            charge_id='charge-id',
-            expected_status=204,
-            fire_delay=0,
-            metadata=None):
+        self,
+        reserve_action_id,
+        *,
+        event_id=None,
+        user_id=None,
+        amount=10_00,
+        purpose='buy-tickets',
+        webhook_type='payment_intent.succeeded',
+        charge_id='charge-id',
+        expected_status=204,
+        fire_delay=0,
+        metadata=None,
+    ):
         return await self._fire_stripe_webhook(
             user_id=user_id or self.user_id,
             event_id=event_id or self.event_id,
@@ -362,7 +340,7 @@ class Factory:
                 amount=amount,
                 short_description='This is the short_description.',
                 long_description='This is the long_description.',
-            )
+            ),
         )
         self.donation_option_id = self.donation_option_id or donation_option_id
         return donation_option_id
@@ -370,8 +348,9 @@ class Factory:
     async def create_donation(self, donation_option_id=None, event_id=None, amount=20, gift_aid=False):
         action_id = await self.conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-            values=Values(company=self.company_id, user_id=self.user_id, type=ActionTypes.donate,
-                          event=event_id or self.event_id)
+            values=Values(
+                company=self.company_id, user_id=self.user_id, type=ActionTypes.donate, event=event_id or self.event_id
+            ),
         )
         kwargs = dict(
             donation_option=donation_option_id or self.donation_option_id,
@@ -383,13 +362,10 @@ class Factory:
         )
         if gift_aid:
             kwargs.update(
-                address='address',
-                city='city',
-                postcode='postcode',
+                address='address', city='city', postcode='postcode',
             )
         donation_id = await self.conn.fetchval_b(
-            'INSERT INTO donations (:values__names) VALUES :values RETURNING id',
-            values=Values(**kwargs)
+            'INSERT INTO donations (:values__names) VALUES :values RETURNING id', values=Values(**kwargs)
         )
         self.donation_id = self.donation_id or donation_id
         return donation_id
@@ -486,6 +462,7 @@ def _fix_url(cli):
         if query:
             url = url.with_query(**query)
         return url
+
     return f
 
 
@@ -520,8 +497,19 @@ def _setup_static(tmpdir):
 async def _fix_fire_stripe_webhook(url, settings, cli, loop):
     webhook_cli = TestClient(cli.server, loop=loop)
 
-    async def fire(*, user_id, event_id, reserve_action_id, amount, purpose, webhook_type, charge_id, expected_status,
-                   fire_delay, metadata):
+    async def fire(
+        *,
+        user_id,
+        event_id,
+        reserve_action_id,
+        amount,
+        purpose,
+        webhook_type,
+        charge_id,
+        expected_status,
+        fire_delay,
+        metadata,
+    ):
         if metadata is None:
             metadata = {
                 'purpose': purpose,
@@ -549,12 +537,12 @@ async def _fix_fire_stripe_webhook(url, settings, cli, loop):
                                         'exp_year': 2032,
                                         'three_d_secure': True,
                                     }
-                                }
+                                },
                             }
                         ]
-                    }
+                    },
                 }
-            }
+            },
         }
         body = json.dumps(data)
         t = int(time())

@@ -13,9 +13,7 @@ from web.utils import request_root
 logger = logging.getLogger('nosht.web.static')
 
 CSP = {
-    'default-src': [
-        "'self'",
-    ],
+    'default-src': ["'self'"],
     'script-src': [
         "'self'",
         'www.google-analytics.com',
@@ -27,16 +25,8 @@ CSP = {
         'browser-update.org',
         "'sha256-0ni4JEtxxn/uHl32Dvj0iyke8H1kqdpZkoPzdam0nl8='",
     ],
-    'font-src': [
-        "'self'",
-        'data:',
-        'fonts.gstatic.com',
-    ],
-    'style-src': [
-        "'self'",
-        "'unsafe-inline'",
-        '*.googleapis.com',
-    ],
+    'font-src': ["'self'", 'data:', 'fonts.gstatic.com'],
+    'style-src': ["'self'", "'unsafe-inline'", '*.googleapis.com'],
     'frame-src': [
         "'self'",
         '*.google.com',
@@ -60,16 +50,8 @@ CSP = {
         '*.doubleclick.net',
         'browser-update.org',
     ],
-    'media-src': [
-        "'self'",
-    ],
-    'connect-src': [
-        "'self'",
-        '*.google-analytics.com',
-        '*.doubleclick.net',
-        'https://sentry.io',
-        '*.facebook.com',
-    ],
+    'media-src': ["'self'"],
+    'connect-src': ["'self'", '*.google-analytics.com', '*.doubleclick.net', 'https://sentry.io', '*.facebook.com'],
 }
 
 

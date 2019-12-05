@@ -20,7 +20,7 @@ async def get_stripe_processing_fee(action_id: int, client, settings, conn: Buil
         join companies co on cat.company = co.id
         where a.id=$1
         """,
-        action_id
+        action_id,
     )
     assert stripe_transaction_id and stripe_transaction_id.startswith('txn_'), stripe_transaction_id
 
@@ -29,7 +29,9 @@ async def get_stripe_processing_fee(action_id: int, client, settings, conn: Buil
     if r['currency'] != currency:
         logger.warning(
             'transaction currency does not match company, trans_currency=%r company_currency=%r transaction_id=%r',
-            r['currency'], currency, stripe_transaction_id,
+            r['currency'],
+            currency,
+            stripe_transaction_id,
         )
         return 0
     else:

@@ -39,6 +39,7 @@ def main():
         elif command == 'web':
             logger.info('running web server...')
             from web.main import create_app
+
             app = create_app(settings=settings)
             web.run_app(app, port=settings.port, shutdown_timeout=6, access_log=None, print=lambda *args: None)
         elif command == 'worker':

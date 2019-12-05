@@ -67,10 +67,7 @@ class UserBread(Bread):
         role_type = data.pop('role_type')
         if role_type not in {UserRoles.host, UserRoles.admin}:
             raise JsonErrors.HTTPBadRequest(message='role must be either "host" or "admin".')
-        data.update(
-            role=role_type,
-            company=self.request['company_id']
-        )
+        data.update(role=role_type, company=self.request['company_id'])
         return data
 
     async def prepare_edit_data(self, pk, data):
@@ -103,7 +100,7 @@ class UserSelfBread(Bread):
 
     model = Model
     table = 'users'
-    browse_order_by_fields = V('active_ts').desc(),
+    browse_order_by_fields = (V('active_ts').desc(),)
     retrieve_fields = (
         Func('full_name', V('first_name'), V('last_name'), V('email')).as_('name'),
         'email',
@@ -147,10 +144,7 @@ FROM (
 @is_admin_or_host
 async def user_actions(request):
     json_str = await request['conn'].fetchval(
-        user_actions_sql,
-        int(request.match_info['pk']),
-        request['company_id'],
-        get_offset(request),
+        user_actions_sql, int(request.match_info['pk']), request['company_id'], get_offset(request),
     )
     return raw_json_response(json_str)
 
@@ -189,9 +183,7 @@ async def user_tickets(request):
 async def switch_user_status(request):
     user_id = int(request.match_info['pk'])
     status = await request['conn'].fetchval(
-        'SELECT status FROM users WHERE id=$1 AND company=$2',
-        user_id,
-        request['company_id'],
+        'SELECT status FROM users WHERE id=$1 AND company=$2', user_id, request['company_id'],
     )
     if not status:
         raise JsonErrors.HTTPNotFound(message='user not found')

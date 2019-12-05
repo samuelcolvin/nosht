@@ -9,11 +9,31 @@ from pydantic import BaseModel, EmailStr, constr, validator
 
 from shared.emails import Triggers, UserEmail
 from shared.utils import mk_password, password_reset_link, unsubscribe_sig
-from web.auth import (ActionTypes, FacebookSiwModel, GoogleSiwModel, GrecaptchaModel, check_grecaptcha,
-                      facebook_get_details, google_get_details, invalidate_session, is_auth, record_action,
-                      validate_email)
-from web.utils import (HEADER_CROSS_ORIGIN, JsonErrors, decrypt_json, encrypt_json, get_ip, json_response,
-                       parse_request, raw_json_response, request_root, split_name)
+from web.auth import (
+    ActionTypes,
+    FacebookSiwModel,
+    GoogleSiwModel,
+    GrecaptchaModel,
+    check_grecaptcha,
+    facebook_get_details,
+    google_get_details,
+    invalidate_session,
+    is_auth,
+    record_action,
+    validate_email,
+)
+from web.utils import (
+    HEADER_CROSS_ORIGIN,
+    JsonErrors,
+    decrypt_json,
+    encrypt_json,
+    get_ip,
+    json_response,
+    parse_request,
+    raw_json_response,
+    request_root,
+    split_name,
+)
 
 
 class LoginModel(BaseModel):
@@ -60,8 +80,9 @@ async def login(request):
             return successful_login(user, request.app, HEADER_CROSS_ORIGIN)
 
     await request.app['redis'].setex(repeat_cache_key, 60, b'1')
-    return json_response(status='invalid', message='invalid email or password',
-                         headers_=HEADER_CROSS_ORIGIN, status_=470)
+    return json_response(
+        status='invalid', message='invalid email or password', headers_=HEADER_CROSS_ORIGIN, status_=470
+    )
 
 
 async def login_captcha_required(request):
@@ -117,17 +138,12 @@ async def reset_password_request(request):
     m = await parse_request(request, PasswordResetModel)
     await check_grecaptcha(m, request)
 
-    user_id = await request['conn'].fetchval(
-        "SELECT id FROM users WHERE email=$1 AND status!='suspended'", m.email
-    )
+    user_id = await request['conn'].fetchval("SELECT id FROM users WHERE email=$1 AND status!='suspended'", m.email)
 
     if user_id:
         ctx = dict(reset_link=password_reset_link(user_id, auth_fernet=request.app['auth_fernet']))
         await request.app['email_actor'].send_emails(
-            request['company_id'],
-            Triggers.password_reset,
-            [UserEmail(id=user_id, ctx=ctx)],
-            force_send=True,
+            request['company_id'], Triggers.password_reset, [UserEmail(id=user_id, ctx=ctx)], force_send=True,
         )
         await record_action(request, user_id, ActionTypes.password_reset)
     return json_response(status='success')
@@ -155,13 +171,18 @@ async def set_password(request):
         """
         SELECT 1 FROM actions
         WHERE user_id=$1 AND type='password-reset' AND now() - ts < interval '7 days' AND extra->>'nonce'=$2
-        """, user_id, nonce)
+        """,
+        user_id,
+        nonce,
+    )
     if already_used:
-        raise JsonErrors.HTTP470(message='This password reset link has already been used.',
-                                 headers_=HEADER_CROSS_ORIGIN)
+        raise JsonErrors.HTTP470(
+            message='This password reset link has already been used.', headers_=HEADER_CROSS_ORIGIN
+        )
 
-    user = await conn.fetchrow('SELECT id, first_name, last_name, email, role, status, company FROM users WHERE id=$1',
-                               user_id)
+    user = await conn.fetchrow(
+        'SELECT id, first_name, last_name, email, role, status, company FROM users WHERE id=$1', user_id
+    )
     user = dict(user)
     if user.pop('company') != request['company_id']:
         # should not happen
@@ -229,7 +250,7 @@ async def guest_signup(request):
             status='active' if siw_used else 'pending',
             first_name=details.get('first_name'),
             last_name=details.get('last_name'),
-        )
+        ),
     )
     if status == 'suspended':
         raise JsonErrors.HTTPBadRequest(message='user suspended')
@@ -237,8 +258,7 @@ async def guest_signup(request):
     session = await new_session(request)
     session.update({'user_id': user_id, 'role': 'guest', 'last_active': int(time())})
 
-    await record_action(request, user_id, ActionTypes.guest_signin,
-                        signin_method=signin_method)
+    await record_action(request, user_id, ActionTypes.guest_signin, signin_method=signin_method)
 
     return json_response(
         user=dict(
@@ -282,8 +302,9 @@ async def host_signup(request):
 
     company_id = request['company_id']
     conn = request['conn']
-    r = await conn.fetchrow('SELECT role, status FROM users WHERE email=$1 AND company=$2',
-                            details['email'], company_id)
+    r = await conn.fetchrow(
+        'SELECT role, status FROM users WHERE email=$1 AND company=$2', details['email'], company_id
+    )
 
     existing_role = None
     if r:
@@ -307,14 +328,16 @@ async def host_signup(request):
             email=details['email'].lower(),
             first_name=details.get('first_name'),
             last_name=details.get('last_name'),
-        )
+        ),
     )
     session = await new_session(request)
-    session.update({'user_id': user_id, 'email': user_email, 'role': 'host',
-                    'last_active': int(time()), 'status': user_status})
+    session.update(
+        {'user_id': user_id, 'email': user_email, 'role': 'host', 'last_active': int(time()), 'status': user_status}
+    )
 
-    await record_action(request, user_id, ActionTypes.host_signup,
-                        existing_user=bool(existing_role), signin_method=signin_method)
+    await record_action(
+        request, user_id, ActionTypes.host_signup, existing_user=bool(existing_role), signin_method=signin_method
+    )
 
     await request.app['email_actor'].send_account_created(user_id)
     await request.app['donorfy_actor'].host_signuped(user_id)
@@ -327,7 +350,9 @@ async def host_signup(request):
           WHERE company=$1 AND id=$2
         ) AS user_data;
         """,
-        company_id, user_id)
+        company_id,
+        user_id,
+    )
     return raw_json_response(json_str)
 
 

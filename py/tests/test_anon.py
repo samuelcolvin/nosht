@@ -66,8 +66,8 @@ async def test_sitemap(cli, url, factory: Factory, db_conn):
             user_id=factory.user_id,
             type=ActionTypes.edit_event,
             event=factory.event_id,
-            ts=datetime(2032, 6, 1, tzinfo=timezone.utc)
-        )
+            ts=datetime(2032, 6, 1, tzinfo=timezone.utc),
+        ),
     )
 
     e2 = await factory.create_event(name='second event', status='published', highlight=True)
@@ -79,53 +79,45 @@ async def test_sitemap(cli, url, factory: Factory, db_conn):
             user_id=factory.user_id,
             type=ActionTypes.create_event,
             event=e2,
-            ts=datetime(2031, 1, 1, tzinfo=timezone.utc)
-        )
+            ts=datetime(2031, 1, 1, tzinfo=timezone.utc),
+        ),
     )
 
     r = await cli.get(url('sitemap'))
     text = await r.text()
     assert r.status == 200, text
     assert text.startswith(
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        '<?xml version="1.0" encoding="UTF-8"?>\n' '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     )
-    assert text.endswith(
-        '</url>\n</urlset>\n'
-    )
+    assert text.endswith('</url>\n</urlset>\n')
     lines = sorted(text.strip('\n').split('\n'))
     # debug(text, lines)
     assert lines == [
         '</urlset>',
         '<?xml version="1.0" encoding="UTF-8"?>',
-
         '<url>'
         '<loc>https://127.0.0.1/</loc>'
         '<lastmod>2032-06-01</lastmod>'
         '<changefreq>daily</changefreq>'
         '<priority>1.0</priority>'
         '</url>',
-
         '<url>'
         '<loc>https://127.0.0.1/supper-clubs/</loc>'
         '<lastmod>2032-06-01</lastmod>'
         '<changefreq>daily</changefreq>'
         '<priority>0.9</priority>'
         '</url>',
-
         '<url>'
         '<loc>https://127.0.0.1/supper-clubs/second-event/</loc>'
         '<lastmod>2031-01-01</lastmod>'
         '<changefreq>daily</changefreq>'
         '<priority>0.7</priority>'
         '</url>',
-
         '<url><loc>https://127.0.0.1/supper-clubs/the-event-name/</loc>'
         '<lastmod>2032-06-01</lastmod>'
         '<changefreq>daily</changefreq>'
         '<priority>0.5</priority>'
         '</url>',
-
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
 
@@ -167,9 +159,5 @@ async def test_get_company_links(cli, url, factory: Factory, db_conn):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data['company']['footer_links'] == [
-        {
-            'url': 'https://www.example.com',
-            'title': 'foo',
-            'new_tab': True,
-        },
+        {'url': 'https://www.example.com', 'title': 'foo', 'new_tab': True},
     ]

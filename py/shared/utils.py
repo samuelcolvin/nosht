@@ -70,14 +70,16 @@ def display_cash_free(amount: Optional[float], currency: Currencies):
 
 def static_map_link(lat, lng, *, settings: Settings, size=(500, 300), zoom=13):
     loc = f'{lat:0.7f},{lng:0.7f}'
-    return 'https://maps.googleapis.com/maps/api/staticmap?' + urlencode({
-        'center': loc,
-        'zoom': zoom,
-        'size': '{}x{}'.format(*size),
-        'markers': 'size:mid|{}'.format(loc),
-        'key': settings.google_maps_static_key,
-        'scale': 2,
-    })
+    return 'https://maps.googleapis.com/maps/api/staticmap?' + urlencode(
+        {
+            'center': loc,
+            'zoom': zoom,
+            'size': '{}x{}'.format(*size),
+            'markers': 'size:mid|{}'.format(loc),
+            'key': settings.google_maps_static_key,
+            'scale': 2,
+        }
+    )
 
 
 date_fmt = '{day}{suffix} %b %Y'

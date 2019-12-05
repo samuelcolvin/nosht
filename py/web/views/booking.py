@@ -38,7 +38,7 @@ async def booking_info(request):
         WHERE tickets.event=$1 AND a.user_id=$2 AND status='booked'
         """,
         event_id,
-        request['session']['user_id']
+        request['session']['user_id'],
     )
     ticket_types = await conn.fetch(
         'SELECT id, name, price::float FROM ticket_types WHERE event=$1 AND active=TRUE ORDER BY id', event_id
@@ -91,7 +91,8 @@ class ReserveTickets(UpdateViewAuth):
             JOIN categories c on e.category = c.id
             WHERE c.company=$1 AND e.id=$2
             """,
-            self.request['company_id'], event_id
+            self.request['company_id'],
+            event_id,
         )
 
         if status != 'published':
@@ -100,8 +101,9 @@ class ReserveTickets(UpdateViewAuth):
         if external_ticket_url is not None:
             raise JsonErrors.HTTPBadRequest(message='Cannot reserve ticket for an externally ticketed event')
 
-        r = await self.conn.fetchrow('SELECT price FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2',
-                                     event_id, m.ticket_type)
+        r = await self.conn.fetchrow(
+            'SELECT price FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2', event_id, m.ticket_type
+        )
         if not r:
             raise JsonErrors.HTTPBadRequest(message='Ticket type not found')
         item_price, *_ = r
@@ -111,8 +113,9 @@ class ReserveTickets(UpdateViewAuth):
                 'SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl
             )
             if tickets_remaining is not None and ticket_count > tickets_remaining:
-                raise JsonErrors.HTTP470(message=f'only {tickets_remaining} tickets remaining',
-                                         tickets_remaining=tickets_remaining)
+                raise JsonErrors.HTTP470(
+                    message=f'only {tickets_remaining} tickets remaining', tickets_remaining=tickets_remaining
+                )
 
         total_price, item_extra_donated = None, None
         if item_price:
@@ -125,8 +128,9 @@ class ReserveTickets(UpdateViewAuth):
             async with self.conn.transaction():
                 update_user_preferences = await self.create_users(m.tickets)
 
-                action_id = await record_action_id(self.request, user_id, ActionTypes.reserve_tickets,
-                                                   event_id=event_id)
+                action_id = await record_action_id(
+                    self.request, user_id, ActionTypes.reserve_tickets, event_id=event_id
+                )
                 ticket_values = [
                     Values(
                         email=t.email and t.email.lower(),
@@ -189,11 +193,7 @@ class ReserveTickets(UpdateViewAuth):
 
     async def create_users(self, tickets: List[TicketModel]):
         user_values = [
-            Values(
-                company=self.request['company_id'],
-                role='guest',
-                email=t.email.lower(),
-            ) for t in tickets if t.email
+            Values(company=self.request['company_id'], role='guest', email=t.email.lower()) for t in tickets if t.email
         ]
         if not user_values:
             return
@@ -203,12 +203,13 @@ class ReserveTickets(UpdateViewAuth):
             INSERT INTO users AS u (:values__names) VALUES :values
             ON CONFLICT (company, email) DO NOTHING
             """,
-            values=MultipleValues(*user_values)
+            values=MultipleValues(*user_values),
         )
         if tickets[0].allow_marketing is not None and tickets[0].email == await self._user_email():
             await self.conn.execute(
                 'UPDATE users SET allow_marketing=$1 WHERE id=$2',
-                tickets[0].allow_marketing, self.request['session']['user_id']
+                tickets[0].allow_marketing,
+                self.request['session']['user_id'],
             )
             return True
 
@@ -226,8 +227,7 @@ class CancelReservedTickets(UpdateView):
         async with self.conn.transaction():
             user_id = await self.conn.fetchval('SELECT user_id FROM actions WHERE id=$1', res.action_id)
             v = await self.conn.execute(
-                "DELETE FROM tickets WHERE reserve_action=$1 AND status='reserved'",
-                res.action_id
+                "DELETE FROM tickets WHERE reserve_action=$1 AND status='reserved'", res.action_id
             )
             if v == 'DELETE 0':
                 # no tickets were deleted

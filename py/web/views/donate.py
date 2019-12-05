@@ -31,7 +31,8 @@ async def donation_prepare(request):
         JOIN categories AS cat ON opt.category = cat.id
         WHERE opt.id = $1 AND opt.live AND cat.company = $2
         """,
-        donation_option_id, request['company_id']
+        donation_option_id,
+        request['company_id'],
     )
     if not r:
         raise JsonErrors.HTTPBadRequest(message='donation option not found')
@@ -42,28 +43,21 @@ async def donation_prepare(request):
         raise JsonErrors.HTTPBadRequest(message='event not found on the same category as donation_option')
 
     user_id = request['session']['user_id']
-    action_id = await record_action_id(request, user_id, ActionTypes.donate_prepare,
-                                       event_id=event_id, donation_option_id=donation_option_id)
+    action_id = await record_action_id(
+        request, user_id, ActionTypes.donate_prepare, event_id=event_id, donation_option_id=donation_option_id
+    )
 
     client_secret = await stripe_payment_intent(
         user_id=user_id,
         price_cents=int(amount * 100),
         description=f'donation to {name} ({donation_option_id})',
-        metadata={
-            'purpose': 'donate',
-            'event_id': event_id,
-            'reserve_action_id': action_id,
-            'user_id': user_id,
-        },
+        metadata={'purpose': 'donate', 'event_id': event_id, 'reserve_action_id': action_id, 'user_id': user_id},
         company_id=request['company_id'],
         idempotency_key=f'idempotency-donate-{action_id}',
         app=request.app,
         conn=conn,
     )
-    return json_response(
-        client_secret=client_secret,
-        action_id=action_id,
-    )
+    return json_response(client_secret=client_secret, action_id=action_id)
 
 
 class DonationGiftAid(UpdateViewAuth):
@@ -79,7 +73,9 @@ class DonationGiftAid(UpdateViewAuth):
         action_id = int(self.request.match_info['action_id'])
         v = await self.conn.execute(
             'update actions set extra=extra || $3 where id=$1 and user_id=$2',
-            action_id, self.session['user_id'], json.dumps({'gift_aid': m.dict()})
+            action_id,
+            self.session['user_id'],
+            json.dumps({'gift_aid': m.dict()}),
         )
         if v != 'UPDATE 1':
             raise JsonErrors.HTTPNotFound(message='action not found')
