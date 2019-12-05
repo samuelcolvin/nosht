@@ -52,16 +52,46 @@ export class EventsList extends RenderList {
 }
 
 const EVENT_STATUS_FIELDS = [
-  {name: 'status', required: true, type: 'select', choices: [
-    {value: 'pending'},
-    {value: 'published'},
-    {value: 'suspended'},
-  ]},
+  {
+    name: 'status',
+    required: true,
+    type: 'select',
+    choices: [
+      {value: 'pending'},
+      {value: 'published'},
+      {value: 'suspended'},
+    ],
+    help_text: 'Only published events will be visible to prospective guests.',
+  },
 ]
 const EVENT_EMAIL_UPDATE_FIELDS = [
   {name: 'subject', required: true},
   {name: 'message', required: true, type: 'textarea'},
 ]
+
+const EVENT_CLONE_FIELDS = [
+  {
+    name: 'name',
+    required: true,
+    title: 'New Event Name',
+    help_text: 'Public name of the new event, keep this short and appealing.',
+  },
+  {
+    name: 'date',
+    title: 'New Event Start',
+    type: 'datetime',
+    required: true,
+    help_text: 'Let guests know when the new event will start and how long it will go on for, you can add more ' +
+               'details about exact timings in the description below.',
+  },
+  ...EVENT_STATUS_FIELDS
+]
+const CLONE_INTRO = (
+  <span>
+    A new event will be created with details the same as this event except for it's name, date and status
+    which you can set below.
+  </span>
+)
 
 const Progress = WithContext(({event, all_tickets, ticket_types, ctx}) => {
   const tickets = all_tickets && all_tickets.filter(t => t.ticket_status === 'booked')
@@ -145,11 +175,10 @@ class EventUpdates extends React.Component {
 export class EventsDetails extends RenderDetails {
   constructor (props) {
     super(props)
-    this.uri = `/dashboard/events/${this.id}/`
-    this.can_edit_event = this.can_edit_event.bind(this)
+    this.uri = `/dashboard/events/${this.id()}/`
   }
 
-  can_edit_event () {
+  can_edit_event = () => {
     const user = this.props.ctx.user
     if (user && user.role === 'host') {
       const event_start = this.state.item && new Date(this.state.item.start_ts)
@@ -165,9 +194,9 @@ export class EventsDetails extends RenderDetails {
     let r
     try {
       r = await Promise.all([
-        requests.get(`/events/${this.id}/tickets/`),
-        requests.get(`/events/${this.id}/ticket-types/`),
-        requests.get(`/events/${this.id}/updates/list/`),
+        requests.get(`/events/${this.id()}/tickets/`),
+        requests.get(`/events/${this.id()}/ticket-types/`),
+        requests.get(`/events/${this.id()}/updates/list/`),
       ])
     } catch (error) {
       this.props.ctx.setError(error)
@@ -182,11 +211,12 @@ export class EventsDetails extends RenderDetails {
         event_updates: r[2].event_updates,
         buttons: [
           can_edit && {name: 'Edit', link: this.uri + 'edit/'},
+          user.role === 'admin' && {name: 'Clone', link: this.uri + 'clone/'},
           can_edit && data.status === 'published' && {name: 'Send Update', link: this.uri + 'send-update/'},
           {name: 'View Guest Page', link: data.link, disabled: data.status !== 'published'},
           user && user.role === 'admin' && {
             name: 'Delete Event',
-            action: `/events/${this.id}/delete/`,
+            action: `/events/${this.id()}/delete/`,
             btn_color: 'danger',
             confirm_msg: (
               <div>
@@ -228,7 +258,7 @@ export class EventsDetails extends RenderDetails {
               return (
                 <span>
                   {render(v)}
-                  <ButtonConfirm action={`/events/${this.id}/switch-highlight/`}
+                  <ButtonConfirm action={`/events/${this.id()}/switch-highlight/`}
                                  modal_title="Switch Status"
                                  btn_text={v ? 'Mark as not highlighted' : 'Mark as highlight'}
                                  done={this.update}
@@ -262,7 +292,7 @@ export class EventsDetails extends RenderDetails {
             wide: true,
             edit_link: can_edit && this.uri + 'set-secondary-image/',
             delete_button: this.state.item.secondary_image && {
-              action: `/events/${this.id}/remove-image/secondary/`,
+              action: `/events/${this.id()}/remove-image/secondary/`,
               modal_title: 'Remove Secondary Image',
               content: 'Are you sure you want to remove the secondary Image?',
               done: this.update,
@@ -338,6 +368,8 @@ export class EventsDetails extends RenderDetails {
     return response
   }
 
+  cloned = r => this.props.history.push(`/dashboard/events/${r.id}/`)
+
   extra () {
     if (!this.state.item) {
       return
@@ -358,7 +390,7 @@ export class EventsDetails extends RenderDetails {
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
         : null,
-      internal ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id} uri={this.uri}/> : null,
+      internal ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
       <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"
@@ -366,8 +398,7 @@ export class EventsDetails extends RenderDetails {
                  mode="edit"
                  success_msg="Event updated"
                  initial={event}
-                 update={this.update}
-                 action={`/events/${this.id}/`}
+                 action={`/events/${this.id()}/`}
                  fields={event_fields}/>,
       <ModalForm key="set-status"
                  title="Set Event Status"
@@ -376,8 +407,7 @@ export class EventsDetails extends RenderDetails {
                  mode="edit"
                  success_msg='Event Updated'
                  initial={{status: event.status}}
-                 update={this.update}
-                 action={`/events/${this.id}/set-status/`}
+                 action={`/events/${this.id()}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
       <ModalForm key="send-update"
                  title="Send Event update to Guests"
@@ -386,25 +416,34 @@ export class EventsDetails extends RenderDetails {
                  mode="edit"
                  success_msg='Event Update Sent'
                  initial={{status: event.status}}
-                 update={this.update}
-                 action={`/events/${this.id}/updates/send/`}
+                 action={`/events/${this.id()}/updates/send/`}
                  fields={EVENT_EMAIL_UPDATE_FIELDS}/>,
       <SetImage key="set-image"
                 event={event}
                 parent_uri={this.uri}
                 regex={/set-image\/$/}
-                update={this.update}
                 title="Upload Background Image"/>,
+      <ModalForm key="clone"
+                 title="Clone Event"
+                 parent_uri={this.uri}
+                 mode="clone"
+                 content_before={CLONE_INTRO}
+                 regex={/clone\/$/}
+                 success_msg="Event cloned"
+                 initial={{name: event.name}}
+                 finished={this.cloned}
+                 action={`/events/${this.id()}/clone/`}
+                 fields={EVENT_CLONE_FIELDS}
+                 save="Clone"/>,
       <ModalDropzoneForm key="set-secondary-image"
                          multiple={false}
                          parent_uri={this.uri}
                          regex={/set-secondary-image\/$/}
-                         update={this.update}
                          title="Upload Secondary Image"
                          help_text="Image should at least 300px x 300px, it will be displayed square."
-                         action={`/events/${this.id}/set-image/secondary/`}/>,
+                         action={`/events/${this.id()}/set-image/secondary/`}/>,
       this.props.ctx.user.role === 'admin' ?
-        <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id} uri={this.uri}/>
+        <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id()} uri={this.uri}/>
         : null,
       this.state.ticket_types ?
         <TicketTypes key="edit-ticket-types"

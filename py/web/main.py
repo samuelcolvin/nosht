@@ -52,6 +52,7 @@ from .views.emails import clear_email_def, email_def_browse, email_def_edit, ema
 from .views.events import (
     CancelTickets,
     EventBread,
+    EventClone,
     EventUpdate,
     SetEventStatus,
     SetTicketTypes,
@@ -143,6 +144,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
                 remove_event_secondary_image,
                 name='event-remove-image-secondary',
             ),
+            web.post(r'/events/{id:\d+}/clone/', EventClone.view(), name='event-clone'),
             web.get(r'/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
             web.post(r'/events/{id:\d+}/tickets/{tid:\d+}/cancel/', CancelTickets.view(), name='event-tickets-cancel'),
             web.get(r'/events/{id:\d+}/tickets/export.csv', event_tickets_export, name='event-tickets-export'),

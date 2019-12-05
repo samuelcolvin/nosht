@@ -136,7 +136,7 @@ export class UsersDetails extends RenderDetails {
           return (
             <span>
               {as_title(v)}
-              <ButtonConfirm action={`/users/${this.id}/switch-status/`}
+              <ButtonConfirm action={`/users/${this.id()}/switch-status/`}
                              modal_title="Switch Status"
                              btn_text={`Mark as ${as_title(new_status)}`}
                              done={this.update}
@@ -169,8 +169,8 @@ export class UsersDetails extends RenderDetails {
     let r
     try {
       r = await Promise.all([
-        requests.get(`/users/${this.id}/actions/`),
-        requests.get(`/users/${this.id}/tickets/`),
+        requests.get(`/users/${this.id()}/actions/`),
+        requests.get(`/users/${this.id()}/tickets/`),
       ])
     } catch (error) {
       this.props.ctx.setError(error)
@@ -190,7 +190,7 @@ export class UsersDetails extends RenderDetails {
                  success_msg="User updated"
                  initial={this.state.item}
                  update={this.update}
-                 action={`/users/${this.id}/`}
+                 action={`/users/${this.id()}/`}
                  fields={FIELDS}/>,
     ]
   }

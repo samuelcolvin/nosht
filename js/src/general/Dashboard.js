@@ -290,13 +290,11 @@ export class RenderDetails extends RenderItem {
       item: null,
       buttons: []
     }
-    this.id = this.props.match.params.id
     this.pre = this.pre.bind(this)
   }
 
-  get_uri () {
-    return `/${this.props.page.name}/${this.id}/`
-  }
+  id = () => this.props.match.params.id
+  get_uri = () => `/${this.props.page.name}/${this.id()}/`
 
   async got_data (data) {
     this.setState({item: data})
