@@ -129,8 +129,9 @@ class BookForm extends React.Component {
   render () {
     if (!this.props.ctx.user) {
       return <BookingLogin
-          event={this.props.event}
+          booking_trust_message={this.props.event.booking_trust_message}
           finished={this.finished}
+          success_label="Book"
           setBookingState={s => this.setState(s)}/>
     } else if (!this.state.reservation) {
       return <BookingTickets
@@ -153,8 +154,6 @@ class BookForm extends React.Component {
 const ModalBookForm = AsModal(BookForm)
 
 const BookEvent = props => (
-  <ModalBookForm {...props}
-                 title={`Book Tickets for ${props.event.name}`}
-                 regex={/book\/$/}/>
+  <ModalBookForm {...props} title={`Book Tickets for ${props.event.name}`} regex={/book\/$/}/>
 )
 export default BookEvent

@@ -12,6 +12,7 @@ import Map from '../general/Map'
 import When from '../general/When'
 import {MoneyFree} from '../general/Money'
 import BookEvent from './Book'
+import WaitingList from './WaitingList'
 import Thanks from '../donations/Thanks'
 
 
@@ -30,7 +31,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
           <Markdown content={event.short_description}/>
         </div>
       </Col>
-      <Col md="3" className="text-right">
+      <Col md="4" className="text-right">
         {ctx.user && (ctx.user.role === 'admin' || ctx.user.id === event.host_id) &&
           <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
             Edit Event
@@ -39,18 +40,29 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
         {event.external_ticket_url ? (
           <a className={link_classes(event)} href={event.external_ticket_url}>Book Now</a>
         ) : (
-          <Button color={event.tickets_available !== null ? 'danger': 'primary'} size="lg"
-                  className="hover-raise" tag={Link} to={uri + 'book/'} disabled={event.tickets_available === 0}>
-            Book Now
-          </Button>
+          event.tickets_available === null ? (
+            <Button color="primary" size="lg" className="hover-raise" tag={Link} to={uri + 'book/'}>
+              Book Now
+            </Button>
+          ) : (
+            event.tickets_available === 0 ? (
+              <Button color="primary" size="lg" className="hover-raise" tag={Link} to={uri + 'waiting-list/'}>
+                Join Waiting List
+              </Button>
+            ) : (
+              <Button color="danger" size="lg" className="hover-raise" tag={Link} to={uri + 'book/'}>
+                Book Now
+              </Button>
+            )
+          )
         )
         }
         {event.tickets_available !== null &&
-          <div className="font-weight-bold mt-3">
+          <div className="mt-3">
             {event.tickets_available === 0 ?
-              <span>Sold Out! Head back to the home page to check out our other events.</span>
+              <span><b>Sold Out!</b> Join the waiting list to get notified if more tickets become available.</span>
               :
-              <span>Only {event.tickets_available} Tickets Remaining</span>
+              <span className="font-weight-bold">Only {event.tickets_available} Tickets Remaining</span>
             }
           </div>}
       </Col>
@@ -166,11 +178,18 @@ class Event extends React.Component {
             />
         }
         <BookEvent
-            {...this.props}
-            parent_uri={this.uri}
-            event={this.state.event}
-            params={this.props.match.params}
-            set_complete={() => this.setState({booking_complete: true})}
+          {...this.props}
+          parent_uri={this.uri}
+          event={this.state.event}
+          params={this.props.match.params}
+          set_complete={() => this.setState({booking_complete: true})}
+        />
+        <WaitingList
+          {...this.props}
+          parent_uri={this.uri}
+          event={this.state.event}
+          params={this.props.match.params}
+          set_complete={() => this.setState({booking_complete: true})}
         />
       </div>
     )

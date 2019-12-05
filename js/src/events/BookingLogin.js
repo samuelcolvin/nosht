@@ -121,7 +121,7 @@ class BookingLogin extends React.Component {
   render () {
     return [
       <ModalBody key="1">
-        <p className="text-center">{this.props.event.booking_trust_message}</p>
+        <p className="text-center">{this.props.booking_trust_message}</p>
 
         <Row className="justify-content-center">
           <Col md="6">
@@ -171,7 +171,7 @@ class BookingLogin extends React.Component {
           </Col>
         </Row>
       </ModalBody>,
-      <ModalFooter key="2" finished={this.props.finished} disabled={true}/>
+      <ModalFooter key="2" finished={this.props.finished} disabled={true} label={this.props.success_label}/>
     ]
   }
 }
