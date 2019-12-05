@@ -91,7 +91,7 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
     async with conn.transaction():
         confirm_action_id = await conn.fetchval_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
-            values=Values(company=company_id, user_id=res.user_id, event=res.event_id, type=m.book_action,),
+            values=Values(company=company_id, user_id=res.user_id, event=res.event_id, type=m.book_action),
         )
         # mark the tickets as price=0 although they could all already be zero,
         # this avoids reporting false revenue for buy-tickets-offline, see #237

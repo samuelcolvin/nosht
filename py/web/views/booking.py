@@ -193,7 +193,7 @@ class ReserveTickets(UpdateViewAuth):
 
     async def create_users(self, tickets: List[TicketModel]):
         user_values = [
-            Values(company=self.request['company_id'], role='guest', email=t.email.lower(),) for t in tickets if t.email
+            Values(company=self.request['company_id'], role='guest', email=t.email.lower()) for t in tickets if t.email
         ]
         if not user_values:
             return

@@ -110,7 +110,7 @@ class EmailActor(BaseEmailActor):
                 )
                 buyer_emails = [UserEmail(user_id, ctx_buyer, ticket_id)]
             else:
-                ctx_other = dict(**ctx, ticket_id=ticket_id_signed(ticket_id, self.settings), extra_info=extra_info,)
+                ctx_other = dict(**ctx, ticket_id=ticket_id_signed(ticket_id, self.settings), extra_info=extra_info)
                 other_emails.append(UserEmail(user_id, ctx_other, ticket_id))
 
         if not buyer_emails:
@@ -167,7 +167,7 @@ class EmailActor(BaseEmailActor):
             company_id, status, role = await conn.fetchrow(
                 'SELECT company, status, role FROM users WHERE id=$1', user_id
             )
-        ctx = dict(events_link='/dashboard/events/', created_by_admin=created_by_admin, is_admin=role == 'admin',)
+        ctx = dict(events_link='/dashboard/events/', created_by_admin=created_by_admin, is_admin=role == 'admin')
         if status == 'pending':
             ctx['confirm_email_link'] = password_reset_link(user_id, auth_fernet=self.auth_fernet)
 
@@ -306,7 +306,7 @@ class EmailActor(BaseEmailActor):
                 'INSERT INTO actions (:values__names) VALUES :values',
                 values=MultipleValues(
                     *[
-                        Values(company=e['company_id'], event=e['id'], type=ActionTypes.event_guest_reminder.value,)
+                        Values(company=e['company_id'], event=e['id'], type=ActionTypes.event_guest_reminder.value)
                         for e in events
                     ]
                 ),

@@ -467,7 +467,7 @@ async def test_donate_gift_aid_no_name(factory: Factory, cli, url, login):
     assert r.status == 200, await r.text()
     data = await r.json()
 
-    post_data = dict(title='Mr', first_name='Joe', address='Testing Street', city='Testingville', postcode='TE11 0ST',)
+    post_data = dict(title='Mr', first_name='Joe', address='Testing Street', city='Testingville', postcode='TE11 0ST')
     r = await cli.json_post(url('donation-gift-aid', action_id=data['action_id']), data=post_data)
     assert r.status == 400, await r.text()
     data = await r.json()

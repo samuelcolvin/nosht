@@ -242,7 +242,7 @@ class Factory:
         self.event_id = self.event_id or event_id
         ticket_type_id = await self.conn.fetchval_b(
             'INSERT INTO ticket_types (:values__names) VALUES :values RETURNING id',
-            values=Values(event=event_id, price=price, name='Standard',),
+            values=Values(event=event_id, price=price, name='Standard'),
         )
         self.ticket_type_id = self.ticket_type_id or ticket_type_id
 
@@ -269,7 +269,7 @@ class Factory:
         assert event_id == await self.conn.fetchval('SELECT event FROM ticket_types WHERE id=$1', ticket_type_id)
         price = await self.conn.fetchval('SELECT price FROM ticket_types WHERE id=$1', ticket_type_id)
         ticket_values = [
-            Values(event=event_id, user_id=user_id, reserve_action=action_id, ticket_type=ticket_type_id, price=price,)
+            Values(event=event_id, user_id=user_id, reserve_action=action_id, ticket_type=ticket_type_id, price=price)
         ]
         for extra_user_id in extra_user_ids:
             ticket_values.append(

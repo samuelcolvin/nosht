@@ -549,7 +549,7 @@ async def test_book_free(cli, url, dummy_server, factory: Factory, db_conn):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='book-free-tickets',)
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='book-free-tickets')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
@@ -572,7 +572,7 @@ async def test_book_free_with_price(cli, url, factory: Factory):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='book-free-tickets',)
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='book-free-tickets')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 400, await r.text()
 
@@ -594,7 +594,7 @@ async def test_buy_offline(cli, url, dummy_server, factory: Factory, login, db_c
     app = cli.app['main_app']
     assert 10 == await db_conn.fetchval('SELECT price FROM tickets')
 
-    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline',)
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
@@ -622,7 +622,7 @@ async def test_buy_offline_other_admin(cli, url, dummy_server, factory: Factory,
     res: Reservation = await factory.create_reservation(u2)
     app = cli.app['main_app']
 
-    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline',)
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
 
@@ -648,7 +648,7 @@ async def test_buy_offline_other_not_admin(cli, url, dummy_server, factory: Fact
     res: Reservation = await factory.create_reservation(u2)
     app = cli.app['main_app']
 
-    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline',)
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 400, await r.text()
     assert {'message': 'to buy tickets offline you must be the host or an admin'} == await r.json()
@@ -670,7 +670,7 @@ async def test_buy_offline_host(cli, url, factory: Factory, login, db_conn):
     res: Reservation = await factory.create_reservation()
     app = cli.app['main_app']
 
-    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline',)
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='book-free-tickets'")

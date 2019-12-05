@@ -94,7 +94,7 @@ async def test_upload_logo(cli, url, factory: Factory, db_conn, login, dummy_ser
     )
     assert r.status == 200, await r.text()
     assert dummy_server.app['images'] == [
-        (RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/co/logo/\w+/main.png'), 341, 256,),
+        (RegexStr(r'/aws_endpoint_url/testingbucket.example.org/tests/testing/co/logo/\w+/main.png'), 341, 256),
     ]
     assert None is not await db_conn.fetchval('SELECT logo FROM companies')
 

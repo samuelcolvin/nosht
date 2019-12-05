@@ -97,7 +97,7 @@ class BaseEmailActor(BaseActor):
             service=_AWS_SERVICE,
             signed_headers=';'.join(_SIGNED_HEADERS),
         )
-        ctx.update(credential_scope=_CREDENTIAL_SCOPE.format(**ctx),)
+        ctx.update(credential_scope=_CREDENTIAL_SCOPE.format(**ctx))
         canonical_headers = ''.join('{}:{}\n'.format(h, ctx[h.replace('-', '_')]) for h in _SIGNED_HEADERS)
 
         canonical_request = _CANONICAL_REQUEST.format(canonical_headers=canonical_headers, **ctx).encode()
@@ -301,7 +301,7 @@ class BaseEmailActor(BaseActor):
             if attached_event_id:
                 attachment = await ical_attachment(attached_event_id, company_id, conn=conn, settings=self.settings)
 
-        global_ctx = dict(company_name=company_name, company_logo=company_logo, base_url=f'https://{company_domain}',)
+        global_ctx = dict(company_name=company_name, company_logo=company_logo, base_url=f'https://{company_domain}')
         coros = []
         tags = {
             'company': company_slug,

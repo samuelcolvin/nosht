@@ -20,7 +20,7 @@ async def test_login_successful(cli, url, factory: Factory):
 
     assert len(cli.session.cookie_jar) == 0
 
-    data = dict(email='frank@example.org', password='testing',)
+    data = dict(email='frank@example.org', password='testing')
     r = await cli.json_post(url('login'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
     data = await r.json()
@@ -305,7 +305,7 @@ async def test_host_signup_google(cli, url, factory: Factory, db_conn, mocker, d
 
     assert dummy_server.app['log'] == [
         'GET google_siw_url',
-        ('email_send_endpoint', 'Subject: "Testing Account Created", To: "Foo Bar <google-auth@example.org>"',),
+        ('email_send_endpoint', 'Subject: "Testing Account Created", To: "Foo Bar <google-auth@example.org>"'),
     ]
     email = dummy_server.app['emails'][0]['part:text/plain']
     assert 'Create &amp; Publish Events' in email
@@ -578,7 +578,7 @@ async def test_password_reset(cli, url, factory: Factory, dummy_server, db_conn)
     await factory.create_user()
     pw_before = await db_conn.fetchval('SELECT password_hash FROM users')
 
-    data = dict(email='frank@example.org', grecaptcha_token='__ok__',)
+    data = dict(email='frank@example.org', grecaptcha_token='__ok__')
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
     r = await cli.json_post(url('reset-password-request'), data=data)
     assert r.status == 200, await r.text()
@@ -612,7 +612,7 @@ async def test_password_reset_wrong(cli, url, factory: Factory, dummy_server, db
     await factory.create_company()
     await factory.create_user()
 
-    data = dict(email='foobar@example.org', grecaptcha_token='__ok__',)
+    data = dict(email='foobar@example.org', grecaptcha_token='__ok__')
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM actions')
     r = await cli.json_post(url('reset-password-request'), data=data)
     assert r.status == 200, await r.text()
@@ -684,7 +684,7 @@ async def test_captcha_required(cli, url, factory: Factory, dummy_server):
     assert data == {'message': 'No recaptcha value'}
     assert dummy_server.app['log'] == []
 
-    data = dict(email='frank@example.org', password='testing', grecaptcha_token='__ok__',)
+    data = dict(email='frank@example.org', password='testing', grecaptcha_token='__ok__')
     r = await cli.json_post(url('login'), data=data, origin_null=True)
     assert r.status == 200, await r.text()
     assert dummy_server.app['log'] == [('grecaptcha', '__ok__')]

@@ -370,7 +370,7 @@ class DonorfyActor(BaseActor):
             requests.append(
                 self.client.put(
                     f'/constituents/{constituent_id}',
-                    data=dict(FirstName=first_name, LastName=last_name, EmailAddress=email,),
+                    data=dict(FirstName=first_name, LastName=last_name, EmailAddress=email),
                 )
             )
 

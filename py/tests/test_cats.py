@@ -55,7 +55,7 @@ async def test_create_cat(cli, url, db_conn, factory: Factory, login):
     await factory.create_user()
     await login()
 
-    data = dict(name='foobar', description='I love to party', sort_index=42,)
+    data = dict(name='foobar', description='I love to party', sort_index=42)
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
     r = await cli.json_post(url('category-add'), data=data)
     assert r.status == 201, await r.text()
@@ -113,7 +113,7 @@ async def test_edit_cat(cli, url, db_conn, factory: Factory, login):
     assert cat['sort_index'] is None
     assert cat['description'] is None
 
-    data = dict(description='x', sort_index=42,)
+    data = dict(description='x', sort_index=42)
     r = await cli.json_post(url('category-edit', pk=factory.category_id), data=data)
     assert r.status == 200, await r.text()
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM categories')
@@ -384,7 +384,7 @@ async def test_delete_image_default(cli, url, factory: Factory, login, db_conn):
 
     img = 'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png'
     await db_conn.execute('UPDATE categories SET image=$1', img)
-    r = await cli.json_post(url('categories-delete-image', cat_id=factory.category_id), data={'image': img},)
+    r = await cli.json_post(url('categories-delete-image', cat_id=factory.category_id), data={'image': img})
     assert r.status == 400, await r.text()
     data = await r.json()
     assert data == {'message': 'default image may not be be deleted'}
@@ -398,7 +398,7 @@ async def test_set_default_image(cli, url, factory: Factory, login, dummy_server
 
     assert 'https://www.example.org/main.png' == await db_conn.fetchval('SELECT image FROM categories')
     img = 'https://testingbucket.example.org/co-slug/cat-slug/option/randomkey1/main.png'
-    r = await cli.json_post(url('categories-set-image', cat_id=factory.category_id), data={'image': img},)
+    r = await cli.json_post(url('categories-set-image', cat_id=factory.category_id), data={'image': img})
     assert r.status == 200, await r.text()
     assert dummy_server.app['log'] == ['GET aws_endpoint_url/testingbucket.example.org']
     assert img == await db_conn.fetchval('SELECT image FROM categories')

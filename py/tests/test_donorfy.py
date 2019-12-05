@@ -247,7 +247,7 @@ async def test_book_offline(donorfy: DonorfyActor, factory: Factory, dummy_serve
     res = await factory.create_reservation()
     app = cli.app['main_app']
 
-    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline',)
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='buy-tickets-offline')
     r = await cli.json_post(url('event-book-tickets'), data=data)
     assert r.status == 200, await r.text()
     assert 'POST donorfy_api_root/standard/transactions' not in dummy_server.app['post_data']

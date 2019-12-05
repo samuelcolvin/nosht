@@ -51,7 +51,7 @@ def pretty_lenient_json(data):
 
 
 def raw_json_response(json_str, status_=200):
-    return Response(body=json_str.encode() + b'\n', status=status_, content_type=JSON_CONTENT_TYPE,)
+    return Response(body=json_str.encode() + b'\n', status=status_, content_type=JSON_CONTENT_TYPE)
 
 
 def json_response(*, status_=200, list_=None, headers_=None, **data):

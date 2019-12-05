@@ -57,7 +57,7 @@ async def donation_prepare(request):
         app=request.app,
         conn=conn,
     )
-    return json_response(client_secret=client_secret, action_id=action_id,)
+    return json_response(client_secret=client_secret, action_id=action_id)
 
 
 class DonationGiftAid(UpdateViewAuth):

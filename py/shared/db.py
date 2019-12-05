@@ -469,7 +469,7 @@ async def create_new_company(conn, settings, live, **kwargs):
 
     company_id = await conn.fetchval_b(
         'INSERT INTO companies (:values__names) VALUES :values RETURNING id',
-        values=Values(name=co_name, slug=co_slug, domain=co_domain,),
+        values=Values(name=co_name, slug=co_slug, domain=co_domain),
     )
     user_name = input("Enter the main admin's name: ").strip(' ')
     if ' ' in user_name:
@@ -480,7 +480,7 @@ async def create_new_company(conn, settings, live, **kwargs):
 
     user_id = await conn.fetchval_b(
         'INSERT INTO users (:values__names) VALUES :values RETURNING id',
-        values=Values(company=company_id, email=user_email, first_name=first_name, last_name=last_name, role='admin',),
+        values=Values(company=company_id, email=user_email, first_name=first_name, last_name=last_name, role='admin'),
     )
     actor = EmailActor(settings=settings, pg=SimplePgPool(conn))
     await actor.startup()

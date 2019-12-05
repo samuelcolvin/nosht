@@ -36,7 +36,7 @@ testcov: test
 	coverage html --rcfile=py/setup.cfg
 
 .PHONY: all
-all: testcov lint
+all: lint testcov
 
 .PHONY: build
 build: COMMIT=$(shell git rev-parse HEAD)

@@ -76,7 +76,7 @@ async def log_extra(request, response=None, **more):
                         user_status=user_info['status'], user_role=user_info['role'], company=user_info['company_id'],
                     )
                     user.update(user_info)
-    return dict(data=data, user=user, tags=tags,)
+    return dict(data=data, user=user, tags=tags)
 
 
 async def log_warning(request, response):

@@ -109,7 +109,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
     logging_client = logging_client or setup_logging()
     settings = settings or Settings()
 
-    app = web.Application(logger=None, middlewares=(pg_middleware, user_middleware, csrf_middleware,))
+    app = web.Application(logger=None, middlewares=(pg_middleware, user_middleware, csrf_middleware))
 
     app.update(
         settings=settings,
