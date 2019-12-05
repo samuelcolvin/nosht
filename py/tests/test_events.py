@@ -1460,3 +1460,14 @@ async def test_clone_event_guest(cli, url, factory: Factory, login):
     data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
     r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
     assert r.status == 403, await r.text()
+
+
+async def test_clone_event_not_found(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+
+    await login()
+    data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
+    r = await cli.json_post(url('event-clone', id=123), data=data)
+    assert r.status == 404, await r.text()
