@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 from secrets import compare_digest
 from textwrap import shorten
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import pytz
 from asyncpg import CheckViolationError
@@ -14,7 +14,7 @@ from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, HttpUrl, condecimal, conint, constr, validator
-from pytz.tzinfo import BaseTzInfo
+from pytz.tzinfo import StaticTzInfo
 
 from shared.images import delete_image, upload_background, upload_force_shape
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
@@ -96,7 +96,7 @@ FROM (
 """
 
 
-class TzInfo(BaseTzInfo):
+class TzInfo(StaticTzInfo):
     @classmethod
     def __get_validators__(cls):
         yield cls.validate
@@ -260,17 +260,12 @@ class EventBread(Bread):
         if data.get('external_ticket_url') and self.request['session']['role'] != 'admin':
             raise JsonErrors.HTTPForbidden(message='external_ticket_url may only be set by admins')
 
-        date = data.pop('date', None)
         timezone: TzInfo = data.pop('timezone', None)
         if timezone:
             data['timezone'] = str(timezone)
+        date = data.pop('date', None)
         if date:
-            dt: datetime = timezone.localize(date['dt'].replace(tzinfo=None))
-            duration: Optional[int] = date['dur']
-            if duration:
-                duration = timedelta(seconds=duration)
-            else:
-                dt = datetime(dt.year, dt.month, dt.day)
+            dt, duration = prepare_event_start(date['dt'], date['dur'], timezone)
             data.update(
                 start_ts=dt, duration=duration,
             )
@@ -818,3 +813,104 @@ async def event_search(request):
 
     json_str = await request['conn'].fetchval_b(search_sql, company=request['company_id'], query=query)
     return raw_json_response(json_str)
+
+
+class EventClone(UpdateView):
+    class Model(BaseModel):
+        name: constr(max_length=63)
+
+        class DateModel(BaseModel):
+            dt: datetime
+            dur: Optional[int]
+
+        date: DateModel
+
+    async def check_permissions(self):
+        await check_session(self.request, 'admin')
+
+    clone_event_sql = """
+    INSERT INTO events (
+      category,
+      host,
+      name,
+      slug,
+      highlight,
+      external_ticket_url,
+      start_ts,
+      timezone,
+      duration,
+      short_description,
+      long_description,
+      public,
+      location_name,
+      location_lat,
+      location_lng,
+      ticket_limit,
+      image,
+      secondary_image
+    )
+    SELECT
+      e.category,
+      e.host,
+      :name,
+      :slug,
+      e.highlight,
+      e.external_ticket_url,
+      :start,
+      e.timezone,
+      :duration,
+      e.short_description,
+      e.long_description,
+      e.public,
+      e.location_name,
+      e.location_lat,
+      e.location_lng,
+      e.ticket_limit,
+      e.image,
+      e.secondary_image
+    FROM events e WHERE e.id=:old_event_id
+    ON CONFLICT (category, slug) DO NOTHING
+    RETURNING id
+    """
+    duplicate_ticket_types_sql = """
+    INSERT INTO ticket_types (event, name, price, slots_used)
+    SELECT event, name, price, slots_used FROM ticket_types where event=$1
+    """
+
+    async def execute(self, m: Model):
+        old_event_id = int(self.request.match_info['id'])
+        slug = slugify(m.name)
+
+        tz = await self.conn.fetchval(
+            """
+            SELECT timezone FROM events e
+            JOIN categories c ON e.category = c.id
+            WHERE e.id=$1 AND c.company=$2
+            """,
+            old_event_id,
+            self.request['company_id'],
+        )
+        if not tz:
+            raise JsonErrors.HTTPNotFound(message='Event not found')
+
+        start, duration = prepare_event_start(m.date.dt, m.date.dur, pytz.timezone(tz))
+        kwargs = dict(slug=slug, old_event_id=old_event_id, name=m.name, start=start, duration=duration)
+
+        async with self.conn.transaction():
+            new_event_id = await self.conn.fetchval_b(self.clone_event_sql, **kwargs)
+            while new_event_id is None:
+                # event with this slug already exists
+                kwargs['slug'] = slug + '-' + pseudo_random_str(4)
+                new_event_id = await self.conn.fetchval_b(self.clone_event_sql, **kwargs)
+
+            await self.conn.execute(self.duplicate_ticket_types_sql, new_event_id)
+
+        return {'id': new_event_id, 'status_': 201}
+
+
+def prepare_event_start(dt: datetime, duration: Optional[int], tz: TzInfo) -> Tuple[datetime, Optional[timedelta]]:
+    dt: datetime = tz.localize(dt.replace(tzinfo=None))
+    if duration:
+        return dt, timedelta(seconds=duration)
+    else:
+        return datetime(dt.year, dt.month, dt.day), None

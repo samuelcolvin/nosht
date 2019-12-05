@@ -216,6 +216,7 @@ class DatetimeInput extends React.Component {
             </DropdownMenu>
           </InputGroupButtonDropdown>
         </InputGroup>
+        <HelpText field={this.props.field}/>
       </FormGroup>
     )
   }

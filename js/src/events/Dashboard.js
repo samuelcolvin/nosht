@@ -63,6 +63,29 @@ const EVENT_EMAIL_UPDATE_FIELDS = [
   {name: 'message', required: true, type: 'textarea'},
 ]
 
+const EVENT_CLONE_FIELDS = [
+  {
+    name: 'name',
+    required: true,
+    title: 'New Event Name',
+    help_text: 'Public name of the new event, keep this short and appealing.',
+  },
+  {
+    name: 'date',
+    title: 'New Event Start',
+    type: 'datetime',
+    required: true,
+    help_text: 'Let guests know when the new event will start and how long it will go on for, you can add more ' +
+                'details about exact timings in the description below.',
+  },
+]
+const CLONE_INTRO = (
+  <span>
+    A new event will be created with details the same as this event except for it's name
+    and date which you can set below. Active ticket types will be be cloned to the new event.
+  </span>
+)
+
 const Progress = WithContext(({event, all_tickets, ticket_types, ctx}) => {
   const tickets = all_tickets && all_tickets.filter(t => t.ticket_status === 'booked')
   const tickets_booked = tickets && (
@@ -182,6 +205,7 @@ export class EventsDetails extends RenderDetails {
         event_updates: r[2].event_updates,
         buttons: [
           can_edit && {name: 'Edit', link: this.uri + 'edit/'},
+          user.role === 'admin' && {name: 'Clone', link: this.uri + 'clone/'},
           can_edit && data.status === 'published' && {name: 'Send Update', link: this.uri + 'send-update/'},
           {name: 'View Guest Page', link: data.link, disabled: data.status !== 'published'},
           user && user.role === 'admin' && {
@@ -395,6 +419,18 @@ export class EventsDetails extends RenderDetails {
                 regex={/set-image\/$/}
                 update={this.update}
                 title="Upload Background Image"/>,
+      <ModalForm key="clone"
+                 title="Clone Event"
+                 parent_uri={this.uri}
+                 mode="clone"
+                 content_before={CLONE_INTRO}
+                 regex={/clone\/$/}
+                 success_msg="Event cloned"
+                 initial={{name: event.name}}
+                 update={this.update}
+                 action={`/events/${this.id}/clone/`}
+                 fields={EVENT_CLONE_FIELDS}
+                 save="Clone"/>,
       <ModalDropzoneForm key="set-secondary-image"
                          multiple={false}
                          parent_uri={this.uri}

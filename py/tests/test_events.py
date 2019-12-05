@@ -271,10 +271,8 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
     data = await r.json()
     event = dict(await db_conn.fetchrow('SELECT * FROM events'))
     event_id = event.pop('id')
-    assert data == {
-        'status': 'ok',
-        'pk': event_id,
-    }
+    assert data == {'status': 'ok', 'pk': event_id}
+
     assert event == {
         'category': factory.category_id,
         'status': 'published',
@@ -1350,3 +1348,49 @@ async def test_remove_secondary_image_(cli, url, factory: Factory, db_conn, logi
         f'DELETE aws_endpoint_url/{event_path}/secondary/xxx123/thumb.png',
     ]
     assert None is await db_conn.fetchval('select secondary_image from events where id=$1', factory.event_id)
+
+
+async def test_clone_event(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(
+        name='First Event',
+        ticket_limit=42,
+        public=False,
+        status='published',
+        short_description='this is short',
+        long_description='this is long',
+    )
+    await login()
+    data = {'name': 'New Event', 'date': {'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 7200}}
+    r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
+    assert r.status == 201, await r.text()
+    assert await db_conn.fetchval('select count(*) from events where id!=$1', factory.event_id) == 1
+    new_event_id = await db_conn.fetchval('select id from events where id!=$1', factory.event_id)
+    assert await r.json() == {'id': new_event_id}
+
+    data = await db_conn.fetchrow('select * from events where id=$1', new_event_id)
+    assert dict(data) == {
+        'id': new_event_id,
+        'category': factory.category_id,
+        'status': 'pending',
+        'host': factory.user_id,
+        'name': 'New Event',
+        'slug': 'new-event',
+        'highlight': False,
+        'external_ticket_url': None,
+        'start_ts': datetime(2020, 2, 1, 19, 0, tzinfo=timezone.utc),
+        'timezone': 'Europe/London',
+        'duration': timedelta(0, 7200),
+        'short_description': 'this is short',
+        'long_description': 'this is long',
+        'public': False,
+        'location_name': None,
+        'location_lat': None,
+        'location_lng': None,
+        'ticket_limit': 42,
+        'tickets_taken': 0,
+        'image': None,
+        'secondary_image': None,
+    }
