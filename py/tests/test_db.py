@@ -39,6 +39,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
                 'location_name': '31 Testing Road, London',
                 'start_ts': '2020-01-28T19:00:00',
                 'duration': 7200,
+                'sold_out': False,
             },
             {
                 'id': await db_conn.fetchval("SELECT id FROM events WHERE slug='janes-great-supper'"),
@@ -51,6 +52,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
                 'location_name': '253 Brixton Road, London',
                 'start_ts': '2020-02-10T18:00:00',
                 'duration': 10800,
+                'sold_out': False,
             },
             {
                 'id': await db_conn.fetchval("SELECT id FROM events WHERE slug='loud-singing'"),
@@ -63,6 +65,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
                 'location_name': 'Big Church, London',
                 'start_ts': '2020-02-15T00:00:00',
                 'duration': None,
+                'sold_out': False,
             },
         ],
         'company': {

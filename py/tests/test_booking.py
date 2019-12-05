@@ -850,3 +850,36 @@ async def test_ticket_expiry(factory: Factory, db_conn, settings):
 
     assert 2 == await db_conn.fetchval('select check_tickets_remaining($1, $2)', factory.event_id, settings.ticket_ttl)
     assert await db_conn.fetchval('select count(*) from tickets') == 0
+
+
+async def test_index_sold_out(factory: Factory, cli, url, buy_tickets, db_conn):
+    await factory.create_company()
+    await factory.create_cat(slug='testing', cover_costs_percentage=5)
+    await factory.create_user()
+    await factory.create_event(highlight=True, status='published', price=100, ticket_limit=1)
+
+    assert await db_conn.fetchval('SELECT check_tickets_remaining($1, $2)', factory.event_id, 600) == 1
+
+    r = await cli.get(url('index'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['highlight_events'][0]['sold_out'] is False
+
+    r = await cli.get(url('category', category='testing'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['events'][0]['sold_out'] is False
+
+    await buy_tickets(factory)
+
+    assert await db_conn.fetchval('SELECT check_tickets_remaining($1, $2)', factory.event_id, 600) == 0
+
+    r = await cli.get(url('index'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['highlight_events'][0]['sold_out'] is True
+
+    r = await cli.get(url('category', category='testing'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['events'][0]['sold_out'] is True
