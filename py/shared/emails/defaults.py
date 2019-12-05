@@ -16,6 +16,7 @@ class Triggers(str, Enum):
     event_host_created = 'event-host-created'
     event_host_update = 'event-host-update'
     event_host_final_update = 'event-host-final-update'
+    event_tickets_available = 'event-tickets-available'
 
     password_reset = 'password-reset'
     account_created = 'account-created'
@@ -279,6 +280,20 @@ You can now create and publish events whenever you wish.
 {{#action_link}}
 {{ primary_button({{ action_label }} | {{ action_link }}) }}
 {{/action_link}}
+""",
+    },
+    Triggers.event_tickets_available: {
+        'subject': '{{{ event_name }}} New Tickets Available',
+        'title': '{{ company_name }}',
+        'body': """
+Hi {{ first_name }},
+
+Great news! New tickets have become available for **{{ event_name }}**.
+
+{{ primary_button(View Event | {{ event_link }}) }}
+
+If you no-longer wish to see emails about this event,
+you may [remove yourself from the waiting list]({{ remove_link }}).
 """,
     },
 }

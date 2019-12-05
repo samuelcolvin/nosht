@@ -492,6 +492,41 @@ class EmailActor(BaseEmailActor):
                         await self.send_emails.direct(company_id, Triggers.event_host_final_update.value, user_ctxs)
         return user_emails
 
+    @concurrent
+    async def send_tickets_available(self, event_id: int):
+        """
+        Send an email to those on the waiting list about an event
+        """
+        async with self.pg.acquire() as conn:
+            data = await conn.fetchrow(
+                """
+                SELECT
+                  c.company AS company_id,
+                  e.id AS event_id,
+                  e.name AS event_name,
+                  event_link(c.slug, e.slug, e.public, $2) AS event_link,
+                  e.start_ts > now() AS in_future
+                FROM events AS e
+                JOIN categories AS c ON e.category = c.id
+                WHERE e.id=$1
+                """,
+                event_id,
+                self.settings.auth_key,
+            )
+            if not data['in_future']:
+                # don't send the email if the event is not in the future
+                return
+
+            users = await conn.fetch('select user_id from waiting_list where event=$1', event_id)
+
+        ctx = {
+            'event_link': data['event_link'],
+            'event_name': data['event_name'],
+            'remove_link': '/testing',
+        }
+        users = [UserEmail(r[0], ctx) for r in users]
+        await self.send_emails.direct(data['company_id'], Triggers.event_tickets_available, users)
+
 
 def is_cat(slug):
     return 'is_category_{}'.format(slug.replace('-', '_'))
