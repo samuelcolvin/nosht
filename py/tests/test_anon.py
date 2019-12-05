@@ -39,6 +39,7 @@ async def test_root(cli, url, factory: Factory):
                 'location_name': 'Testing Location',
                 'start_ts': '2020-06-28T19:00:00',
                 'duration': 3600,
+                'sold_out': False,
             },
         ],
         'company': {

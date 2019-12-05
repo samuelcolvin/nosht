@@ -25,6 +25,7 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'short_description': RegexStr(r'.*'),
                 'start_ts': '2020-06-28T19:00:00',
                 'duration': 3600,
+                'sold_out': False,
             },
         ],
     }
@@ -45,6 +46,7 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'location_name': 'loc-name',
                 'start_ts': '2020-06-28T19:00:00',
                 'duration': 3600,
+                'sold_out': False,
             },
         ],
     }

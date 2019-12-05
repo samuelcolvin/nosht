@@ -1,6 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import {Card, CardImg, CardTitle, CardSubtitle, CardBody, Row, Col} from 'reactstrap'
+import {Badge, Card, CardImg, CardTitle, CardSubtitle, CardBody, Row, Col} from 'reactstrap'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {chunk_array, image_thumb} from '../utils'
 import Markdown from '../general/Markdown'
@@ -16,7 +16,10 @@ const Event = ({event}) => (
           {event.secondary_image && (
             <img src={image_thumb(event.secondary_image, 'main')} alt={event.name} className="img-thumbnail"/>
           )}
-          <CardTitle tag="h3">{event.name}</CardTitle>
+          <CardTitle tag="h3">
+            {event.name}
+            {event.sold_out && (<span className="pl-2 h5"><Badge color="danger">Sold Out</Badge></span>)}
+          </CardTitle>
           <CardSubtitle className="mb-1 text-muted">
             <FontAwesomeIcon icon={['far', 'clock']} className="mr-1"/>
             <When event={event}/>
