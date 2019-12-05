@@ -623,3 +623,15 @@ async def update_search_index(conn, **kwargs):
     """
     await conn.execute('UPDATE users SET phone_number=phone_number')
     await conn.execute('UPDATE events SET short_description=short_description')
+
+
+@patch
+async def add_waiting_list(conn, settings, **kwargs):
+    """
+    create waiting_list table and indexes
+    """
+    models_sql = settings.models_sql
+    m = re.search('-- { waiting-list(.*)-- } waiting-list', models_sql, flags=re.DOTALL)
+    waiting_list_sql = m.group(1).strip(' \n')
+    print('running waiting-list table sql...')
+    await conn.execute(waiting_list_sql)

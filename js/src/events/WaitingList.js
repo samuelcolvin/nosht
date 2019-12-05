@@ -10,7 +10,7 @@ class WaitingListForm extends React.Component {
   onSubmit = async (e) => {
     e.preventDefault()
     try {
-      await requests.post(`events/${this.props.event.id}/waiting-list/`)
+      await requests.post(`events/${this.props.event.id}/waiting-list/add/`)
     } catch (error) {
       this.props.ctx.setError(error)
       return

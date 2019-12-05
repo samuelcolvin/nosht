@@ -30,7 +30,7 @@ from .views.auth import (
     set_password,
     unsubscribe,
 )
-from .views.booking import BookFreeTickets, CancelReservedTickets, ReserveTickets, booking_info
+from .views.booking import BookFreeTickets, CancelReservedTickets, ReserveTickets, booking_info, waiting_list_add
 from .views.categories import (
     CategoryBread,
     category_add_image,
@@ -143,7 +143,6 @@ def create_app(*, settings: Settings = None, logging_client=None):
                 remove_event_secondary_image,
                 name='event-remove-image-secondary',
             ),
-            web.post(r'/events/{id:\d+}/waiting-list/add/', WaitingListAdd.view(), name='event-waiting-list-add'),
             web.get(r'/events/{id:\d+}/tickets/', event_tickets, name='event-tickets'),
             web.post(r'/events/{id:\d+}/tickets/{tid:\d+}/cancel/', CancelTickets.view(), name='event-tickets-cancel'),
             web.get(r'/events/{id:\d+}/tickets/export.csv', event_tickets_export, name='event-tickets-export'),
@@ -153,6 +152,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
             web.post(r'/events/{id:\d+}/updates/send/', EventUpdate.view(), name='event-send-update'),
             web.get(r'/events/{id:\d+}/updates/list/', event_updates_sent, name='event-updates-sent'),
             web.post(r'/events/{id:\d+}/switch-highlight/', switch_highlight, name='event-switch-highlight'),
+            web.post(r'/events/{id:\d+}/waiting-list/add/', waiting_list_add, name='event-waiting-list-add'),
             # event public views
             web.post(r'/events/book-free/', BookFreeTickets.view(), name='event-book-tickets'),
             web.post(r'/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
@@ -160,6 +160,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
             web.get(r'/events/{category}/{event}/booking-info/', booking_info, name='event-booking-info-public'),
             web.get(r'/events/{category}/{event}/{sig}/', event_get, name='event-get-private'),
             web.get(r'/events/{category}/{event}/{sig}/booking-info/', booking_info, name='event-booking-info-private'),
+            # stripe views
             web.post(r'/stripe/webhook/', stripe_webhook, name='stripe-webhook'),
             web.get(
                 r'/stripe/payment-method-details/{payment_method}/',

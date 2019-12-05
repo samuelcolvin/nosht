@@ -243,3 +243,20 @@ class BookFreeTickets(UpdateView):
         booked_action_id = await book_free(m, self.request['company_id'], self.session, self.app, self.conn)
         await self.app['donorfy_actor'].tickets_booked(booked_action_id)
         await self.app['email_actor'].send_event_conf(booked_action_id)
+
+
+@is_auth
+async def waiting_list_add(request):
+    event_id = int(request.match_info['id'])
+
+    conn: BuildPgConnection = request['conn']
+    user_id = request['session']['user_id']
+    await conn.execute(
+        """
+        insert into waiting_list (event, user_id) values ($1, $2)
+        on conflict (event, user_id) do nothing
+        """,
+        event_id,
+        user_id,
+    )
+    return json_response(status='ok')
