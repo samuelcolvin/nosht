@@ -1,4 +1,5 @@
 import logging
+from secrets import compare_digest
 from time import time
 from typing import List
 
@@ -7,7 +8,6 @@ from asyncpg import CheckViolationError
 from buildpg import MultipleValues, Values
 from buildpg.asyncpg import BuildPgConnection
 from pydantic import BaseModel, EmailStr, constr, validator
-from websocket._handshake import compare_digest
 
 from shared.utils import waiting_list_sig
 from web.actions import ActionTypes, record_action, record_action_id

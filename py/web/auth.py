@@ -165,7 +165,7 @@ async def facebook_get_details(m: FacebookSiwModel, app):
         raise JsonErrors.HTTPBadRequest(message='facebook userID not consistent')
     if not response_data.get('email') or not response_data.get('last_name'):
         raise JsonErrors.HTTPBadRequest(
-            message='Your Facebook profile needs to have both a last name and ' 'email address associated with it.'
+            message='Your Facebook profile needs to have both a last name and email address associated with it.'
         )
 
     return {

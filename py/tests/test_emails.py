@@ -41,7 +41,7 @@ async def test_send_email(email_actor: EmailActor, factory: Factory, dummy_serve
     )
 
     assert dummy_server.app['log'] == [
-        ('email_send_endpoint', 'Subject: "Update: testing", ' 'To: "Frank Spencer <testing@example.org>"'),
+        ('email_send_endpoint', 'Subject: "Update: testing", To: "Frank Spencer <testing@example.org>"'),
     ]
     assert 1 == await db_conn.fetchval('select count(*) from emails')
     email = await db_conn.fetchrow('select * from emails')
@@ -111,7 +111,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
     assert dummy_server.app['log'] == [
         (
             'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", ' 'To: "Frank Spencer <testing@scolvin.com>"',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <testing@scolvin.com>"',
         ),
     ]
     assert len(dummy_server.app['emails']) == 1
@@ -157,7 +157,7 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
     assert dummy_server.app['log'] == [
         (
             'email_send_endpoint',
-            'Subject: "The Event Name Ticket Confirmation", ' 'To: "Frank Spencer <testing@scolvin.com>"',
+            'Subject: "The Event Name Ticket Confirmation", To: "Frank Spencer <testing@scolvin.com>"',
         ),
     ]
     assert len(dummy_server.app['emails']) == 1
@@ -222,7 +222,7 @@ async def test_send_ticket_other(email_actor: EmailActor, factory: Factory, dumm
     anne_email, ben_email = dummy_server.app['emails']
     assert anne_email['To'] == 'anne anne <anne@example.org>'
     assert (
-        'Thanks for booking your tickets for Supper Clubs, ' '**The Event Name** hosted by Frank Spencer.\n'
+        'Thanks for booking your tickets for Supper Clubs, **The Event Name** hosted by Frank Spencer.\n'
     ) in anne_email['part:text/plain']
 
     assert ben_email['To'] == 'ben ben <ben@example.org>'
@@ -324,7 +324,7 @@ async def test_ticket_buyer_not_attendee(factory: Factory, dummy_server, login, 
     email = dummy_server.app['emails'][0]
     # debug(email)
     assert (
-        '* Start Time: **07:00pm, 28th Jun 2020**\n' '* Duration: **1 hour**\n' '* Location: **The Location**\n'
+        '* Start Time: **07:00pm, 28th Jun 2020**\n* Duration: **1 hour**\n* Location: **The Location**\n'
     ) in email['part:text/plain']
     assert 'This is your ticket' not in email['part:text/plain']
     assert email['X-SES-MESSAGE-TAGS'] == 'company=testing, trigger=ticket-buyer'
@@ -471,7 +471,7 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
     assert email['Subject'] == 'This is a test email & whatever'
     assert email['To'] == 'anne Spencer <anne@example.org>'
     html = email['part:text/html']
-    assert ('<p>Hi anne,</p>\n' '\n' '<p>this is the <strong>message</strong>.</p>\n') in html
+    assert '<p>Hi anne,</p>\n\n<p>this is the <strong>message</strong>.</p>\n' in html
 
     assert 'href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n' in html
 

@@ -64,7 +64,7 @@ class EmailActor(BaseEmailActor):
             )
             # use max to get the price as they should all be the same
             ticket_count, total_ticket_price, extra_donated, price = await conn.fetchrow(
-                'select count(*), sum(price), sum(extra_donated), max(price) ' 'from tickets where booked_action=$1',
+                'select count(*), sum(price), sum(extra_donated), max(price) from tickets where booked_action=$1',
                 booked_action_id,
             )
             total_price = total_ticket_price and total_ticket_price + (extra_donated or 0)
