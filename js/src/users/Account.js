@@ -44,10 +44,7 @@ export default class Account extends RenderDetails {
     }
   }
   id = () => this.props.ctx.user.id
-
-  get_uri () {
-    return `/account/${this.id()}/`
-  }
+  get_uri = () => `/account/${this.id()}/`
 
   async got_data (data) {
     super.got_data(data)

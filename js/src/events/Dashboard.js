@@ -61,7 +61,7 @@ const EVENT_STATUS_FIELDS = [
       {value: 'published'},
       {value: 'suspended'},
     ],
-    help_text: 'Only published events will be visible to guests.',
+    help_text: 'Only published events will be visible to prospective guests.',
   },
 ]
 const EVENT_EMAIL_UPDATE_FIELDS = [
@@ -82,14 +82,14 @@ const EVENT_CLONE_FIELDS = [
     type: 'datetime',
     required: true,
     help_text: 'Let guests know when the new event will start and how long it will go on for, you can add more ' +
-                'details about exact timings in the description below.',
+               'details about exact timings in the description below.',
   },
   ...EVENT_STATUS_FIELDS
 ]
 const CLONE_INTRO = (
   <span>
-    A new event will be created with details the same as this event except for it's name
-    and date which you can set below. Active ticket types will be be cloned to the new event.
+    A new event will be created with details the same as this event except for it's name, date and status
+    which you can set below.
   </span>
 )
 
