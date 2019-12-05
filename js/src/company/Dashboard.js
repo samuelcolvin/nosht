@@ -76,7 +76,6 @@ export default class CompanyDetails extends RenderDetails {
     this.state.buttons = [
       {name: 'Edit', link: this.uri + 'edit/'},
     ]
-    this.id = this.props.ctx.company.company.id
     this.state.formats = {
       image: {
         wide: true,
@@ -92,9 +91,8 @@ export default class CompanyDetails extends RenderDetails {
     }
   }
 
-  get_uri () {
-    return `/companies/${this.id}/`
-  }
+  id = () => this.props.ctx.company.company.id
+  get_uri = () => `/companies/${this.id()}/`
 
   extra () {
     return [
@@ -106,7 +104,7 @@ export default class CompanyDetails extends RenderDetails {
                  success_msg="Company Updated"
                  initial={this.state.item}
                  update={this.update}
-                 action={`/companies/${this.id}/`}
+                 action={`/companies/${this.id()}/`}
                  fields={CO_FIELDS}/>,
       <ModalDropzoneForm key="image"
                          parent_uri={this.uri}

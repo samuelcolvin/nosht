@@ -159,17 +159,17 @@ async def event_categories(request):
     return raw_json_response(json_str)
 
 
+class DateModel(BaseModel):
+    dt: datetime
+    dur: Optional[int]
+
+
 class EventBread(Bread):
     class Model(BaseModel):
         name: constr(max_length=63)
         category: int
         public: bool = True
         timezone: TzInfo
-
-        class DateModel(BaseModel):
-            dt: datetime
-            dur: Optional[int]
-
         date: DateModel
 
         class LocationModel(BaseModel):
@@ -818,63 +818,33 @@ async def event_search(request):
 class EventClone(UpdateView):
     class Model(BaseModel):
         name: constr(max_length=63)
-
-        class DateModel(BaseModel):
-            dt: datetime
-            dur: Optional[int]
-
         date: DateModel
+        status: StatusChoices
 
     async def check_permissions(self):
         await check_session(self.request, 'admin')
 
     clone_event_sql = """
     INSERT INTO events (
-      category,
-      host,
-      name,
-      slug,
-      highlight,
-      external_ticket_url,
-      start_ts,
-      timezone,
-      duration,
-      short_description,
-      long_description,
-      public,
-      location_name,
-      location_lat,
-      location_lng,
-      ticket_limit,
-      image,
-      secondary_image
+      category, host, name, slug, status,
+      highlight, external_ticket_url,
+      start_ts, timezone, duration,
+      short_description, long_description, public, location_name, location_lat, location_lng,
+      ticket_limit, image, secondary_image
     )
     SELECT
-      e.category,
-      e.host,
-      :name,
-      :slug,
-      e.highlight,
-      e.external_ticket_url,
-      :start,
-      e.timezone,
-      :duration,
-      e.short_description,
-      e.long_description,
-      e.public,
-      e.location_name,
-      e.location_lat,
-      e.location_lng,
-      e.ticket_limit,
-      e.image,
-      e.secondary_image
+      e.category, e.host, :name, :slug, :status,
+      e.highlight, e.external_ticket_url,
+      :start, e.timezone, :duration,
+      e.short_description, e.long_description, e.public, e.location_name, e.location_lat, e.location_lng,
+      e.ticket_limit, e.image, e.secondary_image
     FROM events e WHERE e.id=:old_event_id
     ON CONFLICT (category, slug) DO NOTHING
     RETURNING id
     """
     duplicate_ticket_types_sql = """
-    INSERT INTO ticket_types (event, name, price, slots_used)
-    SELECT event, name, price, slots_used FROM ticket_types where event=$1
+    INSERT INTO ticket_types (event, name, price, slots_used, active)
+    SELECT $2, name, price, slots_used, active FROM ticket_types where event=$1
     """
 
     async def execute(self, m: Model):
@@ -894,7 +864,9 @@ class EventClone(UpdateView):
             raise JsonErrors.HTTPNotFound(message='Event not found')
 
         start, duration = prepare_event_start(m.date.dt, m.date.dur, pytz.timezone(tz))
-        kwargs = dict(slug=slug, old_event_id=old_event_id, name=m.name, start=start, duration=duration)
+        kwargs = dict(
+            slug=slug, old_event_id=old_event_id, name=m.name, start=start, duration=duration, status=m.status.value
+        )
 
         async with self.conn.transaction():
             new_event_id = await self.conn.fetchval_b(self.clone_event_sql, **kwargs)
@@ -903,7 +875,7 @@ class EventClone(UpdateView):
                 kwargs['slug'] = slug + '-' + pseudo_random_str(4)
                 new_event_id = await self.conn.fetchval_b(self.clone_event_sql, **kwargs)
 
-            await self.conn.execute(self.duplicate_ticket_types_sql, new_event_id)
+            await self.conn.execute(self.duplicate_ticket_types_sql, old_event_id, new_event_id)
 
         return {'id': new_event_id, 'status_': 201}
 

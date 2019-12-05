@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -1350,7 +1351,7 @@ async def test_remove_secondary_image_(cli, url, factory: Factory, db_conn, logi
     assert None is await db_conn.fetchval('select secondary_image from events where id=$1', factory.event_id)
 
 
-async def test_clone_event(cli, url, factory: Factory, db_conn, login, dummy_server):
+async def test_clone_event(cli, url, factory: Factory, db_conn, login):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
@@ -1358,12 +1359,14 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login, dummy_ser
         name='First Event',
         ticket_limit=42,
         public=False,
-        status='published',
+        status='pending',
         short_description='this is short',
         long_description='this is long',
     )
     await login()
-    data = {'name': 'New Event', 'date': {'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 7200}}
+    data = dict(
+        name='New Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published',
+    )
     r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
     assert r.status == 201, await r.text()
     assert await db_conn.fetchval('select count(*) from events where id!=$1', factory.event_id) == 1
@@ -1374,7 +1377,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login, dummy_ser
     assert dict(data) == {
         'id': new_event_id,
         'category': factory.category_id,
-        'status': 'pending',
+        'status': 'published',
         'host': factory.user_id,
         'name': 'New Event',
         'slug': 'new-event',
@@ -1394,3 +1397,66 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login, dummy_ser
         'image': None,
         'secondary_image': None,
     }
+    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', new_event_id) == 1
+
+
+async def test_clone_event_ticket_types(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    event_id = await factory.create_event()
+
+    await db_conn.execute(
+        """
+        insert into ticket_types (event, name, price, slots_used) values
+        ($1, 'foo', 123, 3),
+        ($1, 'bar', 54.32, null)
+        """,
+        event_id,
+    )
+    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', event_id) == 3
+
+    await login()
+    data = dict(
+        name='New Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published',
+    )
+    r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
+    assert r.status == 201, await r.text()
+    assert await db_conn.fetchval('select count(*) from events where id!=$1', factory.event_id) == 1
+    new_event_id = (await r.json())['id']
+    ticket_types = await db_conn.fetch(
+        'select event, name, price, slots_used from ticket_types where event=$1 order by id', new_event_id
+    )
+    assert [dict(r) for r in ticket_types] == [
+        {'event': new_event_id, 'name': 'Standard', 'price': None, 'slots_used': 1},
+        {'event': new_event_id, 'name': 'foo', 'price': Decimal('123.00'), 'slots_used': 3},
+        {'event': new_event_id, 'name': 'bar', 'price': Decimal('54.32'), 'slots_used': None},
+    ]
+
+
+async def test_clone_event_slug(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(name='Event', slug='event', status='pending', highlight=True)
+
+    await login()
+    data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
+    r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
+    assert r.status == 201, await r.text()
+    h, name, slug = await db_conn.fetchrow('select highlight, name, slug from events where status=$1', 'published')
+    assert h is True
+    assert name == 'Event'
+    assert re.fullmatch('event-....', slug)
+
+
+async def test_clone_event_guest(cli, url, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await factory.create_event()
+
+    await login()
+    data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
+    r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
+    assert r.status == 403, await r.text()

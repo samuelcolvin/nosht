@@ -125,13 +125,13 @@ const ImageList = ({suggested_images, default_image, image_action}) => (
 export class CategoriesDetails extends RenderDetails {
   constructor (props) {
     super(props)
-    this.uri = `/dashboard/categories/${this.id}/`
+    this.uri = `/dashboard/categories/${this.id()}/`
     this.state.buttons = [
       {name: 'Edit', link: this.uri + 'edit/'},
       {name: 'Add Images', link: this.uri + 'add-image/'},
       {
         name: 'Delete Category',
-        action: `/categories/${this.id}/delete/`,
+        action: `/categories/${this.id()}/delete/`,
         confirm_msg: 'Are you sure you want to delete this category? This cannot be undone.',
         success_msg: 'Category deleted.',
         redirect_to: '/dashboard/categories/',
@@ -162,7 +162,7 @@ export class CategoriesDetails extends RenderDetails {
     await super.got_data(data)
     let r
     try {
-      r = await requests.get(`/categories/${this.id}/images/`)
+      r = await requests.get(`/categories/${this.id()}/images/`)
     } catch (error) {
       this.props.ctx.setError(error)
       return
@@ -172,7 +172,7 @@ export class CategoriesDetails extends RenderDetails {
 
   async image_action (action, image) {
     try {
-      await requests.post(`/categories/${this.id}/images/${action}/`, {image})
+      await requests.post(`/categories/${this.id()}/images/${action}/`, {image})
     } catch (error) {
       this.props.ctx.setError(error)
       return
@@ -193,7 +193,7 @@ export class CategoriesDetails extends RenderDetails {
                  success_msg="Category Updated"
                  initial={this.state.item}
                  update={this.update}
-                 action={`/categories/${this.id}/`}
+                 action={`/categories/${this.id()}/`}
                  fields={CAT_FIELDS}/>,
       <ModalDropzoneForm multiple={true}
                          key="3"
@@ -201,7 +201,7 @@ export class CategoriesDetails extends RenderDetails {
                          regex={/add-image\/$/}
                          update={this.update}
                          title="Upload Images"
-                         action={`/categories/${this.id}/add-image/`}/>,
+                         action={`/categories/${this.id()}/add-image/`}/>,
     ]
   }
 }

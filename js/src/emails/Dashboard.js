@@ -43,7 +43,7 @@ export class EmailDefList extends RenderList {
 export class EmailDefDetails extends RenderDetails {
   constructor (props) {
     super(props)
-    this.uri = `/dashboard/email-defs/${this.id}/`
+    this.uri = `/dashboard/email-defs/${this.id()}/`
     this.state.formats = {
       trigger: {render: as_title},
       body: {
@@ -59,7 +59,7 @@ export class EmailDefDetails extends RenderDetails {
       {name: 'Edit', link: this.uri + 'edit/'},
       data.customised && {
         name: 'Clear Customisation',
-        action: `/email-defs/${this.id}/clear/`,
+        action: `/email-defs/${this.id()}/clear/`,
         confirm_msg: (
           <div>
             <p>Are you sure you want to clear this email definition? It will be replaced by the default definition.</p>
@@ -67,7 +67,7 @@ export class EmailDefDetails extends RenderDetails {
           </div>
         ),
         success_msg: 'Custom Email Definition Deleted',
-        redirect_to: `/dashboard/email-defs/${this.id}/`,
+        redirect_to: `/dashboard/email-defs/${this.id()}/`,
         done: () => this.update(),
       }
     ]})
@@ -82,7 +82,7 @@ export class EmailDefDetails extends RenderDetails {
                  success_msg="Email Definition updated"
                  initial={this.state.item}
                  update={this.update}
-                 action={`/email-defs/${this.id}/edit/`}
+                 action={`/email-defs/${this.id()}/edit/`}
                  submit_initial={true}
                  fields={FIELDS}/>,
     ]

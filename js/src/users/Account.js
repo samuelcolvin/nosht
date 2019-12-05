@@ -31,7 +31,6 @@ export default class Account extends RenderDetails {
     this.state.buttons = [
       {name: 'Edit', link: this.uri + 'edit/'},
     ]
-    this.id = this.props.ctx.user.id
     this.state.formats = {
       role_type: {render: as_title},
       status: {render: as_title},
@@ -44,16 +43,17 @@ export default class Account extends RenderDetails {
       last_name: null,
     }
   }
+  id = () => this.props.ctx.user.id
 
   get_uri () {
-    return `/account/${this.id}/`
+    return `/account/${this.id()}/`
   }
 
   async got_data (data) {
     super.got_data(data)
     let r
     try {
-      r = await requests.get(`/users/${this.id}/tickets/`)
+      r = await requests.get(`/users/${this.id()}/tickets/`)
     } catch (error) {
       this.props.ctx.setError(error)
       return
@@ -71,7 +71,7 @@ export default class Account extends RenderDetails {
                  success_msg="Profile Updated"
                  initial={this.state.item}
                  update={this.update}
-                 action={`/account/${this.id}/`}
+                 action={`/account/${this.id()}/`}
                  fields={FIELDS}/>,
     ]
   }
