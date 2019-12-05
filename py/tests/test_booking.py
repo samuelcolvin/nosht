@@ -50,6 +50,44 @@ async def test_booking_info_limited(cli, url, factory: Factory, login, db_conn):
     }
 
 
+async def test_booking_info_inactive(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published')
+    await login()
+
+    ticket_type2_id = await db_conn.fetchval(
+        "INSERT INTO ticket_types (event, name, price) VALUES ($1, 'Different', 42) RETURNING id", factory.event_id
+    )
+
+    cat_slug, event_slug = await db_conn.fetchrow(
+        'SELECT cat.slug, e.slug FROM events AS e JOIN categories cat on e.category = cat.id WHERE e.id=$1',
+        factory.event_id
+    )
+    r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'tickets_remaining': None,
+        'existing_tickets': 0,
+        'ticket_types': [
+            {'id': factory.ticket_type_id, 'name': 'Standard', 'price': None},
+            {'id': ticket_type2_id, 'name': 'Different', 'price': 42},
+        ],
+    }
+
+    await db_conn.execute('update ticket_types set active=false where id=$1', ticket_type2_id)
+    r = await cli.get(url('event-booking-info-public', category=cat_slug, event=event_slug))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data == {
+        'tickets_remaining': None,
+        'existing_tickets': 0,
+        'ticket_types': [{'id': factory.ticket_type_id, 'name': 'Standard', 'price': None}],
+    }
+
+
 async def test_booking_info_sig(cli, url, factory: Factory, login, settings, db_conn):
     await factory.create_company()
     await factory.create_cat()

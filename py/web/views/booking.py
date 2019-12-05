@@ -41,7 +41,7 @@ async def booking_info(request):
         request['session']['user_id']
     )
     ticket_types = await conn.fetch(
-        'SELECT id, name, price::float FROM ticket_types WHERE event=$1 ORDER BY id', event_id
+        'SELECT id, name, price::float FROM ticket_types WHERE event=$1 AND active=TRUE ORDER BY id', event_id
     )
     return json_response(
         tickets_remaining=tickets_remaining if (tickets_remaining and tickets_remaining < 10) else None,
@@ -100,7 +100,7 @@ class ReserveTickets(UpdateViewAuth):
         if external_ticket_url is not None:
             raise JsonErrors.HTTPBadRequest(message='Cannot reserve ticket for an externally ticketed event')
 
-        r = await self.conn.fetchrow('SELECT price FROM ticket_types WHERE event=$1 AND id=$2',
+        r = await self.conn.fetchrow('SELECT price FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2',
                                      event_id, m.ticket_type)
         if not r:
             raise JsonErrors.HTTPBadRequest(message='Ticket type not found')
