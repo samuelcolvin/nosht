@@ -76,6 +76,8 @@ async def static_handler(request):
 
     directory = request.app['static_dir']
     csp_headers = request.app['csp_headers']
+    # to investigate errors
+    print(len(csp_headers['Content-Security-Policy']), repr(csp_headers['Content-Security-Policy']))
     if request_path == '':
         return FileResponse(directory / 'index.html', headers=csp_headers)
     elif request_path == 'sitemap.xml':
