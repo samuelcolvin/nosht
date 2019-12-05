@@ -420,9 +420,7 @@ async def create_demo_data(conn, settings, **kwargs):
         user_lookup = {}
         for user in USERS:
             user_lookup[user['email']] = await conn.fetchval_b(
-                """
-            INSERT INTO users (:values__names) VALUES :values RETURNING id
-            """,
+                'INSERT INTO users (:values__names) VALUES :values RETURNING id',
                 values=Values(company=company_id, password_hash=mk_password(user.pop('password'), settings), **user),
             )
 
@@ -430,9 +428,7 @@ async def create_demo_data(conn, settings, **kwargs):
             events = cat.pop('events')
             cat_slug = slugify(cat['name'])
             cat_id = await conn.fetchval_b(
-                """
-        INSERT INTO categories (:values__names) VALUES :values RETURNING id
-        """,
+                'INSERT INTO categories (:values__names) VALUES :values RETURNING id',
                 values=Values(
                     company=company_id,
                     slug=cat_slug,
