@@ -759,8 +759,11 @@ async def test_send_tickets_available(email_actor: EmailActor, factory: Factory,
     anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
 
     await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
+    assert await db_conn.fetchval('select last_notified from waiting_list') == datetime(2000, 1, 1, tzinfo=timezone.utc)
 
-    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert await email_actor.send_tickets_available.direct(factory.event_id) == 'emailed 1 users'
+    assert await email_actor.send_tickets_available.direct(factory.event_id) == 'no users in waiting list'
+    assert await email_actor.send_tickets_available.direct(factory.event_id) == 'no users in waiting list'
     assert len(dummy_server.app['emails']) == 1
     email = dummy_server.app['emails'][0]
     assert email['To'] == 'anne anne <anne@example.org>'
@@ -769,8 +772,10 @@ async def test_send_tickets_available(email_actor: EmailActor, factory: Factory,
     assert 'Great news! New tickets have become available for **The Event Name**.\n' in plain
     assert '<a href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>' in plain
     remove_link = re.search(r'(/api/events/.*?/waiting-list/.*?)\)', plain).group(1)
+    assert await db_conn.fetchval('select count(*) from actions where type=$1', ActionTypes.email_waiting_list) == 1
 
     assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+    assert await db_conn.fetchval('select last_notified from waiting_list') == CloseToNow()
     r = await cli.get(remove_link, allow_redirects=False)
     assert r.status == 307, await r.text()
     assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/waiting-list-removed/'
@@ -784,14 +789,16 @@ async def test_send_tickets_available_one_left(email_actor: EmailActor, factory:
     await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)), ticket_limit=1)
 
     anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
-
     await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, ben)
 
-    await email_actor.send_tickets_available.direct(factory.event_id)
-    assert len(dummy_server.app['emails']) == 1
-    email = dummy_server.app['emails'][0]
-    assert email['To'] == 'anne anne <anne@example.org>'
-    assert 'trigger=event-tickets-available' in email['X-SES-MESSAGE-TAGS']
+    assert await email_actor.send_tickets_available.direct(factory.event_id) == 'emailed 2 users'
+    assert len(dummy_server.app['emails']) == 2
+    assert {'anne anne <anne@example.org>', 'ben ben <ben@example.org>'} == {
+        e['To'] for e in dummy_server.app['emails']
+    }
+    assert 'trigger=event-tickets-available' in dummy_server.app['emails'][0]['X-SES-MESSAGE-TAGS']
 
 
 async def test_tickets_available_none(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
@@ -807,7 +814,7 @@ async def test_tickets_available_none(email_actor: EmailActor, factory: Factory,
     ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
     await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, ben)
 
-    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert await email_actor.send_tickets_available.direct(factory.event_id) == 'no tickets remaining'
     assert len(dummy_server.app['emails']) == 0
 
 
@@ -821,15 +828,37 @@ async def test_send_tickets_available_paste(email_actor: EmailActor, factory: Fa
 
     await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
 
-    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert await email_actor.send_tickets_available.direct(factory.event_id) == 'event in the past'
     assert len(dummy_server.app['emails']) == 0
 
 
-async def test_send_tickets_available_no_one(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+async def test_send_tickets_available_no_one(email_actor: EmailActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_cat(ticket_extra_title='Foo Bar')
     await factory.create_user()
     await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)))
 
-    await email_actor.send_tickets_available.direct(factory.event_id)
+    assert await email_actor.send_tickets_available.direct(factory.event_id) == 'no users in waiting list'
     assert len(dummy_server.app['emails']) == 0
+
+
+async def test_send_tickets_available_one_day(email_actor: EmailActor, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat(ticket_extra_title='Foo Bar')
+    await factory.create_user()
+    await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)))
+
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    recently = (datetime.now() - timedelta(hours=12)).replace(tzinfo=timezone.utc)
+    await db_conn.execute(
+        'insert into waiting_list (event, user_id, last_notified) values ($1, $2, $3)', factory.event_id, ben, recently,
+    )
+
+    assert await email_actor.send_tickets_available.direct(factory.event_id) == 'emailed 1 users'
+    assert len(dummy_server.app['emails']) == 1
+    assert dummy_server.app['emails'][0]['To'] == 'anne anne <anne@example.org>'
+    assert await db_conn.fetchval('select last_notified from waiting_list where user_id=$1', anne) == CloseToNow()
+    assert await db_conn.fetchval('select last_notified from waiting_list where user_id=$1', ben) == recently

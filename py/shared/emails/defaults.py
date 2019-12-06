@@ -283,7 +283,7 @@ You can now create and publish events whenever you wish.
 """,
     },
     Triggers.event_tickets_available: {
-        'subject': '{{{ event_name }}} New Tickets Available',
+        'subject': '{{{ event_name }}} - New Tickets Available',
         'title': '{{ company_name }}',
         'body': """
 Hi {{ first_name }},

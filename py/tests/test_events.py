@@ -1471,3 +1471,24 @@ async def test_clone_event_not_found(cli, url, factory: Factory, login):
     data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
     r = await cli.json_post(url('event-clone', id=123), data=data)
     assert r.status == 404, await r.text()
+
+
+async def test_edit_waiting_list(cli, url, db_conn, factory: Factory, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, ben)
+
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(ticket_limit=12))
+    assert r.status == 200, await r.text()
+    assert await db_conn.fetchval('SELECT ticket_limit FROM events') == 12
+
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert email['To'] == 'ben ben <ben@example.org>'
+    assert email['Subject'] == 'The Event Name - New Tickets Available'
+    assert 'trigger=event-tickets-available' in email['X-SES-MESSAGE-TAGS']

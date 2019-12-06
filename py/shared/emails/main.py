@@ -271,7 +271,7 @@ class EmailActor(BaseEmailActor):
         )
 
     @concurrent
-    async def send_tickets_available(self, event_id: int):
+    async def send_tickets_available(self, event_id: int) -> str:
         """
         Send an email to those on the waiting list about an event
         """
@@ -280,13 +280,17 @@ class EmailActor(BaseEmailActor):
                 'SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl
             )
             if tickets_remaining == 0:
-                # no tickets remaining, don't send
-                return
+                return 'no tickets remaining'
 
-            user_ids = await conn.fetchval('select array_agg(user_id) from waiting_list where event=$1', event_id)
+            user_ids = await conn.fetchval(
+                """
+                select array_agg(user_id) from waiting_list
+                where event=$1 and now() - last_notified > '1 day'
+                """,
+                event_id,
+            )
             if not user_ids:
-                # no one on the waiting list
-                return
+                return 'no users in waiting list'
 
             data = await conn.fetchrow(
                 """
@@ -305,8 +309,16 @@ class EmailActor(BaseEmailActor):
             )
             if not data['in_future']:
                 # don't send the email if the event is in the past
-                return
+                return 'event in the past'
 
+            await conn.execute_b(
+                'INSERT INTO actions (:values__names) VALUES :values',
+                values=Values(company=data['company_id'], event=event_id, type=ActionTypes.email_waiting_list.value),
+            )
+            # do this before sending emails so even if something fails we don't send lots of emails
+            await conn.execute(
+                'update waiting_list set last_notified=now() where event=$1 and user_id=any($2)', event_id, user_ids
+            )
         ctx = {
             'event_link': data['event_link'],
             'event_name': data['event_name'],
@@ -319,8 +331,9 @@ class EmailActor(BaseEmailActor):
                 f'?sig={waiting_list_sig(event_id, user_id, self.settings)}'
             )
 
-        users = [UserEmail(uid, {'remove_link': remove_link(uid), **ctx},) for uid in user_ids]
+        users = [UserEmail(uid, {'remove_link': remove_link(uid), **ctx}) for uid in user_ids]
         await self.send_emails.direct(data['company_id'], Triggers.event_tickets_available, users)
+        return f'emailed {len(user_ids)} users'
 
     @cron(minute=30)
     async def send_event_reminders(self):

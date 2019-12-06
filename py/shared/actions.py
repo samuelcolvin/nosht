@@ -22,4 +22,5 @@ class ActionTypes(str, Enum):
     edit_event = 'edit-event'
     edit_profile = 'edit-profile'
     edit_other = 'edit-other'
+    email_waiting_list = 'email-waiting-list'
     unsubscribe = 'unsubscribe'

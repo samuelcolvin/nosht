@@ -135,6 +135,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'edit-event',
   'edit-profile',
   'edit-other',
+  'email-waiting-list',
   'unsubscribe'
 );
 CREATE TABLE actions (
@@ -300,7 +301,8 @@ CREATE INDEX IF NOT EXISTS search_active_ts ON search USING btree (active_ts);
 CREATE TABLE IF NOT EXISTS waiting_list (
   id SERIAL PRIMARY KEY,
   event INT REFERENCES events ON DELETE CASCADE,
-  user_id INT REFERENCES users ON DELETE CASCADE
+  user_id INT REFERENCES users ON DELETE CASCADE,
+  last_notified TIMESTAMPTZ NOT NULL DEFAULT '2000-01-01'
 );
 CREATE UNIQUE INDEX IF NOT EXISTS waiting_list_event_users ON waiting_list USING btree (event, user_id);
 -- } waiting-list
