@@ -757,7 +757,6 @@ async def test_send_tickets_available(email_actor: EmailActor, factory: Factory,
     await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)))
 
     anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
-
     await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
     assert await db_conn.fetchval('select last_notified from waiting_list') == datetime(2000, 1, 1, tzinfo=timezone.utc)
 

@@ -302,7 +302,8 @@ CREATE TABLE IF NOT EXISTS waiting_list (
   id SERIAL PRIMARY KEY,
   event INT REFERENCES events ON DELETE CASCADE,
   user_id INT REFERENCES users ON DELETE CASCADE,
-  last_notified TIMESTAMPTZ NOT NULL DEFAULT '2000-01-01'
+  last_notified TIMESTAMPTZ NOT NULL DEFAULT '2000-01-01',
+  added_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS waiting_list_event_users ON waiting_list USING btree (event, user_id);
 -- } waiting-list

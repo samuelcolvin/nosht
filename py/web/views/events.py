@@ -403,6 +403,12 @@ JOIN ticket_types AS tt ON t.ticket_type = tt.id
 WHERE t.event=$1 AND t.status!='reserved'
 ORDER BY t.id
 """
+event_waiting_list_sql = """
+select full_name(u.first_name, u.last_name) as name, u.email, iso_ts(w.added_ts, 'Europe/London') added_ts
+from waiting_list w
+join users u on w.user_id = u.id
+where w.event=$1
+"""
 
 
 @is_admin_or_host
@@ -420,7 +426,12 @@ async def event_tickets(request):
             ticket.pop('guest_email')
             ticket.pop('buyer_email')
         tickets.append(ticket)
-    return json_response(tickets=tickets)
+
+    waiting_list = [dict(r) for r in await request['conn'].fetch(event_waiting_list_sql, event_id)]
+    if not_admin:
+        [r.pop('email') for r in waiting_list]
+
+    return json_response(tickets=tickets, waiting_list=waiting_list)
 
 
 class CancelTickets(UpdateView):

@@ -701,6 +701,9 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
 
     await login()
 
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
+
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
@@ -724,6 +727,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
                 'ticket_type_id': await db_conn.fetchval('SELECT id from ticket_types'),
             },
         ],
+        'waiting_list': [{'added_ts': CloseToNow(), 'name': 'anne anne'}],
     }
     await db_conn.execute('update tickets set price=null')
 
@@ -751,6 +755,9 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     )
 
     await login()
+
+    charlie = await factory.create_user(first_name='charlie', last_name='charlie', email='charlie@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, charlie)
 
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
@@ -795,6 +802,9 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'ticket_type_name': 'Standard',
             'ticket_type_id': tt_id,
         },
+    ]
+    assert data['waiting_list'] == [
+        {'added_ts': CloseToNow(), 'name': 'charlie charlie', 'email': 'charlie@example.org'}
     ]
 
 

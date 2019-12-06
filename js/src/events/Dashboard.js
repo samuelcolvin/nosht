@@ -14,7 +14,7 @@ import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
 import {TicketTypes, TicketTypeTable} from './TicketTypes'
-import {Tickets, CancelTicket} from './Tickets'
+import {Tickets, CancelTicket, WaitingList} from './Tickets'
 import {EVENT_FIELDS} from './Create'
 import {ModalDropzoneForm} from '../forms/Drop'
 
@@ -207,6 +207,7 @@ export class EventsDetails extends RenderDetails {
     this.setState(
       {
         tickets: r[0].tickets,
+        waiting_list: r[0].waiting_list,
         ticket_types: r[1].ticket_types,
         event_updates: r[2].event_updates,
         buttons: [
@@ -391,6 +392,7 @@ export class EventsDetails extends RenderDetails {
                          can_edit={this.can_edit_event()}/>
         : null,
       internal ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
+      internal ? <WaitingList key="wl" waiting_list={this.state.waiting_list} user={this.props.ctx.user}/> : null,
       <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"
