@@ -6,6 +6,8 @@ import pytest
 from aiohttp import FormData
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
+from shared.utils import waiting_list_sig
+
 from .conftest import Factory, create_image
 
 
@@ -1504,3 +1506,46 @@ async def test_edit_waiting_list(cli, url, db_conn, factory: Factory, login, dum
     assert email['To'] == 'ben ben <ben@example.org>'
     assert email['Subject'] == 'The Event Name - New Tickets Available'
     assert 'trigger=event-tickets-available' in email['X-SES-MESSAGE-TAGS']
+
+
+async def test_waiting_list_remove(cli, url, db_conn, factory: Factory, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    event_id = await factory.create_event()
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', event_id, ben)
+
+    query = {'sig': waiting_list_sig(event_id, ben, settings)}
+    r = await cli.get(url('event-waiting-list-remove', id=event_id, user_id=ben, query=query), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/waiting-list-removed/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0
+
+
+async def test_waiting_list_remove_wrong(cli, url, db_conn, factory: Factory, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    event_id = await factory.create_event()
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', event_id, ben)
+
+    r = await cli.get(url('event-waiting-list-remove', id=event_id, user_id=ben), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/unsubscribe-invalid/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+    query = {'sig': 'wrong'}
+    r = await cli.get(url('event-waiting-list-remove', id=event_id, user_id=ben, query=query), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/unsubscribe-invalid/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+    query = {'sig': waiting_list_sig(event_id + 1, ben, settings)}
+    r = await cli.get(url('event-waiting-list-remove', id=event_id, user_id=ben, query=query), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/unsubscribe-invalid/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
