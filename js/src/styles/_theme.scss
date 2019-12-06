@@ -30,12 +30,18 @@ h1, h2, h3 {
   font-family: 'Source Sans Pro', sans-serif;
 }
 
+$container-x-margin: 20px;
 main.container {
   background: $main-back;
   min-height: 500px;
-  padding: 30px 20px;
+  padding: 30px $container-x-margin;
   box-sizing: border-box;
   margin-bottom: 3rem;
+}
+
+hr.full-width {
+  margin-left: -$container-x-margin;
+  margin-right: -$container-x-margin;
 }
 
 .pad-footer {
