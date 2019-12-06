@@ -45,7 +45,9 @@ WHERE c.company = $1 AND c.slug = $2 AND e.slug = $3 AND e.status = 'published'
 event_info_sql = """
 SELECT json_build_object(
   'event', row_to_json(event),
-  'ticket_types', ticket_types
+  'ticket_types', ticket_types,
+  'existing_tickets', existing_tickets,
+  'on_waiting_list', on_waiting_list
 )
 FROM (
   SELECT e.id,
@@ -92,7 +94,18 @@ FROM (
     WHERE e.id = $1 AND tt.active = TRUE
     ORDER BY tt.id
   ) AS t
-) AS ticket_types;
+) AS ticket_types,
+(
+  SELECT count(*) > 0 AS existing_tickets
+  FROM tickets t
+  JOIN actions AS a ON t.reserve_action = a.id
+  WHERE t.event=$1 AND t.status='booked' AND a.user_id=$2
+) AS existing_tickets,
+(
+  SELECT count(*) > 0 AS on_waiting_list
+  FROM waiting_list
+  WHERE event=$1 AND user_id=$2
+) AS on_waiting_list
 """
 
 
@@ -135,7 +148,8 @@ async def check_event_sig(request):
 
 async def event_get(request):
     event_id = await check_event_sig(request)
-    json_str = await request['conn'].fetchval(event_info_sql, event_id)
+    user_id = request['session'].get('user_id', 0)
+    json_str = await request['conn'].fetchval(event_info_sql, event_id, user_id)
     return raw_json_response(json_str)
 
 

@@ -20,6 +20,7 @@ class WaitingListForm extends React.Component {
     this.props.finished()
   }
 
+
   render () {
     if (!this.props.ctx.user) {
       return <BookingLogin finished={this.props.finished} success_label="Join Waiting List"/>
@@ -32,7 +33,7 @@ class WaitingListForm extends React.Component {
               become available.
             </p>
             <p>
-              You can remove the yourself from the list whenever you get an email about this event by following the
+              You can remove yourself from the list whenever you get an email about this event by following the
               link in the email.
             </p>
           </ModalBody>

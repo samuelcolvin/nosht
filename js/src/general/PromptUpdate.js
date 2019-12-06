@@ -8,8 +8,8 @@ export default function PromptUpdate (WrappedComponent) {
     constructor (props) {
       super(props)
       this.handlers = []
-      this.update = () => this.handlers.map(h => h())
     }
+    update = () => this.handlers.map(h => h())
 
     componentDidUpdate (prevProps) {
       if (this.props.location.pathname !== prevProps.location.pathname) {
