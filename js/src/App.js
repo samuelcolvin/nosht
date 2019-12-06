@@ -22,7 +22,7 @@ import Signup from './auth/Signup'
 import RequestPasswordReset from './auth/RequestPasswordReset'
 import SetPassword from './auth/SetPassword'
 import CreateEvent from './events/Create'
-import {UnsubscribeValid, UnsubscribeInvalid} from './Unsubscribe'
+import {UnsubscribeValid, UnsubscribeInvalid, WaitingListRemoved} from './Unsubscribe'
 import Dashboard from './Dashboard'
 
 FaLibrary.add(far, fas, fab)
@@ -40,6 +40,7 @@ const Routes = () => (
       <Route path="/dashboard/" component={Dashboard}/>
       <Route path="/create/" component={CreateEvent}/>
 
+      <Route exact path="/waiting-list-removed/" component={WaitingListRemoved}/>
       <Route exact path="/unsubscribe-valid/" component={UnsubscribeValid}/>
       <Route exact path="/unsubscribe-invalid/" component={UnsubscribeInvalid}/>
 

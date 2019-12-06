@@ -709,8 +709,8 @@ async def test_free_repeat(factory: Factory, cli, url, login, db_conn):
     assert 0 == await db_conn.fetchval("SELECT COUNT(*) FROM actions WHERE type='buy-tickets'")
 
 
-@pytest.fixture
-def buy_tickets(cli, url, login):
+@pytest.fixture(name='buy_tickets')
+def _fix_buy_tickets(cli, url, login):
     async def run(factory: Factory):
         await factory.create_user(email='ticket.buyer@example.org')
         await login(email='ticket.buyer@example.org')
@@ -883,3 +883,91 @@ async def test_index_sold_out(factory: Factory, cli, url, buy_tickets, db_conn):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data['events'][0]['sold_out'] is True
+
+
+async def test_waiting_list(cli, url, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0
+
+    r = await cli.json_post(url('event-waiting-list-add', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+    event_id, user_id = await db_conn.fetchrow('select event, user_id from waiting_list')
+    assert event_id == factory.event_id
+    assert user_id == factory.user_id
+
+
+async def test_waiting_list_book_free(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=None, status='published')
+
+    await login()
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0
+
+    r = await cli.json_post(url('event-waiting-list-add', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+    res: Reservation = await factory.create_reservation()
+    app = cli.app['main_app']
+
+    data = dict(booking_token=encrypt_json(app, res.dict()), book_action='book-free-tickets')
+    r = await cli.json_post(url('event-book-tickets'), data=data)
+    assert r.status == 200, await r.text()
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0
+
+
+async def test_waiting_list_buy(cli, url, login, factory: Factory, db_conn, buy_tickets):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=100, status='published')
+
+    await login()
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0
+
+    r = await cli.json_post(url('event-waiting-list-add', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+    await buy_tickets(factory)
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0
+
+
+async def test_cancel_ticket_waiting_list(factory: Factory, cli, url, buy_tickets, db_conn, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(status='published', price=100, ticket_limit=1)
+
+    assert await db_conn.fetchval('SELECT check_tickets_remaining($1, $2)', factory.event_id, 600) == 1
+    await buy_tickets(factory)
+    assert await db_conn.fetchval('SELECT check_tickets_remaining($1, $2)', factory.event_id, 600) == 0
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, ben)
+
+    ticket_id, status = await db_conn.fetchrow('select id, status from tickets')
+    assert status == 'booked'
+    r = await cli.json_post(url('event-tickets-cancel', id=factory.event_id, tid=ticket_id), data='{}')
+    assert r.status == 200, await r.text()
+    assert 0 == await db_conn.fetchval('select tickets_taken from events where id=$1', factory.event_id)
+
+    assert len(dummy_server.app['emails']) == 3
+    email = next(e for e in dummy_server.app['emails'] if 'trigger=event-tickets-available' in e['X-SES-MESSAGE-TAGS'])
+    assert email['To'] == 'ben ben <ben@example.org>'
+    assert email['Subject'] == 'The Event Name - New Tickets Available'

@@ -160,7 +160,7 @@ const TicketForm = props => {
           <div>
             {existing_tickets ?
               <b>
-                You've already bought {existing_tickets} ticket{existing_tickets > 1 ? 's': ''} for this event.
+                You've already booked {existing_tickets} ticket{existing_tickets > 1 ? 's': ''} for this event.
               </b>
               :
               null
@@ -241,6 +241,7 @@ const TicketForm = props => {
       </ModalBody>
       <ModalFooter finished={props.finished}
                    cancel_disabled={state.submitting_reservation}
+                   label="Book"
                    disabled={state.submitting_reservation || (ticket_types.length > 1 && !props.state.ticket_type)}/>
     </BootstrapForm>
   )

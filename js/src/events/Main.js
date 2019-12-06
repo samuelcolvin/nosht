@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {Row, Col, Button} from 'reactstrap'
+import {Row, Col, Button, Alert} from 'reactstrap'
 import requests from '../utils/requests'
 import {image_thumb, unique} from '../utils'
 import WithContext from '../utils/context'
@@ -12,6 +12,7 @@ import Map from '../general/Map'
 import When from '../general/When'
 import {MoneyFree} from '../general/Money'
 import BookEvent from './Book'
+import WaitingList from './WaitingList'
 import Thanks from '../donations/Thanks'
 
 
@@ -21,7 +22,7 @@ const link_classes = e => (
 )
 
 
-const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
+const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_tickets, on_waiting_list}) => (
   <div>
     <Row>
       <Col>
@@ -30,7 +31,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
           <Markdown content={event.short_description}/>
         </div>
       </Col>
-      <Col md="3" className="text-right">
+      <Col md="4" className="text-right">
         {ctx.user && (ctx.user.role === 'admin' || ctx.user.id === event.host_id) &&
           <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
             Edit Event
@@ -39,23 +40,50 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types}) => (
         {event.external_ticket_url ? (
           <a className={link_classes(event)} href={event.external_ticket_url}>Book Now</a>
         ) : (
-          <Button color={event.tickets_available !== null ? 'danger': 'primary'} size="lg"
-                  className="hover-raise" tag={Link} to={uri + 'book/'} disabled={event.tickets_available === 0}>
-            Book Now
-          </Button>
+          event.tickets_available === null ? (
+            <Button color={existing_tickets ? 'secondary' : 'primary'} size="lg" className="hover-raise"
+                    tag={Link} to={uri + 'book/'}>
+              {existing_tickets ? 'Book more tickets' : 'Book Now'}
+            </Button>
+          ) : (
+            event.tickets_available === 0 ? (
+              !on_waiting_list && !existing_tickets && (
+                <Button color={existing_tickets ? 'secondary' : 'primary'} size="lg" className="hover-raise"
+                        tag={Link} to={uri + 'waiting-list/'}>
+                  Join Waiting List
+                </Button>
+              )
+            ) : (
+              <Button color={existing_tickets ? 'secondary' : 'danger'} size="lg" className="hover-raise"
+                      tag={Link} to={uri + 'book/'}>
+                {existing_tickets ? 'Book more tickets' : 'Book Now'}
+              </Button>
+            )
+          )
         )
         }
         {event.tickets_available !== null &&
-          <div className="font-weight-bold mt-3">
+          <div className="mt-3">
             {event.tickets_available === 0 ?
-              <span>Sold Out! Head back to the home page to check out our other events.</span>
+              !existing_tickets && (
+                on_waiting_list ? (
+                  <span>Sold out, You're on the waiting list.</span>
+                ) : (
+                  <span><b>Sold Out!</b>Join the waiting list to get notified when more tickets become available.</span>
+                )
+              )
               :
-              <span>Only {event.tickets_available} Tickets Remaining</span>
+              <span className="font-weight-bold">Only {event.tickets_available} Tickets Remaining</span>
             }
           </div>}
       </Col>
     </Row>
 
+    {!!existing_tickets && (
+      <Alert color="success" className="mt-1 font-weight-bold">
+        You've booked {existing_tickets === 1 ? 'a ticket' : `${existing_tickets} tickets`} for this event.
+      </Alert>
+    )}
     <Row className="text-muted mb-1 h5">
       <Col md="auto">
         <FontAwesomeIcon icon={['far', 'clock']} className="mx-1 text-success"/>
@@ -117,22 +145,19 @@ class Event extends React.Component {
     } else {
       this.uri = `/${params.category}/${params.event}/`
     }
-    this.props.register(this.get_data.bind(this))
+    this.props.register(this.get_data)
   }
 
-  async get_data () {
-    if (this.state.event) {
-      // this breaks update if there's a link between events, but means far fewer requests
+  get_data = async () => {
+    if (this.state.event && this.props.location.pathname.match(/\/(waiting-list|book)\/$/)) {
+      // don't re-get the data when opening the booking or waiting-list forms
       return
     }
-    let event, ticket_types
     const p = this.props.match.params
     this.props.ctx.setRootState({active_page: p.category})
-    this.setState({event: null})
+    let data
     try {
-      const data = await requests.get(`events/${p.category}/${p.event}/${p.sig ? p.sig + '/': ''}`)
-      event = data.event
-      ticket_types = data.ticket_types
+      data = await requests.get(`events/${p.category}/${p.event}/${p.sig ? p.sig + '/': ''}`)
     } catch (error) {
       if (error.status === 404) {
         this.setState({event: 404})
@@ -142,10 +167,10 @@ class Event extends React.Component {
       return
     }
     this.props.ctx.setRootState({
-      page_title: event.name,
-      background: event.image,
+      page_title: data.event.name,
+      background: data.event.image,
     })
-    this.setState({event, ticket_types})
+    this.setState(data)
   }
 
   render () {
@@ -157,20 +182,22 @@ class Event extends React.Component {
     return (
       <div>
         {this.props.location.pathname.match(/\/donate(\/(\d+))?\/$/) ?
-            <Thanks event={this.state.event} uri={this.uri} booking_complete={this.state.booking_complete}/>
+            <Thanks uri={this.uri} {...this.state}/>
             :
-            <EventDetails
-              event={this.state.event}
-              uri={this.uri}
-              ticket_types={this.state.ticket_types}
-            />
+            <EventDetails uri={this.uri} {...this.state}/>
         }
         <BookEvent
-            {...this.props}
-            parent_uri={this.uri}
-            event={this.state.event}
-            params={this.props.match.params}
-            set_complete={() => this.setState({booking_complete: true})}
+          {...this.props}
+          parent_uri={this.uri}
+          event={this.state.event}
+          params={this.props.match.params}
+          set_complete={() => this.setState({booking_complete: true})}
+        />
+        <WaitingList
+          {...this.props}
+          parent_uri={this.uri}
+          event={this.state.event}
+          params={this.props.match.params}
         />
       </div>
     )

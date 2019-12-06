@@ -45,7 +45,9 @@ WHERE c.company = $1 AND c.slug = $2 AND e.slug = $3 AND e.status = 'published'
 event_info_sql = """
 SELECT json_build_object(
   'event', row_to_json(event),
-  'ticket_types', ticket_types
+  'ticket_types', ticket_types,
+  'existing_tickets', existing_tickets,
+  'on_waiting_list', on_waiting_list
 )
 FROM (
   SELECT e.id,
@@ -92,7 +94,18 @@ FROM (
     WHERE e.id = $1 AND tt.active = TRUE
     ORDER BY tt.id
   ) AS t
-) AS ticket_types;
+) AS ticket_types,
+(
+  SELECT count(*) AS existing_tickets
+  FROM tickets t
+  JOIN actions AS a ON t.reserve_action = a.id
+  WHERE t.event=$1 AND t.status='booked' AND a.user_id=$2
+) AS existing_tickets,
+(
+  SELECT count(*) > 0 AS on_waiting_list
+  FROM waiting_list
+  WHERE event=$1 AND user_id=$2
+) AS on_waiting_list
 """
 
 
@@ -135,7 +148,8 @@ async def check_event_sig(request):
 
 async def event_get(request):
     event_id = await check_event_sig(request)
-    json_str = await request['conn'].fetchval(event_info_sql, event_id)
+    user_id = request['session'].get('user_id', 0)
+    json_str = await request['conn'].fetchval(event_info_sql, event_id, user_id)
     return raw_json_response(json_str)
 
 
@@ -356,6 +370,7 @@ class EventBread(Bread):
                 event_id=pk,
                 subtype='edit-event',
             )
+            await self.app['email_actor'].send_tickets_available(pk)
 
 
 async def _check_event_permissions(request, check_upcoming=False):
@@ -402,6 +417,12 @@ JOIN ticket_types AS tt ON t.ticket_type = tt.id
 WHERE t.event=$1 AND t.status!='reserved'
 ORDER BY t.id
 """
+event_waiting_list_sql = """
+select full_name(u.first_name, u.last_name) as name, u.email, iso_ts(w.added_ts, 'Europe/London') added_ts
+from waiting_list w
+join users u on w.user_id = u.id
+where w.event=$1
+"""
 
 
 @is_admin_or_host
@@ -419,7 +440,12 @@ async def event_tickets(request):
             ticket.pop('guest_email')
             ticket.pop('buyer_email')
         tickets.append(ticket)
-    return json_response(tickets=tickets)
+
+    waiting_list = [dict(r) for r in await request['conn'].fetch(event_waiting_list_sql, event_id)]
+    if not_admin:
+        [r.pop('email') for r in waiting_list]
+
+    return json_response(tickets=tickets, waiting_list=waiting_list)
 
 
 class CancelTickets(UpdateView):
@@ -467,6 +493,7 @@ class CancelTickets(UpdateView):
                     app=self.app,
                     conn=self.conn,
                 )
+        await self.app['email_actor'].send_tickets_available(event_id)
 
 
 @is_admin_or_host

@@ -6,6 +6,8 @@ import pytest
 from aiohttp import FormData
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
+from shared.utils import waiting_list_sig
+
 from .conftest import Factory, create_image
 
 
@@ -50,6 +52,8 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'cover_costs_percentage': None,
             'terms_and_conditions_message': None,
         },
+        'existing_tickets': 0,
+        'on_waiting_list': False,
     }
 
 
@@ -701,6 +705,9 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
 
     await login()
 
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, anne)
+
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
@@ -724,6 +731,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
                 'ticket_type_id': await db_conn.fetchval('SELECT id from ticket_types'),
             },
         ],
+        'waiting_list': [{'added_ts': CloseToNow(), 'name': 'anne anne'}],
     }
     await db_conn.execute('update tickets set price=null')
 
@@ -751,6 +759,9 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
     )
 
     await login()
+
+    charlie = await factory.create_user(first_name='charlie', last_name='charlie', email='charlie@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, charlie)
 
     r = await cli.get(url('event-tickets', id=factory.event_id))
     assert r.status == 200, await r.text()
@@ -795,6 +806,9 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'ticket_type_name': 'Standard',
             'ticket_type_id': tt_id,
         },
+    ]
+    assert data['waiting_list'] == [
+        {'added_ts': CloseToNow(), 'name': 'charlie charlie', 'email': 'charlie@example.org'}
     ]
 
 
@@ -1471,3 +1485,67 @@ async def test_clone_event_not_found(cli, url, factory: Factory, login):
     data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
     r = await cli.json_post(url('event-clone', id=123), data=data)
     assert r.status == 404, await r.text()
+
+
+async def test_edit_waiting_list(cli, url, db_conn, factory: Factory, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', factory.event_id, ben)
+
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(ticket_limit=12))
+    assert r.status == 200, await r.text()
+    assert await db_conn.fetchval('SELECT ticket_limit FROM events') == 12
+
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert email['To'] == 'ben ben <ben@example.org>'
+    assert email['Subject'] == 'The Event Name - New Tickets Available'
+    assert 'trigger=event-tickets-available' in email['X-SES-MESSAGE-TAGS']
+
+
+async def test_waiting_list_remove(cli, url, db_conn, factory: Factory, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    event_id = await factory.create_event()
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', event_id, ben)
+
+    query = {'sig': waiting_list_sig(event_id, ben, settings)}
+    r = await cli.get(url('event-waiting-list-remove', id=event_id, user_id=ben, query=query), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/waiting-list-removed/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0
+
+
+async def test_waiting_list_remove_wrong(cli, url, db_conn, factory: Factory, settings):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    event_id = await factory.create_event()
+
+    ben = await factory.create_user(first_name='ben', last_name='ben', email='ben@example.org')
+    await db_conn.execute('insert into waiting_list (event, user_id) values ($1, $2)', event_id, ben)
+
+    r = await cli.get(url('event-waiting-list-remove', id=event_id, user_id=ben), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/unsubscribe-invalid/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+    query = {'sig': 'wrong'}
+    r = await cli.get(url('event-waiting-list-remove', id=event_id, user_id=ben, query=query), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/unsubscribe-invalid/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+    query = {'sig': waiting_list_sig(event_id + 1, ben, settings)}
+    r = await cli.get(url('event-waiting-list-remove', id=event_id, user_id=ben, query=query), allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/unsubscribe-invalid/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1

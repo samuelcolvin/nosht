@@ -20,7 +20,7 @@ export const ModalFooter = ({finished, disabled, label, cancel_disabled}) => (
         Cancel
       </Button>
       <Button type="submit" color="primary" disabled={disabled}>
-        {label || 'Book'}
+        {label}
       </Button>
     </ButtonGroup>
   </BsModalFooter>

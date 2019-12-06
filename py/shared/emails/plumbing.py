@@ -454,13 +454,13 @@ markdown_macros = [
     {
         'name': 'primary_button',
         'args': ('text', 'link'),
-        'body': ('<div class="button">\n' '  <a href="{{ link }}"><span>{{ text }}</span></a>\n' '</div>\n'),
+        'body': '<div class="button">\n  <a href="{{ link }}"><span>{{ text }}</span></a>\n</div>\n',
     },
     {
         'name': 'secondary_button',
         'args': ('text', 'link'),
         'body': (
-            '<div class="button">\n' '  <a href="{{ link }}"><span class="secondary">{{ text }}</span></a>\n' '</div>\n'
+            '<div class="button">\n  <a href="{{ link }}"><span class="secondary">{{ text }}</span></a>\n</div>\n'
         ),
     },
 ]

@@ -181,3 +181,40 @@ export const CancelTicket = WithContext(withRouter(({ctx, update, uri, id, locat
     />
   )
 }))
+
+export const WaitingList = ({waiting_list, user}) => {
+  if (!waiting_list || !waiting_list.length) {
+    return (
+      <div className="mb-5">
+        <h4>Waiting List</h4>
+        <small>No one on the waiting list for this event.</small>
+      </div>
+    )
+  }
+  const is_admin = user.role === 'admin'
+  return (
+    <div className="mb-5">
+      <h4>Waiting List ({waiting_list.length} people)</h4>
+      <Table striped>
+        <thead>
+          <tr>
+            <th>Name</th>
+            {is_admin && <th>Email</th>}
+            <th>Time Added</th>
+          </tr>
+        </thead>
+        <tbody>
+          {waiting_list.map((w, i) => (
+            <tr key={i}>
+              <th scope="row">
+                {w.name}
+              </th>
+              {is_admin && <td>{w.email || <Dash/>}</td>}
+              <td>{format_datetime(w.added_ts)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  )
+}

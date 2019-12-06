@@ -126,6 +126,7 @@ async def _complete_purchase(
         metadata.reserve_action_id,
     )
     await conn.execute('select check_tickets_remaining($1, $2)', metadata.event_id, settings.ticket_ttl)
+    await conn.execute('delete from waiting_list where event=$1 and user_id=$2', metadata.event_id, metadata.user_id)
     return action_id
 
 

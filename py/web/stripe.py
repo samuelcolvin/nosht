@@ -104,6 +104,7 @@ async def book_free(m: BookFreeModel, company_id: int, session: dict, app, conn:
             res.action_id,
         )
         await conn.execute('SELECT check_tickets_remaining($1, $2)', res.event_id, app['settings'].ticket_ttl)
+        await conn.execute('delete from waiting_list where event=$1 and user_id=$2', res.event_id, user_id)
 
     return confirm_action_id
 

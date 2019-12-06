@@ -135,6 +135,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'edit-event',
   'edit-profile',
   'edit-other',
+  'email-waiting-list',
   'unsubscribe'
 );
 CREATE TABLE actions (
@@ -191,7 +192,7 @@ CREATE INDEX ticket_created_ts ON tickets USING btree (created_ts);
 CREATE TYPE EMAIL_TRIGGERS AS ENUM (
   'ticket-buyer', 'ticket-other', 'event-update', 'event-reminder', 'donation-thanks', 'event-booking',
   'event-host-created', 'event-host-update', 'event-host-final-update', 'password-reset', 'account-created',
-  'admin-notification'
+  'admin-notification', 'event-tickets-available'
 );
 
 CREATE TABLE email_definitions (
@@ -295,3 +296,14 @@ CREATE INDEX IF NOT EXISTS search_event ON search USING btree (event);
 CREATE INDEX IF NOT EXISTS search_vector ON search USING gin (vector);
 CREATE INDEX IF NOT EXISTS search_active_ts ON search USING btree (active_ts);
 -- } search
+
+-- { waiting-list
+CREATE TABLE IF NOT EXISTS waiting_list (
+  id SERIAL PRIMARY KEY,
+  event INT REFERENCES events ON DELETE CASCADE,
+  user_id INT REFERENCES users ON DELETE CASCADE,
+  last_notified TIMESTAMPTZ NOT NULL DEFAULT '2000-01-01',
+  added_ts TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS waiting_list_event_users ON waiting_list USING btree (event, user_id);
+-- } waiting-list

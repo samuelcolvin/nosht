@@ -18,6 +18,7 @@ from ..utils import (
     password_reset_link,
     static_map_link,
     ticket_id_signed,
+    waiting_list_sig,
 )
 from .defaults import Triggers
 from .plumbing import BaseEmailActor, UserEmail
@@ -63,7 +64,7 @@ class EmailActor(BaseEmailActor):
             )
             # use max to get the price as they should all be the same
             ticket_count, total_ticket_price, extra_donated, price = await conn.fetchrow(
-                'select count(*), sum(price), sum(extra_donated), max(price) ' 'from tickets where booked_action=$1',
+                'select count(*), sum(price), sum(extra_donated), max(price) from tickets where booked_action=$1',
                 booked_action_id,
             )
             total_price = total_ticket_price and total_ticket_price + (extra_donated or 0)
@@ -268,6 +269,71 @@ class EmailActor(BaseEmailActor):
         await self.send_emails.direct(
             data['company_id'], Triggers.event_update, users, attached_event_id=data['event_id']
         )
+
+    @concurrent
+    async def send_tickets_available(self, event_id: int) -> str:
+        """
+        Send an email to those on the waiting list about an event
+        """
+        async with self.pg.acquire() as conn:
+            tickets_remaining = await conn.fetchval(
+                'SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl
+            )
+            if tickets_remaining == 0:
+                return 'no tickets remaining'
+
+            user_ids = await conn.fetchval(
+                """
+                select array_agg(user_id) from waiting_list
+                where event=$1 and now() - last_notified > '1 day'
+                """,
+                event_id,
+            )
+            if not user_ids:
+                return 'no users in waiting list'
+
+            data = await conn.fetchrow(
+                """
+                SELECT
+                  c.company AS company_id,
+                  e.id AS event_id,
+                  e.name AS event_name,
+                  event_link(c.slug, e.slug, e.public, $2) AS event_link,
+                  e.start_ts > now() AS in_future
+                FROM events AS e
+                JOIN categories AS c ON e.category = c.id
+                WHERE e.id=$1
+                """,
+                event_id,
+                self.settings.auth_key,
+            )
+            if not data['in_future']:
+                # don't send the email if the event is in the past
+                return 'event in the past'
+
+            await conn.execute_b(
+                'INSERT INTO actions (:values__names) VALUES :values',
+                values=Values(company=data['company_id'], event=event_id, type=ActionTypes.email_waiting_list.value),
+            )
+            # do this before sending emails so even if something fails we don't send lots of emails
+            await conn.execute(
+                'update waiting_list set last_notified=now() where event=$1 and user_id=any($2)', event_id, user_ids
+            )
+        ctx = {
+            'event_link': data['event_link'],
+            'event_name': data['event_name'],
+        }
+        event_id = data['event_id']
+
+        def remove_link(user_id):
+            return (
+                f'/api/events/{event_id}/waiting-list/remove/{user_id}/'
+                f'?sig={waiting_list_sig(event_id, user_id, self.settings)}'
+            )
+
+        users = [UserEmail(uid, {'remove_link': remove_link(uid), **ctx}) for uid in user_ids]
+        await self.send_emails.direct(data['company_id'], Triggers.event_tickets_available, users)
+        return f'emailed {len(user_ids)} users'
 
     @cron(minute=30)
     async def send_event_reminders(self):

@@ -78,7 +78,7 @@ async def test_utc(factory: Factory, db_conn, settings):
     )
 
     attachment = await ical_attachment(factory.event_id, factory.company_id, conn=db_conn, settings=settings)
-    assert ('DTSTART:20200601T100000Z\r\n' 'DTEND:20200601T110000Z\r\n') in attachment.content
+    assert 'DTSTART:20200601T100000Z\r\nDTEND:20200601T110000Z\r\n' in attachment.content
 
 
 async def test_no_duration(factory: Factory, db_conn, settings):
@@ -108,4 +108,4 @@ async def test_unicode_wrap(factory: Factory, db_conn, settings):
     await factory.create_event(name='文' * 40)
 
     attachment = await ical_attachment(factory.event_id, factory.company_id, conn=db_conn, settings=settings)
-    assert ('SUMMARY:文文文文文文文文文文文文文文文文文文文文文文\r\n' ' 文文文文文文文文文文文文文文文文文文\r\n') in attachment.content
+    assert 'SUMMARY:文文文文文文文文文文文文文文文文文文文文文文\r\n 文文文文文文文文文文文文文文文文文文\r\n' in attachment.content

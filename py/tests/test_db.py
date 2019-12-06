@@ -16,7 +16,7 @@ async def test_create_demo_data(cli, url, db_conn, settings):
                 'slug': 'supper-clubs',
                 'image': RegexStr(r'http.*'),
                 'description': (
-                    'Eat, drink & discuss middle aged,' ' middle class things like house prices and consumerist guilt'
+                    'Eat, drink & discuss middle aged, middle class things like house prices and consumerist guilt'
                 ),
             },
             {
