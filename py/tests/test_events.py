@@ -50,7 +50,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'cover_costs_percentage': None,
             'terms_and_conditions_message': None,
         },
-        'existing_tickets': False,
+        'existing_tickets': 0,
         'on_waiting_list': False,
     }
 

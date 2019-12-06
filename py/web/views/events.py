@@ -96,7 +96,7 @@ FROM (
   ) AS t
 ) AS ticket_types,
 (
-  SELECT count(*) > 0 AS existing_tickets
+  SELECT count(*) AS existing_tickets
   FROM tickets t
   JOIN actions AS a ON t.reserve_action = a.id
   WHERE t.event=$1 AND t.status='booked' AND a.user_id=$2

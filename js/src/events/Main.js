@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {Row, Col, Button} from 'reactstrap'
+import {Row, Col, Button, Alert} from 'reactstrap'
 import requests from '../utils/requests'
 import {image_thumb, unique} from '../utils'
 import WithContext from '../utils/context'
@@ -47,7 +47,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
             </Button>
           ) : (
             event.tickets_available === 0 ? (
-              !on_waiting_list && (
+              !on_waiting_list && !existing_tickets && (
                 <Button color={existing_tickets ? 'secondary' : 'primary'} size="lg" className="hover-raise"
                         tag={Link} to={uri + 'waiting-list/'}>
                   Join Waiting List
@@ -65,10 +65,13 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
         {event.tickets_available !== null &&
           <div className="mt-3">
             {event.tickets_available === 0 ?
-              <span>
-                <b>Sold Out!</b>
-                {!on_waiting_list && <span className="pl-1">Join the waiting list to get notified when more tickets become available.</span>}
-              </span>
+              !existing_tickets && (
+                on_waiting_list ? (
+                  <span>Sold out, You're on the waiting list.</span>
+                ) : (
+                  <span><b>Sold Out!</b>Join the waiting list to get notified when more tickets become available.</span>
+                )
+              )
               :
               <span className="font-weight-bold">Only {event.tickets_available} Tickets Remaining</span>
             }
@@ -76,6 +79,11 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
       </Col>
     </Row>
 
+    {!!existing_tickets && (
+      <Alert color="success" className="mt-1 font-weight-bold">
+        You've booked {existing_tickets === 1 ? 'a ticket' : `${existing_tickets} tickets`} for this event.
+      </Alert>
+    )}
     <Row className="text-muted mb-1 h5">
       <Col md="auto">
         <FontAwesomeIcon icon={['far', 'clock']} className="mx-1 text-success"/>

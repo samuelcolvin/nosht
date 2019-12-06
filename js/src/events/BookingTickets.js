@@ -160,7 +160,7 @@ const TicketForm = props => {
           <div>
             {existing_tickets ?
               <b>
-                You've already bought {existing_tickets} ticket{existing_tickets > 1 ? 's': ''} for this event.
+                You've already booked {existing_tickets} ticket{existing_tickets > 1 ? 's': ''} for this event.
               </b>
               :
               null
