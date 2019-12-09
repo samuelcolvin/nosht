@@ -17,6 +17,7 @@ class Triggers(str, Enum):
     event_host_update = 'event-host-update'
     event_host_final_update = 'event-host-final-update'
     event_tickets_available = 'event-tickets-available'
+    waiting_list_add = 'waiting-list-add'
 
     password_reset = 'password-reset'
     account_created = 'account-created'
@@ -292,8 +293,22 @@ Great news! New tickets have become available for **{{ event_name }}**.
 
 {{ primary_button(View Event | {{ event_link }}) }}
 
-If you no-longer wish to see emails about this event,
-you may [remove yourself from the waiting list]({{ remove_link }}).
+If you no-longer wish to see emails about the waiting list for this event,
+you may [remove yourself from the waiting list]({{ remove_link }}) at any time.
+""",
+    },
+    Triggers.waiting_list_add: {
+        'subject': '{{{ event_name }}} - Added to Waiting List',
+        'title': '{{ company_name }}',
+        'body': """
+Hi {{ first_name }},
+
+You've been added to the waiting list for [{{ event_name }}]({{ event_link }}).
+
+You'll receive an email as soon as more tickets become available.
+
+If you no-longer wish to see emails about the waiting list for this event,
+you may [remove yourself from the waiting list]({{ remove_link }}) at any time.
 """,
     },
 }

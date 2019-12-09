@@ -885,7 +885,7 @@ async def test_index_sold_out(factory: Factory, cli, url, buy_tickets, db_conn):
     assert data['events'][0]['sold_out'] is True
 
 
-async def test_waiting_list(cli, url, factory: Factory, login, db_conn):
+async def test_waiting_list(cli, url, factory: Factory, login, db_conn, dummy_server):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
@@ -893,14 +893,23 @@ async def test_waiting_list(cli, url, factory: Factory, login, db_conn):
     await login()
 
     assert await db_conn.fetchval('select count(*) from waiting_list') == 0
+    assert len(dummy_server.app['emails']) == 0
 
     r = await cli.json_post(url('event-waiting-list-add', id=factory.event_id))
     assert r.status == 200, await r.text()
     assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert 'trigger=waiting-list-add' in email['X-SES-MESSAGE-TAGS']
 
     event_id, user_id = await db_conn.fetchrow('select event, user_id from waiting_list')
     assert event_id == factory.event_id
     assert user_id == factory.user_id
+
+    r = await cli.json_post(url('event-waiting-list-add', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+    assert len(dummy_server.app['emails']) == 1
 
 
 async def test_waiting_list_book_free(cli, url, login, factory: Factory, db_conn):

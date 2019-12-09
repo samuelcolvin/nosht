@@ -861,3 +861,32 @@ async def test_send_tickets_available_one_day(email_actor: EmailActor, factory: 
     assert dummy_server.app['emails'][0]['To'] == 'anne anne <anne@example.org>'
     assert await db_conn.fetchval('select last_notified from waiting_list where user_id=$1', anne) == CloseToNow()
     assert await db_conn.fetchval('select last_notified from waiting_list where user_id=$1', ben) == recently
+
+
+async def test_waiting_list_add(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, cli):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(start_ts=london.localize(datetime(2032, 6, 28, 19, 0)))
+
+    anne = await factory.create_user(first_name='anne', last_name='anne', email='anne@example.org')
+    wl_id = await db_conn.fetchval(
+        'insert into waiting_list (event, user_id) values ($1, $2) returning id', factory.event_id, anne
+    )
+
+    await email_actor.waiting_list_add.direct(wl_id)
+    assert len(dummy_server.app['emails']) == 1
+    email = dummy_server.app['emails'][0]
+    assert email['To'] == 'anne anne <anne@example.org>'
+    assert 'trigger=waiting-list-add' in email['X-SES-MESSAGE-TAGS']
+    plain = email['part:text/plain']
+    assert (
+        "You've been added to the waiting list for [The Event Name](https://127.0.0.1/supper-clubs/the-event-name/).\n"
+    ) in plain
+    remove_link = re.search(r'(/api/events/.*?/waiting-list/.*?)\)', plain).group(1)
+
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+    r = await cli.get(remove_link, allow_redirects=False)
+    assert r.status == 307, await r.text()
+    assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/waiting-list-removed/'
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 0

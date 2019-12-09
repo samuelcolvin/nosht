@@ -296,7 +296,6 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT
                   c.company AS company_id,
-                  e.id AS event_id,
                   e.name AS event_name,
                   event_link(c.slug, e.slug, e.public, $2) AS event_link,
                   e.start_ts > now() AS in_future
@@ -323,7 +322,6 @@ class EmailActor(BaseEmailActor):
             'event_link': data['event_link'],
             'event_name': data['event_name'],
         }
-        event_id = data['event_id']
 
         def remove_link(user_id):
             return (
@@ -334,6 +332,36 @@ class EmailActor(BaseEmailActor):
         users = [UserEmail(uid, {'remove_link': remove_link(uid), **ctx}) for uid in user_ids]
         await self.send_emails.direct(data['company_id'], Triggers.event_tickets_available, users)
         return f'emailed {len(user_ids)} users'
+
+    @concurrent
+    async def waiting_list_add(self, waiting_list_id: int):
+        """
+        Send an email to a user when they get added to the waiting list.
+        """
+        company_id, event_name, event_link, event_id, user_id = await self.pg.fetchrow(
+            """
+            select
+              c.company,
+              e.name,
+              event_link(c.slug, e.slug, e.public, $2),
+              e.id,
+              w.user_id
+            from waiting_list w
+            join events e on w.event = e.id
+            join categories AS c ON e.category = c.id
+            where w.id=$1
+            """,
+            waiting_list_id,
+            self.settings.auth_key,
+        )
+
+        sig = waiting_list_sig(event_id, user_id, self.settings)
+        ctx = {
+            'event_link': event_link,
+            'event_name': event_name,
+            'remove_link': f'/api/events/{event_id}/waiting-list/remove/{user_id}/?sig={sig}',
+        }
+        await self.send_emails.direct(company_id, Triggers.waiting_list_add, [UserEmail(user_id, ctx)])
 
     @cron(minute=30)
     async def send_event_reminders(self):
