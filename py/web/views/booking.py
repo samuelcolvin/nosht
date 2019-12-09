@@ -254,14 +254,17 @@ async def waiting_list_add(request):
 
     conn: BuildPgConnection = request['conn']
     user_id = request['session']['user_id']
-    await conn.execute(
+    wl_id = await conn.fetchval(
         """
         insert into waiting_list (event, user_id) values ($1, $2)
         on conflict (event, user_id) do nothing
+        returning id
         """,
         event_id,
         user_id,
     )
+    if wl_id:
+        await request.app['email_actor'].waiting_list_add(wl_id)
     return json_response(status='ok')
 
 
