@@ -906,6 +906,11 @@ async def test_waiting_list(cli, url, factory: Factory, login, db_conn, dummy_se
     assert event_id == factory.event_id
     assert user_id == factory.user_id
 
+    r = await cli.json_post(url('event-waiting-list-add', id=factory.event_id))
+    assert r.status == 200, await r.text()
+    assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+    assert len(dummy_server.app['emails']) == 1
+
 
 async def test_waiting_list_book_free(cli, url, login, factory: Factory, db_conn):
     await factory.create_company()
