@@ -2,9 +2,6 @@ import React from 'react'
 import {
   Button,
   Col,
-  Card,
-  CardTitle,
-  CardText,
   Form as BootstrapForm,
   FormFeedback,
   ModalBody,
@@ -137,20 +134,28 @@ const TicketForm = props => {
   const max_tickets = Math.min(MAX_TICKETS, remaining || MAX_TICKETS)
   const change_count = props.change_ticket_count
 
-  const ticket_price = ticket_types.length && (
-    props.state.ticket_type ?
-      ticket_types.find(tt => tt.id === props.state.ticket_type).price :
-      ticket_types[0].price
-  )
-  let total = state.ticket_count * ticket_price
-  if (ticket_price && state.ticket_0 && state.ticket_0.cover_costs) {
-    total = total * (1 + props.event.cover_costs_percentage / 100)
-  }
-  const items = [
+  let items = [
     {name: 'Tickets', value: state.ticket_count},
-    {name: 'Ticket Price', value: <MoneyFree>{ticket_price}</MoneyFree>},
-    {name: 'Total Price', value: <MoneyFree>{total}</MoneyFree>},
+    {name: 'Ticket Price', value: <div>&mdash;</div>},
+    {name: 'Total Price', value: <div>&mdash;</div>},
   ]
+  let ticket_price = null
+  if (ticket_types.length === 1 || props.state.ticket_type) {
+    ticket_price = ticket_types.length && (
+      props.state.ticket_type ?
+        ticket_types.find(tt => tt.id === props.state.ticket_type).price :
+        ticket_types[0].price
+    )
+    let total = state.ticket_count * ticket_price
+    if (ticket_price && state.ticket_0 && state.ticket_0.cover_costs) {
+      total = total * (1 + props.event.cover_costs_percentage / 100)
+    }
+    items = [
+      {name: 'Tickets', value: state.ticket_count},
+      {name: 'Ticket Price', value: <MoneyFree>{ticket_price}</MoneyFree>},
+      {name: 'Total Price', value: <MoneyFree>{total}</MoneyFree>},
+    ]
+  }
 
   return (
     <BootstrapForm onSubmit={props.reserve}>
@@ -171,23 +176,21 @@ const TicketForm = props => {
         {ticket_types.length > 1 &&
           <div className="py-2">
             <div className="text-center font-weight-bold">
-              Ticket Type
+              Ticket Types
             </div>
-            <Row className="d-flex justify-content-center my-1">
+            <div className="px-4 pb-2">
               {ticket_types.map(tt => (
-
-                <Col key={tt.id} md="4" className="mb-3">
-                  <Card body inverse color={props.state.ticket_type === tt.id ? 'primary': 'info'}
-                        className={props.state.ticket_type === tt.id ? '': 'cursor-pointer select-image'}
-                        onClick={() => props.set_ticket_type(tt.id)}>
-                    <CardTitle className="text-center">{tt.name}</CardTitle>
-                    <CardText className="text-center">
-                      <MoneyFree>{tt.price}</MoneyFree>
-                    </CardText>
-                  </Card>
-                </Col>
+                <label key={tt.id} className="d-block">
+                  <input
+                    className="mr-2"
+                    type="radio"
+                    checked={props.state.ticket_type === tt.id}
+                    onChange={() => props.set_ticket_type(tt.id)}
+                  />
+                  <b><MoneyFree>{tt.price}</MoneyFree></b> &mdash; {tt.name}
+                </label>
               ))}
-            </Row>
+            </div>
             <div className="text-muted text-center small">
               Select which type of ticket you wish to purchase.
               Please note that you can only buy one ticket type at a time. If you wish to buy different ticket types,
