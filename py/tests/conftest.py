@@ -213,7 +213,7 @@ class Factory:
         host_user_id=None,
         name='The Event Name',
         slug=None,
-        start_ts=london.localize(datetime(2020, 6, 28, 19, 0)),
+        start_ts=london.localize(datetime(2032, 6, 28, 19, 0)),
         timezone='Europe/London',
         duration=timedelta(hours=1),
         short_description=None,

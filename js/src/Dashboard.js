@@ -1,6 +1,6 @@
 import React from 'react'
 import {Route, Switch, Link} from 'react-router-dom'
-import {Nav, NavItem, NavLink} from 'reactstrap'
+import {Nav, NavItem} from 'reactstrap'
 import {NotFound} from './general/Errors'
 import WithContext from './utils/context'
 import {as_title} from './utils'
