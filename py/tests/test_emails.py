@@ -101,7 +101,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
         location_name='The Location',
         location_lat=51.5,
         location_lng=-0.2,
-        start_ts=london.localize(datetime(2020, 6, 3)),
+        start_ts=london.localize(datetime(2032, 6, 3)),
         duration=None,
     )
 
@@ -129,7 +129,7 @@ async def test_send_ticket_email(email_actor: EmailActor, factory: Factory, dumm
         '<li>Total Amount Charged: <strong>£10.00</strong></li>\n'
     ) in html
     assert '<p><a href="https://www.google.com/maps/place/' in html
-    assert '<li>Start Time: <strong>3rd Jun 2020</strong></li>\n' in html
+    assert '<li>Start Time: <strong>3rd Jun 2032</strong></li>\n' in html
     assert '<li>Duration: <strong>All day</strong></li>' in html
     attachment = email['part:text/calendar']
     assert attachment.startswith(
@@ -171,7 +171,7 @@ async def test_send_ticket_email_duration(email_actor: EmailActor, factory: Fact
     print(html)
     assert '<p><a href="https://www.google.com/maps/place/' in html
     assert '<li>Duration: <strong>1 hour 30 mins</strong></li>' in html
-    assert '<li>Start Time: <strong>07:00pm, 28th Jun 2020</strong></li>\n' in html
+    assert '<li>Start Time: <strong>07:00pm, 28th Jun 2032</strong></li>\n' in html
 
 
 async def test_send_ticket_name_on_ticket(email_actor: EmailActor, factory: Factory, dummy_server, db_conn, settings):
@@ -324,7 +324,7 @@ async def test_ticket_buyer_not_attendee(factory: Factory, dummy_server, login, 
     email = dummy_server.app['emails'][0]
     # debug(email)
     assert (
-        '* Start Time: **07:00pm, 28th Jun 2020**\n* Duration: **1 hour**\n* Location: **The Location**\n'
+        '* Start Time: **07:00pm, 28th Jun 2032**\n* Duration: **1 hour**\n* Location: **The Location**\n'
     ) in email['part:text/plain']
     assert 'This is your ticket' not in email['part:text/plain']
     assert email['X-SES-MESSAGE-TAGS'] == 'company=testing, trigger=ticket-buyer'

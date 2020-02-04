@@ -19,7 +19,7 @@ async def test_event_export(cli, url, login, factory: Factory):
         location_name='Testing Location',
         location_lat=51.5,
         location_lng=-0.5,
-        start_ts=datetime(2020, 6, 1, 1, 13, 12, tzinfo=timezone.utc),
+        start_ts=datetime(2032, 6, 1, 1, 13, 12, tzinfo=timezone.utc),
         duration=timedelta(hours=2, minutes=45),
     )
 
@@ -40,7 +40,7 @@ async def test_event_export(cli, url, login, factory: Factory):
             'name': 'The Event Name',
             'slug': 'the-event-name',
             'status': 'published',
-            'start_time': '2020-06-01T02:13:12+01',
+            'start_time': '2032-06-01T02:13:12+01',
             'timezone': 'Europe/London',
             'duration_hours': '2.75',
             'short_description': RegexStr(r'.*'),

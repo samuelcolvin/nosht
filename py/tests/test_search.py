@@ -197,7 +197,7 @@ async def test_search_for_event(factory: Factory, db_conn, cli, url, login):
                 'category': 'Supper Clubs',
                 'status': 'pending',
                 'highlight': False,
-                'start_ts': '2020-06-28T18:00:00+00:00',
+                'start_ts': '2032-06-28T18:00:00+00:00',
                 'duration': 3600,
             },
         ],

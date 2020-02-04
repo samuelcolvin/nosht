@@ -38,7 +38,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'external_ticket_url': None,
             'category_content': None,
             'location': {'name': 'Testing Location', 'lat': 51.5, 'lng': -0.5},
-            'start_ts': '2020-06-28T19:00:00',
+            'start_ts': '2032-06-28T19:00:00',
             'tz': 'BST',
             'duration': 3600,
             'tickets_available': None,
@@ -140,7 +140,7 @@ async def test_bread_browse(cli, url, factory: Factory, login):
                 'category': 'Supper Clubs',
                 'status': 'pending',
                 'highlight': False,
-                'start_ts': '2020-06-28T19:00:00',
+                'start_ts': '2032-06-28T19:00:00',
                 'duration': 3600,
             },
             {
@@ -149,7 +149,7 @@ async def test_bread_browse(cli, url, factory: Factory, login):
                 'category': 'Supper Clubs',
                 'status': 'published',
                 'highlight': False,
-                'start_ts': '2020-06-28T19:00:00',
+                'start_ts': '2032-06-28T19:00:00',
                 'duration': 3600,
             },
         ],
@@ -175,7 +175,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'category': 'Supper Clubs',
         'status': 'published',
         'highlight': False,
-        'start_ts': '2020-06-28T19:00:00',
+        'start_ts': '2032-06-28T19:00:00',
         'timezone': 'Europe/London',
         'duration': 3600,
         'cat_id': factory.category_id,
@@ -264,7 +264,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         name='foobar',
         category=factory.category_id,
         location={'lat': 50, 'lng': 0, 'name': 'London'},
-        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 7200},
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 7200},
         timezone='Europe/London',
         long_description='# title\nI love to **party**',
     )
@@ -285,7 +285,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'name': 'foobar',
         'slug': 'foobar',
         'highlight': False,
-        'start_ts': datetime(2020, 2, 1, 19, 0, tzinfo=timezone.utc),
+        'start_ts': datetime(2032, 2, 1, 19, 0, tzinfo=timezone.utc),
         'timezone': 'Europe/London',
         'duration': timedelta(seconds=7200),
         'short_description': 'title I love to party',
@@ -335,7 +335,7 @@ async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login
         category=factory.category_id,
         public=False,
         location={'lat': 50, 'lng': 0, 'name': 'London'},
-        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': None},
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': None},
         timezone='Europe/London',
         long_description='I love to party',
     )
@@ -344,7 +344,7 @@ async def test_create_private_all_day(cli, url, db_conn, factory: Factory, login
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     public, start_ts, duration = await db_conn.fetchrow('SELECT public, start_ts, duration FROM events')
     assert public is False
-    assert start_ts == datetime(2020, 2, 1, 0, 0, tzinfo=timezone.utc)
+    assert start_ts == datetime(2032, 2, 1, 0, 0, tzinfo=timezone.utc)
     assert duration is None
 
 
@@ -359,7 +359,7 @@ async def test_create_event_duplicate_slug(cli, url, db_conn, factory: Factory, 
         category=factory.category_id,
         long_description='I love to party',
         timezone='Europe/London',
-        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     r = await cli.json_post(url('event-add'), data=data)
@@ -386,7 +386,7 @@ async def test_create_event_host(cli, url, db_conn, factory: Factory, login):
         category=factory.category_id,
         long_description='I love to party',
         timezone='Europe/London',
-        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
     )
     r = await cli.json_post(url('event-add'), data=data)
     assert r.status == 201, await r.text()
@@ -405,7 +405,7 @@ async def test_create_timezone(cli, url, db_conn, factory: Factory, login):
         name='foobar',
         category=factory.category_id,
         location={'lat': 50, 'lng': 0, 'name': 'London'},
-        date={'dt': datetime(2020, 6, 1, 19, 0).isoformat(), 'dur': 7200},
+        date={'dt': datetime(2032, 6, 1, 19, 0).isoformat(), 'dur': 7200},
         timezone='America/New_York',
         long_description='# title\nI love to **party**',
     )
@@ -415,7 +415,7 @@ async def test_create_timezone(cli, url, db_conn, factory: Factory, login):
     data = await r.json()
     start_ts, tz = await db_conn.fetchrow('SELECT start_ts, timezone FROM events WHERE id=$1', data['pk'])
     assert tz == 'America/New_York'
-    assert start_ts == datetime(2020, 6, 1, 23, 0, tzinfo=timezone.utc)
+    assert start_ts == datetime(2032, 6, 1, 23, 0, tzinfo=timezone.utc)
 
 
 async def test_create_external_ticketing(cli, url, db_conn, factory: Factory, login):
@@ -428,7 +428,7 @@ async def test_create_external_ticketing(cli, url, db_conn, factory: Factory, lo
         name='foobar',
         category=factory.category_id,
         location={'lat': 50, 'lng': 0, 'name': 'London'},
-        date={'dt': datetime(2020, 6, 1, 19, 0).isoformat(), 'dur': 7200},
+        date={'dt': datetime(2032, 6, 1, 19, 0).isoformat(), 'dur': 7200},
         external_ticket_url='https://www.example.com/the-test-event/',
         timezone='America/New_York',
         long_description='# title\nI love to **party**',
@@ -461,7 +461,7 @@ async def test_create_event_host_external_ticketing(cli, url, db_conn, factory: 
         category=factory.category_id,
         long_description='I love to party',
         timezone='Europe/London',
-        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
         external_ticket_url='https://www.example.com/the-test-event/',
     )
     r = await cli.json_post(url('event-add'), data=data)
@@ -480,7 +480,7 @@ async def test_create_bad_timezone(cli, url, factory: Factory, login):
     data = dict(
         name='foobar',
         category=factory.category_id,
-        date={'dt': datetime(2020, 6, 1, 19, 0).strftime('%s'), 'dur': 7200},
+        date={'dt': datetime(2032, 6, 1, 19, 0).strftime('%s'), 'dur': 7200},
         timezone='foobar',
         long_description='# title\nI love to **party**',
     )
@@ -502,7 +502,7 @@ async def test_not_auth(cli, url, db_conn, factory: Factory):
         name='foobar',
         category=factory.category_id,
         location={'lat': 50, 'lng': 0, 'name': 'London'},
-        date={'dt': datetime(2020, 2, 1, 19, 0).strftime('%s'), 'dur': None},
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': None},
         long_description='I love to party',
     )
     r = await cli.json_post(url('event-add'), data=data)
@@ -541,13 +541,13 @@ async def test_edit_event_date(cli, url, db_conn, factory: Factory, login):
     await login()
 
     start_ts = await db_conn.fetchval('SELECT start_ts FROM events')
-    assert start_ts == datetime(2020, 6, 28, 18, 0, tzinfo=timezone.utc)
-    data = dict(date={'dt': datetime(2020, 1, 1, 12).isoformat(), 'dur': 3600})
+    assert start_ts == datetime(2032, 6, 28, 18, 0, tzinfo=timezone.utc)
+    data = dict(date={'dt': datetime(2032, 1, 1, 12).isoformat(), 'dur': 3600})
     r = await cli.json_post(url('event-edit', pk=factory.event_id), data=data)
     assert r.status == 200, await r.text()
 
     start_ts = await db_conn.fetchval('SELECT start_ts FROM events')
-    assert start_ts == datetime(2020, 1, 1, 12, tzinfo=timezone.utc)
+    assert start_ts == datetime(2032, 1, 1, 12, tzinfo=timezone.utc)
 
 
 async def test_edit_event_timezone(cli, url, db_conn, factory: Factory, login):
@@ -558,20 +558,20 @@ async def test_edit_event_timezone(cli, url, db_conn, factory: Factory, login):
     await login()
 
     start_ts, tz = await db_conn.fetchrow('SELECT start_ts, timezone FROM events')
-    assert start_ts == datetime(2020, 6, 28, 18, 0, tzinfo=timezone.utc)
+    assert start_ts == datetime(2032, 6, 28, 18, 0, tzinfo=timezone.utc)
     start_ts_local = await db_conn.fetchval('SELECT start_ts AT TIME ZONE timezone FROM events')
-    assert start_ts_local == datetime(2020, 6, 28, 19, 0)
+    assert start_ts_local == datetime(2032, 6, 28, 19, 0)
     assert tz == 'Europe/London'
     data = dict(timezone='America/New_York')
     r = await cli.json_post(url('event-edit', pk=factory.event_id), data=data)
     assert r.status == 200, await r.text()
 
     start_ts, tz = await db_conn.fetchrow('SELECT start_ts, timezone FROM events')
-    assert start_ts == datetime(2020, 6, 28, 23, 0, tzinfo=timezone.utc)
+    assert start_ts == datetime(2032, 6, 28, 23, 0, tzinfo=timezone.utc)
     assert tz == 'America/New_York'
 
     start_ts_local = await db_conn.fetchval('SELECT start_ts AT TIME ZONE timezone FROM events')
-    assert start_ts_local == datetime(2020, 6, 28, 19, 0)
+    assert start_ts_local == datetime(2032, 6, 28, 19, 0)
 
 
 async def test_edit_event_ticket_limit(cli, url, factory: Factory, login):
@@ -1379,7 +1379,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
     )
     await login()
     data = dict(
-        name='New Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published',
+        name='New Event', date={'dt': datetime(2032, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published',
     )
     r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
     assert r.status == 201, await r.text()
@@ -1397,7 +1397,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'slug': 'new-event',
         'highlight': False,
         'external_ticket_url': None,
-        'start_ts': datetime(2020, 2, 1, 19, 0, tzinfo=timezone.utc),
+        'start_ts': datetime(2032, 2, 1, 19, 0, tzinfo=timezone.utc),
         'timezone': 'Europe/London',
         'duration': timedelta(0, 7200),
         'short_description': 'this is short',
@@ -1432,7 +1432,7 @@ async def test_clone_event_ticket_types(cli, url, factory: Factory, db_conn, log
 
     await login()
     data = dict(
-        name='New Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published',
+        name='New Event', date={'dt': datetime(2032, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published',
     )
     r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
     assert r.status == 201, await r.text()
@@ -1455,7 +1455,7 @@ async def test_clone_event_slug(cli, url, factory: Factory, db_conn, login):
     await factory.create_event(name='Event', slug='event', status='pending', highlight=True)
 
     await login()
-    data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
+    data = dict(name='Event', date={'dt': datetime(2032, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
     r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
     assert r.status == 201, await r.text()
     h, name, slug = await db_conn.fetchrow('select highlight, name, slug from events where status=$1', 'published')
@@ -1471,7 +1471,7 @@ async def test_clone_event_guest(cli, url, factory: Factory, login):
     await factory.create_event()
 
     await login()
-    data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
+    data = dict(name='Event', date={'dt': datetime(2032, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
     r = await cli.json_post(url('event-clone', id=factory.event_id), data=data)
     assert r.status == 403, await r.text()
 
@@ -1482,7 +1482,7 @@ async def test_clone_event_not_found(cli, url, factory: Factory, login):
     await factory.create_user()
 
     await login()
-    data = dict(name='Event', date={'dt': datetime(2020, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
+    data = dict(name='Event', date={'dt': datetime(2032, 2, 1, 19).strftime('%s'), 'dur': 7200}, status='published')
     r = await cli.json_post(url('event-clone', id=123), data=data)
     assert r.status == 404, await r.text()
 
