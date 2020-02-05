@@ -225,7 +225,7 @@ const TicketForm = props => {
                      onChange={v => props.set_ticket_state('ticket_0', 'allow_marketing', v)}/>
             }
 
-            {ticket_price && props.event.cover_costs_message && props.event.cover_costs_percentage !== null &&
+            {props.event.cover_costs_message && props.event.cover_costs_percentage !== null &&
               <Input value={state.ticket_0 && state.ticket_0.cover_costs}
                      field={{name: 'cover_costs', title: props.event.cover_costs_message, type: 'bool'}}
                      onChange={v => props.set_ticket_state('ticket_0', 'cover_costs', v)}/>
