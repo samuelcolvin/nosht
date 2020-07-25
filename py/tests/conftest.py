@@ -89,7 +89,11 @@ replaced_url_fields = (
 
 @pytest.fixture(name='settings')
 def _fix_settings(dummy_server, request, tmpdir):
-    locale.setlocale(locale.LC_ALL, 'en_GB.utf8')
+    try:
+        locale.setlocale(locale.LC_ALL, 'en_GB.utf8')
+    except locale.Error:
+        # happens on macos
+        pass
     # alter stripe_root_url if the real_stripe_test decorator is applied
     real_stripe = any('REAL_STRIPE_TESTS' in m.kwargs.get('reason', '') for m in request.keywords.get('pytestmark', []))
     fields = set(replaced_url_fields)
