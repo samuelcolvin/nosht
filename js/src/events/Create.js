@@ -29,7 +29,7 @@ export const EVENT_FIELDS = [
     help_text: 'The Category of event you want to host.',
   },
   {
-    name: 'event_type',
+    name: 'mode',
     type: 'select',
     choices: [
       {value: 'tickets', display_name: 'Ticketed Only - allow people to book tickets, either paid or for free'},
@@ -135,13 +135,13 @@ class CreateEvent extends React.Component {
 
   fields () {
     const choices = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
-    const event_type = this.state.form_data.event_type || 'tickets'
+    const mode = this.state.form_data.mode || 'tickets'
     return (
       EVENT_FIELDS
       .filter(f => f.name !== 'short_description' && f.name !== 'timezone')
       .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
-      .filter(f => event_type !== 'donations' || (f.name !== 'price' && f.name !== 'ticket_limit'))
-      .filter(f => event_type !== 'tickets' || f.name !== 'suggested_donation')
+      .filter(f => mode !== 'donations' || (f.name !== 'price' && f.name !== 'ticket_limit'))
+      .filter(f => mode !== 'tickets' || f.name !== 'suggested_donation')
       .map(f => f.name === 'category' ? Object.assign({}, f, {choices}) : f)
     )
   }

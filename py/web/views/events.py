@@ -178,7 +178,7 @@ class DateModel(BaseModel):
     dur: Optional[int]
 
 
-class EventType(Enum):
+class EventMode(Enum):
     tickets = 'tickets'
     donations = 'donations'
     both = 'both'
@@ -192,7 +192,7 @@ class EventBread(Bread):
         timezone: TzInfo
         date: DateModel
 
-        event_type: EventType = EventType.tickets
+        mode: EventMode = EventMode.tickets
 
         class LocationModel(BaseModel):
             lat: float
@@ -234,6 +234,8 @@ class EventBread(Bread):
     retrieve_fields = browse_fields + (
         V('cat.id').as_('cat_id'),
         'e.public',
+        'e.allow_tickets',
+        'e.allow_donations',
         'e.image',
         'e.secondary_image',
         'e.ticket_limit',
@@ -299,19 +301,21 @@ class EventBread(Bread):
                 location_name=loc['name'], location_lat=loc['lat'], location_lng=loc['lng'],
             )
 
+        mode: EventMode = data.pop('mode', EventMode.tickets)
+        data.update(
+            allow_tickets=mode in (EventMode.tickets, EventMode.both),
+            allow_donations=mode in (EventMode.donations, EventMode.both),
+        )
         return data
 
     async def prepare_add_data(self, data):
         data = self.prepare(data)
 
         session = self.request['session']
-        event_type: EventType = data.pop('event_type')
         data.update(
             slug=slugify(data['name']),
             short_description=shorten(clean_markdown(data['long_description']), width=140, placeholder='…'),
             host=session['user_id'],
-            allow_tickets=event_type in (EventType.tickets, EventType.both),
-            allow_donations=event_type in (EventType.donations, EventType.both),
         )
 
         q = 'SELECT status FROM users WHERE id=$1'

@@ -43,7 +43,6 @@ def main():
             logger.info('running web server...')
             from web.main import create_app
 
-            debug(settings.s3_domain)
             app = create_app(settings=settings)
             web.run_app(app, port=settings.port, shutdown_timeout=6, access_log=None, print=lambda *args: None)
         elif command == 'worker':

@@ -637,6 +637,14 @@ async def add_waiting_list(conn, settings, **kwargs):
     await conn.execute(waiting_list_sql)
 
 
+@patch(direct=True)
+async def add_donation_enum(conn, settings, **kwargs):
+    """
+    create the TICKET_MODE enum
+    """
+    await conn.execute("CREATE TYPE TICKET_MODE AS ENUM ('ticket', 'donation')")
+
+
 @patch
 async def add_donations(conn, settings, **kwargs):
     """
@@ -644,3 +652,5 @@ async def add_donations(conn, settings, **kwargs):
     """
     await conn.execute('ALTER TABLE events ADD COLUMN allow_donations BOOLEAN NOT NULL DEFAULT FALSE')
     await conn.execute('ALTER TABLE events ADD COLUMN allow_tickets BOOLEAN NOT NULL DEFAULT TRUE')
+    await conn.execute("ALTER TABLE ticket_types ADD COLUMN mode TICKET_MODE NOT NULL DEFAULT 'ticket'")
+    await conn.execute('CREATE INDEX ticket_type_mode ON ticket_types USING btree (mode)')

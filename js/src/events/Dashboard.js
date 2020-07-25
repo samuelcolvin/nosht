@@ -208,8 +208,8 @@ export class EventsDetails extends RenderDetails {
       {
         tickets: r[0].tickets,
         waiting_list: r[0].waiting_list,
-        ticket_types: r[1].ticket_types.filter(tt => tt.mode === 'ticket'),
-        suggested_donations: r[1].ticket_types.filter(tt => tt.mode === 'donation'),
+        ticket_types: this.state.item.allow_tickets && r[1].ticket_types.filter(tt => tt.mode === 'ticket'),
+        suggested_donations: this.state.item.allow_donations && r[1].ticket_types.filter(tt => tt.mode === 'donation'),
         event_updates: r[2].event_updates,
         buttons: [
           can_edit && {name: 'Edit', link: this.uri + 'edit/'},
@@ -379,8 +379,15 @@ export class EventsDetails extends RenderDetails {
     const event = Object.assign({}, this.state.item)
     event.location = {name: event.location_name, lat: event.location_lat, lng: event.location_lng}
     event.date = {dt: event.start_ts, dur: event.duration}
+    if (event.allow_tickets && event.allow_donations) {
+      event.mode = 'both'
+    } else if (event.allow_tickets) {
+      event.mode = 'tickets'
+    } else {
+      event.mode = 'donations'
+    }
     const event_fields = (
-      EVENT_FIELDS.filter(f => !['category', 'price'].includes(f.name))
+      EVENT_FIELDS.filter(f => !['category', 'price', 'suggested_donation'].includes(f.name))
       .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
     )
     const internal = !event.external_ticket_url
@@ -388,11 +395,11 @@ export class EventsDetails extends RenderDetails {
       internal ?
         <Progress key="progress" event={event} ticket_types={this.state.ticket_types} all_tickets={this.state.tickets}/>
         : null,
-      this.state.ticket_types && this.state.ticket_types.length ?
+      this.state.ticket_types ?
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
         : null,
-      this.state.suggested_donations && this.state.suggested_donations.length ?
+      this.state.suggested_donations ?
         <SuggestedDonationsTable key="sdt" ticket_types={this.state.suggested_donations} uri={this.uri}
                                  can_edit={this.can_edit_event()}/>
         : null,
