@@ -57,6 +57,8 @@ FROM (
          e.short_description,
          e.long_description,
          e.external_ticket_url,
+         e.allow_tickets,
+         e.allow_donations,
          c.event_content AS category_content,
          json_build_object(
            'name', e.location_name,
@@ -88,7 +90,7 @@ FROM (
 ) AS event,
 (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS ticket_types FROM (
-    SELECT tt.name, tt.price
+    SELECT tt.name, tt.price, tt.mode
     FROM ticket_types AS tt
     JOIN events AS e ON tt.event = e.id
     WHERE e.id = $1 AND tt.active = TRUE
@@ -301,21 +303,19 @@ class EventBread(Bread):
                 location_name=loc['name'], location_lat=loc['lat'], location_lng=loc['lng'],
             )
 
-        mode: EventMode = data.pop('mode', EventMode.tickets)
-        data.update(
-            allow_tickets=mode in (EventMode.tickets, EventMode.both),
-            allow_donations=mode in (EventMode.donations, EventMode.both),
-        )
         return data
 
     async def prepare_add_data(self, data):
         data = self.prepare(data)
 
         session = self.request['session']
+        mode: EventMode = data.pop('mode', EventMode.tickets)
         data.update(
             slug=slugify(data['name']),
             short_description=shorten(clean_markdown(data['long_description']), width=140, placeholder='…'),
             host=session['user_id'],
+            allow_tickets=mode in (EventMode.tickets, EventMode.both),
+            allow_donations=mode in (EventMode.donations, EventMode.both),
         )
 
         q = 'SELECT status FROM users WHERE id=$1'
@@ -337,6 +337,12 @@ class EventBread(Bread):
             dt = await self.conn.fetchval("SELECT start_ts AT TIME ZONE timezone FROM events WHERE id=$1", pk)
             data['start_ts'] = timezone.localize(dt)
 
+        mode: EventMode = data.pop('mode', None)
+        if mode is not None:
+            data.update(
+                allow_tickets=mode in (EventMode.tickets, EventMode.both),
+                allow_donations=mode in (EventMode.donations, EventMode.both),
+            )
         return data
 
     add_sql = """
@@ -647,13 +653,18 @@ class SetTicketTypes(UpdateView):
         if deleted_with_tickets:
             raise JsonErrors.HTTPBadRequest(message='ticket types deleted which have ticket associated with them')
 
+        mode = m.ticket_types[0].mode
+        if not all(tt.mode == mode for tt in m.ticket_types):
+            raise JsonErrors.HTTPBadRequest(message='all ticket types must have the same type')
+
         async with self.conn.transaction():
             await self.conn.fetchval(
                 """
                 DELETE FROM ticket_types
-                WHERE ticket_types.event=$1 AND NOT (ticket_types.id=ANY($2))
+                WHERE ticket_types.event=$1 AND ticket_types.mode=$2 AND NOT (ticket_types.id=ANY($3))
                 """,
                 event_id,
+                mode.value,
                 [tt.id for tt in existing],
             )
 
