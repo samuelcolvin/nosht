@@ -278,7 +278,7 @@ class EventBread(Bread):
         if session['role'] != 'admin':
             logic &= V('e.host') == session['user_id']
             if self.method == Method.edit:
-                logic &= V('e.start_ts') > Func('now')
+                logic &= V('e.start_ts') > funcs.now()
         return Where(logic)
 
     def prepare(self, data):

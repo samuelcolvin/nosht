@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+import pytz
 from aiohttp import FormData
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
@@ -125,7 +126,8 @@ async def test_bread_browse(cli, url, factory: Factory, login):
     await factory.create_cat()
     await factory.create_user()
     await factory.create_event(public=False, status='published')
-    await factory.create_event(name='second event')
+    london = pytz.timezone('Europe/London')
+    await factory.create_event(name='second event', start_ts=london.localize(datetime(2032, 6, 30, 0, 0)))
 
     await login()
 
@@ -140,7 +142,7 @@ async def test_bread_browse(cli, url, factory: Factory, login):
                 'category': 'Supper Clubs',
                 'status': 'pending',
                 'highlight': False,
-                'start_ts': '2032-06-28T19:00:00',
+                'start_ts': '2032-06-30T00:00:00',
                 'duration': 3600,
             },
             {
