@@ -175,6 +175,8 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'category': 'Supper Clubs',
         'status': 'published',
         'highlight': False,
+        'allow_donations': False,
+        'allow_tickets': True,
         'start_ts': '2032-06-28T19:00:00',
         'timezone': 'Europe/London',
         'duration': 3600,
@@ -285,6 +287,8 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'name': 'foobar',
         'slug': 'foobar',
         'highlight': False,
+        'allow_donations': False,
+        'allow_tickets': True,
         'start_ts': datetime(2032, 2, 1, 19, 0, tzinfo=timezone.utc),
         'timezone': 'Europe/London',
         'duration': timedelta(seconds=7200),
@@ -300,7 +304,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'image': None,
         'secondary_image': None,
     }
-    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types where mode=$1', 'ticket')
     tt = dict(await db_conn.fetchrow('SELECT event, name, price, slots_used, active FROM ticket_types'))
     assert tt == {
         'event': event_id,
