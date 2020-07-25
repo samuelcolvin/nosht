@@ -178,6 +178,12 @@ class DateModel(BaseModel):
     dur: Optional[int]
 
 
+class EventType(Enum):
+    tickets = 'tickets'
+    donations = 'donations'
+    both = 'both'
+
+
 class EventBread(Bread):
     class Model(BaseModel):
         name: constr(max_length=63)
@@ -185,6 +191,8 @@ class EventBread(Bread):
         public: bool = True
         timezone: TzInfo
         date: DateModel
+
+        event_type: EventType = EventType.tickets
 
         class LocationModel(BaseModel):
             lat: float
@@ -194,6 +202,7 @@ class EventBread(Bread):
         location: LocationModel = None
         ticket_limit: int = None
         price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+        suggested_donation: condecimal(ge=1, max_digits=6, decimal_places=2) = None
         long_description: str
         short_description: str = None
         external_ticket_url: HttpUrl = None
@@ -296,11 +305,15 @@ class EventBread(Bread):
         data = self.prepare(data)
 
         session = self.request['session']
+        event_type: EventType = data.pop('event_type')
         data.update(
             slug=slugify(data['name']),
             short_description=shorten(clean_markdown(data['long_description']), width=140, placeholder='…'),
             host=session['user_id'],
+            allow_tickets=event_type in (EventType.tickets, EventType.both),
+            allow_donations=event_type in (EventType.donations, EventType.both),
         )
+
         q = 'SELECT status FROM users WHERE id=$1'
         if session['role'] == 'admin' or 'active' == await self.conn.fetchval(q, session['user_id']):
             data['status'] = 'published'
@@ -330,14 +343,23 @@ class EventBread(Bread):
 
     async def add_execute(self, *, slug, **data):
         price = data.pop('price', None)
+        # we always create a suggested donation and the amount cannot be blank
+        suggested_donation = data.pop('suggested_donation', price or 10)
+
         async with self.conn.transaction():
             pk = await super().add_execute(slug=slug, **data)
             while pk is None:
                 # event with this slug already exists
                 pk = await super().add_execute(slug=slug + '-' + pseudo_random_str(4), **data)
+
+            # alwasy create both a ticket type and a suggested donation in case the mode of the event changes in future
             await self.conn.execute_b(
                 'INSERT INTO ticket_types (:values__names) VALUES :values',
                 values=Values(event=pk, name='Standard', price=price),
+            )
+            await self.conn.execute_b(
+                'INSERT INTO ticket_types (:values__names) VALUES :values',
+                values=Values(event=pk, name='Standard', price=suggested_donation, mode='donation'),
             )
             action_id = await record_action_id(
                 self.request, self.request['session']['user_id'], ActionTypes.create_event, event_id=pk
@@ -528,17 +550,17 @@ async def event_tickets_export(request):
 
 
 event_ticket_types_sql = """
-SELECT json_build_object('ticket_types', tickets)
+SELECT json_build_object('ticket_types', ticket_types)
 FROM (
-  SELECT array_to_json(array_agg(row_to_json(t))) AS tickets FROM (
-    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active, COUNT(t.id) > 0 AS has_tickets
+  SELECT array_to_json(array_agg(row_to_json(t))) AS ticket_types FROM (
+    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active, COUNT(t.id) > 0 AS has_tickets, tt.mode
     FROM ticket_types AS tt
     LEFT JOIN tickets AS t ON tt.id = t.ticket_type
     WHERE tt.event=$1
     GROUP BY tt.id
     ORDER BY tt.id
   ) AS t
-) AS tickets
+) AS ticket_types
 """
 # TODO could add user here
 event_updates_sent_sql = """
@@ -567,18 +589,31 @@ async def event_updates_sent(request):
     return raw_json_response(json_str)
 
 
+class TicketTypeMode(Enum):
+    ticket = 'ticket'
+    donation = 'donation'
+
+
 class SetTicketTypes(UpdateView):
     class Model(BaseModel):
         class TicketType(BaseModel):
             name: str
             id: int = None
             slots_used: conint(ge=1)
+            mode: TicketTypeMode = TicketTypeMode.ticket
             active: bool
             price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
 
             @validator('active', pre=True)
             def none_bool(cls, v):
                 return v or False
+
+            def dict(self, *args, **kwargs):
+                d = super().dict(*args, **kwargs)
+                mode = d.get('mode')
+                if mode is not None:
+                    d['mode'] = mode.value
+                return d
 
         ticket_types: List[TicketType]
 

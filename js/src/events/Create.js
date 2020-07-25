@@ -26,6 +26,18 @@ export const EVENT_FIELDS = [
     type: 'select',
     choices: [],
     required: true,
+    help_text: 'The Category of event you want to host.',
+  },
+  {
+    name: 'event_type',
+    type: 'select',
+    choices: [
+      {value: 'tickets', display_name: 'Ticketed Only - allow people to book tickets, either paid or for free'},
+      {value: 'donations', display_name: 'Donations Only - allow people to make donations'},
+      {value: 'both', display_name: 'Tickets and donations - allow people to either book tickets or make donations'},
+    ],
+    required: true,
+    default: 'tickets',
     help_text: 'The type of event you want to host.',
   },
   {
@@ -35,7 +47,7 @@ export const EVENT_FIELDS = [
     default: true,
     help_text: 'Tick to make this event public so it will be visible to anyone on the site and ' +
         'appear in public search results. If your event is not public you will need to share the event link ' +
-        'with people for them to view and book this event.',
+        'with people for them to view and book and donate to this event.',
   },
   {
     name: 'date',
@@ -43,7 +55,8 @@ export const EVENT_FIELDS = [
     type: 'datetime',
     required: true,
     help_text: 'Let guests know when the event will start and how long it will go on for, you can add more ' +
-                'details about exact timings in the description below.',
+         'details about exact timings in the description below. If this event is for donations only, ' +
+         'this date will be the deadline for donations.',
   },
   {
     name: 'timezone',
@@ -68,6 +81,12 @@ export const EVENT_FIELDS = [
     step: 0.01, min: 1, max: 1000,
     help_text: "Price of standard tickets for your event. Leave blank if tickets are free. " +
                "You can add more ticket types once you've created the event.",
+  },
+  {
+    name: 'suggested_donation',
+    type: 'number',
+    step: 0.01, min: 1, max: 1000,
+    help_text: "Suggested amount for donations. You can add more suggested amounts once you've created the event.",
   },
   {
     name: 'external_ticket_url',
@@ -116,10 +135,13 @@ class CreateEvent extends React.Component {
 
   fields () {
     const choices = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
+    const event_type = this.state.form_data.event_type || 'tickets'
     return (
       EVENT_FIELDS
       .filter(f => f.name !== 'short_description' && f.name !== 'timezone')
       .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
+      .filter(f => event_type !== 'donations' || (f.name !== 'price' && f.name !== 'ticket_limit'))
+      .filter(f => event_type !== 'tickets' || f.name !== 'suggested_donation')
       .map(f => f.name === 'category' ? Object.assign({}, f, {choices}) : f)
     )
   }

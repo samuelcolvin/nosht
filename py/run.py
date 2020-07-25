@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.8
 import asyncio
 import locale
 import logging.config
@@ -18,7 +18,10 @@ logger = logging.getLogger('nosht.run')
 def main():
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     logging_client = setup_logging()
-    locale.setlocale(locale.LC_ALL, 'en_GB.utf8')
+    try:
+        locale.setlocale(locale.LC_ALL, 'en_GB.utf8')
+    except locale.Error:
+        pass
     try:
         settings = Settings()
         try:
@@ -40,6 +43,7 @@ def main():
             logger.info('running web server...')
             from web.main import create_app
 
+            debug(settings.s3_domain)
             app = create_app(settings=settings)
             web.run_app(app, port=settings.port, shutdown_timeout=6, access_log=None, print=lambda *args: None)
         elif command == 'worker':

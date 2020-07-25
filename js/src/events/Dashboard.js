@@ -13,7 +13,7 @@ import {InfoModal} from '../general/Modal'
 import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
-import {TicketTypes, TicketTypeTable} from './TicketTypes'
+import {TicketTypes, TicketTypeTable, SuggestedDonationsTable} from './TicketTypes'
 import {Tickets, CancelTicket, WaitingList} from './Tickets'
 import {EVENT_FIELDS} from './Create'
 import {ModalDropzoneForm} from '../forms/Drop'
@@ -208,7 +208,8 @@ export class EventsDetails extends RenderDetails {
       {
         tickets: r[0].tickets,
         waiting_list: r[0].waiting_list,
-        ticket_types: r[1].ticket_types,
+        ticket_types: r[1].ticket_types.filter(tt => tt.mode === 'ticket'),
+        suggested_donations: r[1].ticket_types.filter(tt => tt.mode === 'donation'),
         event_updates: r[2].event_updates,
         buttons: [
           can_edit && {name: 'Edit', link: this.uri + 'edit/'},
@@ -387,9 +388,13 @@ export class EventsDetails extends RenderDetails {
       internal ?
         <Progress key="progress" event={event} ticket_types={this.state.ticket_types} all_tickets={this.state.tickets}/>
         : null,
-      this.state.ticket_types ?
+      this.state.ticket_types && this.state.ticket_types.length ?
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
+        : null,
+      this.state.suggested_donations && this.state.suggested_donations.length ?
+        <SuggestedDonationsTable key="sdt" ticket_types={this.state.suggested_donations} uri={this.uri}
+                                 can_edit={this.can_edit_event()}/>
         : null,
       internal ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
       internal ? <WaitingList key="wl" waiting_list={this.state.waiting_list} user={this.props.ctx.user}/> : null,
@@ -450,10 +455,20 @@ export class EventsDetails extends RenderDetails {
       this.state.ticket_types ?
         <TicketTypes key="edit-ticket-types"
                      event={event}
+                     parent_uri={this.uri}
                      ticket_types={this.state.ticket_types}
                      regex={/ticket-types\/$/}
                      update={this.update}
                      title="Customise Ticket Types"/>
+        : null,
+      this.state.ticket_types ?
+        <TicketTypes key="edit-suggested-donations"
+                     event={event}
+                     parent_uri={this.uri}
+                     ticket_types={this.state.suggested_donations}
+                     regex={/suggested-donations\/$/}
+                     update={this.update}
+                     title="Customise Suggested Donations"/>
         : null,
     ]
   }

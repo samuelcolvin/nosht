@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION check_tickets_remaining(event_id INT, ttl INT) RETURN
     SELECT coalesce(SUM(tt.slots_used), 0) INTO tickets_taken_
     FROM tickets
     JOIN ticket_types AS tt ON tickets.ticket_type=tt.id
-    WHERE tickets.event=event_id AND
+    WHERE tickets.event=event_id AND tt.mode='ticket' AND
           (status='booked' or (status='reserved' and now() - created_ts < (ttl || ' seconds')::interval));
 
     UPDATE events SET tickets_taken=tickets_taken_ WHERE id=event_id;

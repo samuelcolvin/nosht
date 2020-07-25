@@ -95,6 +95,8 @@ CREATE TABLE events (
   short_description VARCHAR(140),
   long_description TEXT,
   public BOOLEAN DEFAULT TRUE,
+  allow_tickets BOOLEAN NOT NULL DEFAULT TRUE,
+  allow_donations BOOLEAN NOT NULL DEFAULT FALSE,
 
   location_name VARCHAR(140),
   location_lat FLOAT,
@@ -153,15 +155,18 @@ CREATE INDEX action_event ON actions USING btree (event);
 CREATE INDEX action_type ON actions USING btree (type);
 CREATE INDEX action_ts ON actions USING btree (ts);
 
+CREATE TYPE TICKET_MODE AS ENUM ('ticket', 'donation');
 
 CREATE TABLE ticket_types (
   id SERIAL PRIMARY KEY,
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
   name VARCHAR(63) NOT NULL,
+  mode TICKET_MODE NOT NULL DEFAULT 'ticket',
   price NUMERIC(7, 2) CONSTRAINT price_gte_1 CHECK (price >= 1),
   slots_used INT DEFAULT 1 CONSTRAINT slots_used_gt_0 CHECK (slots_used > 0),
   active BOOLEAN DEFAULT TRUE
 );
+CREATE INDEX ticket_type_mode ON ticket_types USING btree (mode);
 
 
 CREATE TYPE TICKET_STATUS AS ENUM ('reserved', 'booked', 'cancelled');

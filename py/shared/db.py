@@ -635,3 +635,12 @@ async def add_waiting_list(conn, settings, **kwargs):
     waiting_list_sql = m.group(1).strip(' \n')
     print('running waiting-list table sql...')
     await conn.execute(waiting_list_sql)
+
+
+@patch
+async def add_donations(conn, settings, **kwargs):
+    """
+    create allow_donations and allow_tickets fields to events
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN allow_donations BOOLEAN NOT NULL DEFAULT FALSE')
+    await conn.execute('ALTER TABLE events ADD COLUMN allow_tickets BOOLEAN NOT NULL DEFAULT TRUE')
