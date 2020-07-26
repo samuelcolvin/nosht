@@ -1,13 +1,13 @@
 import logging
 from secrets import compare_digest
 from time import time
-from typing import List
+from typing import List, Optional
 
 from aiohttp.web_exceptions import HTTPTemporaryRedirect
 from asyncpg import CheckViolationError
 from buildpg import MultipleValues, Values
 from buildpg.asyncpg import BuildPgConnection
-from pydantic import BaseModel, EmailStr, constr, validator
+from pydantic import BaseModel, EmailStr, confloat, constr, validator
 
 from shared.utils import waiting_list_sig
 from web.actions import ActionTypes, record_action, record_action_id
@@ -16,7 +16,7 @@ from web.bread import UpdateView
 from web.stripe import BookFreeModel, Reservation, book_free, stripe_buy_intent
 from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, request_root
 
-from .events import check_event_sig
+from .events import TicketTypeMode, check_event_sig
 
 logger = logging.getLogger('nosht.booking')
 
@@ -58,10 +58,10 @@ get_donation_ticket_types = """
 SELECT json_build_object('ticket_types', ticket_types)
 FROM (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS ticket_types FROM (
-    SELECT id, name, price::float amount
+    SELECT id, name, price::float amount, custom_amount
     FROM ticket_types
     WHERE event=$1 AND mode='donation' AND active=TRUE
-    ORDER BY id
+    ORDER BY price
   ) AS t
 ) AS ticket_types
 """
@@ -92,6 +92,7 @@ class ReserveTickets(UpdateViewAuth):
     class Model(BaseModel):
         tickets: List[TicketModel]
         ticket_type: int
+        custom_amount: Optional[confloat(ge=1, le=1000)] = None
 
         @validator('tickets')
         def check_ticket_count(cls, v):
@@ -126,13 +127,20 @@ class ReserveTickets(UpdateViewAuth):
             raise JsonErrors.HTTPBadRequest(message='Cannot reserve ticket for an externally ticketed event')
 
         r = await self.conn.fetchrow(
-            'SELECT price FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2', event_id, m.ticket_type
+            'SELECT price, mode, custom_amount FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2',
+            event_id,
+            m.ticket_type,
         )
         if not r:
             raise JsonErrors.HTTPBadRequest(message='Ticket type not found')
-        item_price, *_ = r
+        item_price, ticket_type_mode_, custom_amount_tt = r
+        ticket_type_mode: TicketTypeMode = TicketTypeMode(ticket_type_mode_)
 
-        if self.settings.ticket_reservation_precheck:  # should only be false during CheckViolationError tests
+        if custom_amount_tt:
+            item_price = m.custom_amount
+
+        # ticket_reservation_precheck should only be false during CheckViolationError tests
+        if ticket_type_mode == TicketTypeMode.ticket and self.settings.ticket_reservation_precheck:
             tickets_remaining = await self.conn.fetchval(
                 'SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl
             )
@@ -182,7 +190,10 @@ class ReserveTickets(UpdateViewAuth):
                     company_id=self.request['company_id'],
                     values=MultipleValues(*ticket_values),
                 )
-                await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
+                if ticket_type_mode == TicketTypeMode.ticket:
+                    await self.conn.execute(
+                        'SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl
+                    )
         except CheckViolationError as exc:
             if exc.constraint_name != 'ticket_limit_check':  # pragma: no branch
                 raise  # pragma: no cover
@@ -206,6 +217,7 @@ class ReserveTickets(UpdateViewAuth):
             await self.app['donorfy_actor'].update_user(self.request['session']['user_id'], update_user=False)
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
+            'mode': ticket_type_mode.value,
             'action_id': action_id,
             'ticket_count': ticket_count,
             'item_price': item_price and float(item_price),

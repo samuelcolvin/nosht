@@ -110,7 +110,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
       </Col>
 
       {event.allow_tickets ? (
-        <Col md="auto" foobar={console.log(event)}>
+        <Col md="auto">
           <FontAwesomeIcon icon="pound-sign" className="mx-1 text-success"/>
             {ticket_types.filter(tt => tt.mode === 'ticket').map(tt => tt.price).filter(unique).map((p, i) => (
               <span key={i}>
@@ -122,7 +122,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
       ) : null}
 
       {event.allow_donations ? (
-        <Col md="auto" foobar={console.log(event)}>
+        <Col md="auto">
           <FontAwesomeIcon icon="hand-holding-heart" className="mx-1 text-success"/>
             {ticket_types.filter(tt => tt.mode === 'donation').map(tt => tt.price).filter(unique).map((p, i) => (
               <span key={i}>

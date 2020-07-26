@@ -653,4 +653,5 @@ async def add_donations(conn, settings, **kwargs):
     await conn.execute('ALTER TABLE events ADD COLUMN allow_donations BOOLEAN NOT NULL DEFAULT FALSE')
     await conn.execute('ALTER TABLE events ADD COLUMN allow_tickets BOOLEAN NOT NULL DEFAULT TRUE')
     await conn.execute("ALTER TABLE ticket_types ADD COLUMN mode TICKET_MODE NOT NULL DEFAULT 'ticket'")
+    await conn.execute('ALTER TABLE ticket_types ADD COLUMN custom_amount BOOL NOT NULL DEFAULT FALSE')
     await conn.execute('CREATE INDEX ticket_type_mode ON ticket_types USING btree (mode)')

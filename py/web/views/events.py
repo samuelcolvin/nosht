@@ -93,8 +93,8 @@ FROM (
     SELECT tt.name, tt.price, tt.mode
     FROM ticket_types AS tt
     JOIN events AS e ON tt.event = e.id
-    WHERE e.id = $1 AND tt.active = TRUE
-    ORDER BY tt.id
+    WHERE e.id = $1 AND tt.active = TRUE AND tt.custom_amount = FALSE
+    ORDER BY tt.price
   ) AS t
 ) AS ticket_types,
 (
@@ -362,14 +362,14 @@ class EventBread(Bread):
                 # event with this slug already exists
                 pk = await super().add_execute(slug=slug + '-' + pseudo_random_str(4), **data)
 
-            # alwasy create both a ticket type and a suggested donation in case the mode of the event changes in future
+            # always create both a ticket type and a suggested donation in case the mode of the event changes in future
             await self.conn.execute_b(
                 'INSERT INTO ticket_types (:values__names) VALUES :values',
-                values=Values(event=pk, name='Standard', price=price),
-            )
-            await self.conn.execute_b(
-                'INSERT INTO ticket_types (:values__names) VALUES :values',
-                values=Values(event=pk, name='Standard', price=suggested_donation, mode='donation'),
+                values=MultipleValues(
+                    Values(event=pk, name='Standard', price=price, mode='ticket', custom_amount=False),
+                    Values(event=pk, name='Standard', price=suggested_donation, mode='donation', custom_amount=False),
+                    Values(event=pk, name='Custom Amount', price=None, mode='donation', custom_amount=True),
+                ),
             )
             action_id = await record_action_id(
                 self.request, self.request['session']['user_id'], ActionTypes.create_event, event_id=pk

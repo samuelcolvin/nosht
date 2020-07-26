@@ -162,6 +162,7 @@ CREATE TABLE ticket_types (
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
   name VARCHAR(63) NOT NULL,
   mode TICKET_MODE NOT NULL DEFAULT 'ticket',
+  custom_amount BOOL NOT NULL DEFAULT FALSE,
   price NUMERIC(7, 2) CONSTRAINT price_gte_1 CHECK (price >= 1),
   slots_used INT DEFAULT 1 CONSTRAINT slots_used_gt_0 CHECK (slots_used > 0),
   active BOOLEAN DEFAULT TRUE

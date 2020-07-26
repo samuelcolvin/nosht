@@ -1,17 +1,9 @@
 import React from 'react'
-import {
-  Button,
-  Col,
-  Form as BootstrapForm,
-  ModalBody,
-  Row,
-} from 'reactstrap'
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
+import {Form as BootstrapForm, ModalBody} from 'reactstrap'
 import WithContext from '../utils/context'
 import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
 import {MoneyFree, format_money} from '../general/Money'
-import {PricingList} from './BookingStripe'
 import {Overlay} from './Stripe'
 import {User} from './BookingTickets'
 
@@ -29,13 +21,12 @@ const DonationForm = props => {
   const setDonatingState = props.setDonatingState
   const currency = props.ctx.company.company.currency
 
-  const submit = e => {
-    e.preventDefault()
-    setDonatingState({amount_confirmed: true})
-  }
+  const custom_amount_tt = state.ticket_types.find(tt => tt.custom_amount)
+  let custom_amount_id = custom_amount_tt && custom_amount_tt.id
 
   return (
-    <BootstrapForm onSubmit={submit}>
+    <BootstrapForm onSubmit={props.reserve}>
+      <Overlay element_id="modal-body" show={state.submitting_reservation} text="preparing donation"/>
       <ModalBody id="modal-body">
         <User {...props}/>
         <div className="py-2">
@@ -46,7 +37,7 @@ const DonationForm = props => {
             Select how much you would like to donate.
           </div>
           <div className="px-4 pb-2">
-            {state.ticket_types.map(tt => (
+            {state.ticket_types.filter(tt => !tt.custom_amount).map(tt => (
               <label key={tt.id} className="d-block">
                 <input
                   className="mr-2"
@@ -61,16 +52,16 @@ const DonationForm = props => {
               <input
                 className="mr-2"
                 type="radio"
-                checked={state.selected_ticket_type === 'custom'}
-                onChange={() => setDonatingState({selected_ticket_type: 'custom', donation_amount: null})}
+                checked={state.selected_ticket_type === custom_amount_id}
+                onChange={() => setDonatingState({selected_ticket_type: custom_amount_id, donation_amount: null})}
               />
               <b>Custom Amount</b>
             </label>
           </div>
-          {state.selected_ticket_type === 'custom' ? (
-              <Input value={state.donation_amount}
-                     field={custom_donate_field}
-                     onChange={v => setDonatingState({donation_amount: v})}/>
+          {state.selected_ticket_type === custom_amount_id ? (
+            <Input value={state.donation_amount}
+                   field={custom_donate_field}
+                   onChange={v => setDonatingState({donation_amount: v})}/>
           ) : null}
         </div>
 
@@ -79,7 +70,6 @@ const DonationForm = props => {
                  field={{name: 'allow_marketing', title: props.event.allow_marketing_message, type: 'bool'}}
                  onChange={v => setDonatingState({allow_marketing: true})}/>
         }
-
       </ModalBody>
 
       <ModalFooter

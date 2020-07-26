@@ -66,7 +66,7 @@ class StripeBookingForm extends React.Component {
   }
 
   async cancel_reservation () {
-    if (!this.state.submitting && !this.state.cancelled && !this.props.reservation.donation) {
+    if (!this.state.submitting && !this.state.cancelled) {
       this.setState({cancelled: true})
       try {
         await requests.post(`events/cancel-reservation/`, {
@@ -159,7 +159,7 @@ class StripeBookingForm extends React.Component {
     const res = this.props.reservation
     let items
     const expired = this.state.time_left < 1
-    if (res.donation) {
+    if (res.mode === 'donation') {
       items = [
         {name: 'Donating', value: <Money>{res.total_price}</Money>},
       ]
@@ -203,6 +203,12 @@ class StripeBookingForm extends React.Component {
         !this.state.payment.payment_method_id &&
         !this.state.buy_offline)
     )
+    let pay_label = 'Confirm'
+    if (res.mode === 'donation') {
+      pay_label = 'Donate'
+    } else if (res.total_price) {
+      pay_label = 'Buy Now'
+    }
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
         <ModalBody>
@@ -217,7 +223,7 @@ class StripeBookingForm extends React.Component {
           </Row>
         </ModalBody>
         <ModalFooter finished={this.props.finished}
-                     label={res.total_price ? 'Buy Now' : 'Confirm'}
+                     label={pay_label}
                      cancel_disabled={this.state.submitting}
                      disabled={Boolean(confirm_disabled)}/>
       </BootstrapForm>
