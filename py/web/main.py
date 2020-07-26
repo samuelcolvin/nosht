@@ -35,6 +35,7 @@ from .views.booking import (
     CancelReservedTickets,
     ReserveTickets,
     booking_info,
+    donating_info,
     waiting_list_add,
     waiting_list_remove,
 )
@@ -172,8 +173,12 @@ def create_app(*, settings: Settings = None, logging_client=None):
             web.post(r'/events/cancel-reservation/', CancelReservedTickets.view(), name='event-cancel-reservation'),
             web.get(r'/events/{category}/{event}/', event_get, name='event-get-public'),
             web.get(r'/events/{category}/{event}/booking-info/', booking_info, name='event-booking-info-public'),
+            web.get(r'/events/{category}/{event}/donating-info/', donating_info, name='event-donating-info-public'),
             web.get(r'/events/{category}/{event}/{sig}/', event_get, name='event-get-private'),
             web.get(r'/events/{category}/{event}/{sig}/booking-info/', booking_info, name='event-booking-info-private'),
+            web.get(
+                r'/events/{category}/{event}/{sig}/donating-info/', donating_info, name='event-donating-info-private'
+            ),
             # stripe views
             web.post(r'/stripe/webhook/', stripe_webhook, name='stripe-webhook'),
             web.get(

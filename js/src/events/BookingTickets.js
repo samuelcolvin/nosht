@@ -35,7 +35,7 @@ export class User extends React.Component {
     return (
       <div className="text-right">
         <small className="text-muted">
-          Booking as:
+          {this.props.donating ? 'Donating' : 'Booking'} as:
         </small>
         &nbsp;
         <small className="text-dark">

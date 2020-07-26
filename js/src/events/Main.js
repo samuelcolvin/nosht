@@ -12,6 +12,7 @@ import Map from '../general/Map'
 import When from '../general/When'
 import {MoneyFree} from '../general/Money'
 import BookEvent from './Book'
+import DonateToEvent from './Donate'
 import WaitingList from './WaitingList'
 import Thanks from '../donations/Thanks'
 
@@ -122,11 +123,11 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
 
       {event.allow_donations ? (
         <Col md="auto" foobar={console.log(event)}>
-          <FontAwesomeIcon icon="hand-holding-usd" className="mx-1 text-success"/>
+          <FontAwesomeIcon icon="hand-holding-heart" className="mx-1 text-success"/>
             {ticket_types.filter(tt => tt.mode === 'donation').map(tt => tt.price).filter(unique).map((p, i) => (
               <span key={i}>
                 {i > 0 && <span className="px-1">/</span>}
-                <MoneyFree NoSymbol={i === 0}>{p}</MoneyFree>
+                <MoneyFree>{p}</MoneyFree>
               </span>
             ))}
         </Col>
@@ -181,7 +182,7 @@ class Event extends React.Component {
   }
 
   get_data = async () => {
-    if (this.state.event && this.props.location.pathname.match(/\/(waiting-list|book)\/$/)) {
+    if (this.state.event && this.props.location.pathname.match(/\/(waiting-list|book|donate)\/$/)) {
       // don't re-get the data when opening the booking or waiting-list forms
       return
     }
@@ -230,6 +231,13 @@ class Event extends React.Component {
           parent_uri={this.uri}
           event={this.state.event}
           params={this.props.match.params}
+        />
+        <DonateToEvent
+          {...this.props}
+          parent_uri={this.uri}
+          event={this.state.event}
+          params={this.props.match.params}
+          set_complete={() => this.setState({booking_complete: true})}
         />
       </div>
     )

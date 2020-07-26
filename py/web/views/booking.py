@@ -14,7 +14,7 @@ from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_auth
 from web.bread import UpdateView
 from web.stripe import BookFreeModel, Reservation, book_free, stripe_buy_intent
-from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, request_root
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, request_root
 
 from .events import check_event_sig
 
@@ -44,13 +44,34 @@ async def booking_info(request):
         request['session']['user_id'],
     )
     ticket_types = await conn.fetch(
-        'SELECT id, name, price::float FROM ticket_types WHERE event=$1 AND active=TRUE ORDER BY id', event_id
+        "SELECT id, name, price::float FROM ticket_types WHERE event=$1 AND mode='ticket' AND active=TRUE ORDER BY id",
+        event_id,
     )
     return json_response(
         tickets_remaining=tickets_remaining if (tickets_remaining and tickets_remaining < 10) else None,
         existing_tickets=existing_tickets or 0,
         ticket_types=[dict(tt) for tt in ticket_types],
     )
+
+
+get_donation_ticket_types = """
+SELECT json_build_object('ticket_types', ticket_types)
+FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS ticket_types FROM (
+    SELECT id, name, price::float amount
+    FROM ticket_types
+    WHERE event=$1 AND mode='donation' AND active=TRUE
+    ORDER BY id
+  ) AS t
+) AS ticket_types
+"""
+
+
+@is_auth
+async def donating_info(request):
+    event_id = await check_event_sig(request)
+    json_str = await request['conn'].fetchval(get_donation_ticket_types, event_id)
+    return raw_json_response(json_str)
 
 
 class TicketModel(BaseModel):

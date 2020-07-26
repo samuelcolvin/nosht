@@ -49,8 +49,12 @@ class StripeBookingForm extends React.Component {
   }
 
   componentDidMount () {
-    this.update_timer()
-    this.clear = setInterval(this.update_timer, 500)
+    if (this.props.reservation.timeout) {
+      this.update_timer()
+      this.clear = setInterval(this.update_timer, 500)
+    } else {
+      this.setState({time_left: 3600})
+    }
   }
 
   componentWillUnmount () {
@@ -62,7 +66,7 @@ class StripeBookingForm extends React.Component {
   }
 
   async cancel_reservation () {
-    if (!this.state.submitting && !this.state.cancelled) {
+    if (!this.state.submitting && !this.state.cancelled && !this.props.reservation.donation) {
       this.setState({cancelled: true})
       try {
         await requests.post(`events/cancel-reservation/`, {
@@ -137,7 +141,7 @@ class StripeBookingForm extends React.Component {
       )
     }
     if (expired) {
-      return <h4 className="has-error">Rervation expired</h4>
+      return <h4 className="has-error">Reservation expired</h4>
     } else if (!this.props.reservation.total_price || this.state.buy_offline) {
       return tncs_field && <div style={{height: 40}}>{this.state.submitting ? null : tncs_field}</div>
     } else {
@@ -153,20 +157,24 @@ class StripeBookingForm extends React.Component {
 
   render () {
     const res = this.props.reservation
-    const items = [
-      {
-        name: 'Reservation expires in',
-        value: `${this.state.time_left} minutes`,
-        className: this.state.time_left < 3 ? 'mb-4 has-error h4' : 'mb-4'
-      },
-      {name: 'Tickets', value: res.ticket_count},
-      {name: 'Ticket Price', value: <MoneyFree>{res.item_price}</MoneyFree>},
-      res.item_price && {name: 'Extra donated to cover Costs', value: <Money>{res.extra_donated}</Money>},
-      {name: 'Total Price', value: <MoneyFree>{res.total_price}</MoneyFree>},
-    ]
+    let items
     const expired = this.state.time_left < 1
-    if (expired) {
-      items.splice(0, 1)
+    if (res.donation) {
+      items = [
+        {name: 'Donating', value: <Money>{res.total_price}</Money>},
+      ]
+    } else {
+      items = [
+        !expired && {
+          name: 'Reservation expires in',
+          value: `${this.state.time_left} minutes`,
+          className: this.state.time_left < 3 ? 'mb-4 has-error h4' : 'mb-4'
+        },
+        {name: 'Tickets', value: res.ticket_count},
+        {name: 'Ticket Price', value: <MoneyFree>{res.item_price}</MoneyFree>},
+        res.item_price && {name: 'Extra donated to cover Costs', value: <Money>{res.extra_donated}</Money>},
+        {name: 'Total Price', value: <MoneyFree>{res.total_price}</MoneyFree>},
+      ]
     }
 
     let buy_offline_field = null
