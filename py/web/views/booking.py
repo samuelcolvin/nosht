@@ -16,7 +16,7 @@ from web.bread import UpdateView
 from web.stripe import BookFreeModel, Reservation, book_free, stripe_buy_intent
 from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, request_root
 
-from .events import TicketTypeMode, check_event_sig
+from .events import check_event_sig
 
 logger = logging.getLogger('nosht.booking')
 
@@ -127,20 +127,13 @@ class ReserveTickets(UpdateViewAuth):
             raise JsonErrors.HTTPBadRequest(message='Cannot reserve ticket for an externally ticketed event')
 
         r = await self.conn.fetchrow(
-            'SELECT price, mode, custom_amount FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2',
-            event_id,
-            m.ticket_type,
+            'SELECT price FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2', event_id, m.ticket_type,
         )
         if not r:
             raise JsonErrors.HTTPBadRequest(message='Ticket type not found')
-        item_price, ticket_type_mode_, custom_amount_tt = r
-        ticket_type_mode: TicketTypeMode = TicketTypeMode(ticket_type_mode_)
+        item_price, *_ = r
 
-        if custom_amount_tt:
-            item_price = m.custom_amount
-
-        # ticket_reservation_precheck should only be false during CheckViolationError tests
-        if ticket_type_mode == TicketTypeMode.ticket and self.settings.ticket_reservation_precheck:
+        if self.settings.ticket_reservation_precheck:  # should only be false during CheckViolationError tests
             tickets_remaining = await self.conn.fetchval(
                 'SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl
             )
@@ -190,10 +183,7 @@ class ReserveTickets(UpdateViewAuth):
                     company_id=self.request['company_id'],
                     values=MultipleValues(*ticket_values),
                 )
-                if ticket_type_mode == TicketTypeMode.ticket:
-                    await self.conn.execute(
-                        'SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl
-                    )
+                await self.conn.execute('SELECT check_tickets_remaining($1, $2)', event_id, self.settings.ticket_ttl)
         except CheckViolationError as exc:
             if exc.constraint_name != 'ticket_limit_check':  # pragma: no branch
                 raise  # pragma: no cover
@@ -217,7 +207,6 @@ class ReserveTickets(UpdateViewAuth):
             await self.app['donorfy_actor'].update_user(self.request['session']['user_id'], update_user=False)
         return {
             'booking_token': encrypt_json(self.app, res.dict()),
-            'mode': ticket_type_mode.value,
             'action_id': action_id,
             'ticket_count': ticket_count,
             'item_price': item_price and float(item_price),

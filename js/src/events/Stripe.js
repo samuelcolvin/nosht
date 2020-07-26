@@ -11,9 +11,9 @@ import {StripeProvider, Elements, CardElement, injectStripe} from 'react-stripe-
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import {get_component_name, load_script, window_property} from '../utils'
 import WithContext from '../utils/context'
-import requests from '../utils/requests'
 import Input from '../forms/Input'
 import {Waiting} from '../general/Errors'
+import requests from '../utils/requests'
 
 
 export function StripeContext (WrappedComponent) {

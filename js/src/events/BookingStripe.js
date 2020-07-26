@@ -49,12 +49,8 @@ class StripeBookingForm extends React.Component {
   }
 
   componentDidMount () {
-    if (this.props.reservation.timeout) {
-      this.update_timer()
-      this.clear = setInterval(this.update_timer, 500)
-    } else {
-      this.setState({time_left: 3600})
-    }
+    this.update_timer()
+    this.clear = setInterval(this.update_timer, 500)
   }
 
   componentWillUnmount () {
@@ -157,28 +153,22 @@ class StripeBookingForm extends React.Component {
 
   render () {
     const res = this.props.reservation
-    let items
     const expired = this.state.time_left < 1
-    if (res.mode === 'donation') {
-      items = [
-        {name: 'Donating', value: <Money>{res.total_price}</Money>},
-      ]
-    } else {
-      items = [
-        !expired && {
-          name: 'Reservation expires in',
-          value: `${this.state.time_left} minutes`,
-          className: this.state.time_left < 3 ? 'mb-4 has-error h4' : 'mb-4'
-        },
-        {name: 'Tickets', value: res.ticket_count},
-        {name: 'Ticket Price', value: <MoneyFree>{res.item_price}</MoneyFree>},
-        res.item_price && {name: 'Extra donated to cover Costs', value: <Money>{res.extra_donated}</Money>},
-        {name: 'Total Price', value: <MoneyFree>{res.total_price}</MoneyFree>},
-      ]
-    }
+
+    const items = [
+      !expired && {
+        name: 'Reservation expires in',
+        value: `${this.state.time_left} minutes`,
+        className: this.state.time_left < 3 ? 'mb-4 has-error h4' : 'mb-4'
+      },
+      {name: 'Tickets', value: res.ticket_count},
+      {name: 'Ticket Price', value: <MoneyFree>{res.item_price}</MoneyFree>},
+      res.item_price && {name: 'Extra donated to cover Costs', value: <Money>{res.extra_donated}</Money>},
+      {name: 'Total Price', value: <MoneyFree>{res.total_price}</MoneyFree>},
+    ]
 
     let buy_offline_field = null
-    if (res.total_price && res.mode === 'ticket' &&
+    if (res.total_price &&
         (this.props.ctx.user.role === 'admin' || this.props.ctx.user.id === this.props.event.host_id)) {
       const f = {
         name: 'buy_offline',
@@ -203,12 +193,6 @@ class StripeBookingForm extends React.Component {
         !this.state.payment.payment_method_id &&
         !this.state.buy_offline)
     )
-    let confirm_label = 'Confirm'
-    if (res.mode === 'donation') {
-      confirm_label = 'Donate'
-    } else if (res.total_price) {
-      confirm_label = 'Buy Now'
-    }
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
         <ModalBody>
@@ -223,7 +207,7 @@ class StripeBookingForm extends React.Component {
           </Row>
         </ModalBody>
         <ModalFooter finished={this.props.finished}
-                     label={confirm_label}
+                     label={res.total_price ? 'Buy Now' : 'Confirm'}
                      cancel_disabled={this.state.submitting}
                      disabled={Boolean(confirm_disabled)}/>
       </BootstrapForm>

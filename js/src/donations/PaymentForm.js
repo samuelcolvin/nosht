@@ -1,5 +1,5 @@
 import React from 'react'
-import {ModalBody,  Form as BootstrapForm,  Row,  Col,  Collapse} from 'reactstrap'
+import {ModalBody, Form as BootstrapForm, Row, Col, Collapse} from 'reactstrap'
 import ReactGA from 'react-ga'
 import WithContext from '../utils/context'
 import AsModal, {SetModalTitle, ModalFooter} from '../general/Modal'

@@ -372,7 +372,9 @@ async def test_donate_webhook_repeat(factory: Factory, dummy_server, db_conn, cl
     await factory.create_donation_option()
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     action_id = (await r.json())['action_id']
 

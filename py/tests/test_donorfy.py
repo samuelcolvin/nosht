@@ -261,7 +261,9 @@ async def test_donate(donorfy: DonorfyActor, factory: Factory, dummy_server, db_
     await factory.create_donation_option()
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     action_id = (await r.json())['action_id']
 
@@ -303,7 +305,9 @@ async def test_donate_no_gift_aid(donorfy: DonorfyActor, factory: Factory, dummy
     await factory.create_donation_option()
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     action_id = (await r.json())['action_id']
 

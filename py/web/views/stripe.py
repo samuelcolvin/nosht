@@ -20,6 +20,7 @@ logger = logging.getLogger('nosht.views.stripe')
 class MetadataPurpose(str, Enum):
     buy_tickets = 'buy-tickets'
     donate = 'donate'
+    donate_direct = 'donate-direct'
 
 
 class MetadataModel(BaseModel):
