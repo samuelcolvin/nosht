@@ -27,7 +27,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'ticket_types': [{'name': 'Standard', 'price': None}],
+        'ticket_types': [{'name': 'Standard', 'price': None, 'mode': 'ticket'}],
         'event': {
             'id': factory.event_id,
             'category_id': factory.category_id,
@@ -37,6 +37,8 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
             'external_ticket_url': None,
+            'allow_tickets': True,
+            'allow_donations': False,
             'category_content': None,
             'location': {'name': 'Testing Location', 'lat': 51.5, 'lng': -0.5},
             'start_ts': '2032-06-28T19:00:00',
@@ -1009,6 +1011,7 @@ async def test_add_ticket_type(cli, url, factory: Factory, db_conn, login):
             'mode': 'ticket',
             'slots_used': 1,
             'active': True,
+            'custom_amount': False,
         },
         {
             'id': AnyInt(),
@@ -1018,6 +1021,7 @@ async def test_add_ticket_type(cli, url, factory: Factory, db_conn, login):
             'mode': 'ticket',
             'slots_used': 2,
             'active': False,
+            'custom_amount': False,
         },
     ]
 
@@ -1044,6 +1048,7 @@ async def test_delete_ticket_type(cli, url, factory: Factory, db_conn, login):
             'slots_used': 50,
             'mode': 'ticket',
             'active': True,
+            'custom_amount': False,
         },
     ]
     assert ticket_types[0]['id'] != tt_id
@@ -1088,6 +1093,7 @@ async def test_edit_ticket_type(cli, url, factory: Factory, db_conn, login):
             'mode': 'ticket',
             'slots_used': 50,
             'active': True,
+            'custom_amount': False,
         },
     ]
 

@@ -184,6 +184,7 @@ async def test_reserve_tickets(cli, url, db_conn, factory: Factory, login):
         'timeout': AnyInt(),
         'client_secret': RegexStr(r'payment_intent_secret_\d+'),
         'action_id': AnyInt(),
+        'mode': 'ticket',
     }
     booking_token = decrypt_json(cli.app['main_app'], data['booking_token'].encode())
     reserve_action_id = await db_conn.fetchval("SELECT id FROM actions WHERE type='reserve-tickets'")
@@ -278,6 +279,7 @@ async def test_reserve_tickets_no_name(cli, url, db_conn, factory: Factory, logi
         'timeout': AnyInt(),
         'client_secret': RegexStr(r'payment_intent_secret_\d+'),
         'action_id': AnyInt(),
+        'mode': 'ticket',
     }
 
     users = [dict(r) for r in await db_conn.fetch('SELECT first_name, last_name, email, role FROM users ORDER BY id')]
@@ -351,6 +353,7 @@ async def test_reserve_tickets_cover_costs(cli, url, factory: Factory, login):
         'timeout': AnyInt(),
         'client_secret': RegexStr(r'payment_intent_secret_\d+'),
         'action_id': AnyInt(),
+        'mode': 'ticket',
     }
     assert decrypt_json(cli.app['main_app'], data['booking_token'].encode()) == {
         'user_id': factory.user_id,
@@ -378,6 +381,7 @@ async def test_reserve_tickets_free(cli, url, factory: Factory, login):
     data = await r.json()
     assert data == {
         'booking_token': RegexStr(r'.+'),
+        'mode': 'ticket',
         'ticket_count': 1,
         'extra_donated': None,
         'item_price': None,
