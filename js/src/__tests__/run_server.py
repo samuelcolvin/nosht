@@ -53,6 +53,8 @@ event_data = {
         'allow_marketing_message': None,
         'booking_trust_message': None,
         'category_content': None,
+        'allow_tickets': True,
+        'allow_donations': False,
         'cover_costs_message': None,
         'cover_costs_percentage': None,
         'duration': 7200,
