@@ -51,14 +51,11 @@ class StripeBookingForm extends React.Component {
   componentDidMount () {
     this.update_timer()
     this.clear = setInterval(this.update_timer, 500)
+    this.props.register_toggle_handler(this.cancel_reservation.bind(this))
   }
 
   componentWillUnmount () {
     clearInterval(this.clear)
-  }
-
-  async componentWillMount () {
-    this.props.register_toggle_handler(this.cancel_reservation.bind(this))
   }
 
   async cancel_reservation () {
