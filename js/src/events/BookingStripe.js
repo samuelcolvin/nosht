@@ -178,7 +178,7 @@ class StripeBookingForm extends React.Component {
     }
 
     let buy_offline_field = null
-    if (res.total_price &&
+    if (res.total_price && res.mode === 'ticket' &&
         (this.props.ctx.user.role === 'admin' || this.props.ctx.user.id === this.props.event.host_id)) {
       const f = {
         name: 'buy_offline',
@@ -203,11 +203,11 @@ class StripeBookingForm extends React.Component {
         !this.state.payment.payment_method_id &&
         !this.state.buy_offline)
     )
-    let pay_label = 'Confirm'
+    let confirm_label = 'Confirm'
     if (res.mode === 'donation') {
-      pay_label = 'Donate'
+      confirm_label = 'Donate'
     } else if (res.total_price) {
-      pay_label = 'Buy Now'
+      confirm_label = 'Buy Now'
     }
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
@@ -223,7 +223,7 @@ class StripeBookingForm extends React.Component {
           </Row>
         </ModalBody>
         <ModalFooter finished={this.props.finished}
-                     label={pay_label}
+                     label={confirm_label}
                      cancel_disabled={this.state.submitting}
                      disabled={Boolean(confirm_disabled)}/>
       </BootstrapForm>

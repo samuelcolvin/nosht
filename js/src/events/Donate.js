@@ -2,21 +2,20 @@ import React from 'react'
 import ReactGA from 'react-ga'
 import requests from '../utils/requests'
 import AsModal from '../general/Modal'
+import {PaymentForm} from '../donations/PaymentForm'
 import BookingLogin from './BookingLogin'
 import DonationForm from './DonateSelect'
-import BookingStripe from './BookingStripe'
 
 class DonateForm extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
       got_info: false,
-      reservation_error: false,
       ticket_types: [],
       selected_ticket_type: null,
       allow_marketing: false,
       donation_amount: null,
-      reservation: null,
+      payment_config: null,
     }
     this.finished = this.finished.bind(this)
   }
@@ -38,39 +37,18 @@ class DonateForm extends React.Component {
     this.setState({ticket_types: r.ticket_types})
   }
 
-  async reserve (e) {
+  async proceed (e) {
     e.preventDefault()
     if (!this.state.selected_ticket_type) {
       return
     }
-    this.setState({submitting_reservation: true})
-    const data = {
-      tickets: [
-        {
-          t: true,
-          first_name: this.props.ctx.user.first_name,
-          last_name: this.props.ctx.user.last_name,
-          email: this.props.ctx.user.email,
-          extra_info: null,
-          cover_costs: null,
-          allow_marketing: this.state.allow_marketing,
-        }
-      ],
-      ticket_type: this.state.selected_ticket_type,
-      donation_amount: this.state.donation_amount,
-    }
 
+    this.setState({payment_config: {
+      amount: this.state.donation_amount,
+      ticket_type: this.state.selected_ticket_type
+    }})
 
-    let r
-    try {
-      r = await requests.post(`events/${this.props.event.id}/reserve/`, data)
-    } catch (error) {
-      this.props.ctx.setError(error)
-      return
-    }
-    delete r._response_status
-    this.setState({reservation: r, submitting_reservation: false})
-    ReactGA.event({category: 'donation', action: 'ticket-donation-reserve', value: this.state.donation_amount})
+    ReactGA.event({category: 'donation', action: 'ticket-donation-prepare', value: this.state.donation_amount})
   }
 
   finished (complete) {
@@ -90,23 +68,23 @@ class DonateForm extends React.Component {
           setBookingState={s => this.setState(s)}
         />
       )
-    } else if (!this.state.reservation) {
+    } else if (!this.state.payment_config) {
       return (
         <DonationForm
           event={this.props.event}
           finished={this.finished}
           state={this.state}
           setDonatingState={s => this.setState(s)}
-          reserve={this.reserve.bind(this)}
+          submit={this.proceed.bind(this)}
         />
       )
     } else {
       return (
-        <BookingStripe
+        <PaymentForm
           event={this.props.event}
           finished={this.finished}
           register_toggle_handler={this.props.register_toggle_handler}
-          reservation={this.state.reservation}
+          config={this.state.payment_config}
         />
       )
     }

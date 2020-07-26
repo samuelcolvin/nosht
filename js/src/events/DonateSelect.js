@@ -4,7 +4,6 @@ import WithContext from '../utils/context'
 import Input from '../forms/Input'
 import {ModalFooter} from '../general/Modal'
 import {MoneyFree, format_money} from '../general/Money'
-import {Overlay} from './Stripe'
 import {User} from './BookingTickets'
 
 const custom_donate_field = {
@@ -25,9 +24,8 @@ const DonationForm = props => {
   let custom_amount_id = custom_amount_tt && custom_amount_tt.id
 
   return (
-    <BootstrapForm onSubmit={props.reserve}>
-      <Overlay element_id="modal-body" show={state.submitting_reservation} text="preparing donation"/>
-      <ModalBody id="modal-body">
+    <BootstrapForm onSubmit={props.submit}>
+      <ModalBody>
         <User {...props}/>
         <div className="py-2">
           <h3>

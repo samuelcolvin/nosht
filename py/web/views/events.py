@@ -655,13 +655,16 @@ class SetTicketTypes(UpdateView):
 
         mode = m.ticket_types[0].mode
         if not all(tt.mode == mode for tt in m.ticket_types):
-            raise JsonErrors.HTTPBadRequest(message='all ticket types must have the same type')
+            raise JsonErrors.HTTPBadRequest(message='all ticket types must have the same mode')
 
         async with self.conn.transaction():
             await self.conn.fetchval(
                 """
                 DELETE FROM ticket_types
-                WHERE ticket_types.event=$1 AND ticket_types.mode=$2 AND NOT (ticket_types.id=ANY($3))
+                WHERE ticket_types.event=$1
+                      AND ticket_types.mode=$2
+                      AND NOT ticket_types.custom_amount
+                      AND NOT (ticket_types.id=ANY($3))
                 """,
                 event_id,
                 mode.value,
@@ -670,7 +673,7 @@ class SetTicketTypes(UpdateView):
 
             for tt in existing:
                 v = await self.conn.execute_b(
-                    'UPDATE ticket_types SET :values WHERE id=:id AND event=:event',
+                    'UPDATE ticket_types SET :values WHERE id=:id AND event=:event AND NOT ticket_types.custom_amount',
                     values=SetValues(**tt.dict(exclude={'id'})),
                     id=tt.id,
                     event=event_id,

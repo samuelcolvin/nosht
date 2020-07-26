@@ -51,9 +51,10 @@ from .views.company import CompanyBread, company_set_footer_link, company_upload
 from .views.donate import (
     DonationGiftAid,
     DonationOptionBread,
+    PrepareDirectDonation,
+    donation_after_prepare,
     donation_image_upload,
     donation_options,
-    donation_prepare,
     opt_donations,
 )
 from .views.emails import clear_email_def, email_def_browse, email_def_edit, email_def_retrieve
@@ -215,13 +216,17 @@ def create_app(*, settings: Settings = None, logging_client=None):
             web.get(r'/email-defs/{trigger}/', email_def_retrieve, name='email-defs-retrieve'),
             web.post(r'/email-defs/{trigger}/edit/', email_def_edit, name='email-defs-edit'),
             web.post(r'/email-defs/{trigger}/clear/', clear_email_def, name='email-defs-clear'),
+            # donations
             *DonationOptionBread.routes(r'/donation-options/', name='donation-options'),
             web.get(r'/categories/{cat_id:\d+}/donation-options/', donation_options, name='donation-options'),
             web.post(r'/donation-options/{pk:\d+}/upload-image/', donation_image_upload, name='donation-image-upload'),
             web.get(r'/donation-options/{pk:\d+}/donations/', opt_donations, name='donation-opt-donations'),
             web.post(
-                r'/donation-options/{don_opt_id:\d+}/prepare/{event_id:\d+}/', donation_prepare, name='donation-prepare'
+                r'/donation-options/{don_opt_id:\d+}/prepare/{event_id:\d+}/',
+                donation_after_prepare,
+                name='donation-after-prepare',
             ),
+            web.post(r'/donation-prepare/{tt_id:\d+}/', PrepareDirectDonation.view(), name='donation-direct-prepare'),
             web.post(r'/donation/{action_id:\d+}/gift-aid/', DonationGiftAid.view(), name='donation-gift-aid'),
         ]
     )
