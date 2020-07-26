@@ -923,8 +923,8 @@ class EventClone(UpdateView):
     RETURNING id
     """
     duplicate_ticket_types_sql = """
-    INSERT INTO ticket_types (event, name, price, slots_used, active)
-    SELECT $2, name, price, slots_used, active FROM ticket_types where event=$1
+    INSERT INTO ticket_types (event, name, price, slots_used, active, mode, custom_amount)
+    SELECT $2, name, price, slots_used, active, mode, custom_amount FROM ticket_types where event=$1
     """
 
     async def execute(self, m: Model):

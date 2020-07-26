@@ -363,7 +363,7 @@ async def test_buy_webhook_repeat(factory: Factory, cli, url, login, db_conn):
     assert 'booked' == await db_conn.fetchval('select status from tickets')
 
 
-async def test_donate_webhook_repeat(factory: Factory, dummy_server, db_conn, cli, url, login):
+async def test_donate_after_webhook_repeat(factory: Factory, dummy_server, db_conn, cli, url, login):
     await factory.create_company()
     await factory.create_user()
     await factory.create_cat()
@@ -381,6 +381,34 @@ async def test_donate_webhook_repeat(factory: Factory, dummy_server, db_conn, cl
     await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate')
 
     r = await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate', expected_status=240)
+    assert await r.text() == 'donation already performed'
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    assert dummy_server.app['log'] == [
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/payment_intents',
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
+    ]
+
+
+async def test_donate_direct_webhook_repeat(factory: Factory, dummy_server, db_conn, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10, allow_donations=True, status='published')
+    await login()
+
+    r = await cli.json_post(
+        url('donation-direct-prepare', tt_id=factory.donation_ticket_type_id), data=dict(custom_amount=123),
+    )
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate-direct')
+
+    r = await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate-direct', expected_status=240)
     assert await r.text() == 'donation already performed'
 
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')

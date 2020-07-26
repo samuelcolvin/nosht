@@ -27,7 +27,10 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'ticket_types': [{'name': 'Standard', 'price': None, 'mode': 'ticket'}],
+        'ticket_types': [
+            {'mode': 'donation', 'name': 'Standard', 'price': 10.0},
+            {'mode': 'ticket', 'name': 'Standard', 'price': None},
+        ],
         'event': {
             'id': factory.event_id,
             'category_id': factory.category_id,
@@ -990,18 +993,18 @@ async def test_add_ticket_type(cli, url, factory: Factory, db_conn, login):
     await factory.create_event()
     await login()
 
-    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types where mode=$1', 'ticket')
     r = await cli.get(url('event-ticket-types', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
-    ticket_types = data['ticket_types']
+    ticket_types = [data['ticket_types'][0]]
     assert len(ticket_types) == 1
-    ticket_types.append({'name': 'Foobar', 'price': 123.5, 'slots_used': 2, 'active': False})
+    ticket_types.append({'name': 'Foobar', 'price': 123.5, 'slots_used': 2, 'active': False, 'mode': 'ticket'})
 
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
     assert r.status == 200, await r.text()
 
-    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types WHERE mode=$1', 'ticket')]
     assert ticket_types == [
         {
             'id': AnyInt(),
@@ -1038,7 +1041,7 @@ async def test_delete_ticket_type(cli, url, factory: Factory, db_conn, login):
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
 
-    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types where mode=$1', 'ticket')]
     assert ticket_types == [
         {
             'id': AnyInt(),
@@ -1083,7 +1086,7 @@ async def test_edit_ticket_type(cli, url, factory: Factory, db_conn, login):
 
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
-    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types where mode=$1', 'ticket')]
     assert ticket_types == [
         {
             'id': tt_id,
@@ -1264,14 +1267,14 @@ async def test_delete_event(cli, url, factory: Factory, login, db_conn):
     await factory.create_reservation(event_id=event2, ticket_type_id=ticket_type)
 
     assert 2 == await db_conn.fetchval('SELECT count(*) FROM events')
-    assert 2 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
+    assert 6 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
     assert 2 == await db_conn.fetchval('SELECT count(*) FROM tickets')
 
     r = await cli.json_post(url('event-delete', pk=factory.event_id))
     assert r.status == 200, await r.text()
 
     assert 1 == await db_conn.fetchval('SELECT count(*) FROM events')
-    assert 1 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
+    assert 3 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
     assert 1 == await db_conn.fetchval('SELECT count(*) FROM tickets')
 
 
@@ -1429,7 +1432,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'image': None,
         'secondary_image': None,
     }
-    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', new_event_id) == 1
+    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', new_event_id) == 3
 
 
 async def test_clone_event_ticket_types(cli, url, factory: Factory, db_conn, login):
@@ -1446,7 +1449,7 @@ async def test_clone_event_ticket_types(cli, url, factory: Factory, db_conn, log
         """,
         event_id,
     )
-    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', event_id) == 3
+    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', event_id) == 5
 
     await login()
     data = dict(
@@ -1457,12 +1460,50 @@ async def test_clone_event_ticket_types(cli, url, factory: Factory, db_conn, log
     assert await db_conn.fetchval('select count(*) from events where id!=$1', factory.event_id) == 1
     new_event_id = (await r.json())['id']
     ticket_types = await db_conn.fetch(
-        'select event, name, price, slots_used from ticket_types where event=$1 order by id', new_event_id
+        'select event, name, price, slots_used, mode, custom_amount from ticket_types where event=$1 order by id',
+        new_event_id,
     )
     assert [dict(r) for r in ticket_types] == [
-        {'event': new_event_id, 'name': 'Standard', 'price': None, 'slots_used': 1},
-        {'event': new_event_id, 'name': 'foo', 'price': Decimal('123.00'), 'slots_used': 3},
-        {'event': new_event_id, 'name': 'bar', 'price': Decimal('54.32'), 'slots_used': None},
+        {
+            'event': new_event_id,
+            'name': 'Standard',
+            'price': None,
+            'slots_used': 1,
+            'mode': 'ticket',
+            'custom_amount': False,
+        },
+        {
+            'event': new_event_id,
+            'name': 'Standard',
+            'price': Decimal('10.00'),
+            'slots_used': 1,
+            'mode': 'donation',
+            'custom_amount': False,
+        },
+        {
+            'event': new_event_id,
+            'name': 'Custom Amount',
+            'price': None,
+            'slots_used': 1,
+            'mode': 'donation',
+            'custom_amount': True,
+        },
+        {
+            'event': new_event_id,
+            'name': 'foo',
+            'price': Decimal('123.00'),
+            'slots_used': 3,
+            'mode': 'ticket',
+            'custom_amount': False,
+        },
+        {
+            'event': new_event_id,
+            'name': 'bar',
+            'price': Decimal('54.32'),
+            'slots_used': None,
+            'mode': 'ticket',
+            'custom_amount': False,
+        },
     ]
 
 

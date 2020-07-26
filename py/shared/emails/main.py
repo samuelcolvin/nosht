@@ -132,32 +132,48 @@ class EmailActor(BaseEmailActor):
     @concurrent
     async def send_donation_thanks(self, action_id):
         async with self.pg.acquire() as conn:
-            data = await conn.fetchrow(
+            amount, gift_aid, user_id, extra, don_option_id, ticket_type_id = await conn.fetchrow(
                 """
                 SELECT
-                  don.amount, don.gift_aid,
-                  a.user_id, a.extra,
-                  opt.name as donation_option_name,
-                  cat.company, cat.name AS cat_name,
-                  co.currency
+                  don.amount, don.gift_aid, a.user_id, a.extra, don.donation_option, don.ticket_type
                 FROM donations AS don
                 JOIN actions AS a ON don.action = a.id
-                JOIN donation_options AS opt ON don.donation_option = opt.id
-                JOIN categories AS cat ON opt.category = cat.id
-                JOIN companies AS co ON cat.company = co.id
                 WHERE a.id = $1 and a.type = 'donate'
                 """,
                 action_id,
             )
-        action_extra = json.loads(data['extra'])
+            if don_option_id:
+                donation_name, category_name, company_id, currency = await conn.fetchrow(
+                    """
+                    SELECT opt.name, cat.name, co.id, co.currency
+                    FROM donation_options AS opt
+                    JOIN categories cat ON opt.category = cat.id
+                    JOIN companies co ON cat.company = co.id
+                    WHERE opt.id=$1
+                    """,
+                    don_option_id,
+                )
+            else:
+                donation_name, category_name, company_id, currency = await conn.fetchrow(
+                    """
+                    SELECT e.name, cat.name, co.id, co.currency
+                    FROM ticket_types AS tt
+                    JOIN events e ON tt.event = e.id
+                    JOIN categories cat ON e.category = cat.id
+                    JOIN companies co ON cat.company = co.id
+                    WHERE tt.id=$1
+                    """,
+                    ticket_type_id,
+                )
+        action_extra = json.loads(extra)
         ctx = {
-            'donation_option_name': data['donation_option_name'],
-            'gift_aid_enabled': data['gift_aid'],
-            'category_name': data['cat_name'],
-            'amount_donated': display_cash_free(data['amount'], data['currency']),
+            'donation_option_name': donation_name,
+            'gift_aid_enabled': gift_aid,
+            'category_name': category_name,
+            'amount_donated': display_cash_free(amount, currency),
             'card_details': '{brand} {card_expiry} - ending {card_last4}'.format(**action_extra),
         }
-        await self.send_emails.direct(data['company'], Triggers.donation_thanks, [UserEmail(data['user_id'], ctx)])
+        await self.send_emails.direct(company_id, Triggers.donation_thanks, [UserEmail(user_id, ctx)])
 
     @concurrent
     async def send_account_created(self, user_id: int, created_by_admin=False):

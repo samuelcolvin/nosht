@@ -86,6 +86,7 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     assert dict(r) == {
         'id': AnyInt(),
         'donation_option': factory.donation_option_id,
+        'ticket_type': None,
         'amount': 20,
         'gift_aid': True,
         'title': 'Mr',

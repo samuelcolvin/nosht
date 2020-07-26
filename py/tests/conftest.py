@@ -140,6 +140,7 @@ class Factory:
         self.user_id = None
         self.event_id = None
         self.ticket_type_id = None
+        self.donation_ticket_type_id = None
         self.donation_option_id = None
         self.donation_id = None
 
@@ -217,12 +218,15 @@ class Factory:
         host_user_id=None,
         name='The Event Name',
         slug=None,
+        allow_tickets=True,
+        allow_donations=False,
         start_ts=london.localize(datetime(2032, 6, 28, 19, 0)),
         timezone='Europe/London',
         duration=timedelta(hours=1),
         short_description=None,
         long_description=None,
         price=None,
+        suggested_donation=10,
         **kwargs,
     ):
         long_description = long_description or lorem.paragraph()
@@ -233,6 +237,8 @@ class Factory:
                 host=host_user_id or self.user_id,
                 name=name,
                 slug=slug or slugify(name),
+                allow_tickets=allow_tickets,
+                allow_donations=allow_donations,
                 long_description=long_description,
                 start_ts=start_ts,
                 timezone=timezone,
@@ -244,11 +250,17 @@ class Factory:
             ),
         )
         self.event_id = self.event_id or event_id
-        ticket_type_id = await self.conn.fetchval_b(
+        ticket_type_ids = await self.conn.fetch_b(
             'INSERT INTO ticket_types (:values__names) VALUES :values RETURNING id',
-            values=Values(event=event_id, price=price, name='Standard'),
+            values=MultipleValues(
+                Values(event=event_id, name='Standard', price=price, mode='ticket', custom_amount=False),
+                Values(event=event_id, name='Standard', price=suggested_donation, mode='donation', custom_amount=False),
+                Values(event=event_id, name='Custom Amount', price=None, mode='donation', custom_amount=True),
+            ),
         )
-        self.ticket_type_id = self.ticket_type_id or ticket_type_id
+        # debug(ticket_type_ids)
+        self.ticket_type_id = self.ticket_type_id or ticket_type_ids[0]['id']
+        self.donation_ticket_type_id = self.donation_ticket_type_id or ticket_type_ids[1]['id']
 
         await self.conn.execute_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',

@@ -128,6 +128,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'buy-tickets-offline',
   'book-free-tickets',
   'donate-prepare',
+  'donate-direct-prepare',
   'donate',
   'cancel-reserved-tickets',
   'cancel-booked-tickets',
@@ -234,7 +235,8 @@ CREATE INDEX IF NOT EXISTS don_opt_sort_index ON donation_options USING btree (s
 
 CREATE TABLE IF NOT EXISTS donations (
   id SERIAL PRIMARY KEY,
-  donation_option INT NOT NULL REFERENCES donation_options ON DELETE CASCADE,
+  donation_option INT REFERENCES donation_options ON DELETE CASCADE,
+  ticket_type INT REFERENCES ticket_types ON DELETE CASCADE,
   amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
   gift_aid BOOLEAN NOT NULL,
   title VARCHAR(31),
