@@ -563,11 +563,11 @@ event_ticket_types_sql = """
 SELECT json_build_object('ticket_types', ticket_types)
 FROM (
   SELECT array_to_json(array_agg(row_to_json(t))) AS ticket_types FROM (
-    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active, COUNT(t.id) > 0 AS has_tickets, tt.mode
+    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active, COUNT(t.id) > 0 AS has_tickets, tt.mode, tt.custom_amount
     FROM ticket_types AS tt
     LEFT JOIN tickets AS t ON tt.id = t.ticket_type
     WHERE tt.event=$1
-    GROUP BY tt.id
+    GROUP BY tt.custom_amount, tt.id
     ORDER BY tt.id
   ) AS t
 ) AS ticket_types

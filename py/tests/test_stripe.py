@@ -47,6 +47,7 @@ async def test_real_intent(cli, url, login, db_conn, factory: Factory):
         'timeout': AnyInt(),
         'client_secret': RegexStr(r'pi_.*'),
         'action_id': AnyInt(),
+        'mode': 'ticket',
     }
     customer_id = await db_conn.fetchval('SELECT stripe_customer_id FROM users WHERE id=$1', factory.user_id)
     assert customer_id is not None

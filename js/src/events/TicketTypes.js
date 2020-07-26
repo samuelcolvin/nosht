@@ -16,7 +16,7 @@ import AsModal from '../general/Modal'
 import Input from '../forms/Input'
 import WithContext from '../utils/context'
 import {Link} from 'react-router-dom'
-import {MoneyFree} from '../general/Money'
+import {MoneyFree, Money} from '../general/Money'
 import {render} from '../general/Dashboard'
 
 const TicketType = ({index, ticket_type, update_ticket, active_count}) => {
@@ -183,7 +183,7 @@ class TicketTypes_ extends React.Component {
       <BootstrapForm onSubmit={(this.submit.bind(this))} className="highlight-required">
         <ModalBody key="1">
           <div>
-            {this.state.ticket_types.map((t, i) => (
+            {this.state.ticket_types.filter(tt => !tt.custom_amount).map((t, i) => (
               <FormComponent key={i} index={i} ticket_type={t} active_count={active_count}
                              update_ticket={this.update_ticket.bind(this)}/>
             ))}
@@ -269,7 +269,7 @@ export const SuggestedDonationsTable = WithContext(({ticket_types, uri, can_edit
         {ticket_types.map(tt => (
           <tr key={tt.id}>
             <td>{tt.name}</td>
-            <td><MoneyFree>{tt.price}</MoneyFree></td>
+            <td>{tt.custom_amount ? <span>&mdash;</span> : <Money>{tt.price}</Money>}</td>
             <td>{render(tt.active)}</td>
           </tr>
         ))}
