@@ -141,7 +141,7 @@ class TicketTypes_ extends React.Component {
     super(props)
     this.mode = this.props.ticket_types[0].mode
     this.state = {
-      ticket_types: this.props.ticket_types,
+      ticket_types: this.props.ticket_types.filter(tt => !tt.custom_amount),
       savable: false,
     }
   }
@@ -183,7 +183,7 @@ class TicketTypes_ extends React.Component {
       <BootstrapForm onSubmit={(this.submit.bind(this))} className="highlight-required">
         <ModalBody key="1">
           <div>
-            {this.state.ticket_types.filter(tt => !tt.custom_amount).map((t, i) => (
+            {this.state.ticket_types.map((t, i) => (
               <FormComponent key={i} index={i} ticket_type={t} active_count={active_count}
                              update_ticket={this.update_ticket.bind(this)}/>
             ))}
@@ -266,10 +266,10 @@ export const SuggestedDonationsTable = WithContext(({ticket_types, uri, can_edit
         </tr>
       </thead>
       <tbody>
-        {ticket_types.map(tt => (
+        {ticket_types.filter(tt => !tt.custom_amount).map(tt => (
           <tr key={tt.id}>
             <td>{tt.name}</td>
-            <td>{tt.custom_amount ? <span>&mdash;</span> : <Money>{tt.price}</Money>}</td>
+            <td><Money>{tt.price}</Money></td>
             <td>{render(tt.active)}</td>
           </tr>
         ))}

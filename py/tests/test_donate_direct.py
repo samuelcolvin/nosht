@@ -21,18 +21,8 @@ async def test_donate_direct(cli, url, dummy_server, factory: Factory, login, db
     data = await r.json()
     assert data == {
         'ticket_types': [
-            {
-                'id': AnyInt(),
-                'name': 'Standard',
-                'amount': 123,
-                'custom_amount': False,
-            },
-            {
-                'id': AnyInt(),
-                'name': 'Custom Amount',
-                'amount': None,
-                'custom_amount': True,
-            },
+            {'id': AnyInt(), 'name': 'Standard', 'amount': 123, 'custom_amount': False},
+            {'id': AnyInt(), 'name': 'Custom Amount', 'amount': None, 'custom_amount': True},
         ],
     }
 

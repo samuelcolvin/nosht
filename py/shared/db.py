@@ -9,7 +9,7 @@ from typing import Callable, NamedTuple
 
 import aiohttp
 from async_timeout import timeout
-from buildpg import Values, asyncpg, MultipleValues
+from buildpg import MultipleValues, Values, asyncpg
 
 from .actions import ActionTypes
 from .emails.defaults import Triggers
@@ -673,7 +673,8 @@ async def insert_donation_ticket_types(conn, settings, **kwargs):
     """
     add donation ticket types to old event
     """
-    event_ids = await conn.fetchval("""
+    event_ids = await conn.fetchval(
+        """
         select coalesce(array_agg(event_id), '{}'::integer[])
         from (
             select e.id event_id, COUNT(tt.id) > 0 AS has_donation_tts
@@ -682,7 +683,8 @@ async def insert_donation_ticket_types(conn, settings, **kwargs):
             group by e.id
         ) t
         where not has_donation_tts
-    """)
+        """
+    )
     logger.info('%s events to add donation ticket types to', len(event_ids))
 
     values = []
@@ -694,6 +696,5 @@ async def insert_donation_ticket_types(conn, settings, **kwargs):
     if values:
         logger.info('inserting %d ticket_types', len(values))
         await conn.execute_b(
-            'INSERT INTO ticket_types (:values__names) VALUES :values',
-            values=MultipleValues(*values),
+            'INSERT INTO ticket_types (:values__names) VALUES :values', values=MultipleValues(*values),
         )

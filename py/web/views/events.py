@@ -653,21 +653,22 @@ class SetTicketTypes(UpdateView):
     async def execute(self, m: Model):
         event_id = await _check_event_permissions(self.request, check_upcoming=True)
         existing = [tt for tt in m.ticket_types if tt.id]
+        mode = m.ticket_types[0].mode
         deleted_with_tickets = await self.conn.fetchval(
             """
             SELECT 1
             FROM ticket_types AS tt
             JOIN tickets AS t ON tt.id = t.ticket_type
-            WHERE tt.event=$1 AND NOT (tt.id=ANY($2))
+            WHERE tt.event=$1 AND mode=$2 AND NOT (tt.id=ANY($3))
             GROUP BY tt.id
             """,
             event_id,
+            mode.value,
             [tt.id for tt in existing],
         )
         if deleted_with_tickets:
             raise JsonErrors.HTTPBadRequest(message='ticket types deleted which have ticket associated with them')
 
-        mode = m.ticket_types[0].mode
         if not all(tt.mode == mode for tt in m.ticket_types):
             raise JsonErrors.HTTPBadRequest(message='all ticket types must have the same mode')
 
