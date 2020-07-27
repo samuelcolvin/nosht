@@ -9,7 +9,7 @@ from typing import Callable, NamedTuple
 
 import aiohttp
 from async_timeout import timeout
-from buildpg import Values, asyncpg
+from buildpg import Values, asyncpg, MultipleValues
 
 from .actions import ActionTypes
 from .emails.defaults import Triggers
@@ -666,3 +666,33 @@ async def add_donations(conn, settings, **kwargs):
         'ALTER TABLE donations ADD CONSTRAINT donation_option_or_ticket_type_required '
         'CHECK (num_nonnulls(donation_option, ticket_type) = 1)'
     )
+
+
+@patch
+async def insert_donation_ticket_types(conn, settings, **kwargs):
+    """
+    add donation ticket types to old event
+    """
+    event_ids = await conn.fetchval("""
+        select coalesce(array_agg(event_id), '{}'::integer[])
+        from (
+            select e.id event_id, COUNT(tt.id) > 0 AS has_donation_tts
+            from events e
+            left join ticket_types tt on e.id = tt.event and tt.mode = 'donation'
+            group by e.id
+        ) t
+        where not has_donation_tts
+    """)
+    logger.info('%s events to add donation ticket types to', len(event_ids))
+    values = []
+    for event_id in event_ids:
+        values += [
+            Values(event=event_id, name='Standard', price=10, mode='donation', custom_amount=False),
+            Values(event=event_id, name='Custom Amount', price=None, mode='donation', custom_amount=True),
+        ]
+    if values:
+        logger.info('inserting %d ticket_types', len(values))
+        await conn.execute_b(
+            'INSERT INTO ticket_types (:values__names) VALUES :values',
+            values=MultipleValues(*values),
+        )
