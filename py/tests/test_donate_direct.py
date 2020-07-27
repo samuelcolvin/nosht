@@ -21,20 +21,29 @@ async def test_donate_direct(cli, url, dummy_server, factory: Factory, login, db
     data = await r.json()
     assert data == {
         'ticket_types': [
-            {'id': AnyInt(), 'name': 'Standard', 'amount': 123, 'custom_amount': False},
-            {'id': AnyInt(), 'name': 'Custom Amount', 'amount': None, 'custom_amount': True},
+            {'id': factory.donation_ticket_type_id_1, 'name': 'Standard', 'amount': 123, 'custom_amount': False},
+            {'id': factory.donation_ticket_type_id_2, 'name': 'Custom Amount', 'amount': None, 'custom_amount': True},
         ],
     }
 
-    tt_id = data['ticket_types'][0]['id']
+    tt_id = factory.donation_ticket_type_id_1
     r = await cli.json_post(url('donation-direct-prepare', tt_id=tt_id), data=dict(custom_amount=2))
     assert r.status == 200, await r.text()
 
-    action_id = await db_conn.fetchval('select id from actions where type=$1', ActionTypes.donate_direct_prepare)
+    action_id, extra = await db_conn.fetchrow(
+        'select id, extra from actions where type=$1', ActionTypes.donate_direct_prepare
+    )
     data = await r.json()
     assert data == {
         'client_secret': f'payment_intent_secret_{action_id}',
         'action_id': action_id,
+    }
+    assert json.loads(extra) == {
+        'ip': '127.0.0.1',
+        'ua': RegexStr('Python.+'),
+        'url': RegexStr(r'http://127.0.0.1:\d+/api/donation-prepare/\d+/'),
+        'ticket_type_id': factory.donation_ticket_type_id_1,
+        'donation_amount': 123,
     }
 
     post_data = dict(
@@ -109,3 +118,53 @@ async def test_donate_direct(cli, url, dummy_server, factory: Factory, login, db
         '\n'
         '_(Card Charged: Visa 12/32 - ending 1234)_\n'
     )
+
+
+async def test_prepare_missing_tt(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', allow_donations=True, suggested_donation=123, status='published')
+
+    factory.user_id = await factory.create_user(first_name='do', last_name='nor', email='donor@example.org')
+    await login('donor@example.org')
+
+    r = await cli.json_post(url('donation-direct-prepare', tt_id=999), data=dict(custom_amount=2))
+    assert r.status == 400, await r.text()
+    assert await r.json() == {'message': 'Ticket type not found'}
+
+
+async def test_prepare_custom_amount(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', allow_donations=True, suggested_donation=123, status='published')
+
+    factory.user_id = await factory.create_user(first_name='do', last_name='nor', email='donor@example.org')
+    await login('donor@example.org')
+
+    r = await cli.json_post(
+        url('donation-direct-prepare', tt_id=factory.donation_ticket_type_id_2), data=dict(custom_amount=55)
+    )
+    assert r.status == 200, await r.text()
+
+    action_id, extra = await db_conn.fetchrow(
+        'select id, extra from actions where type=$1', ActionTypes.donate_direct_prepare
+    )
+    data = await r.json()
+    assert data == {
+        'client_secret': f'payment_intent_secret_{action_id}',
+        'action_id': action_id,
+    }
+    assert json.loads(extra) == {
+        'ip': '127.0.0.1',
+        'ua': RegexStr('Python.+'),
+        'url': RegexStr(r'http://127.0.0.1:\d+/api/donation-prepare/\d+/'),
+        'ticket_type_id': factory.donation_ticket_type_id_2,
+        'donation_amount': 55,
+    }
+
+    assert dummy_server.app['log'] == [
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/payment_intents',
+    ]

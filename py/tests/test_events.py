@@ -541,6 +541,9 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
     assert ticket_limit == 12
     assert location_lat == 50
 
+    allow_tickets, allow_donations = await db_conn.fetchrow('SELECT allow_tickets, allow_donations FROM events')
+    assert (allow_tickets, allow_donations) == (True, False)
+
     action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='edit-event'")
     assert action['user_id'] == factory.user_id
     assert action['event'] == factory.event_id
@@ -1630,3 +1633,46 @@ async def test_event_allow_donation(cli, url, dummy_server, factory: Factory, lo
         {'name': 'Standard', 'price': 10, 'mode': 'donation'},
         {'name': 'Standard', 'price': None, 'mode': 'ticket'},
     ]
+
+
+async def test_create_event_mode(cli, url, db_conn, factory: Factory, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        mode='both',
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': None},
+        timezone='Europe/London',
+        long_description='hello',
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 201, await r.text()
+
+    allow_tickets, allow_donations = await db_conn.fetchrow('SELECT allow_tickets, allow_donations FROM events')
+    assert (allow_tickets, allow_donations) == (True, True)
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+
+
+async def test_edit_event_mode(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(allow_tickets=True, allow_donations=False)
+    await login()
+
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(mode='donations'))
+    assert r.status == 200, await r.text()
+    allow_tickets, allow_donations = await db_conn.fetchrow('SELECT allow_tickets, allow_donations FROM events')
+    assert (allow_tickets, allow_donations) == (False, True)
+
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(mode='both'))
+    assert r.status == 200, await r.text()
+    allow_tickets, allow_donations = await db_conn.fetchrow('SELECT allow_tickets, allow_donations FROM events')
+    assert (allow_tickets, allow_donations) == (True, True)
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')

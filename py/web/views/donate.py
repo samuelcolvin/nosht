@@ -70,29 +70,28 @@ class PrepareDirectDonation(UpdateViewAuth):
 
         r = await self.conn.fetchrow(
             """
-            SELECT tt.price, tt.custom_amount, e.id, e.status, e.external_ticket_url, e.name
+            SELECT tt.price, tt.custom_amount, e.id, e.name
             FROM ticket_types tt
             JOIN events e ON tt.event = e.id
-            WHERE tt.active=TRUE AND tt.mode='donation' AND tt.id=$1
+            WHERE tt.active=TRUE AND tt.mode='donation' AND tt.id=$1 AND status = 'published' AND
+              external_ticket_url IS NULL
             """,
             ticket_type_id,
         )
-
         if not r:
             raise JsonErrors.HTTPBadRequest(message='Ticket type not found')
-        donation_amount, custom_amount_tt, event_id, event_status, external_ticket_url, event_name = r
-
-        if event_status != 'published':
-            raise JsonErrors.HTTPBadRequest(message='Event not published')
-
-        if external_ticket_url is not None:
-            raise JsonErrors.HTTPBadRequest(message='Cannot reserve ticket for an externally ticketed event')
+        donation_amount, custom_amount_tt, event_id, event_name = r
 
         if custom_amount_tt:
             donation_amount = m.custom_amount
 
         action_id = await record_action_id(
-            self.request, user_id, ActionTypes.donate_direct_prepare, event_id=event_id, ticket_type_id=ticket_type_id
+            self.request,
+            user_id,
+            ActionTypes.donate_direct_prepare,
+            event_id=event_id,
+            ticket_type_id=ticket_type_id,
+            donation_amount=float(donation_amount),
         )
 
         client_secret = await stripe_payment_intent(

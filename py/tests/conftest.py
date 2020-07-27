@@ -140,7 +140,8 @@ class Factory:
         self.user_id = None
         self.event_id = None
         self.ticket_type_id = None
-        self.donation_ticket_type_id = None
+        self.donation_ticket_type_id_1 = None
+        self.donation_ticket_type_id_2 = None
         self.donation_option_id = None
         self.donation_id = None
 
@@ -260,7 +261,8 @@ class Factory:
         )
         # debug(ticket_type_ids)
         self.ticket_type_id = self.ticket_type_id or ticket_type_ids[0]['id']
-        self.donation_ticket_type_id = self.donation_ticket_type_id or ticket_type_ids[1]['id']
+        self.donation_ticket_type_id_1 = self.donation_ticket_type_id_1 or ticket_type_ids[1]['id']
+        self.donation_ticket_type_id_2 = self.donation_ticket_type_id_2 or ticket_type_ids[2]['id']
 
         await self.conn.execute_b(
             'INSERT INTO actions (:values__names) VALUES :values RETURNING id',
