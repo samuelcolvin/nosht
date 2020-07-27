@@ -150,10 +150,8 @@ class StripeBookingForm extends React.Component {
 
   render () {
     const res = this.props.reservation
-    const expired = this.state.time_left < 1
-
     const items = [
-      !expired && {
+      {
         name: 'Reservation expires in',
         value: `${this.state.time_left} minutes`,
         className: this.state.time_left < 3 ? 'mb-4 has-error h4' : 'mb-4'
@@ -163,6 +161,10 @@ class StripeBookingForm extends React.Component {
       res.item_price && {name: 'Extra donated to cover Costs', value: <Money>{res.extra_donated}</Money>},
       {name: 'Total Price', value: <MoneyFree>{res.total_price}</MoneyFree>},
     ]
+    const expired = this.state.time_left < 1
+    if (expired) {
+      items.splice(0, 1)
+    }
 
     let buy_offline_field = null
     if (res.total_price &&

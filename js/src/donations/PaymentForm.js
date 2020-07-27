@@ -68,7 +68,6 @@ export class PaymentForm_ extends React.Component {
       this.props.ctx.setError(error)
       return
     }
-    console.log('response:', r)
     this.setState({
       donation_action_id: r.action_id,
       client_secret: r.client_secret,
@@ -125,7 +124,6 @@ export class PaymentForm_ extends React.Component {
     if (!this.props.ctx.user) {
       return null
     }
-    console.log('state:', this.state)
     const can_submit = (
       !this.state.submitting &&
       this.state.client_secret &&
