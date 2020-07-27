@@ -1612,3 +1612,21 @@ async def test_waiting_list_remove_wrong(cli, url, db_conn, factory: Factory, se
     assert r.status == 307, await r.text()
     assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/unsubscribe-invalid/'
     assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+
+async def test_event_allow_donation(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat(slug='testing')
+    await factory.create_user()
+    await factory.create_event(allow_tickets=False, slug='evt', allow_donations=True, status='published')
+
+    r = await cli.get(url('event-get-public', category='testing', event='evt'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+
+    assert data['event']['allow_tickets'] is False
+    assert data['event']['allow_donations'] is True
+    assert data['ticket_types'] == [
+        {'name': 'Standard', 'price': 10, 'mode': 'donation'},
+        {'name': 'Standard', 'price': None, 'mode': 'ticket'},
+    ]
