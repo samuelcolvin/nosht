@@ -73,7 +73,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
           <Markdown content={event.short_description}/>
         </div>
       </Col>
-      <Col md="4" className="text-right">
+      <Col md="5" className="text-right">
         {ctx.user && (ctx.user.role === 'admin' || ctx.user.id === event.host_id) &&
           <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
             Edit Event

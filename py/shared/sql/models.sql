@@ -103,6 +103,7 @@ CREATE TABLE events (
   location_lng FLOAT,
 
   ticket_limit INT CONSTRAINT ticket_limit_gt_0 CHECK (ticket_limit > 0),
+  donation_target NUMERIC(10, 2) CONSTRAINT donation_target_gte_1 CHECK (donation_target > 0),
   tickets_taken INT NOT NULL DEFAULT 0,  -- sold and reserved
   image VARCHAR(255),
   secondary_image VARCHAR(255),

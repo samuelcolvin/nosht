@@ -218,3 +218,44 @@ export const WaitingList = ({waiting_list, user}) => {
     </div>
   )
 }
+
+export const Donations = ({donations, user}) => {
+  if (!donations || !donations.length) {
+    return (
+      <div className="mb-5">
+        <h4>Donations</h4>
+        <small>No Donations made for this event.</small>
+      </div>
+    )
+  }
+  const is_admin = user.role === 'admin'
+  return (
+    <div>
+      <h4>Donations</h4>
+      <Table striped>
+        <thead>
+          <tr>
+            <th>Donor</th>
+            <th>Amount</th>
+            <th>Donated At</th>
+            <th>Via</th>
+          </tr>
+        </thead>
+        <tbody>
+          {donations.map((t, i) => (
+            <tr key={i}>
+              <th scope="row">
+                {is_admin ? <Link to={`/dashboard/users/${t.user_id}/`}>{t.name}</Link> : t.name}
+              </th>
+              <td><Money>{t.amount}</Money></td>
+              <td>{format_datetime(t.timestamp)}</td>
+              <td>
+                <small>{t.ticket_type_id ? 'donate button' : 'donation option on thanks page'}</small>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  )
+}

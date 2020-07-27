@@ -192,6 +192,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'image': None,
         'secondary_image': None,
         'ticket_limit': None,
+        'donation_target': None,
         'location_name': None,
         'location_lat': None,
         'location_lng': None,
@@ -307,6 +308,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'location_lat': 50.0,
         'location_lng': 0.0,
         'ticket_limit': None,
+        'donation_target': None,
         'tickets_taken': 0,
         'image': None,
         'secondary_image': None,
@@ -743,6 +745,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
             },
         ],
         'waiting_list': [{'added_ts': CloseToNow(), 'name': 'anne anne'}],
+        'donations': [],
     }
     await db_conn.execute('update tickets set price=null')
 
@@ -1428,6 +1431,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'location_lat': None,
         'location_lng': None,
         'ticket_limit': 42,
+        'donation_target': None,
         'tickets_taken': 0,
         'image': None,
         'secondary_image': None,

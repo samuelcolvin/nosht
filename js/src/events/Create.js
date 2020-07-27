@@ -89,6 +89,12 @@ export const EVENT_FIELDS = [
     help_text: "Suggested amount for donations. You can add more suggested amounts once you've created the event.",
   },
   {
+    name: 'donation_target',
+    type: 'number',
+    step: 1, min: 1, max: 20000,
+    help_text: 'Target for donations, this is only shown to hosts.',
+  },
+  {
     name: 'external_ticket_url',
     title: 'External Ticketing URL',
     type: 'url',
@@ -141,7 +147,7 @@ class CreateEvent extends React.Component {
       .filter(f => f.name !== 'short_description' && f.name !== 'timezone')
       .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
       .filter(f => mode !== 'donations' || (f.name !== 'price' && f.name !== 'ticket_limit'))
-      .filter(f => mode !== 'tickets' || f.name !== 'suggested_donation')
+      .filter(f => mode !== 'tickets' || (f.name !== 'suggested_donation' && f.name !== 'donation_target'))
       .map(f => f.name === 'category' ? Object.assign({}, f, {choices}) : f)
     )
   }

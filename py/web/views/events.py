@@ -13,7 +13,7 @@ from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
-from pydantic import BaseModel, HttpUrl, condecimal, conint, constr, validator
+from pydantic import BaseModel, HttpUrl, PositiveInt, condecimal, conint, constr, validator
 from pytz.tzinfo import StaticTzInfo
 
 from shared.images import delete_image, upload_background, upload_force_shape
@@ -202,9 +202,10 @@ class EventBread(Bread):
             name: constr(max_length=63)
 
         location: LocationModel = None
-        ticket_limit: int = None
-        price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+        ticket_limit: PositiveInt = None
+        price: condecimal(ge=1, max_digits=9, decimal_places=2) = None
         suggested_donation: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+        donation_target: condecimal(ge=0, max_digits=6, decimal_places=2) = None
         long_description: str
         short_description: str = None
         external_ticket_url: HttpUrl = None
@@ -241,6 +242,7 @@ class EventBread(Bread):
         'e.image',
         'e.secondary_image',
         'e.ticket_limit',
+        'e.donation_target',
         'e.location_name',
         'e.location_lat',
         'e.location_lng',
@@ -455,6 +457,16 @@ from waiting_list w
 join users u on w.user_id = u.id
 where w.event=$1
 """
+event_donations_sql = """
+select don.id, don.amount::float, don.ticket_type ticket_type_id, a.user_id,
+  full_name(u.first_name, u.last_name) as name,
+  iso_ts(a.ts, 'Europe/London') as timestamp
+from donations don
+join actions a on don.action = a.id
+join users u on a.user_id = u.id
+where a.event=$1
+order by id desc
+"""
 
 
 @is_admin_or_host
@@ -463,7 +475,8 @@ async def event_tickets(request):
     not_admin = request['session']['role'] != 'admin'
     tickets = []
     settings = request.app['settings']
-    for t in await request['conn'].fetch(event_tickets_sql, event_id):
+    conn: BuildPgConnection = request['conn']
+    for t in await conn.fetch(event_tickets_sql, event_id):
         ticket = {
             'ticket_id': ticket_id_signed(t['id'], settings),
             **t,
@@ -473,11 +486,12 @@ async def event_tickets(request):
             ticket.pop('buyer_email')
         tickets.append(ticket)
 
-    waiting_list = [dict(r) for r in await request['conn'].fetch(event_waiting_list_sql, event_id)]
+    waiting_list = [dict(r) for r in await conn.fetch(event_waiting_list_sql, event_id)]
     if not_admin:
         [r.pop('email') for r in waiting_list]
 
-    return json_response(tickets=tickets, waiting_list=waiting_list)
+    donations = [dict(r) for r in await conn.fetch(event_donations_sql, event_id)]
+    return json_response(tickets=tickets, waiting_list=waiting_list, donations=donations)
 
 
 class CancelTickets(UpdateView):
