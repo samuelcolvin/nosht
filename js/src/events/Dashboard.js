@@ -515,7 +515,7 @@ export class EventsDetails extends RenderDetails {
                      update={this.update}
                      title="Customise Ticket Types"/>
         : null,
-      this.state.ticket_types ?
+      this.state.suggested_donations ?
         <TicketTypes key="edit-suggested-donations"
                      event={event}
                      parent_uri={this.uri}
