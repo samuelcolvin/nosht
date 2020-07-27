@@ -138,7 +138,7 @@ async def _complete_donation(
 
     amount_cents = webhook['data']['object']['amount']
 
-    gift_aid_info, donation_option_id, ticket_type_id, complete = await conn.fetchrow(
+    r = await conn.fetchrow(
         """
         select extra->'gift_aid', extra->>'donation_option_id', extra->>'ticket_type_id', extra->>'complete'
         from actions where id=$1
@@ -146,6 +146,11 @@ async def _complete_donation(
         """,
         metadata.reserve_action_id,
     )
+    if not r:
+        logger.warning('no action found for action %s', metadata.reserve_action_id, extra={'webhook': webhook})
+        raise http_exc(text='action not found', status=240)
+
+    gift_aid_info, donation_option_id, ticket_type_id, complete = r
     if complete:
         logger.warning(
             'donation already performed with action %s', metadata.reserve_action_id, extra={'webhook': webhook}
