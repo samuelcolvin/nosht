@@ -648,10 +648,17 @@ async def add_donation_enum(conn, settings, **kwargs):
 @patch
 async def add_donations(conn, settings, **kwargs):
     """
-    create allow_donations and allow_tickets fields to events
+    modifications required to allow direct donations on events.
     """
     await conn.execute('ALTER TABLE events ADD COLUMN allow_donations BOOLEAN NOT NULL DEFAULT FALSE')
     await conn.execute('ALTER TABLE events ADD COLUMN allow_tickets BOOLEAN NOT NULL DEFAULT TRUE')
     await conn.execute("ALTER TABLE ticket_types ADD COLUMN mode TICKET_MODE NOT NULL DEFAULT 'ticket'")
     await conn.execute('ALTER TABLE ticket_types ADD COLUMN custom_amount BOOL NOT NULL DEFAULT FALSE')
     await conn.execute('CREATE INDEX ticket_type_mode ON ticket_types USING btree (mode)')
+
+    await conn.execute('ALTER TABLE donations ALTER COLUMN donation_option DROP NOT NULL')
+    await conn.execute('ALTER TABLE donations ADD COLUMN ticket_type INT REFERENCES ticket_types ON DELETE CASCADE')
+    await conn.execute(
+        'ALTER TABLE donations ADD CONSTRAINT donation_option_or_ticket_type_required '
+        'CHECK (num_nonnulls(donation_option, ticket_type) = 1)'
+    )

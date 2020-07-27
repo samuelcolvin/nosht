@@ -237,6 +237,8 @@ CREATE TABLE IF NOT EXISTS donations (
   id SERIAL PRIMARY KEY,
   donation_option INT REFERENCES donation_options ON DELETE CASCADE,
   ticket_type INT REFERENCES ticket_types ON DELETE CASCADE,
+  CONSTRAINT donation_option_or_ticket_type_required CHECK (num_nonnulls(donation_option, ticket_type) = 1),
+
   amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
   gift_aid BOOLEAN NOT NULL,
   title VARCHAR(31),
