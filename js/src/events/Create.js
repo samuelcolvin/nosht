@@ -91,7 +91,7 @@ export const EVENT_FIELDS = [
   {
     name: 'donation_target',
     type: 'number',
-    step: 1, min: 1, max: 20000,
+    step: 1, min: 1, max: 100000,
     help_text: 'Target for donations, this is only shown to hosts.',
   },
   {

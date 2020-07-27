@@ -203,9 +203,9 @@ class EventBread(Bread):
 
         location: LocationModel = None
         ticket_limit: PositiveInt = None
-        price: condecimal(ge=1, max_digits=9, decimal_places=2) = None
+        price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
         suggested_donation: condecimal(ge=1, max_digits=6, decimal_places=2) = None
-        donation_target: condecimal(ge=0, max_digits=6, decimal_places=2) = None
+        donation_target: condecimal(ge=0, max_digits=9, decimal_places=2) = None
         long_description: str
         short_description: str = None
         external_ticket_url: HttpUrl = None
