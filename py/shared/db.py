@@ -684,6 +684,7 @@ async def insert_donation_ticket_types(conn, settings, **kwargs):
         where not has_donation_tts
     """)
     logger.info('%s events to add donation ticket types to', len(event_ids))
+
     values = []
     for event_id in event_ids:
         values += [
