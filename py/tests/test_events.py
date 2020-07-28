@@ -1128,7 +1128,7 @@ async def test_invalid_ticket_updates(get_input, response_contains, cli, url, fa
     await factory.create_event()
     await login()
 
-    tt_id = await db_conn.fetchval('SELECT id FROM ticket_types')
+    tt_id = await db_conn.fetchval("SELECT id FROM ticket_types where mode='ticket'")
     ticket_types = get_input(tt_id)
 
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
@@ -1676,3 +1676,81 @@ async def test_edit_event_mode(cli, url, db_conn, factory: Factory, login):
     assert (allow_tickets, allow_donations) == (True, True)
 
     assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+
+
+async def test_donation_tt_updates(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', status='published')
+    await login()
+
+    r = await cli.get(url('event-get-public', category='cat', event='evt'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['ticket_types'] == [
+        {'name': 'Standard', 'price': 10, 'mode': 'donation'},
+        {'name': 'Standard', 'price': None, 'mode': 'ticket'},
+    ]
+
+    tt_id = await db_conn.fetchval("SELECT id FROM ticket_types where mode='donation' and not custom_amount")
+
+    ticket_types = [
+        {'id': tt_id, 'name': 'foobar', 'price': 123, 'active': True, 'slots_used': 1, 'mode': 'donation'},
+        {'name': 'new', 'price': 44, 'active': True, 'slots_used': 1, 'mode': 'donation'},
+    ]
+
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
+    assert r.status == 200, await r.text()
+
+    r = await cli.get(url('event-get-public', category='cat', event='evt'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['ticket_types'] == [
+        {'mode': 'donation', 'name': 'new', 'price': 44},
+        {'name': 'foobar', 'price': 123, 'mode': 'donation'},
+        {'name': 'Standard', 'price': None, 'mode': 'ticket'},
+    ]
+
+
+async def test_tt_updates_invalid(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', status='published')
+    await login()
+
+    tt_id1 = await db_conn.fetchval("SELECT id FROM ticket_types where mode='donation' and not custom_amount")
+    tt_id2 = await db_conn.fetchval("SELECT id FROM ticket_types where mode='ticket'")
+    ticket_types = [
+        {'id': tt_id1, 'name': 'foobar', 'price': 123, 'active': True, 'slots_used': 1, 'mode': 'donation'},
+        {'id': tt_id2, 'name': 'foobar', 'price': 123, 'active': True, 'slots_used': 1, 'mode': 'ticket'},
+    ]
+
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
+    assert r.status == 400, await r.text()
+    assert await r.json() == {'message': 'all ticket types must have the same mode'}
+
+
+async def test_tt_updates_change(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', status='published')
+    await login()
+
+    tt_id = await db_conn.fetchval("SELECT id FROM ticket_types where mode='ticket'")
+    ticket_types = [
+        {'id': tt_id, 'name': 'foobar', 'price': 123, 'active': True, 'slots_used': 1, 'mode': 'donation'},
+    ]
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
+    assert r.status == 400, await r.text()
+    assert await r.json() == {'message': 'ticket type modes should not change'}
+
+    r = await cli.get(url('event-get-public', category='cat', event='evt'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['ticket_types'] == [
+        {'name': 'Standard', 'price': 10, 'mode': 'donation'},
+        {'name': 'Standard', 'price': None, 'mode': 'ticket'},
+    ]

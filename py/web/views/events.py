@@ -654,6 +654,11 @@ class SetTicketTypes(UpdateView):
         event_id = await _check_event_permissions(self.request, check_upcoming=True)
         existing = [tt for tt in m.ticket_types if tt.id]
         mode = m.ticket_types[0].mode
+
+        if not all(tt.mode == mode for tt in m.ticket_types):
+            raise JsonErrors.HTTPBadRequest(message='all ticket types must have the same mode')
+
+        existing_ids = [tt.id for tt in existing]
         deleted_with_tickets = await self.conn.fetchval(
             """
             SELECT 1
@@ -664,13 +669,19 @@ class SetTicketTypes(UpdateView):
             """,
             event_id,
             mode.value,
-            [tt.id for tt in existing],
+            existing_ids,
         )
         if deleted_with_tickets:
             raise JsonErrors.HTTPBadRequest(message='ticket types deleted which have ticket associated with them')
 
-        if not all(tt.mode == mode for tt in m.ticket_types):
-            raise JsonErrors.HTTPBadRequest(message='all ticket types must have the same mode')
+        changed_type = await self.conn.fetchval(
+            'select 1 from ticket_types tt where tt.event=$1 and mode!=$2 and tt.id=ANY($3)',
+            event_id,
+            mode.value,
+            existing_ids,
+        )
+        if changed_type:
+            raise JsonErrors.HTTPBadRequest(message='ticket type modes should not change')
 
         async with self.conn.transaction():
             await self.conn.fetchval(
