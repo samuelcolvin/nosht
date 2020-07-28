@@ -34,7 +34,7 @@ export class EventsList extends RenderList {
     this.state.buttons = [
       {name: 'Create Event', link: '/create/'},
     ]
-    this.state.search_uri = '/events/search/'
+    this.state.search_uri = this.props.ctx.user.role === 'admin' ? '/events/search/' : null
   }
 
   no_items_msg () {
