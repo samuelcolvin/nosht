@@ -12,15 +12,57 @@ import Map from '../general/Map'
 import When from '../general/When'
 import {MoneyFree} from '../general/Money'
 import BookEvent from './Book'
+import DonateToEvent from './Donate'
 import WaitingList from './WaitingList'
 import Thanks from '../donations/Thanks'
 
+const DonateButton = ({event, uri}) => {
+  if (event.allow_donations) {
+    return (
+      <Button color="success" size="lg" className="hover-raise ml-2" tag={Link} to={uri + 'donate/'}>
+        Donate
+      </Button>
+    )
+  } else {
+    return null
+  }
+}
 
-const link_classes = e => (
-  `hover-raise btn btn-lg btn-${e.tickets_available !== null ? 'danger': 'primary'}` +
-  (e.tickets_available === 0 ? ' disabled' : '')
-)
-
+const BookButton = ({event, existing_tickets, on_waiting_list, uri}) => {
+  if (!event.allow_tickets) {
+    return null
+  } else if (event.external_ticket_url) {
+    const link_classes = (
+      `hover-raise ml-2 btn btn-lg btn-${event.tickets_available !== null ? 'danger': 'primary'}` +
+      (event.tickets_available === 0 ? ' disabled' : '')
+    )
+    return <a className={link_classes} href={event.external_ticket_url}>Book Now</a>
+  } else if (event.tickets_available === null) {
+    return (
+      <Button color={existing_tickets ? 'secondary' : 'primary'} size="lg" className="hover-raise ml-2"
+              tag={Link} to={uri + 'book/'}>
+        {existing_tickets ? 'Book more tickets' : 'Book Now'}
+      </Button>
+    )
+  } else if (event.tickets_available === 0) {
+    if (on_waiting_list || existing_tickets) {
+      return null
+    }
+    return (
+      <Button color={existing_tickets ? 'secondary' : 'primary'} size="lg" className="hover-raise ml-2"
+              tag={Link} to={uri + 'waiting-list/'}>
+        Join Waiting List
+      </Button>
+    )
+  } else {
+    return (
+      <Button color={existing_tickets ? 'secondary' : 'danger'} size="lg" className="hover-raise ml-2"
+              tag={Link} to={uri + 'book/'}>
+        {existing_tickets ? 'Book more tickets' : 'Book Now'}
+      </Button>
+    )
+  }
+}
 
 const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_tickets, on_waiting_list}) => (
   <div>
@@ -31,38 +73,15 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
           <Markdown content={event.short_description}/>
         </div>
       </Col>
-      <Col md="4" className="text-right">
+      <Col md="5" className="text-right">
         {ctx.user && (ctx.user.role === 'admin' || ctx.user.id === event.host_id) &&
           <Button color="link" tag={Link} to={`/dashboard/events/${event.id}/`}>
             Edit Event
           </Button>
         }
-        {event.external_ticket_url ? (
-          <a className={link_classes(event)} href={event.external_ticket_url}>Book Now</a>
-        ) : (
-          event.tickets_available === null ? (
-            <Button color={existing_tickets ? 'secondary' : 'primary'} size="lg" className="hover-raise"
-                    tag={Link} to={uri + 'book/'}>
-              {existing_tickets ? 'Book more tickets' : 'Book Now'}
-            </Button>
-          ) : (
-            event.tickets_available === 0 ? (
-              !on_waiting_list && !existing_tickets && (
-                <Button color={existing_tickets ? 'secondary' : 'primary'} size="lg" className="hover-raise"
-                        tag={Link} to={uri + 'waiting-list/'}>
-                  Join Waiting List
-                </Button>
-              )
-            ) : (
-              <Button color={existing_tickets ? 'secondary' : 'danger'} size="lg" className="hover-raise"
-                      tag={Link} to={uri + 'book/'}>
-                {existing_tickets ? 'Book more tickets' : 'Book Now'}
-              </Button>
-            )
-          )
-        )
-        }
-        {event.tickets_available !== null &&
+        <DonateButton event={event} uri={uri}/>
+        <BookButton event={event} existing_tickets={existing_tickets} on_waiting_list={on_waiting_list} uri={uri}/>
+        {event.allow_tickets && event.tickets_available !== null &&
           <div className="mt-3">
             {event.tickets_available === 0 ?
               !existing_tickets && (
@@ -90,15 +109,29 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
         <When event={event}/>
       </Col>
 
-      <Col md="auto">
-        <FontAwesomeIcon icon="pound-sign" className="mx-1 text-success"/>
-          {ticket_types.map(tt => tt.price).filter(unique).map((p, i) => (
-            <span key={i}>
-              {i > 0 && <span className="px-1">/</span>}
-              <MoneyFree NoSymbol={i === 0}>{p}</MoneyFree>
-            </span>
-          ))}
-      </Col>
+      {event.allow_tickets ? (
+        <Col md="auto">
+          <FontAwesomeIcon icon="pound-sign" className="mx-1 text-success"/>
+            {ticket_types.filter(tt => tt.mode === 'ticket').map(tt => tt.price).filter(unique).map((p, i) => (
+              <span key={i}>
+                {i > 0 && <span className="px-1">/</span>}
+                <MoneyFree NoSymbol={i === 0}>{p}</MoneyFree>
+              </span>
+            ))}
+        </Col>
+      ) : null}
+
+      {event.allow_donations ? (
+        <Col md="auto">
+          <FontAwesomeIcon icon="hand-holding-heart" className="mx-1 text-success"/>
+            {ticket_types.filter(tt => tt.mode === 'donation').map(tt => tt.price).filter(unique).map((p, i) => (
+              <span key={i}>
+                {i > 0 && <span className="px-1">/</span>}
+                <MoneyFree>{p}</MoneyFree>
+              </span>
+            ))}
+        </Col>
+      ) : null}
 
       <Col md="auto">
         <FontAwesomeIcon icon={'user'} className="mx-1 text-success"/>
@@ -149,7 +182,7 @@ class Event extends React.Component {
   }
 
   get_data = async () => {
-    if (this.state.event && this.props.location.pathname.match(/\/(waiting-list|book)\/$/)) {
+    if (this.state.event && this.props.location.pathname.match(/\/(waiting-list|book|donate)\/$/)) {
       // don't re-get the data when opening the booking or waiting-list forms
       return
     }
@@ -181,7 +214,7 @@ class Event extends React.Component {
     }
     return (
       <div>
-        {this.props.location.pathname.match(/\/donate(\/(\d+))?\/$/) ?
+        {this.props.location.pathname.match(/\/post-donation(\/(\d+))?\/$/) ?
             <Thanks uri={this.uri} {...this.state}/>
             :
             <EventDetails uri={this.uri} {...this.state}/>
@@ -198,6 +231,13 @@ class Event extends React.Component {
           parent_uri={this.uri}
           event={this.state.event}
           params={this.props.match.params}
+        />
+        <DonateToEvent
+          {...this.props}
+          parent_uri={this.uri}
+          event={this.state.event}
+          params={this.props.match.params}
+          set_complete={() => this.setState({booking_complete: true})}
         />
       </div>
     )

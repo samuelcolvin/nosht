@@ -20,6 +20,7 @@ logger = logging.getLogger('nosht.views.stripe')
 class MetadataPurpose(str, Enum):
     buy_tickets = 'buy-tickets'
     donate = 'donate'
+    donate_direct = 'donate-direct'
 
 
 class MetadataModel(BaseModel):
@@ -137,14 +138,19 @@ async def _complete_donation(
 
     amount_cents = webhook['data']['object']['amount']
 
-    gift_aid_info, donation_option_id, complete = await conn.fetchrow(
+    r = await conn.fetchrow(
         """
-        select extra->'gift_aid', extra->>'donation_option_id', extra->>'complete'
+        select extra->'gift_aid', extra->>'donation_option_id', extra->>'ticket_type_id', extra->>'complete'
         from actions where id=$1
         for update
         """,
         metadata.reserve_action_id,
     )
+    if not r:
+        logger.warning('no action found for action %s', metadata.reserve_action_id, extra={'webhook': webhook})
+        raise http_exc(text='action not found', status=240)
+
+    gift_aid_info, donation_option_id, ticket_type_id, complete = r
     if complete:
         logger.warning(
             'donation already performed with action %s', metadata.reserve_action_id, extra={'webhook': webhook}
@@ -162,12 +168,16 @@ async def _complete_donation(
         ),
     )
     gift_aid = bool(gift_aid_info)
-    don_values = dict(
-        donation_option=int(donation_option_id), amount=amount_cents / 100, gift_aid=gift_aid, action=action_id,
-    )
+    don_values = dict(amount=amount_cents / 100, gift_aid=gift_aid, action=action_id)
+    if donation_option_id:
+        don_values['donation_option'] = int(donation_option_id)
+    else:
+        don_values['ticket_type'] = int(ticket_type_id)
+
     if gift_aid:
         don_values.update(json.loads(gift_aid_info))
     await conn.fetchval_b('INSERT INTO donations (:values__names) VALUES :values', values=Values(**don_values))
+
     await conn.execute(
         """update actions set extra=extra || '{"complete": true}' where id=$1""", metadata.reserve_action_id,
     )

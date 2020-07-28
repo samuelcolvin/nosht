@@ -1,20 +1,20 @@
 import logging
 from secrets import compare_digest
 from time import time
-from typing import List
+from typing import List, Optional
 
 from aiohttp.web_exceptions import HTTPTemporaryRedirect
 from asyncpg import CheckViolationError
 from buildpg import MultipleValues, Values
 from buildpg.asyncpg import BuildPgConnection
-from pydantic import BaseModel, EmailStr, constr, validator
+from pydantic import BaseModel, EmailStr, confloat, constr, validator
 
 from shared.utils import waiting_list_sig
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_auth
 from web.bread import UpdateView
 from web.stripe import BookFreeModel, Reservation, book_free, stripe_buy_intent
-from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, request_root
+from web.utils import JsonErrors, decrypt_json, encrypt_json, json_response, raw_json_response, request_root
 
 from .events import check_event_sig
 
@@ -44,13 +44,34 @@ async def booking_info(request):
         request['session']['user_id'],
     )
     ticket_types = await conn.fetch(
-        'SELECT id, name, price::float FROM ticket_types WHERE event=$1 AND active=TRUE ORDER BY id', event_id
+        "SELECT id, name, price::float FROM ticket_types WHERE event=$1 AND mode='ticket' AND active=TRUE ORDER BY id",
+        event_id,
     )
     return json_response(
         tickets_remaining=tickets_remaining if (tickets_remaining and tickets_remaining < 10) else None,
         existing_tickets=existing_tickets or 0,
         ticket_types=[dict(tt) for tt in ticket_types],
     )
+
+
+get_donation_ticket_types = """
+SELECT json_build_object('ticket_types', ticket_types)
+FROM (
+  SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS ticket_types FROM (
+    SELECT id, name, price::float amount, custom_amount
+    FROM ticket_types
+    WHERE event=$1 AND mode='donation' AND active=TRUE
+    ORDER BY price
+  ) AS t
+) AS ticket_types
+"""
+
+
+@is_auth
+async def donating_info(request):
+    event_id = await check_event_sig(request)
+    json_str = await request['conn'].fetchval(get_donation_ticket_types, event_id)
+    return raw_json_response(json_str)
 
 
 class TicketModel(BaseModel):
@@ -71,6 +92,7 @@ class ReserveTickets(UpdateViewAuth):
     class Model(BaseModel):
         tickets: List[TicketModel]
         ticket_type: int
+        custom_amount: Optional[confloat(ge=1, le=1000)] = None
 
         @validator('tickets')
         def check_ticket_count(cls, v):
@@ -105,7 +127,7 @@ class ReserveTickets(UpdateViewAuth):
             raise JsonErrors.HTTPBadRequest(message='Cannot reserve ticket for an externally ticketed event')
 
         r = await self.conn.fetchrow(
-            'SELECT price FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2', event_id, m.ticket_type
+            'SELECT price FROM ticket_types WHERE event=$1 AND active=TRUE AND id=$2', event_id, m.ticket_type,
         )
         if not r:
             raise JsonErrors.HTTPBadRequest(message='Ticket type not found')

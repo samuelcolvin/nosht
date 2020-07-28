@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+import pytz
 from aiohttp import FormData
 from pytest_toolbox.comparison import AnyInt, CloseToNow, RegexStr
 
@@ -26,7 +27,10 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
     assert r.status == 200, await r.text()
     data = await r.json()
     assert data == {
-        'ticket_types': [{'name': 'Standard', 'price': None}],
+        'ticket_types': [
+            {'mode': 'donation', 'name': 'Standard', 'price': 10.0},
+            {'mode': 'ticket', 'name': 'Standard', 'price': None},
+        ],
         'event': {
             'id': factory.event_id,
             'category_id': factory.category_id,
@@ -36,6 +40,8 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
             'external_ticket_url': None,
+            'allow_tickets': True,
+            'allow_donations': False,
             'category_content': None,
             'location': {'name': 'Testing Location', 'lat': 51.5, 'lng': -0.5},
             'start_ts': '2032-06-28T19:00:00',
@@ -125,7 +131,8 @@ async def test_bread_browse(cli, url, factory: Factory, login):
     await factory.create_cat()
     await factory.create_user()
     await factory.create_event(public=False, status='published')
-    await factory.create_event(name='second event')
+    london = pytz.timezone('Europe/London')
+    await factory.create_event(name='second event', start_ts=london.localize(datetime(2032, 6, 30, 0, 0)))
 
     await login()
 
@@ -140,7 +147,7 @@ async def test_bread_browse(cli, url, factory: Factory, login):
                 'category': 'Supper Clubs',
                 'status': 'pending',
                 'highlight': False,
-                'start_ts': '2032-06-28T19:00:00',
+                'start_ts': '2032-06-30T00:00:00',
                 'duration': 3600,
             },
             {
@@ -175,6 +182,8 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'category': 'Supper Clubs',
         'status': 'published',
         'highlight': False,
+        'allow_donations': False,
+        'allow_tickets': True,
         'start_ts': '2032-06-28T19:00:00',
         'timezone': 'Europe/London',
         'duration': 3600,
@@ -183,6 +192,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'image': None,
         'secondary_image': None,
         'ticket_limit': None,
+        'donation_target': None,
         'location_name': None,
         'location_lat': None,
         'location_lng': None,
@@ -285,6 +295,8 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'name': 'foobar',
         'slug': 'foobar',
         'highlight': False,
+        'allow_donations': False,
+        'allow_tickets': True,
         'start_ts': datetime(2032, 2, 1, 19, 0, tzinfo=timezone.utc),
         'timezone': 'Europe/London',
         'duration': timedelta(seconds=7200),
@@ -296,11 +308,12 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'location_lat': 50.0,
         'location_lng': 0.0,
         'ticket_limit': None,
+        'donation_target': None,
         'tickets_taken': 0,
         'image': None,
         'secondary_image': None,
     }
-    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types where mode=$1', 'ticket')
     tt = dict(await db_conn.fetchrow('SELECT event, name, price, slots_used, active FROM ticket_types'))
     assert tt == {
         'event': event_id,
@@ -528,6 +541,9 @@ async def test_edit_event(cli, url, db_conn, factory: Factory, login):
     assert ticket_limit == 12
     assert location_lat == 50
 
+    allow_tickets, allow_donations = await db_conn.fetchrow('SELECT allow_tickets, allow_donations FROM events')
+    assert (allow_tickets, allow_donations) == (True, False)
+
     action = await db_conn.fetchrow("SELECT * FROM actions WHERE type='edit-event'")
     assert action['user_id'] == factory.user_id
     assert action['event'] == factory.event_id
@@ -732,6 +748,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
             },
         ],
         'waiting_list': [{'added_ts': CloseToNow(), 'name': 'anne anne'}],
+        'donations': [],
     }
     await db_conn.execute('update tickets set price=null')
 
@@ -982,34 +999,38 @@ async def test_add_ticket_type(cli, url, factory: Factory, db_conn, login):
     await factory.create_event()
     await login()
 
-    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types where mode=$1', 'ticket')
     r = await cli.get(url('event-ticket-types', id=factory.event_id))
     assert r.status == 200, await r.text()
     data = await r.json()
-    ticket_types = data['ticket_types']
+    ticket_types = [data['ticket_types'][0]]
     assert len(ticket_types) == 1
-    ticket_types.append({'name': 'Foobar', 'price': 123.5, 'slots_used': 2, 'active': False})
+    ticket_types.append({'name': 'Foobar', 'price': 123.5, 'slots_used': 2, 'active': False, 'mode': 'ticket'})
 
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
     assert r.status == 200, await r.text()
 
-    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types WHERE mode=$1', 'ticket')]
     assert ticket_types == [
         {
             'id': AnyInt(),
             'event': factory.event_id,
             'name': 'Standard',
             'price': None,
+            'mode': 'ticket',
             'slots_used': 1,
             'active': True,
+            'custom_amount': False,
         },
         {
             'id': AnyInt(),
             'event': factory.event_id,
             'name': 'Foobar',
             'price': Decimal('123.50'),
+            'mode': 'ticket',
             'slots_used': 2,
             'active': False,
+            'custom_amount': False,
         },
     ]
 
@@ -1026,7 +1047,7 @@ async def test_delete_ticket_type(cli, url, factory: Factory, db_conn, login):
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
 
-    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types where mode=$1', 'ticket')]
     assert ticket_types == [
         {
             'id': AnyInt(),
@@ -1034,7 +1055,9 @@ async def test_delete_ticket_type(cli, url, factory: Factory, db_conn, login):
             'name': 'xxx',
             'price': Decimal('12.30'),
             'slots_used': 50,
+            'mode': 'ticket',
             'active': True,
+            'custom_amount': False,
         },
     ]
     assert ticket_types[0]['id'] != tt_id
@@ -1069,15 +1092,17 @@ async def test_edit_ticket_type(cli, url, factory: Factory, db_conn, login):
 
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data=data)
     assert r.status == 200, await r.text()
-    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types')]
+    ticket_types = [dict(r) for r in await db_conn.fetch('SELECT * FROM ticket_types where mode=$1', 'ticket')]
     assert ticket_types == [
         {
             'id': tt_id,
             'event': factory.event_id,
             'name': 'xxx',
             'price': Decimal('12.30'),
+            'mode': 'ticket',
             'slots_used': 50,
             'active': True,
+            'custom_amount': False,
         },
     ]
 
@@ -1103,7 +1128,7 @@ async def test_invalid_ticket_updates(get_input, response_contains, cli, url, fa
     await factory.create_event()
     await login()
 
-    tt_id = await db_conn.fetchval('SELECT id FROM ticket_types')
+    tt_id = await db_conn.fetchval("SELECT id FROM ticket_types where mode='ticket'")
     ticket_types = get_input(tt_id)
 
     r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
@@ -1248,14 +1273,14 @@ async def test_delete_event(cli, url, factory: Factory, login, db_conn):
     await factory.create_reservation(event_id=event2, ticket_type_id=ticket_type)
 
     assert 2 == await db_conn.fetchval('SELECT count(*) FROM events')
-    assert 2 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
+    assert 6 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
     assert 2 == await db_conn.fetchval('SELECT count(*) FROM tickets')
 
     r = await cli.json_post(url('event-delete', pk=factory.event_id))
     assert r.status == 200, await r.text()
 
     assert 1 == await db_conn.fetchval('SELECT count(*) FROM events')
-    assert 1 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
+    assert 3 == await db_conn.fetchval('SELECT count(*) FROM ticket_types')
     assert 1 == await db_conn.fetchval('SELECT count(*) FROM tickets')
 
 
@@ -1396,6 +1421,8 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'name': 'New Event',
         'slug': 'new-event',
         'highlight': False,
+        'allow_tickets': True,
+        'allow_donations': False,
         'external_ticket_url': None,
         'start_ts': datetime(2032, 2, 1, 19, 0, tzinfo=timezone.utc),
         'timezone': 'Europe/London',
@@ -1407,11 +1434,12 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'location_lat': None,
         'location_lng': None,
         'ticket_limit': 42,
+        'donation_target': None,
         'tickets_taken': 0,
         'image': None,
         'secondary_image': None,
     }
-    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', new_event_id) == 1
+    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', new_event_id) == 3
 
 
 async def test_clone_event_ticket_types(cli, url, factory: Factory, db_conn, login):
@@ -1428,7 +1456,7 @@ async def test_clone_event_ticket_types(cli, url, factory: Factory, db_conn, log
         """,
         event_id,
     )
-    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', event_id) == 3
+    assert await db_conn.fetchval('select count(*) from ticket_types where event=$1', event_id) == 5
 
     await login()
     data = dict(
@@ -1439,12 +1467,50 @@ async def test_clone_event_ticket_types(cli, url, factory: Factory, db_conn, log
     assert await db_conn.fetchval('select count(*) from events where id!=$1', factory.event_id) == 1
     new_event_id = (await r.json())['id']
     ticket_types = await db_conn.fetch(
-        'select event, name, price, slots_used from ticket_types where event=$1 order by id', new_event_id
+        'select event, name, price, slots_used, mode, custom_amount from ticket_types where event=$1 order by id',
+        new_event_id,
     )
     assert [dict(r) for r in ticket_types] == [
-        {'event': new_event_id, 'name': 'Standard', 'price': None, 'slots_used': 1},
-        {'event': new_event_id, 'name': 'foo', 'price': Decimal('123.00'), 'slots_used': 3},
-        {'event': new_event_id, 'name': 'bar', 'price': Decimal('54.32'), 'slots_used': None},
+        {
+            'event': new_event_id,
+            'name': 'Standard',
+            'price': None,
+            'slots_used': 1,
+            'mode': 'ticket',
+            'custom_amount': False,
+        },
+        {
+            'event': new_event_id,
+            'name': 'Standard',
+            'price': Decimal('10.00'),
+            'slots_used': 1,
+            'mode': 'donation',
+            'custom_amount': False,
+        },
+        {
+            'event': new_event_id,
+            'name': 'Custom Amount',
+            'price': None,
+            'slots_used': 1,
+            'mode': 'donation',
+            'custom_amount': True,
+        },
+        {
+            'event': new_event_id,
+            'name': 'foo',
+            'price': Decimal('123.00'),
+            'slots_used': 3,
+            'mode': 'ticket',
+            'custom_amount': False,
+        },
+        {
+            'event': new_event_id,
+            'name': 'bar',
+            'price': Decimal('54.32'),
+            'slots_used': None,
+            'mode': 'ticket',
+            'custom_amount': False,
+        },
     ]
 
 
@@ -1549,3 +1615,142 @@ async def test_waiting_list_remove_wrong(cli, url, db_conn, factory: Factory, se
     assert r.status == 307, await r.text()
     assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/unsubscribe-invalid/'
     assert await db_conn.fetchval('select count(*) from waiting_list') == 1
+
+
+async def test_event_allow_donation(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat(slug='testing')
+    await factory.create_user()
+    await factory.create_event(allow_tickets=False, slug='evt', allow_donations=True, status='published')
+
+    r = await cli.get(url('event-get-public', category='testing', event='evt'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+
+    assert data['event']['allow_tickets'] is False
+    assert data['event']['allow_donations'] is True
+    assert data['ticket_types'] == [
+        {'name': 'Standard', 'price': 10, 'mode': 'donation'},
+        {'name': 'Standard', 'price': None, 'mode': 'ticket'},
+    ]
+
+
+async def test_create_event_mode(cli, url, db_conn, factory: Factory, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        mode='both',
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': None},
+        timezone='Europe/London',
+        long_description='hello',
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 201, await r.text()
+
+    allow_tickets, allow_donations = await db_conn.fetchrow('SELECT allow_tickets, allow_donations FROM events')
+    assert (allow_tickets, allow_donations) == (True, True)
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+
+
+async def test_edit_event_mode(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(allow_tickets=True, allow_donations=False)
+    await login()
+
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(mode='donations'))
+    assert r.status == 200, await r.text()
+    allow_tickets, allow_donations = await db_conn.fetchrow('SELECT allow_tickets, allow_donations FROM events')
+    assert (allow_tickets, allow_donations) == (False, True)
+
+    r = await cli.json_post(url('event-edit', pk=factory.event_id), data=dict(mode='both'))
+    assert r.status == 200, await r.text()
+    allow_tickets, allow_donations = await db_conn.fetchrow('SELECT allow_tickets, allow_donations FROM events')
+    assert (allow_tickets, allow_donations) == (True, True)
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+
+
+async def test_donation_tt_updates(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', status='published')
+    await login()
+
+    r = await cli.get(url('event-get-public', category='cat', event='evt'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['ticket_types'] == [
+        {'name': 'Standard', 'price': 10, 'mode': 'donation'},
+        {'name': 'Standard', 'price': None, 'mode': 'ticket'},
+    ]
+
+    tt_id = await db_conn.fetchval("SELECT id FROM ticket_types where mode='donation' and not custom_amount")
+
+    ticket_types = [
+        {'id': tt_id, 'name': 'foobar', 'price': 123, 'active': True, 'slots_used': 1, 'mode': 'donation'},
+        {'name': 'new', 'price': 44, 'active': True, 'slots_used': 1, 'mode': 'donation'},
+    ]
+
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
+    assert r.status == 200, await r.text()
+
+    r = await cli.get(url('event-get-public', category='cat', event='evt'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['ticket_types'] == [
+        {'mode': 'donation', 'name': 'new', 'price': 44},
+        {'name': 'foobar', 'price': 123, 'mode': 'donation'},
+        {'name': 'Standard', 'price': None, 'mode': 'ticket'},
+    ]
+
+
+async def test_tt_updates_invalid(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', status='published')
+    await login()
+
+    tt_id1 = await db_conn.fetchval("SELECT id FROM ticket_types where mode='donation' and not custom_amount")
+    tt_id2 = await db_conn.fetchval("SELECT id FROM ticket_types where mode='ticket'")
+    ticket_types = [
+        {'id': tt_id1, 'name': 'foobar', 'price': 123, 'active': True, 'slots_used': 1, 'mode': 'donation'},
+        {'id': tt_id2, 'name': 'foobar', 'price': 123, 'active': True, 'slots_used': 1, 'mode': 'ticket'},
+    ]
+
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
+    assert r.status == 400, await r.text()
+    assert await r.json() == {'message': 'all ticket types must have the same mode'}
+
+
+async def test_tt_updates_change(cli, url, factory: Factory, db_conn, login):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', status='published')
+    await login()
+
+    tt_id = await db_conn.fetchval("SELECT id FROM ticket_types where mode='ticket'")
+    ticket_types = [
+        {'id': tt_id, 'name': 'foobar', 'price': 123, 'active': True, 'slots_used': 1, 'mode': 'donation'},
+    ]
+    r = await cli.json_post(url('update-event-ticket-types', id=factory.event_id), data={'ticket_types': ticket_types})
+    assert r.status == 400, await r.text()
+    assert await r.json() == {'message': 'ticket type modes should not change'}
+
+    r = await cli.get(url('event-get-public', category='cat', event='evt'))
+    assert r.status == 200, await r.text()
+    data = await r.json()
+    assert data['ticket_types'] == [
+        {'name': 'Standard', 'price': 10, 'mode': 'donation'},
+        {'name': 'Standard', 'price': None, 'mode': 'ticket'},
+    ]

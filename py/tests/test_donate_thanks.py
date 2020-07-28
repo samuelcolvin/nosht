@@ -51,7 +51,9 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     )
     await login('other.person@example.org')
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     action_id = await db_conn.fetchval('select id from actions where type=$1', ActionTypes.donate_prepare)
     data = await r.json()
@@ -84,6 +86,7 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
     assert dict(r) == {
         'id': AnyInt(),
         'donation_option': factory.donation_option_id,
+        'ticket_type': None,
         'amount': 20,
         'gift_aid': True,
         'title': 'Mr',
@@ -141,7 +144,9 @@ async def test_donate_no_gift_aid(cli, url, dummy_server, factory: Factory, logi
 
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     action_id = (await r.json())['action_id']
 
@@ -436,7 +441,7 @@ async def test_wrong_donation_option(factory: Factory, cli, url, login):
     await factory.create_event(price=10)
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=999, event_id=factory.event_id))
+    r = await cli.json_post(url('donation-after-prepare', don_opt_id=999, event_id=factory.event_id))
     assert r.status == 400, await r.text()
     assert {'message': 'donation option not found'} == await r.json()
 
@@ -450,7 +455,9 @@ async def test_wrong_event(factory: Factory, cli, url, login):
     cat2 = await factory.create_cat(slug='cat2')
     await factory.create_event(price=10, category_id=cat2)
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 400, await r.text()
     assert {'message': 'event not found on the same category as donation_option'} == await r.json()
 
@@ -463,7 +470,9 @@ async def test_donate_gift_aid_no_name(factory: Factory, cli, url, login):
     await factory.create_donation_option()
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     data = await r.json()
 
@@ -485,7 +494,9 @@ async def test_gift_aid_good(factory: Factory, cli, url, login, db_conn):
     await factory.create_donation_option()
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     action_id = (await r.json())['action_id']
 
@@ -530,7 +541,9 @@ async def test_gift_aid_wrong_user(factory: Factory, cli, url, login):
     await factory.create_donation_option()
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     action_id = (await r.json())['action_id']
 

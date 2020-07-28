@@ -1,12 +1,7 @@
 import React from 'react'
-import {
-  ModalBody,
-  Form as BootstrapForm,
-  Row,
-  Col,
-  Collapse,
-} from 'reactstrap'
+import {ModalBody, Form as BootstrapForm, Row, Col, Collapse} from 'reactstrap'
 import ReactGA from 'react-ga'
+import WithContext from '../utils/context'
 import AsModal, {SetModalTitle, ModalFooter} from '../general/Modal'
 import Markdown from '../general/Markdown'
 import {Money} from '../general/Money'
@@ -29,7 +24,7 @@ const gift_aid_field = {
   )
 }
 
-class DonateForm extends React.Component {
+export class PaymentForm_ extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
@@ -58,9 +53,17 @@ class DonateForm extends React.Component {
       postcode_error: null,
     })
 
+    let url
+    let data = null
+    if (this.props.config.donation_option_id) {
+      url = `/donation-options/${this.props.config.donation_option_id}/prepare/${this.props.event.id}/`
+    } else {
+      url = `/donation-prepare/${this.props.config.ticket_type}/`
+      data = {custom_amount: this.props.config.amount}
+    }
     let r
     try {
-      r = await requests.post(`/donation-options/${this.props.donation_option.id}/prepare/${this.props.event.id}/`)
+      r = await requests.post(url, data)
     } catch (error) {
       this.props.ctx.setError(error)
       return
@@ -110,8 +113,8 @@ class DonateForm extends React.Component {
       ReactGA.event({
         category: 'donation',
         action: 'donation-complete',
-        label: this.props.donation_option.id,
-        value: Math.round(this.props.donation_option.amount * 100),
+        label: this.props.config.donation_option_id,
+        value: Math.round(this.props.config.amount * 100),
       })
       this.props.finished(true)
     }
@@ -134,24 +137,27 @@ class DonateForm extends React.Component {
     const city_field = {name: 'city', required: this.state.gift_aid}
     const postcode_field = {name: 'postcode', required: this.state.gift_aid}
 
-    const opt = this.props.donation_option
     return (
       <BootstrapForm className="pad-less" onSubmit={this.submit.bind(this)}>
-        <SetModalTitle>
-          {opt.name} &bull; <Money>{opt.amount}</Money> donation
-        </SetModalTitle>
+        {this.props.config.name ? (
+            <SetModalTitle>
+              {this.props.config.name} &bull; <Money>{this.props.config.amount}</Money> donation
+            </SetModalTitle>
+          )
+          : null
+        }
         <ModalBody key="mb">
           <div>
             <div className="text-center">
-              {opt.image &&
-                <img src={opt.image} className="img-fluid" alt={opt.name}/>
+              {this.props.config.image &&
+                <img src={this.props.config.image} className="img-fluid" alt={this.props.config.name}/>
               }
             </div>
-            <Markdown content={opt.long_description}/>
+            <Markdown content={this.props.config.long_description}/>
           </div>
           <Row className="justify-content-center">
             <Col lg="8">
-              <hr/>
+              {this.props.config.long_description ? <hr/> : null}
               <Input field={gift_aid_field} value={this.state.gift_aid}
                      disabled={this.state.submitting}
                      onChange={gift_aid => this.setState({gift_aid})}/>
@@ -199,11 +205,12 @@ class DonateForm extends React.Component {
           </Row>
         </ModalBody>
         <ModalFooter finished={this.props.finished}
-                     label={<span>Donate <Money>{opt.amount}</Money></span>}
+                     label={<span>Donate <Money>{this.props.config.amount}</Money></span>}
                      cancel_disabled={this.state.submitting}
                      disabled={!can_submit}/>
       </BootstrapForm>
     )
   }
 }
-export default AsModal(StripeContext(DonateForm))
+export const PaymentForm = WithContext(StripeContext(PaymentForm_))
+export const PaymentModal = AsModal(PaymentForm)

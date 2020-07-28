@@ -26,7 +26,7 @@ JOIN categories AS cat ON e.category = cat.id
 JOIN users AS u ON e.host = u.id
 JOIN ticket_types AS tt ON e.id = tt.event
 LEFT JOIN tickets AS t ON (e.id = t.event AND t.status='booked')
-WHERE cat.company=$1
+WHERE cat.company=$1 AND tt.mode = 'ticket'
 GROUP BY e.id, cat.id
 ORDER BY e.id, cat.id
 """,

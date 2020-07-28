@@ -95,12 +95,15 @@ CREATE TABLE events (
   short_description VARCHAR(140),
   long_description TEXT,
   public BOOLEAN DEFAULT TRUE,
+  allow_tickets BOOLEAN NOT NULL DEFAULT TRUE,
+  allow_donations BOOLEAN NOT NULL DEFAULT FALSE,
 
   location_name VARCHAR(140),
   location_lat FLOAT,
   location_lng FLOAT,
 
   ticket_limit INT CONSTRAINT ticket_limit_gt_0 CHECK (ticket_limit > 0),
+  donation_target NUMERIC(10, 2) CONSTRAINT donation_target_gte_1 CHECK (donation_target > 0),
   tickets_taken INT NOT NULL DEFAULT 0,  -- sold and reserved
   image VARCHAR(255),
   secondary_image VARCHAR(255),
@@ -126,6 +129,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'buy-tickets-offline',
   'book-free-tickets',
   'donate-prepare',
+  'donate-direct-prepare',
   'donate',
   'cancel-reserved-tickets',
   'cancel-booked-tickets',
@@ -153,15 +157,19 @@ CREATE INDEX action_event ON actions USING btree (event);
 CREATE INDEX action_type ON actions USING btree (type);
 CREATE INDEX action_ts ON actions USING btree (ts);
 
+CREATE TYPE TICKET_MODE AS ENUM ('ticket', 'donation');
 
 CREATE TABLE ticket_types (
   id SERIAL PRIMARY KEY,
   event INT NOT NULL REFERENCES events ON DELETE CASCADE,
   name VARCHAR(63) NOT NULL,
+  mode TICKET_MODE NOT NULL DEFAULT 'ticket',
+  custom_amount BOOL NOT NULL DEFAULT FALSE,
   price NUMERIC(7, 2) CONSTRAINT price_gte_1 CHECK (price >= 1),
   slots_used INT DEFAULT 1 CONSTRAINT slots_used_gt_0 CHECK (slots_used > 0),
   active BOOLEAN DEFAULT TRUE
 );
+CREATE INDEX ticket_type_mode ON ticket_types USING btree (mode);
 
 
 CREATE TYPE TICKET_STATUS AS ENUM ('reserved', 'booked', 'cancelled');
@@ -228,7 +236,10 @@ CREATE INDEX IF NOT EXISTS don_opt_sort_index ON donation_options USING btree (s
 
 CREATE TABLE IF NOT EXISTS donations (
   id SERIAL PRIMARY KEY,
-  donation_option INT NOT NULL REFERENCES donation_options ON DELETE CASCADE,
+  donation_option INT REFERENCES donation_options ON DELETE CASCADE,
+  ticket_type INT REFERENCES ticket_types ON DELETE CASCADE,
+  CONSTRAINT donation_option_or_ticket_type_required CHECK (num_nonnulls(donation_option, ticket_type) = 1),
+
   amount NUMERIC(7, 2) NOT NULL CHECK (amount >= 1),
   gift_aid BOOLEAN NOT NULL,
   title VARCHAR(31),

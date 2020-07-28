@@ -7,7 +7,7 @@ import {Loading} from '../general/Errors'
 import {image_thumb} from '../utils'
 import requests from '../utils/requests'
 import {Money} from '../general/Money'
-import DonateModal from './ModalForm'
+import {PaymentModal} from './PaymentForm'
 
 class Thanks extends React.Component {
   constructor (props) {
@@ -34,10 +34,19 @@ class Thanks extends React.Component {
     if (!this.state.donation_options) {
       return <Loading/>
     }
-    let selected_opt = {}
-    const m = this.props.location.pathname.match(/donate\/(\d+)\/$/)
+    let payment_config = {}
+    const m = this.props.location.pathname.match(/post-donation\/(\d+)\/$/)
     if (m && this.state.donation_options.length) {
-      selected_opt = this.state.donation_options.find(opt => opt.id === parseInt(m[1]))
+      const donation_option = this.state.donation_options.find(opt => opt.id === parseInt(m[1]))
+      if (donation_option) {
+        payment_config = {
+          donation_option_id: donation_option.id,
+          amount: donation_option.amount,
+          name: donation_option.name,
+          long_description: donation_option.long_description,
+          image: donation_option.image,
+        }
+      }
     }
     return (
       <div>
@@ -71,7 +80,7 @@ class Thanks extends React.Component {
                     <CardText>
                       {opt.short_description || opt.long_description}
                     </CardText>
-                    <Button tag={Link} to={this.props.uri + `donate/${opt.id}/`} disabled={!this.props.ctx.user}>
+                    <Button tag={Link} to={this.props.uri + `post-donation/${opt.id}/`} disabled={!this.props.ctx.user}>
                       Donate <Money>{opt.amount}</Money>
                     </Button>
                     {!this.props.ctx.user && (
@@ -86,11 +95,11 @@ class Thanks extends React.Component {
           </Row>
         ] : <p>No donation options set up for this category.</p>}
 
-        <DonateModal
+        <PaymentModal
             {...this.props}
-            parent_uri={this.props.uri + 'donate/'}
-            donation_option={selected_opt}
-            regex={/donate\/\d+\/$/}
+            parent_uri={this.props.uri + 'post-donation/'}
+            config={payment_config}
+            regex={/post-donation\/\d+\/$/}
         />
       </div>
     )

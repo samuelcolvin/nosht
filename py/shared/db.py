@@ -9,7 +9,7 @@ from typing import Callable, NamedTuple
 
 import aiohttp
 from async_timeout import timeout
-from buildpg import Values, asyncpg
+from buildpg import MultipleValues, Values, asyncpg
 
 from .actions import ActionTypes
 from .emails.defaults import Triggers
@@ -635,3 +635,66 @@ async def add_waiting_list(conn, settings, **kwargs):
     waiting_list_sql = m.group(1).strip(' \n')
     print('running waiting-list table sql...')
     await conn.execute(waiting_list_sql)
+
+
+@patch(direct=True)
+async def add_donation_enum(conn, settings, **kwargs):
+    """
+    create the TICKET_MODE enum
+    """
+    await conn.execute("CREATE TYPE TICKET_MODE AS ENUM ('ticket', 'donation')")
+
+
+@patch
+async def add_donations(conn, settings, **kwargs):
+    """
+    modifications required to allow direct donations on events.
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN allow_donations BOOLEAN NOT NULL DEFAULT FALSE')
+    await conn.execute('ALTER TABLE events ADD COLUMN allow_tickets BOOLEAN NOT NULL DEFAULT TRUE')
+    await conn.execute(
+        'ALTER TABLE events ADD COLUMN donation_target NUMERIC(10, 2) '
+        'CONSTRAINT donation_target_gte_1 CHECK (donation_target > 0)'
+    )
+    await conn.execute("ALTER TABLE ticket_types ADD COLUMN mode TICKET_MODE NOT NULL DEFAULT 'ticket'")
+    await conn.execute('ALTER TABLE ticket_types ADD COLUMN custom_amount BOOL NOT NULL DEFAULT FALSE')
+    await conn.execute('CREATE INDEX ticket_type_mode ON ticket_types USING btree (mode)')
+
+    await conn.execute('ALTER TABLE donations ALTER COLUMN donation_option DROP NOT NULL')
+    await conn.execute('ALTER TABLE donations ADD COLUMN ticket_type INT REFERENCES ticket_types ON DELETE CASCADE')
+    await conn.execute(
+        'ALTER TABLE donations ADD CONSTRAINT donation_option_or_ticket_type_required '
+        'CHECK (num_nonnulls(donation_option, ticket_type) = 1)'
+    )
+
+
+@patch
+async def insert_donation_ticket_types(conn, settings, **kwargs):
+    """
+    add donation ticket types to old event
+    """
+    event_ids = await conn.fetchval(
+        """
+        select coalesce(array_agg(event_id), '{}'::integer[])
+        from (
+            select e.id event_id, COUNT(tt.id) > 0 AS has_donation_tts
+            from events e
+            left join ticket_types tt on e.id = tt.event and tt.mode = 'donation'
+            group by e.id
+        ) t
+        where not has_donation_tts
+        """
+    )
+    logger.info('%s events to add donation ticket types to', len(event_ids))
+
+    values = []
+    for event_id in event_ids:
+        values += [
+            Values(event=event_id, name='Standard', price=10, mode='donation', custom_amount=False),
+            Values(event=event_id, name='Custom Amount', price=None, mode='donation', custom_amount=True),
+        ]
+    if values:
+        logger.info('inserting %d ticket_types', len(values))
+        await conn.execute_b(
+            'INSERT INTO ticket_types (:values__names) VALUES :values', values=MultipleValues(*values),
+        )

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from buildpg import V
 from buildpg.clauses import Join, Where
-from pydantic import BaseModel, condecimal, constr
+from pydantic import BaseModel, condecimal, confloat, constr
 
 from shared.actions import ActionTypes
 from shared.images import delete_image, upload_other
@@ -20,7 +20,7 @@ logger = logging.getLogger('nosht.booking')
 
 
 @is_auth
-async def donation_prepare(request):
+async def donation_after_prepare(request):
     donation_option_id = int(request.match_info['don_opt_id'])
     event_id = int(request.match_info['event_id'])
     conn = request['conn']
@@ -50,7 +50,7 @@ async def donation_prepare(request):
     client_secret = await stripe_payment_intent(
         user_id=user_id,
         price_cents=int(amount * 100),
-        description=f'donation to {name} ({donation_option_id})',
+        description=f'donation to {name} ({donation_option_id}) after booking',
         metadata={'purpose': 'donate', 'event_id': event_id, 'reserve_action_id': action_id, 'user_id': user_id},
         company_id=request['company_id'],
         idempotency_key=f'idempotency-donate-{action_id}',
@@ -58,6 +58,58 @@ async def donation_prepare(request):
         conn=conn,
     )
     return json_response(client_secret=client_secret, action_id=action_id)
+
+
+class PrepareDirectDonation(UpdateViewAuth):
+    class Model(BaseModel):
+        custom_amount: confloat(ge=1, le=1000)
+
+    async def execute(self, m: Model):
+        ticket_type_id = int(self.request.match_info['tt_id'])
+        user_id = self.session['user_id']
+
+        r = await self.conn.fetchrow(
+            """
+            SELECT tt.price, tt.custom_amount, e.id, e.name
+            FROM ticket_types tt
+            JOIN events e ON tt.event = e.id
+            WHERE tt.active=TRUE AND tt.mode='donation' AND tt.id=$1 AND status = 'published' AND
+              external_ticket_url IS NULL
+            """,
+            ticket_type_id,
+        )
+        if not r:
+            raise JsonErrors.HTTPBadRequest(message='Ticket type not found')
+        donation_amount, custom_amount_tt, event_id, event_name = r
+
+        if custom_amount_tt:
+            donation_amount = m.custom_amount
+
+        action_id = await record_action_id(
+            self.request,
+            user_id,
+            ActionTypes.donate_direct_prepare,
+            event_id=event_id,
+            ticket_type_id=ticket_type_id,
+            donation_amount=float(donation_amount),
+        )
+
+        client_secret = await stripe_payment_intent(
+            user_id=user_id,
+            price_cents=int(donation_amount * 100),
+            description=f'donation to {event_name} (id {event_id}, ticket type {ticket_type_id})',
+            metadata={
+                'purpose': 'donate-direct',
+                'event_id': event_id,
+                'reserve_action_id': action_id,
+                'user_id': user_id,
+            },
+            company_id=self.request['company_id'],
+            idempotency_key=f'idempotency-donate-direct-{action_id}',
+            app=self.request.app,
+            conn=self.conn,
+        )
+        return dict(client_secret=client_secret, action_id=action_id)
 
 
 class DonationGiftAid(UpdateViewAuth):

@@ -51,14 +51,11 @@ class StripeBookingForm extends React.Component {
   componentDidMount () {
     this.update_timer()
     this.clear = setInterval(this.update_timer, 500)
+    this.props.register_toggle_handler(this.cancel_reservation.bind(this))
   }
 
   componentWillUnmount () {
     clearInterval(this.clear)
-  }
-
-  async componentWillMount () {
-    this.props.register_toggle_handler(this.cancel_reservation.bind(this))
   }
 
   async cancel_reservation () {
@@ -137,7 +134,7 @@ class StripeBookingForm extends React.Component {
       )
     }
     if (expired) {
-      return <h4 className="has-error">Rervation expired</h4>
+      return <h4 className="has-error">Reservation expired</h4>
     } else if (!this.props.reservation.total_price || this.state.buy_offline) {
       return tncs_field && <div style={{height: 40}}>{this.state.submitting ? null : tncs_field}</div>
     } else {

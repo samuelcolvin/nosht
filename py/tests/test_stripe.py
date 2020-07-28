@@ -363,7 +363,7 @@ async def test_buy_webhook_repeat(factory: Factory, cli, url, login, db_conn):
     assert 'booked' == await db_conn.fetchval('select status from tickets')
 
 
-async def test_donate_webhook_repeat(factory: Factory, dummy_server, db_conn, cli, url, login):
+async def test_donate_after_webhook_repeat(factory: Factory, dummy_server, db_conn, cli, url, login):
     await factory.create_company()
     await factory.create_user()
     await factory.create_cat()
@@ -371,7 +371,9 @@ async def test_donate_webhook_repeat(factory: Factory, dummy_server, db_conn, cl
     await factory.create_donation_option()
     await login()
 
-    r = await cli.json_post(url('donation-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id))
+    r = await cli.json_post(
+        url('donation-after-prepare', don_opt_id=factory.donation_option_id, event_id=factory.event_id)
+    )
     assert r.status == 200, await r.text()
     action_id = (await r.json())['action_id']
 
@@ -388,6 +390,52 @@ async def test_donate_webhook_repeat(factory: Factory, dummy_server, db_conn, cl
         'POST stripe_root_url/payment_intents',
         ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
     ]
+
+
+async def test_donate_direct_webhook(factory: Factory, dummy_server, db_conn, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10, allow_donations=True, status='published')
+    await login()
+
+    r = await cli.json_post(
+        url('donation-direct-prepare', tt_id=factory.donation_ticket_type_id_1), data=dict(custom_amount=123),
+    )
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate-direct')
+
+    r = await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate-direct', expected_status=240)
+    assert await r.text() == 'donation already performed'
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    assert dummy_server.app['log'] == [
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/payment_intents',
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
+    ]
+
+
+async def test_donate_webhook_missing_action(factory: Factory, fire_stripe_webhook):
+    await factory.create_company()
+
+    r = await fire_stripe_webhook(
+        user_id=1,
+        event_id=1,
+        reserve_action_id=1,
+        amount=123,
+        purpose='donate-direct',
+        webhook_type='payment_intent.succeeded',
+        charge_id='charge-id',
+        expected_status=240,
+        fire_delay=0,
+        metadata=None,
+    )
+    assert await r.text() == 'action not found'
 
 
 async def test_price_low(cli, factory: Factory, db_conn):

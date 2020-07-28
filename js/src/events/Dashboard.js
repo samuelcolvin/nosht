@@ -5,7 +5,11 @@ import {format_event_start, format_event_duration, format_datetime, as_title} fr
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {
-  RenderList, RenderDetails, ImageThumbnail, MiniMap, render,
+  RenderList,
+  RenderDetails,
+  ImageThumbnail,
+  MiniMap,
+  render,
   MarkdownPreview
 } from '../general/Dashboard'
 import {Money} from '../general/Money'
@@ -13,8 +17,8 @@ import {InfoModal} from '../general/Modal'
 import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
-import {TicketTypes, TicketTypeTable} from './TicketTypes'
-import {Tickets, CancelTicket, WaitingList} from './Tickets'
+import {TicketTypes, TicketTypeTable, SuggestedDonationsTable} from './TicketTypes'
+import {Tickets, CancelTicket, WaitingList, Donations} from './Tickets'
 import {EVENT_FIELDS} from './Create'
 import {ModalDropzoneForm} from '../forms/Drop'
 
@@ -93,37 +97,68 @@ const CLONE_INTRO = (
   </span>
 )
 
-const Progress = WithContext(({event, all_tickets, ticket_types, ctx}) => {
+const Progress = WithContext(({event, all_tickets, ticket_types, donations}) => {
   const tickets = all_tickets && all_tickets.filter(t => t.ticket_status === 'booked')
   const tickets_booked = tickets && (
     tickets
     .reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
   )
+  const donations_total = donations ? donations.reduce((sum, t) => sum + t.amount, 0) : 0
+  const donations_count = donations ? donations.length : 0
   return (
-    <div className="mb-5">
-      <h4>Progress</h4>
-      <div>
-        <div className="text-center mb-1">
-          <span className="very-large">
-            <Money>{tickets && tickets.reduce((sum, t) => sum + t.price + t.extra_donated, 0)}</Money>
-          </span>
-          &nbsp;collected so far
-        </div>
-        {tickets_booked !== null &&
-          event.ticket_limit ?
+    <div>
+      {event.allow_tickets ? (
+        <div className="mb-5">
+          <h4>Ticket Sales</h4>
           <div>
             <div className="text-center mb-1">
-              <span className="very-large">{tickets_booked}</span>
-              &nbsp;ticket{tickets_booked === 1 ? '' : 's'} booked of {event.ticket_limit}
+              <span className="very-large">
+                <Money>{tickets && tickets.reduce((sum, t) => sum + t.price + t.extra_donated, 0)}</Money>
+              </span>
+              &nbsp;received in ticket revenue
             </div>
-            <BsProgress value={tickets_booked / event.ticket_limit * 100}/>
+            {tickets_booked !== null &&
+              event.ticket_limit ?
+              <div>
+                <div className="text-center mb-1">
+                  <span className="very-large">{tickets_booked}</span>
+                  &nbsp;ticket{tickets_booked === 1 ? '' : 's'} booked of {event.ticket_limit}
+                </div>
+                <BsProgress value={tickets_booked / event.ticket_limit * 100}/>
+              </div>
+              :
+              <div className="text-center mb-1">
+                <span className="very-large">{tickets_booked}</span> tickets booked
+              </div>
+            }
           </div>
-          :
-          <div className="text-center mb-1">
-            <span className="very-large">{tickets_booked}</span> tickets booked
-          </div>
-        }
-      </div>
+        </div>
+      ): null}
+      {event.allow_donations ? (
+        <div className="mb-5">
+          <h4>Donations</h4>
+          {event.donation_target ? (
+            <div>
+              <div className="text-center mb-1">
+                <span className="very-large mx-1"><Money>{donations_total}</Money></span>
+                of
+                <span className="very-large mx-1"><Money>{event.donation_target}</Money></span>
+                received from
+                <span className="very-large mx-1">{donations_count}</span>
+                donations
+              </div>
+              <BsProgress value={donations_total / event.donation_target * 100}/>
+            </div>
+          ) : (
+            <div className="text-center mb-1">
+              <span className="very-large mx-1"><Money>{donations_total}</Money></span>
+              received from
+              <span className="very-large mx-1">{donations_count}</span>
+              donations
+            </div>
+          )}
+        </div>
+      ): null}
     </div>
   )
 })
@@ -208,7 +243,9 @@ export class EventsDetails extends RenderDetails {
       {
         tickets: r[0].tickets,
         waiting_list: r[0].waiting_list,
-        ticket_types: r[1].ticket_types,
+        donations: r[0].donations,
+        ticket_types: this.state.item.allow_tickets && r[1].ticket_types.filter(tt => tt.mode === 'ticket'),
+        suggested_donations: this.state.item.allow_donations && r[1].ticket_types.filter(tt => tt.mode === 'donation'),
         event_updates: r[2].event_updates,
         buttons: [
           can_edit && {name: 'Edit', link: this.uri + 'edit/'},
@@ -313,6 +350,9 @@ export class EventsDetails extends RenderDetails {
             wide: true,
             index: 6,
           },
+          donation_target: {
+            render: v => v && <Money>{v}</Money>
+          },
         }
       }
     )
@@ -378,21 +418,40 @@ export class EventsDetails extends RenderDetails {
     const event = Object.assign({}, this.state.item)
     event.location = {name: event.location_name, lat: event.location_lat, lng: event.location_lng}
     event.date = {dt: event.start_ts, dur: event.duration}
+    if (event.allow_tickets && event.allow_donations) {
+      event.mode = 'both'
+    } else if (event.allow_tickets) {
+      event.mode = 'tickets'
+    } else {
+      event.mode = 'donations'
+    }
     const event_fields = (
-      EVENT_FIELDS.filter(f => !['category', 'price'].includes(f.name))
+      EVENT_FIELDS.filter(f => !['category', 'price', 'suggested_donation'].includes(f.name))
       .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
     )
     const internal = !event.external_ticket_url
+    const ticketed = internal && event.allow_tickets
     return [
       internal ?
-        <Progress key="progress" event={event} ticket_types={this.state.ticket_types} all_tickets={this.state.tickets}/>
+        <Progress
+          key="progress"
+          event={event}
+          ticket_types={this.state.ticket_types}
+          all_tickets={this.state.tickets}
+          donations={this.state.donations}
+        />
         : null,
       this.state.ticket_types ?
         <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
         : null,
-      internal ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
-      internal ? <WaitingList key="wl" waiting_list={this.state.waiting_list} user={this.props.ctx.user}/> : null,
+      this.state.suggested_donations ?
+        <SuggestedDonationsTable key="sdt" ticket_types={this.state.suggested_donations} uri={this.uri}
+                                 can_edit={this.can_edit_event()}/>
+        : null,
+      ticketed ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
+      ticketed ? <WaitingList key="wl" waiting_list={this.state.waiting_list} user={this.props.ctx.user}/> : null,
+      internal && event.allow_donations ? <Donations key="dons" donations={this.state.donations} user={this.props.ctx.user}/> : null,
       <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"
@@ -450,10 +509,20 @@ export class EventsDetails extends RenderDetails {
       this.state.ticket_types ?
         <TicketTypes key="edit-ticket-types"
                      event={event}
+                     parent_uri={this.uri}
                      ticket_types={this.state.ticket_types}
                      regex={/ticket-types\/$/}
                      update={this.update}
                      title="Customise Ticket Types"/>
+        : null,
+      this.state.suggested_donations ?
+        <TicketTypes key="edit-suggested-donations"
+                     event={event}
+                     parent_uri={this.uri}
+                     ticket_types={this.state.suggested_donations}
+                     regex={/suggested-donations\/$/}
+                     update={this.update}
+                     title="Customise Suggested Donations"/>
         : null,
     ]
   }

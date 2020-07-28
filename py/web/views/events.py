@@ -13,7 +13,7 @@ from asyncpg import CheckViolationError
 from buildpg import Func, MultipleValues, SetValues, V, Values, funcs
 from buildpg.asyncpg import BuildPgConnection
 from buildpg.clauses import Join, Select, Where
-from pydantic import BaseModel, HttpUrl, condecimal, conint, constr, validator
+from pydantic import BaseModel, HttpUrl, PositiveInt, condecimal, conint, constr, validator
 from pytz.tzinfo import StaticTzInfo
 
 from shared.images import delete_image, upload_background, upload_force_shape
@@ -57,6 +57,8 @@ FROM (
          e.short_description,
          e.long_description,
          e.external_ticket_url,
+         e.allow_tickets,
+         e.allow_donations,
          c.event_content AS category_content,
          json_build_object(
            'name', e.location_name,
@@ -88,11 +90,11 @@ FROM (
 ) AS event,
 (
   SELECT coalesce(array_to_json(array_agg(row_to_json(t))), '[]') AS ticket_types FROM (
-    SELECT tt.name, tt.price
+    SELECT tt.name, tt.price, tt.mode
     FROM ticket_types AS tt
     JOIN events AS e ON tt.event = e.id
-    WHERE e.id = $1 AND tt.active = TRUE
-    ORDER BY tt.id
+    WHERE e.id = $1 AND tt.active = TRUE AND tt.custom_amount = FALSE
+    ORDER BY tt.price
   ) AS t
 ) AS ticket_types,
 (
@@ -178,6 +180,12 @@ class DateModel(BaseModel):
     dur: Optional[int]
 
 
+class EventMode(Enum):
+    tickets = 'tickets'
+    donations = 'donations'
+    both = 'both'
+
+
 class EventBread(Bread):
     class Model(BaseModel):
         name: constr(max_length=63)
@@ -186,14 +194,18 @@ class EventBread(Bread):
         timezone: TzInfo
         date: DateModel
 
+        mode: EventMode = EventMode.tickets
+
         class LocationModel(BaseModel):
             lat: float
             lng: float
             name: constr(max_length=63)
 
         location: LocationModel = None
-        ticket_limit: int = None
+        ticket_limit: PositiveInt = None
         price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+        suggested_donation: condecimal(ge=1, max_digits=6, decimal_places=2) = None
+        donation_target: condecimal(ge=0, max_digits=9, decimal_places=2) = None
         long_description: str
         short_description: str = None
         external_ticket_url: HttpUrl = None
@@ -225,9 +237,12 @@ class EventBread(Bread):
     retrieve_fields = browse_fields + (
         V('cat.id').as_('cat_id'),
         'e.public',
+        'e.allow_tickets',
+        'e.allow_donations',
         'e.image',
         'e.secondary_image',
         'e.ticket_limit',
+        'e.donation_target',
         'e.location_name',
         'e.location_lat',
         'e.location_lng',
@@ -267,7 +282,7 @@ class EventBread(Bread):
         if session['role'] != 'admin':
             logic &= V('e.host') == session['user_id']
             if self.method == Method.edit:
-                logic &= V('e.start_ts') > Func('now')
+                logic &= V('e.start_ts') > funcs.now()
         return Where(logic)
 
     def prepare(self, data):
@@ -296,11 +311,15 @@ class EventBread(Bread):
         data = self.prepare(data)
 
         session = self.request['session']
+        mode: EventMode = data.pop('mode', EventMode.tickets)
         data.update(
             slug=slugify(data['name']),
             short_description=shorten(clean_markdown(data['long_description']), width=140, placeholder='…'),
             host=session['user_id'],
+            allow_tickets=mode in (EventMode.tickets, EventMode.both),
+            allow_donations=mode in (EventMode.donations, EventMode.both),
         )
+
         q = 'SELECT status FROM users WHERE id=$1'
         if session['role'] == 'admin' or 'active' == await self.conn.fetchval(q, session['user_id']):
             data['status'] = 'published'
@@ -320,6 +339,12 @@ class EventBread(Bread):
             dt = await self.conn.fetchval("SELECT start_ts AT TIME ZONE timezone FROM events WHERE id=$1", pk)
             data['start_ts'] = timezone.localize(dt)
 
+        mode: EventMode = data.pop('mode', None)
+        if mode is not None:
+            data.update(
+                allow_tickets=mode in (EventMode.tickets, EventMode.both),
+                allow_donations=mode in (EventMode.donations, EventMode.both),
+            )
         return data
 
     add_sql = """
@@ -330,14 +355,23 @@ class EventBread(Bread):
 
     async def add_execute(self, *, slug, **data):
         price = data.pop('price', None)
+        # we always create a suggested donation and the amount cannot be blank
+        suggested_donation = data.pop('suggested_donation', price or 10)
+
         async with self.conn.transaction():
             pk = await super().add_execute(slug=slug, **data)
             while pk is None:
                 # event with this slug already exists
                 pk = await super().add_execute(slug=slug + '-' + pseudo_random_str(4), **data)
+
+            # always create both a ticket type and a suggested donation in case the mode of the event changes in future
             await self.conn.execute_b(
                 'INSERT INTO ticket_types (:values__names) VALUES :values',
-                values=Values(event=pk, name='Standard', price=price),
+                values=MultipleValues(
+                    Values(event=pk, name='Standard', price=price, mode='ticket', custom_amount=False),
+                    Values(event=pk, name='Standard', price=suggested_donation, mode='donation', custom_amount=False),
+                    Values(event=pk, name='Custom Amount', price=None, mode='donation', custom_amount=True),
+                ),
             )
             action_id = await record_action_id(
                 self.request, self.request['session']['user_id'], ActionTypes.create_event, event_id=pk
@@ -423,6 +457,16 @@ from waiting_list w
 join users u on w.user_id = u.id
 where w.event=$1
 """
+event_donations_sql = """
+select don.id, don.amount::float, don.ticket_type ticket_type_id, a.user_id,
+  full_name(u.first_name, u.last_name) as name,
+  iso_ts(a.ts, 'Europe/London') as timestamp
+from donations don
+join actions a on don.action = a.id
+join users u on a.user_id = u.id
+where a.event=$1
+order by id desc
+"""
 
 
 @is_admin_or_host
@@ -431,7 +475,8 @@ async def event_tickets(request):
     not_admin = request['session']['role'] != 'admin'
     tickets = []
     settings = request.app['settings']
-    for t in await request['conn'].fetch(event_tickets_sql, event_id):
+    conn: BuildPgConnection = request['conn']
+    for t in await conn.fetch(event_tickets_sql, event_id):
         ticket = {
             'ticket_id': ticket_id_signed(t['id'], settings),
             **t,
@@ -441,11 +486,12 @@ async def event_tickets(request):
             ticket.pop('buyer_email')
         tickets.append(ticket)
 
-    waiting_list = [dict(r) for r in await request['conn'].fetch(event_waiting_list_sql, event_id)]
+    waiting_list = [dict(r) for r in await conn.fetch(event_waiting_list_sql, event_id)]
     if not_admin:
         [r.pop('email') for r in waiting_list]
 
-    return json_response(tickets=tickets, waiting_list=waiting_list)
+    donations = [dict(r) for r in await conn.fetch(event_donations_sql, event_id)]
+    return json_response(tickets=tickets, waiting_list=waiting_list, donations=donations)
 
 
 class CancelTickets(UpdateView):
@@ -528,17 +574,17 @@ async def event_tickets_export(request):
 
 
 event_ticket_types_sql = """
-SELECT json_build_object('ticket_types', tickets)
+SELECT json_build_object('ticket_types', ticket_types)
 FROM (
-  SELECT array_to_json(array_agg(row_to_json(t))) AS tickets FROM (
-    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active, COUNT(t.id) > 0 AS has_tickets
+  SELECT array_to_json(array_agg(row_to_json(t))) AS ticket_types FROM (
+    SELECT tt.id, tt.name, tt.price, tt.slots_used, tt.active, COUNT(t.id) > 0 AS has_tickets, tt.mode, tt.custom_amount
     FROM ticket_types AS tt
     LEFT JOIN tickets AS t ON tt.id = t.ticket_type
     WHERE tt.event=$1
-    GROUP BY tt.id
+    GROUP BY tt.custom_amount, tt.id
     ORDER BY tt.id
   ) AS t
-) AS tickets
+) AS ticket_types
 """
 # TODO could add user here
 event_updates_sent_sql = """
@@ -567,18 +613,31 @@ async def event_updates_sent(request):
     return raw_json_response(json_str)
 
 
+class TicketTypeMode(Enum):
+    ticket = 'ticket'
+    donation = 'donation'
+
+
 class SetTicketTypes(UpdateView):
     class Model(BaseModel):
         class TicketType(BaseModel):
             name: str
             id: int = None
             slots_used: conint(ge=1)
+            mode: TicketTypeMode = TicketTypeMode.ticket
             active: bool
             price: condecimal(ge=1, max_digits=6, decimal_places=2) = None
 
             @validator('active', pre=True)
             def none_bool(cls, v):
                 return v or False
+
+            def dict(self, *args, **kwargs):
+                d = super().dict(*args, **kwargs)
+                mode = d.get('mode')
+                if mode is not None:
+                    d['mode'] = mode.value
+                return d
 
         ticket_types: List[TicketType]
 
@@ -594,33 +653,53 @@ class SetTicketTypes(UpdateView):
     async def execute(self, m: Model):
         event_id = await _check_event_permissions(self.request, check_upcoming=True)
         existing = [tt for tt in m.ticket_types if tt.id]
+        mode = m.ticket_types[0].mode
+
+        if not all(tt.mode == mode for tt in m.ticket_types):
+            raise JsonErrors.HTTPBadRequest(message='all ticket types must have the same mode')
+
+        existing_ids = [tt.id for tt in existing]
         deleted_with_tickets = await self.conn.fetchval(
             """
             SELECT 1
             FROM ticket_types AS tt
             JOIN tickets AS t ON tt.id = t.ticket_type
-            WHERE tt.event=$1 AND NOT (tt.id=ANY($2))
+            WHERE tt.event=$1 AND mode=$2 AND NOT (tt.id=ANY($3))
             GROUP BY tt.id
             """,
             event_id,
-            [tt.id for tt in existing],
+            mode.value,
+            existing_ids,
         )
         if deleted_with_tickets:
             raise JsonErrors.HTTPBadRequest(message='ticket types deleted which have ticket associated with them')
+
+        changed_type = await self.conn.fetchval(
+            'select 1 from ticket_types tt where tt.event=$1 and mode!=$2 and tt.id=ANY($3)',
+            event_id,
+            mode.value,
+            existing_ids,
+        )
+        if changed_type:
+            raise JsonErrors.HTTPBadRequest(message='ticket type modes should not change')
 
         async with self.conn.transaction():
             await self.conn.fetchval(
                 """
                 DELETE FROM ticket_types
-                WHERE ticket_types.event=$1 AND NOT (ticket_types.id=ANY($2))
+                WHERE ticket_types.event=$1
+                      AND ticket_types.mode=$2
+                      AND NOT ticket_types.custom_amount
+                      AND NOT (ticket_types.id=ANY($3))
                 """,
                 event_id,
+                mode.value,
                 [tt.id for tt in existing],
             )
 
             for tt in existing:
                 v = await self.conn.execute_b(
-                    'UPDATE ticket_types SET :values WHERE id=:id AND event=:event',
+                    'UPDATE ticket_types SET :values WHERE id=:id AND event=:event AND NOT ticket_types.custom_amount',
                     values=SetValues(**tt.dict(exclude={'id'})),
                     id=tt.id,
                     event=event_id,
@@ -870,8 +949,8 @@ class EventClone(UpdateView):
     RETURNING id
     """
     duplicate_ticket_types_sql = """
-    INSERT INTO ticket_types (event, name, price, slots_used, active)
-    SELECT $2, name, price, slots_used, active FROM ticket_types where event=$1
+    INSERT INTO ticket_types (event, name, price, slots_used, active, mode, custom_amount)
+    SELECT $2, name, price, slots_used, active, mode, custom_amount FROM ticket_types where event=$1
     """
 
     async def execute(self, m: Model):
