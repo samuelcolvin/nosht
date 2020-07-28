@@ -47,14 +47,14 @@ export const EVENT_FIELDS = [
     default: true,
     help_text: 'Tick to make this event public so it will be visible to anyone on the site and ' +
         'appear in public search results. If your event is not public you will need to share the event link ' +
-        'with people for them to view and book and donate to this event.',
+        'with people for them to view and book tickets or donate (depending on the event type).'
   },
   {
     name: 'date',
-    title: 'Event Start',
+    title: 'Event Start or Deadline',
     type: 'datetime',
     required: true,
-    help_text: 'Let guests know when the event will start and how long it will go on for, you can add more ' +
+    help_text: 'Let people know when the event will start and how long it will go on for, you can add more ' +
          'details about exact timings in the description below. If this event is for donations only, ' +
          'this date will be the deadline for donations.',
   },
@@ -107,7 +107,7 @@ export const EVENT_FIELDS = [
     required: true,
     help_text: 'Detailed description of the event; you can update this later if you have more information.',
     max_length: 5000,
-    placeholder: 'Full description of the event with everything your guests need to know...'
+    placeholder: 'Full description of the event with everything your supporters need to know...'
   },
 ]
 
