@@ -427,3 +427,34 @@ async def test_get_constituent_update_campaign(donorfy: DonorfyActor, dummy_serv
         'GET donorfy_api_root/default-campaign/constituents/123456',
         'PUT donorfy_api_root/default-campaign/constituents/123456',
     ]
+
+
+async def test_donate_direct(donorfy: DonorfyActor, factory: Factory, dummy_server, db_conn, cli, url, login):
+    await factory.create_company()
+    await factory.create_user()
+    await factory.create_cat()
+    await factory.create_event(price=10, allow_donations=True, status='published')
+    await login()
+
+    r = await cli.json_post(
+        url('donation-direct-prepare', tt_id=factory.donation_ticket_type_id_1), data=dict(custom_amount=123),
+    )
+    assert r.status == 200, await r.text()
+    action_id = (await r.json())['action_id']
+
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    await factory.fire_stripe_webhook(action_id, amount=20_00, purpose='donate-direct')
+
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM donations')
+
+    assert dummy_server.app['log'] == [
+        'POST stripe_root_url/customers',
+        'POST stripe_root_url/payment_intents',
+        'GET donorfy_api_root/standard/System/LookUpTypes/Campaigns',
+        f'GET donorfy_api_root/standard/constituents/ExternalKey/nosht_{factory.user_id}',
+        'GET donorfy_api_root/standard/constituents/123456',
+        'GET stripe_root_url/balance/history/txn_charge-id',
+        'POST donorfy_api_root/standard/transactions',
+        ('email_send_endpoint', 'Subject: "Thanks for your donation", To: "Frank Spencer <frank@example.org>"'),
+    ]
