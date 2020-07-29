@@ -292,13 +292,12 @@ class DonorfyActor(BaseActor):
             """
             select a.ts as action_ts, a.user_id, d.amount,
               d.gift_aid, d.title, d.first_name, d.last_name, d.address, d.city, d.postcode,
-              donopt.id as donopt,
+              d.donation_option as donopt_id, evt.id as event_id,
               cat.name as cat_name, cat.slug as cat_slug, evt.slug as evt_slug, currency
             from actions a
             join donations d on a.id = d.action
-            join donation_options donopt on d.donation_option = donopt.id
-            join categories cat on donopt.category = cat.id
-            left join events evt on a.event = evt.id
+            join events evt on a.event = evt.id
+            join categories cat on evt.category = cat.id
             join companies co on cat.company = co.id
             where a.id=$1
             """,
@@ -328,7 +327,9 @@ class DonorfyActor(BaseActor):
                 ProcessingCostsAmount=processing_fee,
                 Acknowledgement=f'{cat_slug}-thanks',
                 AcknowledgementText=f'{d["cat_name"]} Donation Thanks',
-                Reference=f'Events.HUF:{cat_slug} donation {d["donopt"]}',
+                Reference=(
+                    f'Events.HUF:{cat_slug} donation option {d["donopt_id"] or "-"}, event {d["event_id"] or "-"}'
+                ),
                 AddGiftAidDeclaration=False,  # since we manually create the gift aid declaration below
                 GiftAidClaimed=d['gift_aid'],
                 Title=d['title'],
