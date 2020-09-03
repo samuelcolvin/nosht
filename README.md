@@ -335,13 +335,27 @@ yarn start
 The js dev server will proxy requests through to the backend so you'll also need to run the server at the
 same time in a different window.
 
-Before running this you'll probaly need to set up some of the environment variables mentioned above for the system
+Before running this you'll probably need to set up some of the environment variables mentioned above for the system
 to run properly.
+
+Here's a very basic file structure to get your development setup working, `avtivate.dev.sh`:
+
+```bash
+export APP_AWS_ACCESS_KEY='...'
+export APP_AWS_SECRET_KEY='...'
+export APP_S3_BUCKET='bucket.example.com'
+export APP_S3_PREFIX='local'
+export APP_S3_DOMAIN='https://bucket.example.com'
+
+source env/bin/activate
+```
 
 ```bash
 cd nosht/
-source env/bin/activate
+source activate.dev.sh
 cd py/
+# This creates a demo company for testing
+./run.py patch create_demo_data --live
 ./run.py web
 ```
 
@@ -351,7 +365,7 @@ If you want the worker running as well you'll also run (from another terminal)
 
 ```bash
 cd nosht/
-source env/bin/activate
+source activate.dev.sh
 cd py/
 ./run.py worker
 ```
