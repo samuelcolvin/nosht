@@ -1,13 +1,13 @@
 # ===============================================
 # js build stage
 FROM python:2.7-alpine3.8 as js-build
-RUN apk --no-cache add nodejs-current npm yarn make g++
+RUN apk --no-cache add nodejs npm yarn make g++
 WORKDIR /home/root
-RUN echo "node: $(node -v), npm: $(npm -v), yarn: $(yarn -v)"
 
 ADD ./js/package.json /home/root/package.json
 ADD ./js/yarn.lock /home/root/yarn.lock
-RUN yarn
+RUN echo "node: $(node -v), npm: $(npm -v), yarn: $(yarn -v)" \
+ && yarn
 
 ARG HEROKU_APP
 RUN echo "build for heroku app: $HEROKU_APP"
