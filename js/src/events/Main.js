@@ -15,6 +15,8 @@ import BookEvent from './Book'
 import DonateToEvent from './Donate'
 import WaitingList from './WaitingList'
 import Thanks from '../donations/Thanks'
+import YoutubePlayer from '../general/YoutubePlayer'
+
 
 const DonateButton = ({event, uri}) => {
   if (event.allow_donations) {
@@ -160,6 +162,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
         </div>
       )}
       <h2>About</h2>
+      {event.youtube_video_id && <YoutubePlayer vid={event.youtube_video_id} style={{maxWidth: '680px'}} />}
       <Markdown content={event.long_description}/>
     </div>
   </div>

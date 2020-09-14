@@ -343,7 +343,7 @@ class BaseEmailActor(BaseActor):
         )
 
     @concurrent('low')  # noqa: C901 (ignore complexity)
-    async def record_email_event(self, raw_message: str):
+    async def record_email_event(self, raw_message: str):  # noqa: C901
         """
         record email events
         """
