@@ -162,7 +162,7 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
         </div>
       )}
       <h2>About</h2>
-      {event.youtube_video_id && <YoutubePlayer vid={event.youtube_video_id} style={{maxWidth: '680px'}} />}
+      {event.youtube_video_id && <YoutubePlayer vid={event.youtube_video_id} className='event-video'/>}
       <Markdown content={event.long_description}/>
     </div>
   </div>
