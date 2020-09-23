@@ -340,7 +340,7 @@ export class EventsDetails extends RenderDetails {
           youtube_video_id: {
             title: 'Youtube video ID',
             render: (vid) => vid ?
-              <a target="_blank" rel="noopener noreferrer" href={'https://www.youtube.com/watch?v={vid}'}>https://www.youtube.com/watch?v={vid}</a>
+              <a target="_blank" rel="noopener noreferrer" href={`https://www.youtube.com/watch?v=${vid}`}>https://www.youtube.com/watch?v={vid}</a>
               : "—"
           },
           long_description: {
