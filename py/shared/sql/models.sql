@@ -92,6 +92,7 @@ CREATE TABLE events (
   start_ts TIMESTAMPTZ NOT NULL,
   timezone VARCHAR(63) NOT NULL DEFAULT 'Europe/London',
   duration INTERVAL,
+  youtube_video_id VARCHAR(140),
   short_description VARCHAR(140),
   long_description TEXT,
   public BOOLEAN DEFAULT TRUE,

@@ -698,3 +698,11 @@ async def insert_donation_ticket_types(conn, settings, **kwargs):
         await conn.execute_b(
             'INSERT INTO ticket_types (:values__names) VALUES :values', values=MultipleValues(*values),
         )
+
+
+@patch
+async def add_event_youtube_field(conn, **kwargs):
+    """
+    add the youtube_video_id column to events
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN youtube_video_id VARCHAR(140)')

@@ -21,6 +21,7 @@ async def test_event_export(cli, url, login, factory: Factory):
         location_lng=-0.5,
         start_ts=datetime(2032, 6, 1, 1, 13, 12, tzinfo=timezone.utc),
         duration=timedelta(hours=2, minutes=45),
+        youtube_video_id='abcxyz',
     )
 
     # two tickets
@@ -43,6 +44,7 @@ async def test_event_export(cli, url, login, factory: Factory):
             'start_time': '2032-06-01T02:13:12+01',
             'timezone': 'Europe/London',
             'duration_hours': '2.75',
+            'youtube_video_id': 'abcxyz',
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
             'is_public': 'true',

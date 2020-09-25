@@ -54,6 +54,7 @@ FROM (
          e.name,
          coalesce(e.image, c.image) AS image,
          e.secondary_image,
+         e.youtube_video_id,
          e.short_description,
          e.long_description,
          e.external_ticket_url,
@@ -208,6 +209,7 @@ class EventBread(Bread):
         donation_target: condecimal(ge=0, max_digits=9, decimal_places=2) = None
         long_description: str
         short_description: str = None
+        youtube_video_id: str = None
         external_ticket_url: HttpUrl = None
 
         @validator('public', pre=True)
@@ -246,6 +248,7 @@ class EventBread(Bread):
         'e.location_name',
         'e.location_lat',
         'e.location_lng',
+        'e.youtube_video_id',
         'e.short_description',
         'e.long_description',
         'e.external_ticket_url',
@@ -935,14 +938,16 @@ class EventClone(UpdateView):
       category, host, name, slug, status,
       highlight, external_ticket_url,
       start_ts, timezone, duration,
-      short_description, long_description, public, location_name, location_lat, location_lng,
+      youtube_video_id, short_description, long_description,
+      public, location_name, location_lat, location_lng,
       ticket_limit, image, secondary_image
     )
     SELECT
       e.category, e.host, :name, :slug, :status,
       e.highlight, e.external_ticket_url,
       :start, e.timezone, :duration,
-      e.short_description, e.long_description, e.public, e.location_name, e.location_lat, e.location_lng,
+      e.youtube_video_id, e.short_description, e.long_description,
+      e.public, e.location_name, e.location_lat, e.location_lng,
       e.ticket_limit, e.image, e.secondary_image
     FROM events e WHERE e.id=:old_event_id
     ON CONFLICT (category, slug) DO NOTHING

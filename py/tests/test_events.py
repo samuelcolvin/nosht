@@ -37,6 +37,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'name': 'The Event Name',
             'image': 'https://www.example.org/main.png',
             'secondary_image': None,
+            'youtube_video_id': None,
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
             'external_ticket_url': None,
@@ -169,7 +170,9 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
     await factory.create_company()
     await factory.create_cat()
     await factory.create_user()
-    await factory.create_event(public=False, status='published', short_description='xxx', long_description='yyy')
+    await factory.create_event(
+        public=False, status='published', youtube_video_id='abcxyz', short_description='xxx', long_description='yyy'
+    )
 
     await login()
 
@@ -196,6 +199,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'location_name': None,
         'location_lat': None,
         'location_lng': None,
+        'youtube_video_id': 'abcxyz',
         'short_description': 'xxx',
         'long_description': 'yyy',
         'external_ticket_url': None,
@@ -277,6 +281,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 7200},
         timezone='Europe/London',
         long_description='# title\nI love to **party**',
+        youtube_video_id='abcxyz',
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM ticket_types')
@@ -300,6 +305,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'start_ts': datetime(2032, 2, 1, 19, 0, tzinfo=timezone.utc),
         'timezone': 'Europe/London',
         'duration': timedelta(seconds=7200),
+        'youtube_video_id': 'abcxyz',
         'short_description': 'title I love to party',
         'long_description': '# title\nI love to **party**',
         'external_ticket_url': None,
@@ -1427,6 +1433,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'start_ts': datetime(2032, 2, 1, 19, 0, tzinfo=timezone.utc),
         'timezone': 'Europe/London',
         'duration': timedelta(0, 7200),
+        'youtube_video_id': None,
         'short_description': 'this is short',
         'long_description': 'this is long',
         'public': False,

@@ -101,6 +101,11 @@ export const EVENT_FIELDS = [
     help_text: "Set if you're not selling tickets for this event through this platform.",
   },
   {
+    name: 'youtube_video_id',
+    title: 'Youtube video ID',
+    help_text: `Embed a Youtube video using it's ID e.g: "oD9zn9M9NBg".`,
+  },
+  {
     name: 'long_description',
     title: 'Long Description',
     type: 'md',
