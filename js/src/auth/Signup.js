@@ -142,13 +142,15 @@ class Signup extends React.Component {
               <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
               Signup with Google
             </Button>
-            <Button disabled={this.state.email_form}
+
+            {/* <Button disabled={this.state.email_form}
                     onClick={this.facebook_auth.bind(this)}
                     color="primary"
                     className="width-100p my-1">
               <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
               Signup with Facebook
-            </Button>
+            </Button> */}
+
             <Collapse isOpen={this.state.email_form}>
               <Button onClick={() => this.setState({email_form: false})}
                       color="link" size="sm">

@@ -143,20 +143,23 @@ class Login extends React.Component {
             }
           </Col>
         </Row>
-        <Row className="mb-2">
-          <Col lg={{size: 3, offset: 3}} md={{size: 4, offset: 2}} className="text-center text-md-left my-1">
+
+        <Row className="justify-content-center">
+          <Col xl="4" lg="6" md="8" className="text-center my-1">
             <Button onClick={this.google_auth.bind(this)} color="primary">
               <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
               Login with Google
             </Button>
+            <hr className="mt-4 mb-0"/>
           </Col>
-          <Col lg="3" md="4" className="text-center text-md-right my-1">
+          {/* <Col lg="3" md="4" className="text-center text-md-right my-1">
             <Button onClick={this.facebook_auth.bind(this)} color="primary">
               <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
               Login with Facebook
             </Button>
-          </Col>
+          </Col> */}
         </Row>
+
         {this.state.error &&
           <div className="text-center mt-2">
             <FormFeedback className="d-block">{this.state.error}</FormFeedback>
