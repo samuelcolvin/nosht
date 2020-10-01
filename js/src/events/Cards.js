@@ -28,6 +28,12 @@ const Event = ({event}) => (
             <Markdown content={event.short_description}/>
           </div>
 
+          <small>
+            {event.allow_tickets && !event.allow_donations && 'Event'}
+            {!event.allow_tickets && event.allow_donations && 'Fundraiser'}
+            {event.allow_tickets && event.allow_donations && 'Event & Fundraiser'}
+          </small>
+
           <small className="text-muted">
             <FontAwesomeIcon icon={['fas', 'map-marker']} className="mr-1"/>
             {event.location_name}
