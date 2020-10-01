@@ -224,7 +224,7 @@ async def test_book_multiple(donorfy: DonorfyActor, factory: Factory, dummy_serv
         'Fund': 'Unrestricted General',
         'Department': '220 Ticket Sales',
         'BankAccount': 'Unrestricted Account',
-        'DatePaid': CloseToNow(),
+        'DatePaid': CloseToNow(delta=4),
         'Amount': 20.0,
         'ProcessingCostsAmount': 0.5,
         'Quantity': 2,
