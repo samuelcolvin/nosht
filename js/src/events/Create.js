@@ -12,6 +12,7 @@ export const EVENT_FIELDS = [
     required: true,
     title: 'Event name',
     help_text: 'Public name of the event, keep this short and appealing.',
+    max_length: 150
   },
   {
     name: 'short_description',

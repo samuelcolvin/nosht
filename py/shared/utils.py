@@ -30,11 +30,12 @@ CURRENCY_LOOKUP = {
 }
 
 
-def slugify(title):
+def slugify(title, max_length: int = 255):
     name = title.replace(' ', '-').lower()
     name = URI_NOT_ALLOWED.sub('', name)
     name = re.sub(r'-{2,}', '-', name)
-    return name.strip('_-')
+    name = name.strip('_-')
+    return name[:max_length]
 
 
 def mk_password(password: str, settings: Settings) -> str:

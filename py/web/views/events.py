@@ -189,7 +189,7 @@ class EventMode(Enum):
 
 class EventBread(Bread):
     class Model(BaseModel):
-        name: constr(max_length=63)
+        name: constr(max_length=150)
         category: int
         public: bool = True
         timezone: TzInfo
@@ -316,7 +316,7 @@ class EventBread(Bread):
         session = self.request['session']
         mode: EventMode = data.pop('mode', EventMode.tickets)
         data.update(
-            slug=slugify(data['name']),
+            slug=slugify(data['name'], 63),
             short_description=shorten(clean_markdown(data['long_description']), width=140, placeholder='…'),
             host=session['user_id'],
             allow_tickets=mode in (EventMode.tickets, EventMode.both),
@@ -926,7 +926,7 @@ async def event_search(request):
 
 class EventClone(UpdateView):
     class Model(BaseModel):
-        name: constr(max_length=63)
+        name: constr(max_length=150)
         date: DateModel
         status: StatusChoices
 
