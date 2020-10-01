@@ -706,3 +706,10 @@ async def add_event_youtube_field(conn, **kwargs):
     add the youtube_video_id column to events
     """
     await conn.execute('ALTER TABLE events ADD COLUMN youtube_video_id VARCHAR(140)')
+
+@patch
+async def change_event_name_field_length(conn, **kwargs):
+    """
+    Change the length of event name field
+    """
+    await conn.execute('ALTER TABLE events ALTER COLUMN name TYPE VARCHAR(150)')
