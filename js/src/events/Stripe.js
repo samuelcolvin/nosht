@@ -199,7 +199,7 @@ class StripeForm_ extends React.Component {
     const payment_state = this.props.payment_state || {}
     const has_saved_card = Boolean(this.stored_payment_method.payment_method_id)
     return (
-      <div className="hide-help-text" id="stripe-form">
+      <div className="hide-help-text py-2" id="stripe-form">
         <Overlay element_id="stripe-form" show={this.props.submitting} text="processing payment"/>
         {has_saved_card && (
           <div className="pb-2">
