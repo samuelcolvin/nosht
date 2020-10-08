@@ -484,7 +484,8 @@ export class EventsDetails extends RenderDetails {
                  success_msg='Event Update Sent'
                  initial={{status: event.status}}
                  action={`/events/${this.id()}/updates/send/`}
-                 fields={EVENT_EMAIL_UPDATE_FIELDS}/>,
+                 fields={EVENT_EMAIL_UPDATE_FIELDS}
+                 save="Send Email"/>,
       <SetImage key="set-image"
                 event={event}
                 parent_uri={this.uri}
