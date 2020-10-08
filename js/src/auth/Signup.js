@@ -13,7 +13,7 @@ import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {user_full_name} from '../utils'
 import Input from '../forms/Input'
-import {setup_siw, facebook_login, google_login} from './login_with'
+import {setup_siw, google_login} from './login_with'
 import {next_url} from './Login'
 import Recaptcha from '../general/Recaptcha'
 
@@ -48,15 +48,6 @@ class Signup extends React.Component {
     if (auth_data) {
       ReactGA.event({category: 'auth', action: 'auth-signup', label: 'google'})
       await this.auth('google', auth_data)
-    }
-  }
-
-  async facebook_auth () {
-    this.setState({error: null})
-    const auth_data = await facebook_login(this.props.ctx.setError)
-    if (auth_data) {
-      ReactGA.event({category: 'auth', action: 'auth-signup', label: 'facebook'})
-      await this.auth('facebook', auth_data)
     }
   }
 
@@ -142,14 +133,6 @@ class Signup extends React.Component {
               <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
               Signup with Google
             </Button>
-
-            {/* <Button disabled={this.state.email_form}
-                    onClick={this.facebook_auth.bind(this)}
-                    color="primary"
-                    className="width-100p my-1">
-              <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
-              Signup with Facebook
-            </Button> */}
 
             <Collapse isOpen={this.state.email_form}>
               <Button onClick={() => this.setState({email_form: false})}

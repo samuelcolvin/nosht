@@ -11,7 +11,7 @@ import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import Input from '../forms/Input'
-import {setup_siw, facebook_login, google_login} from '../auth/login_with'
+import {setup_siw, google_login} from '../auth/login_with'
 import Recaptcha from '../general/Recaptcha'
 import {ModalFooter} from '../general/Modal'
 
@@ -50,16 +50,6 @@ class BookingLogin extends React.Component {
     const auth_data = await google_login(this.props.ctx.setError)
     if (auth_data) {
       await this.auth('google', auth_data)
-    } else {
-      this.setState({submitting: false})
-    }
-  }
-
-  async facebook_auth () {
-    this.setState({siw_error: null, submitting: true})
-    const auth_data = await facebook_login(this.props.ctx.setError)
-    if (auth_data) {
-      await this.auth('facebook', auth_data)
     } else {
       this.setState({submitting: false})
     }
@@ -133,14 +123,6 @@ class BookingLogin extends React.Component {
               <FontAwesomeIcon icon={['fab', 'google']} className="mr-2"/>
               Signup with Google
             </Button>
-
-            {/* <Button disabled={this.state.email_form || this.state.submitting}
-                    onClick={this.facebook_auth.bind(this)}
-                    color="primary"
-                    className="width-100p my-1">
-              <FontAwesomeIcon icon={['fab', 'facebook-f']} className="mr-2"/>
-              Signup with Facebook
-            </Button> */}
 
             <Collapse isOpen={this.state.email_form}>
               <Button onClick={() => this.setState({email_form: false})}
