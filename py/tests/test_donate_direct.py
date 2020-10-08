@@ -88,7 +88,7 @@ async def test_donate_direct(cli, url, dummy_server, factory: Factory, login, db
         'company': factory.company_id,
         'user_id': factory.user_id,
         'event': factory.event_id,
-        'ts': CloseToNow(),
+        'ts': CloseToNow(delta=3),
         'type': 'donate',
         'extra': RegexStr(r'{.*}'),
     }

@@ -12,6 +12,7 @@ export const EVENT_FIELDS = [
     required: true,
     title: 'Event name',
     help_text: 'Public name of the event, keep this short and appealing.',
+    max_length: 150
   },
   {
     name: 'short_description',
@@ -128,6 +129,7 @@ class CreateEvent extends React.Component {
 
   async componentDidMount () {
     const form_data = {timezone: Intl.DateTimeFormat().resolvedOptions().timeZone}
+    EVENT_FIELDS.filter(f => f.hasOwnProperty('default')).forEach(f => form_data[f.name] = f.default)
     let data
     try {
       data = await requests.get('/events/categories/')

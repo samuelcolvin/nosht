@@ -71,7 +71,7 @@ async def test_delivery(factory: Factory, db_conn, cli):
     assert dict(evt) == {
         'id': AnyInt(),
         'email': email_id,
-        'ts': CloseToNow(),
+        'ts': CloseToNow(delta=3),
         'status': 'Delivery',
         'extra': '{"delivery_time": 789}',
     }
@@ -175,7 +175,7 @@ async def test_old_event(factory: Factory, db_conn, cli):
     r = await cli.post('/api/ses-webhook/', json=data, headers={'Authorization': 'Basic cHc6dGVzdHM='})
     assert r.status == 204, await r.text()
 
-    assert ('pending', CloseToNow()) == await db_conn.fetchrow('select status, update_ts from emails')
+    assert ('pending', CloseToNow(delta=3)) == await db_conn.fetchrow('select status, update_ts from emails')
     assert datetime(2000, 10, 16, 12, 0, tzinfo=timezone.utc) == await db_conn.fetchval('select ts from email_events')
 
 

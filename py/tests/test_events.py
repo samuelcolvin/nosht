@@ -741,7 +741,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
                 'ticket_id': RegexStr(r'.{7}-%s' % ticket_id),
                 'ticket_status': 'booked',
                 'extra_info': None,
-                'booked_at': CloseToNow(),
+                'booked_at': CloseToNow(delta=4),
                 'booking_type': 'buy-tickets',
                 'price': 10,
                 'extra_donated': None,
@@ -753,7 +753,7 @@ async def test_event_tickets_host(cli, url, db_conn, factory: Factory, login):
                 'ticket_type_id': await db_conn.fetchval('SELECT id from ticket_types'),
             },
         ],
-        'waiting_list': [{'added_ts': CloseToNow(), 'name': 'anne anne'}],
+        'waiting_list': [{'added_ts': CloseToNow(delta=4), 'name': 'anne anne'}],
         'donations': [],
     }
     await db_conn.execute('update tickets set price=null')
@@ -798,7 +798,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'ticket_id': RegexStr(r'.{7}-\d+'),
             'ticket_status': 'booked',
             'extra_info': None,
-            'booked_at': CloseToNow(),
+            'booked_at': CloseToNow(delta=4),
             'booking_type': 'book-free-tickets',
             'price': None,
             'extra_donated': 1.23,
@@ -816,7 +816,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
             'ticket_id': RegexStr(r'.{7}-\d+'),
             'ticket_status': 'booked',
             'extra_info': None,
-            'booked_at': CloseToNow(),
+            'booked_at': CloseToNow(delta=4),
             'booking_type': 'book-free-tickets',
             'price': None,
             'extra_donated': 1.23,
@@ -831,7 +831,7 @@ async def test_event_tickets_admin(cli, url, db_conn, factory: Factory, login):
         },
     ]
     assert data['waiting_list'] == [
-        {'added_ts': CloseToNow(), 'name': 'charlie charlie', 'email': 'charlie@example.org'}
+        {'added_ts': CloseToNow(delta=4), 'name': 'charlie charlie', 'email': 'charlie@example.org'}
     ]
 
 
@@ -1165,7 +1165,11 @@ async def test_event_updates_sent(cli, url, login, factory: Factory, dummy_serve
     data = await r.json()
     assert data == {
         'event_updates': [
-            {'message': 'this is the **message**.', 'subject': 'This is a test email & whatever', 'ts': CloseToNow()}
+            {
+                'message': 'this is the **message**.',
+                'subject': 'This is a test email & whatever',
+                'ts': CloseToNow(delta=4),
+            }
         ]
     }
 

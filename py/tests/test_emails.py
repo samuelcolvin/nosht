@@ -50,8 +50,8 @@ async def test_send_email(email_actor: EmailActor, factory: Factory, dummy_serve
         'company': factory.company_id,
         'user_id': factory.user_id,
         'ext_id': 'testing',
-        'send_ts': CloseToNow(),
-        'update_ts': CloseToNow(),
+        'send_ts': CloseToNow(delta=3),
+        'update_ts': CloseToNow(delta=3),
         'status': 'pending',
         'trigger': 'admin-notification',
         'subject': 'Update: testing',
@@ -774,7 +774,7 @@ async def test_send_tickets_available(email_actor: EmailActor, factory: Factory,
     assert await db_conn.fetchval('select count(*) from actions where type=$1', ActionTypes.email_waiting_list) == 1
 
     assert await db_conn.fetchval('select count(*) from waiting_list') == 1
-    assert await db_conn.fetchval('select last_notified from waiting_list') == CloseToNow()
+    assert await db_conn.fetchval('select last_notified from waiting_list') == CloseToNow(delta=3)
     r = await cli.get(remove_link, allow_redirects=False)
     assert r.status == 307, await r.text()
     assert r.headers['Location'] == f'http://127.0.0.1:{cli.server.port}/waiting-list-removed/'
@@ -859,7 +859,8 @@ async def test_send_tickets_available_one_day(email_actor: EmailActor, factory: 
     assert await email_actor.send_tickets_available.direct(factory.event_id) == 'emailed 1 users'
     assert len(dummy_server.app['emails']) == 1
     assert dummy_server.app['emails'][0]['To'] == 'anne anne <anne@example.org>'
-    assert await db_conn.fetchval('select last_notified from waiting_list where user_id=$1', anne) == CloseToNow()
+    s = await db_conn.fetchval('select last_notified from waiting_list where user_id=$1', anne)
+    assert s == CloseToNow(delta=3)
     assert await db_conn.fetchval('select last_notified from waiting_list where user_id=$1', ben) == recently
 
 
