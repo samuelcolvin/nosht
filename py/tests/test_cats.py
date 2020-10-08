@@ -26,6 +26,8 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'start_ts': '2032-06-28T19:00:00',
                 'duration': 3600,
                 'sold_out': False,
+                'allow_donations': False,
+                'allow_tickets': True,
             },
         ],
     }
@@ -47,6 +49,8 @@ async def test_cat_event_list(cli, url, db_conn, factory: Factory):
                 'start_ts': '2032-06-28T19:00:00',
                 'duration': 3600,
                 'sold_out': False,
+                'allow_donations': False,
+                'allow_tickets': True,
             },
         ],
     }

@@ -338,7 +338,7 @@ export class EventsDetails extends RenderDetails {
             render: (v, item) => <ImageThumbnail image={v} alt={item.name} image_type="main" width={150}/>,
           },
           youtube_video_id: {
-            title: 'Youtube video ID',
+            title: 'Youtube video',
             render: (vid) => vid ?
               <a target="_blank" rel="noopener noreferrer" href={`https://www.youtube.com/watch?v=${vid}`}>https://www.youtube.com/watch?v={vid}</a>
               : "—"
