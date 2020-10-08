@@ -103,7 +103,7 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
         'company': factory.company_id,
         'user_id': factory.user_id,
         'event': factory.event_id,
-        'ts': CloseToNow(),
+        'ts': CloseToNow(delta=3),
         'type': 'donate',
         'extra': RegexStr(r'{.*}'),
     }
@@ -400,7 +400,7 @@ async def test_list_donations(cli, url, factory: Factory, login, db_conn):
                 'user_first_name': 'Frank',
                 'user_last_name': 'Spencer',
                 'user_email': 'frank@example.org',
-                'ts': CloseToNow(),
+                'ts': CloseToNow(delta=3),
                 'event_id': factory.event_id,
                 'event_name': 'The Event Name',
             },
