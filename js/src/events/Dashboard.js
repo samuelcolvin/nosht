@@ -70,7 +70,7 @@ const EVENT_STATUS_FIELDS = [
 ]
 const EVENT_EMAIL_UPDATE_FIELDS = [
   {name: 'subject', required: true},
-  {name: 'message', required: true, type: 'textarea'},
+  {name: 'message', required: true, type: 'textarea', max_length: 255*1000},
 ]
 
 const EVENT_CLONE_FIELDS = [
