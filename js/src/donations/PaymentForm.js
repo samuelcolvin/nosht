@@ -15,12 +15,12 @@ const gift_aid_field = {
   name: 'gift_aid',
   title: 'Make my donation worth even more with Gift Aid',
   help_text: (  // TODO this needs to be a cat field so the link isn't too specific
-    <span>
+    <b>
       Adding Gift Aid increases your donation by 25%, that’s £2.50 in every £10 – at no cost to you.
       To read more about Gift aid and donations which can’t include gift aid click&nbsp;
       <a href="https://handsupfoundation.org/news/gift-aid-the-low-down-on-increasing-your-donation-by-25"
          target="_blank" rel="noopener noreferrer">here</a>.
-    </span>
+    </b>
   )
 }
 
@@ -158,11 +158,21 @@ export class PaymentForm_ extends React.Component {
           <Row className="justify-content-center">
             <Col lg="8">
               {this.props.config.long_description ? <hr/> : null}
-              <Input field={gift_aid_field} value={this.state.gift_aid}
-                     disabled={this.state.submitting}
-                     onChange={gift_aid => this.setState({gift_aid})}/>
 
-              <Collapse isOpen={this.state.gift_aid}>
+              <StripeForm submitting={this.state.submitting}
+                          payment_state={this.state.payment}
+                          setPaymentState={this.setPaymentState}/>
+
+              <hr/>
+
+              <strong>
+                <Input field={gift_aid_field}
+                       value={this.state.gift_aid}
+                       disabled={this.state.submitting}
+                       onChange={gift_aid => this.setState({gift_aid})} />
+              </strong>
+
+              <Collapse isOpen={this.state.gift_aid} className="pb-2">
                 <Row>
                   <Col md="6">
                     <Input field={title_field} value={this.state.title} error={this.state.title_error}
@@ -198,9 +208,6 @@ export class PaymentForm_ extends React.Component {
                   </Col>
                 </Row>
               </Collapse>
-              <hr/>
-              <StripeForm submitting={this.state.submitting} payment_state={this.state.payment}
-                          setPaymentState={this.setPaymentState}/>
             </Col>
           </Row>
         </ModalBody>
