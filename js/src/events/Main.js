@@ -123,18 +123,6 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
         </Col>
       ) : null}
 
-      {/* {event.allow_donations ? (
-        <Col md="auto">
-          <FontAwesomeIcon icon="hand-holding-heart" className="mx-1 text-success"/>
-            {ticket_types.filter(tt => tt.mode === 'donation').map(tt => tt.price).filter(unique).map((p, i) => (
-              <span key={i}>
-                {i > 0 && <span className="px-1">/</span>}
-                <MoneyFree>{p}</MoneyFree>
-              </span>
-            ))}
-        </Col>
-      ) : null} */}
-
       <Col md="auto">
         <FontAwesomeIcon icon={'user'} className="mx-1 text-success"/>
         hosted by {event.host_name}
