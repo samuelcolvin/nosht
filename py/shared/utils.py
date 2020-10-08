@@ -5,6 +5,7 @@ import json
 import random
 import re
 import string
+import textwrap
 from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Optional, Union
@@ -30,11 +31,15 @@ CURRENCY_LOOKUP = {
 }
 
 
-def slugify(title):
+def slugify(title, max_length: Optional[int] = None):
     name = title.replace(' ', '-').lower()
     name = URI_NOT_ALLOWED.sub('', name)
     name = re.sub(r'-{2,}', '-', name)
-    return name.strip('_-')
+    name = name.strip('_-')
+    if max_length is None:
+        return name
+    else:
+        return textwrap.shorten(name, width=max_length, placeholder='')
 
 
 def mk_password(password: str, settings: Settings) -> str:
