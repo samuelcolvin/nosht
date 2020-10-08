@@ -32,6 +32,8 @@ FROM (
       coalesce(e.image, c.image) AS image,
       e.secondary_image,
       e.short_description,
+      e.allow_tickets,
+      e.allow_donations,
       e.start_ts AT TIME ZONE e.timezone AS start_ts, e.location_name,
       extract(epoch FROM e.duration)::int AS duration,
       coalesce(e.ticket_limit = e.tickets_taken, FALSE) AS sold_out
