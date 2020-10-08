@@ -46,7 +46,7 @@ class _Form extends React.Component {
       const errors = {}
       missing.forEach(f => {errors[f] = 'Field Required'})
       this.setState({
-        form_error: 'Required fields are emtpy',
+        form_error: 'Required fields are empty',
         errors: errors
       })
       return
