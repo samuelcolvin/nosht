@@ -9,34 +9,6 @@ export async function setup_siw () {
       scope: 'profile email',
     })
   })
-  await load_script('https://connect.facebook.net/en_US/sdk.js')
-  window.fbAsyncInit = () => {
-    window.FB.init({
-      appId: process.env.REACT_APP_FACEBOOK_SIW_APP_ID,
-      cookie: true,
-      xfbml: true,
-      version: 'v3.0'
-    })
-  }
-}
-
-export async function facebook_login (setError) {
-  const fb = await window_property('FB')
-  const p = new Promise(resolve => {
-    fb.login(r => {
-      if (r.status === 'connected') {
-        resolve(r.authResponse)
-      } else if (r.status === undefined) {
-        // user probably closed the popup
-        resolve()
-      } else {
-        console.error('facebook auth unexpected response:', r)
-        setError('Error on facebook authentication')
-        resolve()
-      }
-    }, {scope: 'email'})
-  })
-  return await p
 }
 
 export async function google_login (setError) {
