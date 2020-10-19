@@ -231,7 +231,15 @@ export const Donations = ({donations, user}) => {
   const is_admin = user.role === 'admin'
   return (
     <div>
-      <h4>Donations</h4>
+      <h4>
+        Donations
+        <a href={`/api/events/${this.props.id}/donations/export.csv`}
+           download={true}
+           className="btn btn-secondary btn-sm ml-2">
+          <FontAwesomeIcon icon="file-export" className="mr-1"/>
+          Export
+        </a>
+      </h4>
       <Table striped>
         <thead>
           <tr>
