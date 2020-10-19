@@ -1,7 +1,7 @@
 .DEFAULT_GOAL:=all
 HEROKU_APP?=nosht
 isort = isort -rc py
-black = black --skip-string-normalization -l 120 --target-version py36 py
+black = black --skip-string-normalization -l 120 --target-version py38 py
 
 .PHONY: install
 install:
