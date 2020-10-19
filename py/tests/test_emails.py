@@ -476,6 +476,65 @@ async def test_send_event_update(cli, url, login, factory: Factory, dummy_server
     assert 'href="https://127.0.0.1/supper-clubs/the-event-name/"><span>View Event</span></a>\n' in html
 
 
+async def test_send_event_update_without_message(cli, url, login, factory: Factory, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event(price=10)
+
+    await login()
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.buy_tickets(await factory.create_reservation(anne, None))
+    assert len(dummy_server.app['emails']) == 1
+
+    d = dict({'subject': 'This is a test email'})
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=d)
+    assert r.status == 400
+    data = await r.json()
+    assert data['message'] == 'You need to provide at least one message'
+
+
+async def test_send_event_update_multiple_messages(cli, url, login, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    evt = await factory.create_event(price=10)
+    tt = await db_conn.fetch('SELECT id FROM ticket_types WHERE event=$1', evt)
+
+    await login()
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.buy_tickets(await factory.create_reservation(anne, None, ticket_type_id=tt[1]['id']))
+    assert len(dummy_server.app['emails']) == 1
+
+    mary = await factory.create_user(first_name='mary', email='mary@example.org')
+    await factory.buy_tickets(await factory.create_reservation(mary, None, ticket_type_id=tt[2]['id']))
+    assert len(dummy_server.app['emails']) == 2
+
+    data = dict(
+        {
+            "subject": 'This is a test email',
+            f"message_to_ticket_type__{tt[1]['id']}": 'this is the first **message**.',
+            f"message_to_ticket_type__{tt[2]['id']}": 'this is the second **message**.',
+        }
+    )
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    emails = dummy_server.app['emails']
+    assert len(dummy_server.app['emails']) == 4
+
+    assert emails[2]['Subject'] == 'This is a test email'
+    assert emails[2]['To'] == 'anne Spencer <anne@example.org>'
+    assert '<p>Hi anne,</p>\n\n<p>this is the first <strong>message</strong>.</p>\n' in emails[2]['part:text/html']
+
+    assert emails[3]['Subject'] == 'This is a test email'
+    assert emails[3]['To'] == 'mary Spencer <mary@example.org>'
+    assert '<p>Hi mary,</p>\n\n<p>this is the second <strong>message</strong>.</p>\n' in emails[3]['part:text/html']
+
+
 async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dummy_server):
     await factory.create_company()
     await factory.create_cat()

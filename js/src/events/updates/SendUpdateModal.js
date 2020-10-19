@@ -19,12 +19,12 @@ export class SendUpdateModal extends React.Component {
     }
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate (prevProps) {
     if (prevProps.ticketTypes !== this.props.ticketTypes)
       this.setState({fields: this.buildFieldList()})
   }
 
-  buildFieldList() {
+  buildFieldList () {
     if (this.props.ticketTypes && this.props.ticketTypes.length > 1) {
       const messages = this.props.ticketTypes
         .map(tt => Object.assign({}, EVENT_EMAIL_UPDATE_FIELDS[1], {

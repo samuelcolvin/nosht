@@ -252,7 +252,7 @@ class EmailActor(BaseEmailActor):
                 """
                 SELECT a.company AS company_id, e.id AS event_id, e.name AS event_name,
                   full_name(u.first_name, u.last_name, u.email) AS sender_name,
-                  a.extra->>'subject' AS subject, a.extra->>'message' AS message,
+                  a.extra->>'subject' AS subject, a.extra->>'message' AS message, a.extra AS mail_content,
                   event_link(cat.slug, e.slug, e.public, $2) AS event_link,
                   cat.name AS cat_name, cat.slug AS cat_slug
                 FROM actions AS a
@@ -266,24 +266,45 @@ class EmailActor(BaseEmailActor):
             )
             user_tickets = await conn.fetch(
                 """
-                SELECT DISTINCT user_id, id AS ticket_id
+                SELECT DISTINCT user_id, id AS ticket_id, ticket_type
                 FROM tickets
                 WHERE status='booked' AND event=$1 AND user_id IS NOT NULL
                 """,
                 data['event_id'],
             )
 
-        ctx = {
-            'event_link': data['event_link'],
-            'event_name': data['event_name'],
-            'subject': data['subject'],
-            'message': data['message'],
-            'category_name': data['cat_name'],
-            is_cat(data['cat_slug']): True,
+        MESSAGE_NAME_TT_SLUG = 'message_to_ticket_type__'
+        alt_messages = {
+            'default': {
+                'event_link': data['event_link'],
+                'event_name': data['event_name'],
+                'subject': data['subject'],
+                'message': data['message'],
+                'category_name': data['cat_name'],
+                is_cat(data['cat_slug']): True,
+            }
         }
-        users = [UserEmail(id=user_id, ctx=ctx, ticket_id=ticket_id) for user_id, ticket_id in user_tickets]
+        mail_groups = {'default': []}
+        for k, m in json.loads(data['mail_content']).items():
+            if k.startswith(MESSAGE_NAME_TT_SLUG):
+                tt = int(k.replace(MESSAGE_NAME_TT_SLUG, ''))
+                alt_messages[tt] = {**alt_messages['default'], 'message': m}
+                mail_groups[tt] = []
+
+        for t in user_tickets:
+            tt = t['ticket_type']
+            mail_groups[tt if tt in alt_messages else 'default'].append(t)
+
+        users = []
+        for k, g in mail_groups.items():
+            if len(g):
+                users += [
+                    UserEmail(id=user_id, ctx=alt_messages[k], ticket_id=ticket_id)
+                    for user_id, ticket_id, ticket_type in g
+                ]
+
         await self.send_emails.direct(
-            data['company_id'], Triggers.event_update, users, attached_event_id=data['event_id']
+            data['company_id'], Triggers.event_update, users, attached_event_id=data['event_id'],
         )
 
     @concurrent

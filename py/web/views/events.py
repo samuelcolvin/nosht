@@ -872,19 +872,25 @@ class SetEventStatus(UpdateView):
 class EventUpdate(UpdateView):
     class Model(BaseModel):
         subject: constr(max_length=200)
-        message: str
+        message: Optional[str]
 
     async def check_permissions(self):
         await check_session(self.request, 'admin', 'host')
 
     async def execute(self, m: Model):
         event_id = await _check_event_permissions(self.request, check_upcoming=True)
+        payload_json = await self.request.json()
+        msgs = {k: v for k, v in payload_json.items() if (k.startswith('message'))}
+
+        if not len(msgs):
+            raise JsonErrors.HTTPBadRequest(message='You need to provide at least one message')
+
         action_id = await record_action_id(
             self.request,
             self.session['user_id'],
             ActionTypes.event_update,
             event_id=event_id,
-            **m.dict(include={'subject', 'message'}),
+            **{'subject': payload_json['subject'], **msgs},
         )
         await self.app['email_actor'].send_event_update(action_id)
 
