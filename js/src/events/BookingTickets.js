@@ -57,14 +57,14 @@ const TicketInfo = ({index, state, set_ticket_state, event}) => {
     placeholder: 'first name',
     show_label: false,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's name.",
-    required: true
+    required: !index
   }
   const last_name_field = {
     name: key + 'last_name',
     placeholder: 'last name',
     show_label: false,
     help_text: index === 0 ? '' : "Leave blank if you don't know the guest's name.",
-    required: true
+    required: !index
   }
   const email_field = {
     name: key + 'email',
