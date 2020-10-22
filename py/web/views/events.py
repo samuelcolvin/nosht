@@ -882,7 +882,7 @@ class EventUpdate(UpdateView):
         payload_json = await self.request.json()
         msgs = {k: v for k, v in payload_json.items() if (k.startswith('message'))}
 
-        if not len(msgs):
+        if not msgs:
             raise JsonErrors.HTTPBadRequest(message='You need to provide at least one message')
 
         action_id = await record_action_id(
