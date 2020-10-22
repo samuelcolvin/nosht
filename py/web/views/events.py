@@ -461,7 +461,8 @@ join users u on w.user_id = u.id
 where w.event=$1
 """
 event_donations_sql = """
-select don.id, don.amount::float, don.ticket_type ticket_type_id, a.user_id,
+select don.id, don.amount::float, don.ticket_type ticket_type_id, a.user_id, u.email AS user_email,
+  don.donation_option, don.gift_aid,
   full_name(u.first_name, u.last_name) as name,
   iso_ts(a.ts, 'Europe/London') as timestamp
 from donations don
@@ -494,6 +495,8 @@ async def event_tickets(request):
         [r.pop('email') for r in waiting_list]
 
     donations = [dict(r) for r in await conn.fetch(event_donations_sql, event_id)]
+    if not_admin:
+        [r.pop('user_email') for r in donations]
     return json_response(tickets=tickets, waiting_list=waiting_list, donations=donations)
 
 
@@ -572,6 +575,35 @@ async def event_tickets_export(request):
         event_id,
         filename=f'{event_slug}-tickets',
         none_message='no tickets booked',
+        modify_records=modify,
+    )
+
+
+@is_admin_or_host
+async def event_donations_export(request):
+    event_id = await _check_event_permissions(request)
+    not_admin = request['session']['role'] != 'admin'
+    event_slug = await request['conn'].fetchval('SELECT slug FROM events WHERE id=$1', event_id)
+    settings = request.app['settings']
+
+    def modify(record):
+        data = {
+            'donation_id': ticket_id_signed(record['id'], settings),
+            **record,
+        }
+        data.pop('id')
+        data.pop('ticket_type_id')
+        if not_admin:
+            data.pop('user_id')
+            data.pop('user_email')
+        return data
+
+    return await export_plumbing(
+        request,
+        event_donations_sql,
+        event_id,
+        filename=f'{event_slug}-donations',
+        none_message='no donations booked',
         modify_records=modify,
     )
 
