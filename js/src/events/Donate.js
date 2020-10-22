@@ -62,7 +62,7 @@ class DonateForm extends React.Component {
     if (!this.props.ctx.user) {
       return (
         <BookingLogin
-          booking_trust_message={this.props.event.booking_trust_message}
+          message={this.props.event.booking_trust_message}
           finished={this.finished}
           success_label="Continue"
           setBookingState={s => this.setState(s)}

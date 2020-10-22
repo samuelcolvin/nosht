@@ -128,11 +128,14 @@ class BookForm extends React.Component {
 
   render () {
     if (!this.props.ctx.user) {
-      return <BookingLogin
-          booking_trust_message={this.props.event.booking_trust_message}
+      return (
+        <BookingLogin
+          message={this.props.event.booking_trust_message}
           finished={this.finished}
           success_label="Book"
-          setBookingState={s => this.setState(s)}/>
+          setBookingState={s => this.setState(s)}
+        />
+      )
     } else if (!this.state.reservation) {
       return <BookingTickets
           event={this.props.event}

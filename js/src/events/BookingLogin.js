@@ -111,10 +111,16 @@ class BookingLogin extends React.Component {
   render () {
     return [
       <ModalBody key="1">
-        <p className="text-center">{this.props.booking_trust_message}</p>
+        <p className="text-center">{this.props.message}</p>
 
         <Row className="justify-content-center">
           <Col md="6">
+
+            <a className="width-100p my-1 btn btn-primary"
+               href={`/login/?next=${window.location.pathname}`}>
+              <FontAwesomeIcon icon="sign-in-alt" className="mr-2"/>
+              Login
+            </a>
 
             <Button disabled={this.state.email_form || this.state.submitting}
                     onClick={this.google_auth.bind(this)}
