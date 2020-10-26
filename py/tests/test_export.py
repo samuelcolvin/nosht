@@ -320,6 +320,33 @@ async def test_event_ticket_export(cli, url, login, factory: Factory, db_conn):
     ]
 
 
+async def test_event_donations_export(cli, url, login, factory: Factory, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_donation_option()
+    await factory.create_event(status='published')
+    await factory.create_donation(gift_aid=True)
+    await login()
+
+    r = await cli.get(url('event-donations-export', id=factory.event_id))
+    assert r.status == 200
+    text = await r.text()
+    data = [dict(r) for r in DictReader(StringIO(text))]
+
+    assert len(data) == 1
+    assert data[0] == {
+        'donation_id': RegexStr(r'.{7}-\d+'),
+        'amount': '20.0',
+        'user_id': str(factory.user_id),
+        'user_email': 'frank@example.org',
+        'donation_option': str(factory.donation_option_id),
+        'gift_aid': 'True',
+        'name': 'Frank Spencer',
+        'timestamp': CloseToNow(delta=3),
+    }
+
+
 async def test_event_ticket_export_host(cli, url, login, factory: Factory, db_conn):
     await factory.create_company()
     await factory.create_cat()

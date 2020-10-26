@@ -169,7 +169,7 @@ export class DonationOptionDetails extends RenderDetails {
 
   extra () {
     return [
-      <Donations key="l" donations={this.state.donations}/>,
+      <Donations key="l" donations={this.state.donations} id={this.id()}/>,
       <ModalForm title="Edit Donation Option"
                  key="e"
                  parent_uri={this.uri}

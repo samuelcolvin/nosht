@@ -29,7 +29,8 @@ export class SendUpdateModal extends React.Component {
       const messages = this.props.ticketTypes
         .map(tt => Object.assign({}, EVENT_EMAIL_UPDATE_FIELDS[1], {
           name: MESSAGE_NAME_TT_SLUG + tt.id,
-          title: `Message to ${tt.name} ticket holders`
+          title: `Message to ${tt.name} ticket holders`,
+          required: false
         }))
       return [EVENT_EMAIL_UPDATE_FIELDS[0]].concat(messages)
     } else {
