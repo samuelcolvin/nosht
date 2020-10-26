@@ -528,11 +528,13 @@ async def test_send_event_update_multiple_messages(cli, url, login, factory: Fac
 
     assert emails[2]['Subject'] == 'This is a test email'
     assert emails[2]['To'] == 'anne Spencer <anne@example.org>'
-    assert '<p>Hi anne,</p>\n\n<p>this is the first <strong>message</strong>.</p>\n' in emails[2]['part:text/html']
+    htmlmsg = '<p>Hi anne,</p>\n\n<p>this is the first <strong>message</strong>.</p>\n'
+    assert next((e for e in emails if htmlmsg in e['part:text/html']), False)
 
     assert emails[3]['Subject'] == 'This is a test email'
     assert emails[3]['To'] == 'mary Spencer <mary@example.org>'
-    assert '<p>Hi mary,</p>\n\n<p>this is the second <strong>message</strong>.</p>\n' in emails[3]['part:text/html']
+    htmlmsg = '<p>Hi mary,</p>\n\n<p>this is the second <strong>message</strong>.</p>\n'
+    assert next((e for e in emails if htmlmsg in e['part:text/html']), False)
 
 
 async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dummy_server):
