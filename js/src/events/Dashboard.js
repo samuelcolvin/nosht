@@ -457,7 +457,10 @@ export class EventsDetails extends RenderDetails {
         : null,
       ticketed ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
       ticketed ? <WaitingList key="wl" waiting_list={this.state.waiting_list} user={this.props.ctx.user}/> : null,
-      internal && event.allow_donations ? <Donations key="dons" donations={this.state.donations} user={this.props.ctx.user}/> : null,
+      internal && event.allow_donations ?
+        <Donations key="dons" donations={this.state.donations} user={this.props.ctx.user}
+                   id={this.id()}/>
+          : null,
       <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"
