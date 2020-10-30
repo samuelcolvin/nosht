@@ -149,8 +149,19 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
           <img src={image_thumb(event.secondary_image, 'main')} alt={event.name} className="img-thumbnail"/>
         </div>
       )}
+
       <h2>About</h2>
+
       {event.youtube_video_id && <YoutubePlayer vid={event.youtube_video_id} className='event-video'/>}
+
+      {event.description_intro && <Markdown content={event.description_intro}/>}
+
+      {event.description_image && (
+        <div className="py-2">
+          <img src={image_thumb(event.description_image, 'main')} alt={event.name} className="img"/>
+        </div>
+      )}
+
       <Markdown content={event.long_description}/>
     </div>
   </div>

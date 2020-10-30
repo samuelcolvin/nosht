@@ -56,6 +56,8 @@ FROM (
          e.secondary_image,
          e.youtube_video_id,
          e.short_description,
+         e.description_image,
+         e.description_intro,
          e.long_description,
          e.external_ticket_url,
          e.allow_tickets,
@@ -210,6 +212,8 @@ class EventBread(Bread):
         long_description: str
         short_description: str = None
         youtube_video_id: str = None
+        description_image: str = None
+        description_intro: str = None
         external_ticket_url: HttpUrl = None
 
         @validator('public', pre=True)
@@ -251,6 +255,8 @@ class EventBread(Bread):
         'e.youtube_video_id',
         'e.short_description',
         'e.long_description',
+        'e.description_image',
+        'e.description_intro',
         'e.external_ticket_url',
         'e.host',
         'e.timezone',
@@ -971,6 +977,7 @@ class EventClone(UpdateView):
       highlight, external_ticket_url,
       start_ts, timezone, duration,
       youtube_video_id, short_description, long_description,
+      description_image, description_intro,
       public, location_name, location_lat, location_lng,
       ticket_limit, image, secondary_image
     )
@@ -979,6 +986,7 @@ class EventClone(UpdateView):
       e.highlight, e.external_ticket_url,
       :start, e.timezone, :duration,
       e.youtube_video_id, e.short_description, e.long_description,
+      e.description_image, e.description_intro,
       e.public, e.location_name, e.location_lat, e.location_lng,
       e.ticket_limit, e.image, e.secondary_image
     FROM events e WHERE e.id=:old_event_id

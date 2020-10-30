@@ -40,6 +40,8 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'youtube_video_id': None,
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
+            'description_intro': RegexStr(r'.*'),
+            'description_image': None,
             'external_ticket_url': None,
             'allow_tickets': True,
             'allow_donations': False,
@@ -171,7 +173,12 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
     await factory.create_cat()
     await factory.create_user()
     await factory.create_event(
-        public=False, status='published', youtube_video_id='abcxyz', short_description='xxx', long_description='yyy'
+        public=False,
+        status='published',
+        youtube_video_id='abcxyz',
+        short_description='xxx',
+        long_description='yyy',
+        description_intro='zzzz',
     )
 
     await login()
@@ -202,6 +209,8 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'youtube_video_id': 'abcxyz',
         'short_description': 'xxx',
         'long_description': 'yyy',
+        'description_intro': 'zzzz',
+        'description_image': None,
         'external_ticket_url': None,
         'host': factory.user_id,
         'host_name': 'Frank Spencer',
@@ -281,6 +290,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 7200},
         timezone='Europe/London',
         long_description='# title\nI love to **party**',
+        description_intro='some intro texxxt',
         youtube_video_id='abcxyz',
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
@@ -308,6 +318,8 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'youtube_video_id': 'abcxyz',
         'short_description': 'title I love to party',
         'long_description': '# title\nI love to **party**',
+        'description_intro': 'some intro texxxt',
+        'description_image': None,
         'external_ticket_url': None,
         'public': True,
         'location_name': 'London',
@@ -1411,6 +1423,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         status='pending',
         short_description='this is short',
         long_description='this is long',
+        description_intro='this is some intro texxxt',
     )
     await login()
     data = dict(
@@ -1440,6 +1453,8 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'youtube_video_id': None,
         'short_description': 'this is short',
         'long_description': 'this is long',
+        'description_intro': 'this is some intro texxxt',
+        'description_image': None,
         'public': False,
         'location_name': None,
         'location_lat': None,

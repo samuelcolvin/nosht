@@ -94,6 +94,8 @@ CREATE TABLE events (
   duration INTERVAL,
   youtube_video_id VARCHAR(140),
   short_description VARCHAR(140),
+  description_intro TEXT,
+  description_image VARCHAR(255),
   long_description TEXT,
   public BOOLEAN DEFAULT TRUE,
   allow_tickets BOOLEAN NOT NULL DEFAULT TRUE,

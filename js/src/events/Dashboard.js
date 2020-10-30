@@ -343,8 +343,25 @@ export class EventsDetails extends RenderDetails {
               <a target="_blank" rel="noopener noreferrer" href={`https://www.youtube.com/watch?v=${vid}`}>https://www.youtube.com/watch?v={vid}</a>
               : "—"
           },
-          long_description: {
+          description_intro: {
             index: 5,
+            wide: true,
+            render: v => <MarkdownPreview v={v}/>,
+          },
+          description_image: {
+            index: 6,
+            wide: true,
+            edit_link: can_edit && this.uri + 'set-description-image/',
+            delete_button: this.state.item.description_image && {
+              action: `/events/${this.id()}/remove-image/description/`,
+              modal_title: 'Remove Description Image',
+              content: 'Are you sure you want to remove the description Image?',
+              done: this.update,
+            },
+            render: (v, item) => <ImageThumbnail image={v} alt={item.name} image_type="main" width={150}/>,
+          },
+          long_description: {
+            index: 7,
             wide: true,
             render: v => <MarkdownPreview v={v}/>,
           },
@@ -354,7 +371,7 @@ export class EventsDetails extends RenderDetails {
             render: (v, item) => <MiniMap lat={v} lng={item.location_lng} name={item.location_name}/>,
             title: 'Location',
             wide: true,
-            index: 6,
+            index: 8,
           },
           donation_target: {
             render: v => v && <Money>{v}</Money>
@@ -507,12 +524,19 @@ export class EventsDetails extends RenderDetails {
                  fields={EVENT_CLONE_FIELDS}
                  save="Clone"/>,
       <ModalDropzoneForm key="set-secondary-image"
-                         multiple={false}
-                         parent_uri={this.uri}
-                         regex={/set-secondary-image\/$/}
-                         title="Upload Secondary Image"
-                         help_text="Image should at least 300px x 300px, it will be displayed square."
-                         action={`/events/${this.id()}/set-image/secondary/`}/>,
+                          multiple={false}
+                          parent_uri={this.uri}
+                          regex={/set-secondary-image\/$/}
+                          title="Upload Secondary Image"
+                          help_text="Image should at least 300px x 300px, it will be displayed square."
+                          action={`/events/${this.id()}/set-image/secondary/`}/>,
+      <ModalDropzoneForm key="set-description-image"
+                          multiple={false}
+                          parent_uri={this.uri}
+                          regex={/set-description-image\/$/}
+                          title="Upload Description Image"
+                          help_text="Image should at least 300px x 300px."
+                          action={`/events/${this.id()}/set-image/description/`}/>,
       this.props.ctx.user.role === 'admin' ?
         <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id()} uri={this.uri}/>
         : null,

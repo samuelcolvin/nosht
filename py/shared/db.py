@@ -714,3 +714,19 @@ async def change_event_name_field_length(conn, **kwargs):
     Change the length of event name field
     """
     await conn.execute('ALTER TABLE events ALTER COLUMN name TYPE VARCHAR(150)')
+
+
+@patch
+async def add_event_description_intro_field(conn, **kwargs):
+    """
+    add the description_intro column to events
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN description_intro TEXT')
+
+
+@patch
+async def add_event_description_image_field(conn, **kwargs):
+    """
+    add the description_image column to events
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN description_image VARCHAR(255)')

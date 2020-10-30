@@ -107,6 +107,13 @@ export const EVENT_FIELDS = [
     help_text: `Embed a Youtube video using it's ID e.g: "oD9zn9M9NBg".`,
   },
   {
+    name: 'description_intro',
+    title: 'Description Intro',
+    type: 'md',
+    help_text: 'Intro text to appear before image and long description.',
+    max_length: 5000,
+  },
+  {
     name: 'long_description',
     title: 'Long Description',
     type: 'md',
