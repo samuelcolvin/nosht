@@ -495,6 +495,50 @@ async def test_send_event_update_without_message(cli, url, login, factory: Facto
     assert data['message'] == 'You need to provide at least one message'
 
 
+async def test_send_event_update_with_group_message(cli, url, login, factory: Factory, dummy_server, db_conn):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    evt = await factory.create_event(price=10)
+    tt = await db_conn.fetch('SELECT id FROM ticket_types WHERE event=$1', evt)
+
+    await login()
+
+    anne = await factory.create_user(first_name='anne', email='anne@example.org')
+    await factory.buy_tickets(await factory.create_reservation(anne, None, ticket_type_id=tt[0]['id']))
+    assert len(dummy_server.app['emails']) == 1
+
+    mary = await factory.create_user(first_name='mary', email='mary@example.org')
+    await factory.buy_tickets(await factory.create_reservation(mary, None, ticket_type_id=tt[1]['id']))
+    assert len(dummy_server.app['emails']) == 2
+
+    data = dict(
+        {
+            "subject": 'This is a test',
+            "message": 'this is the default **message**.',
+            "groupMessages": [{'ticketType': tt[1]['id'], 'message': 'this is the first **message**.'}],
+        }
+    )
+
+    r = await cli.json_post(url('event-send-update', id=factory.event_id), data=data)
+    assert r.status == 200, await r.text()
+
+    emails = dummy_server.app['emails']
+    assert len(dummy_server.app['emails']) == 4
+
+    email = next((e for e in emails if 'the first' in e['part:text/html']), False)
+    assert email
+    assert email['Subject'] == 'This is a test'
+    assert email['To'] == 'mary Spencer <mary@example.org>'
+    assert '<p>Hi mary,</p>\n\n<p>this is the first <strong>message</strong>.</p>\n' in email['part:text/html']
+
+    email = next((e for e in emails if 'the default' in e['part:text/html']), False)
+    assert email
+    assert email['Subject'] == 'This is a test'
+    assert email['To'] == 'anne Spencer <anne@example.org>'
+    assert '<p>Hi anne,</p>\n\n<p>this is the default <strong>message</strong>.</p>\n' in email['part:text/html']
+
+
 async def test_send_event_update_multiple_messages(cli, url, login, factory: Factory, dummy_server, db_conn):
     await factory.create_company()
     await factory.create_cat()
@@ -505,18 +549,24 @@ async def test_send_event_update_multiple_messages(cli, url, login, factory: Fac
     await login()
 
     anne = await factory.create_user(first_name='anne', email='anne@example.org')
-    await factory.buy_tickets(await factory.create_reservation(anne, None, ticket_type_id=tt[1]['id']))
+    await factory.buy_tickets(await factory.create_reservation(anne, None, ticket_type_id=tt[0]['id']))
     assert len(dummy_server.app['emails']) == 1
 
     mary = await factory.create_user(first_name='mary', email='mary@example.org')
-    await factory.buy_tickets(await factory.create_reservation(mary, None, ticket_type_id=tt[2]['id']))
+    await factory.buy_tickets(await factory.create_reservation(mary, None, ticket_type_id=tt[1]['id']))
     assert len(dummy_server.app['emails']) == 2
+
+    jane = await factory.create_user(first_name='jane', email='jane@example.org')
+    await factory.buy_tickets(await factory.create_reservation(jane, None, ticket_type_id=tt[2]['id']))
+    assert len(dummy_server.app['emails']) == 3
 
     data = dict(
         {
-            "subject": 'This is a test email',
-            f"message_to_ticket_type__{tt[1]['id']}": 'this is the first **message**.',
-            f"message_to_ticket_type__{tt[2]['id']}": 'this is the second **message**.',
+            "subject": 'This is a test',
+            "groupMessages": [
+                {'ticketType': tt[1]['id'], 'message': 'this is the first **message**.'},
+                {'ticketType': tt[2]['id'], 'message': 'this is the second **message**.'},
+            ],
         }
     )
 
@@ -524,17 +574,19 @@ async def test_send_event_update_multiple_messages(cli, url, login, factory: Fac
     assert r.status == 200, await r.text()
 
     emails = dummy_server.app['emails']
-    assert len(dummy_server.app['emails']) == 4
+    assert len(dummy_server.app['emails']) == 5
 
-    assert emails[2]['Subject'] == 'This is a test email'
-    assert emails[2]['To'] == 'anne Spencer <anne@example.org>'
-    htmlmsg = '<p>Hi anne,</p>\n\n<p>this is the first <strong>message</strong>.</p>\n'
-    assert next((e for e in emails if htmlmsg in e['part:text/html']), False)
+    email = next((e for e in emails if 'the first' in e['part:text/html']), False)
+    assert email
+    assert email['Subject'] == 'This is a test'
+    assert email['To'] == 'mary Spencer <mary@example.org>'
+    assert '<p>Hi mary,</p>\n\n<p>this is the first <strong>message</strong>.</p>\n' in email['part:text/html']
 
-    assert emails[3]['Subject'] == 'This is a test email'
-    assert emails[3]['To'] == 'mary Spencer <mary@example.org>'
-    htmlmsg = '<p>Hi mary,</p>\n\n<p>this is the second <strong>message</strong>.</p>\n'
-    assert next((e for e in emails if htmlmsg in e['part:text/html']), False)
+    email = next((e for e in emails if 'the second' in e['part:text/html']), False)
+    assert email
+    assert email['Subject'] == 'This is a test'
+    assert email['To'] == 'jane Spencer <jane@example.org>'
+    assert '<p>Hi jane,</p>\n\n<p>this is the second <strong>message</strong>.</p>\n' in email['part:text/html']
 
 
 async def test_event_host_updates(email_actor: EmailActor, factory: Factory, dummy_server):

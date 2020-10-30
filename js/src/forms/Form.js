@@ -53,7 +53,9 @@ class _Form extends React.Component {
     }
     this.setState({disabled: true, errors: {}, form_error: null})
     let r
-    const data = Object.assign({}, this.props.form_data)
+    const data = this.props.useRequestFormatter ?
+      this.props.useRequestFormatter(JSON.parse(JSON.stringify(this.props.form_data)))
+      : Object.assign({}, this.props.form_data)
     try {
       r = await requests.post(this.props.action, data, {expected_statuses: [200, 201, 400, 409]})
     } catch (error) {

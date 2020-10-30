@@ -38,6 +38,21 @@ export class SendUpdateModal extends React.Component {
     }
   }
 
+  dataFormatter (formData) {
+    return Object.keys(formData).reduce((data, k) => {
+      if (formData[k] && formData[k] !== "") {
+        if (k.startsWith(MESSAGE_NAME_TT_SLUG))
+          data.groupMessages.push({
+            ticketType: k.replace(MESSAGE_NAME_TT_SLUG, ''),
+            message: formData[k]
+          })
+        else
+          data[k] = formData[k]
+      }
+      return data
+    }, {groupMessages: []})
+  }
+
   render () {
     return (
       <ModalForm key="send-update"
@@ -49,6 +64,7 @@ export class SendUpdateModal extends React.Component {
                  initial={this.state.initialValue}
                  action={`/events/${this.props.event.id}/updates/send/`}
                  fields={this.state.fields}
+                 useRequestFormatter={this.dataFormatter}
                  save="Send Email" />
     )
   }

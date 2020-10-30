@@ -901,20 +901,24 @@ class SetEventStatus(UpdateView):
         )
 
 
+class GroupUpdateMessage(BaseModel):
+    ticketType: int
+    message: str
+
+
 class EventUpdate(UpdateView):
     class Model(BaseModel):
         subject: constr(max_length=200)
         message: Optional[str]
+        groupMessages: Optional[List[GroupUpdateMessage]]
 
     async def check_permissions(self):
         await check_session(self.request, 'admin', 'host')
 
     async def execute(self, m: Model):
         event_id = await _check_event_permissions(self.request, check_upcoming=True)
-        payload_json = await self.request.json()
-        msgs = {k: v for k, v in payload_json.items() if (k.startswith('message'))}
 
-        if not msgs:
+        if not (m.message or m.groupMessages):
             raise JsonErrors.HTTPBadRequest(message='You need to provide at least one message')
 
         action_id = await record_action_id(
@@ -922,7 +926,7 @@ class EventUpdate(UpdateView):
             self.session['user_id'],
             ActionTypes.event_update,
             event_id=event_id,
-            **{'subject': payload_json['subject'], **msgs},
+            **m.dict(include={'subject', 'message', 'groupMessages'}),
         )
         await self.app['email_actor'].send_event_update(action_id)
 
