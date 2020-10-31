@@ -16,7 +16,7 @@ from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, HttpUrl, PositiveInt, condecimal, conint, constr, validator
 from pytz.tzinfo import StaticTzInfo
 
-from shared.images import delete_image, upload_background, upload_force_shape
+from shared.images import delete_image, upload_background, upload_force_shape, upload_other
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin, is_admin_or_host
@@ -872,6 +872,56 @@ async def remove_event_secondary_image(request):
             ActionTypes.edit_event,
             event_id=event_id,
             subtype='remove-image-secondary',
+        )
+    return json_response(status='success')
+
+
+description_image_size = 640, 480
+
+
+@is_admin_or_host
+async def set_event_description_image(request):
+    event_id = await _check_event_permissions(request, check_upcoming=True)
+    content = await request_image(request, expected_size=description_image_size)
+
+    image = await request['conn'].fetchval('SELECT description_image from events WHERE id=$1', event_id)
+    if image:
+        await delete_image(image, request.app['settings'])
+
+    co_slug, cat_slug, event_slug = await request['conn'].fetchrow(slugs_sql, request['company_id'], event_id)
+    upload_path = Path(co_slug) / cat_slug / event_slug / 'description'
+
+    image_url = await upload_other(
+        content, upload_path=upload_path, settings=request.app['settings'], req_size=description_image_size, thumb=True,
+    )
+    async with request['conn'].transaction():
+        await request['conn'].execute('UPDATE events SET description_image=$1 WHERE id=$2', image_url, event_id)
+        await record_action(
+            request,
+            request['session']['user_id'],
+            ActionTypes.edit_event,
+            event_id=event_id,
+            subtype='set-image-description',
+        )
+    return json_response(status='success')
+
+
+@is_admin_or_host
+async def remove_event_description_image(request):
+    event_id = await _check_event_permissions(request, check_upcoming=True)
+
+    image = await request['conn'].fetchval('select description_image from events where id=$1', event_id)
+    if image:
+        await delete_image(image, request.app['settings'])
+
+    async with request['conn'].transaction():
+        await request['conn'].execute('update events set description_image=null where id=$1', event_id)
+        await record_action(
+            request,
+            request['session']['user_id'],
+            ActionTypes.edit_event,
+            event_id=event_id,
+            subtype='remove-image-description',
         )
     return json_response(status='success')
 

@@ -1412,6 +1412,101 @@ async def test_remove_secondary_image_(cli, url, factory: Factory, db_conn, logi
     assert None is await db_conn.fetchval('select secondary_image from events where id=$1', factory.event_id)
 
 
+async def test_description_image(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    data = FormData()
+    data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('event-set-image-description', id=factory.event_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        },
+    )
+    assert r.status == 200, await r.text()
+
+    img_path = await db_conn.fetchval('SELECT description_image FROM events')
+    assert img_path == RegexStr(
+        r'https://testingbucket.example.org/tests/testing/supper-clubs/the-event-name/description/\w+/main.png'
+    )
+
+    assert dummy_server.app['log'] == [
+        RegexStr(
+            r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/'
+            r'supper-clubs/the-event-name/description/\w+/main.png'
+        ),
+        RegexStr(
+            r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/'
+            r'supper-clubs/the-event-name/description/\w+/thumb.png'
+        ),
+    ]
+
+
+async def test_description_image_exists(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    event_path = 'testingbucket.example.org/tests/testing/supper-clubs/the-event-name'
+    img_url = f'https://{event_path}/description/xxx123/main.png'
+    await db_conn.execute('update events set description_image=$1', img_url)
+
+    data = FormData()
+    data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('event-set-image-description', id=factory.event_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        },
+    )
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/thumb.png',
+        RegexStr(rf'PUT aws_endpoint_url/{event_path}/description/\w+/main.png'),
+        RegexStr(rf'PUT aws_endpoint_url/{event_path}/description/\w+/thumb.png'),
+    ]
+
+
+async def test_remove_description_image_(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    event_path = 'testingbucket.example.org/tests/testing/supper-clubs/the-event-name'
+    img_url = f'https://{event_path}/description/xxx123/main.png'
+    await db_conn.execute('update events set description_image=$1', img_url)
+
+    r = await cli.json_post(url('event-remove-image-description', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/thumb.png',
+    ]
+    assert None is await db_conn.fetchval('select description_image from events where id=$1', factory.event_id)
+
+    r = await cli.json_post(url('event-remove-image-description', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/thumb.png',
+    ]
+    assert None is await db_conn.fetchval('select description_image from events where id=$1', factory.event_id)
+
+
 async def test_clone_event(cli, url, factory: Factory, db_conn, login):
     await factory.create_company()
     await factory.create_cat()

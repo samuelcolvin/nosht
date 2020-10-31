@@ -535,7 +535,7 @@ export class EventsDetails extends RenderDetails {
                           parent_uri={this.uri}
                           regex={/set-description-image\/$/}
                           title="Upload Description Image"
-                          help_text="Image should at least 300px x 300px."
+                          help_text="Image should at least 640px x 480px."
                           action={`/events/${this.id()}/set-image/description/`}/>,
       this.props.ctx.user.role === 'admin' ?
         <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id()} uri={this.uri}/>
