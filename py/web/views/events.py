@@ -876,7 +876,7 @@ async def remove_event_secondary_image(request):
     return json_response(status='success')
 
 
-description_image_size = 640, 480
+description_image_size = 300, 300
 
 
 @is_admin_or_host

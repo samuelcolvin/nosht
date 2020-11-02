@@ -157,8 +157,8 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
       {event.description_intro && <Markdown content={event.description_intro}/>}
 
       {event.description_image && (
-        <div className="py-2">
-          <img src={image_thumb(event.description_image, 'main')} alt={event.name} className="img"/>
+        <div className="py-2 description-image">
+          <img src={event.description_image} alt={event.name} className="img"/>
         </div>
       )}
 
