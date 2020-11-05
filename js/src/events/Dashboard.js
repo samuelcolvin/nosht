@@ -524,19 +524,19 @@ export class EventsDetails extends RenderDetails {
                  fields={EVENT_CLONE_FIELDS}
                  save="Clone"/>,
       <ModalDropzoneForm key="set-secondary-image"
-                          multiple={false}
-                          parent_uri={this.uri}
-                          regex={/set-secondary-image\/$/}
-                          title="Upload Secondary Image"
-                          help_text="Image should at least 300px x 300px, it will be displayed square."
-                          action={`/events/${this.id()}/set-image/secondary/`}/>,
+                         multiple={false}
+                         parent_uri={this.uri}
+                         regex={/set-secondary-image\/$/}
+                         title="Upload Secondary Image"
+                         help_text="Image should at least 300px x 300px, it will be displayed square."
+                         action={`/events/${this.id()}/set-image/secondary/`}/>,
       <ModalDropzoneForm key="set-description-image"
-                          multiple={false}
-                          parent_uri={this.uri}
-                          regex={/set-description-image\/$/}
-                          title="Upload Description Image"
-                          help_text="Image should at least 300px x 300px."
-                          action={`/events/${this.id()}/set-image/description/`}/>,
+                         multiple={false}
+                         parent_uri={this.uri}
+                         regex={/set-description-image\/$/}
+                         title="Upload Description Image"
+                         help_text="Image should at least 300px x 300px."
+                         action={`/events/${this.id()}/set-image/description/`}/>,
       this.props.ctx.user.role === 'admin' ?
         <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id()} uri={this.uri}/>
         : null,
