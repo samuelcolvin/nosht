@@ -1436,7 +1436,7 @@ async def test_description_image(cli, url, factory: Factory, db_conn, login, dum
         r'https://testingbucket.example.org/tests/testing/supper-clubs/the-event-name/description/\w+/main.png'
     )
 
-    assert dummy_server.app['log'] == [
+    assert sorted(dummy_server.app['log']) == [
         RegexStr(
             r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/'
             r'supper-clubs/the-event-name/description/\w+/main.png'
