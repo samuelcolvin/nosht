@@ -47,6 +47,8 @@ async def test_event_export(cli, url, login, factory: Factory):
             'youtube_video_id': 'abcxyz',
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
+            'description_intro': RegexStr(r'.*'),
+            'description_image': '',
             'is_public': 'true',
             'location_name': 'Testing Location',
             'location_lat': '51.5000000',

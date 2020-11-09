@@ -169,7 +169,7 @@ NO_CHECKS = {
 UPLOAD_PATHS = (
     re.compile(r'/api/companies/upload/(?:image|logo)/'),
     re.compile(r'/api/categories/\d+/add-image/'),
-    re.compile(r'/api/events/\d+/set-image/(new|secondary)/'),
+    re.compile(r'/api/events/\d+/set-image/(new|secondary|description)/'),
     re.compile(r'/api/donation-options/\d+/upload-image/'),
 )
 CROSS_ORIGIN_URLS = {

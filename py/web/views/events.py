@@ -16,7 +16,7 @@ from buildpg.clauses import Join, Select, Where
 from pydantic import BaseModel, HttpUrl, PositiveInt, condecimal, conint, constr, validator
 from pytz.tzinfo import StaticTzInfo
 
-from shared.images import delete_image, upload_background, upload_force_shape
+from shared.images import delete_image, upload_background, upload_force_shape, upload_other
 from shared.utils import pseudo_random_str, slugify, ticket_id_signed
 from web.actions import ActionTypes, record_action, record_action_id
 from web.auth import check_session, is_admin, is_admin_or_host
@@ -56,6 +56,8 @@ FROM (
          e.secondary_image,
          e.youtube_video_id,
          e.short_description,
+         e.description_image,
+         e.description_intro,
          e.long_description,
          e.external_ticket_url,
          e.allow_tickets,
@@ -210,6 +212,8 @@ class EventBread(Bread):
         long_description: str
         short_description: str = None
         youtube_video_id: str = None
+        description_image: str = None
+        description_intro: str = None
         external_ticket_url: HttpUrl = None
 
         @validator('public', pre=True)
@@ -251,6 +255,8 @@ class EventBread(Bread):
         'e.youtube_video_id',
         'e.short_description',
         'e.long_description',
+        'e.description_image',
+        'e.description_intro',
         'e.external_ticket_url',
         'e.host',
         'e.timezone',
@@ -870,6 +876,56 @@ async def remove_event_secondary_image(request):
     return json_response(status='success')
 
 
+description_image_size = 300, 300
+
+
+@is_admin_or_host
+async def set_event_description_image(request):
+    event_id = await _check_event_permissions(request, check_upcoming=True)
+    content = await request_image(request, expected_size=description_image_size)
+
+    image = await request['conn'].fetchval('SELECT description_image from events WHERE id=$1', event_id)
+    if image:
+        await delete_image(image, request.app['settings'])
+
+    co_slug, cat_slug, event_slug = await request['conn'].fetchrow(slugs_sql, request['company_id'], event_id)
+    upload_path = Path(co_slug) / cat_slug / event_slug / 'description'
+
+    image_url = await upload_other(
+        content, upload_path=upload_path, settings=request.app['settings'], req_size=description_image_size, thumb=True,
+    )
+    async with request['conn'].transaction():
+        await request['conn'].execute('UPDATE events SET description_image=$1 WHERE id=$2', image_url, event_id)
+        await record_action(
+            request,
+            request['session']['user_id'],
+            ActionTypes.edit_event,
+            event_id=event_id,
+            subtype='set-image-description',
+        )
+    return json_response(status='success')
+
+
+@is_admin_or_host
+async def remove_event_description_image(request):
+    event_id = await _check_event_permissions(request, check_upcoming=True)
+
+    image = await request['conn'].fetchval('select description_image from events where id=$1', event_id)
+    if image:
+        await delete_image(image, request.app['settings'])
+
+    async with request['conn'].transaction():
+        await request['conn'].execute('update events set description_image=null where id=$1', event_id)
+        await record_action(
+            request,
+            request['session']['user_id'],
+            ActionTypes.edit_event,
+            event_id=event_id,
+            subtype='remove-image-description',
+        )
+    return json_response(status='success')
+
+
 class StatusChoices(Enum):
     pending = 'pending'
     published = 'published'
@@ -971,6 +1027,7 @@ class EventClone(UpdateView):
       highlight, external_ticket_url,
       start_ts, timezone, duration,
       youtube_video_id, short_description, long_description,
+      description_image, description_intro,
       public, location_name, location_lat, location_lng,
       ticket_limit, image, secondary_image
     )
@@ -979,6 +1036,7 @@ class EventClone(UpdateView):
       e.highlight, e.external_ticket_url,
       :start, e.timezone, :duration,
       e.youtube_video_id, e.short_description, e.long_description,
+      e.description_image, e.description_intro,
       e.public, e.location_name, e.location_lat, e.location_lng,
       e.ticket_limit, e.image, e.secondary_image
     FROM events e WHERE e.id=:old_event_id

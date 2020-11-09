@@ -40,6 +40,8 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'youtube_video_id': None,
             'short_description': RegexStr(r'.*'),
             'long_description': RegexStr(r'.*'),
+            'description_intro': RegexStr(r'.*'),
+            'description_image': None,
             'external_ticket_url': None,
             'allow_tickets': True,
             'allow_donations': False,
@@ -171,7 +173,12 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
     await factory.create_cat()
     await factory.create_user()
     await factory.create_event(
-        public=False, status='published', youtube_video_id='abcxyz', short_description='xxx', long_description='yyy'
+        public=False,
+        status='published',
+        youtube_video_id='abcxyz',
+        short_description='xxx',
+        long_description='yyy',
+        description_intro='zzzz',
     )
 
     await login()
@@ -202,6 +209,8 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'youtube_video_id': 'abcxyz',
         'short_description': 'xxx',
         'long_description': 'yyy',
+        'description_intro': 'zzzz',
+        'description_image': None,
         'external_ticket_url': None,
         'host': factory.user_id,
         'host_name': 'Frank Spencer',
@@ -281,6 +290,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 7200},
         timezone='Europe/London',
         long_description='# title\nI love to **party**',
+        description_intro='some intro texxxt',
         youtube_video_id='abcxyz',
     )
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
@@ -308,6 +318,8 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'youtube_video_id': 'abcxyz',
         'short_description': 'title I love to party',
         'long_description': '# title\nI love to **party**',
+        'description_intro': 'some intro texxxt',
+        'description_image': None,
         'external_ticket_url': None,
         'public': True,
         'location_name': 'London',
@@ -1400,6 +1412,101 @@ async def test_remove_secondary_image_(cli, url, factory: Factory, db_conn, logi
     assert None is await db_conn.fetchval('select secondary_image from events where id=$1', factory.event_id)
 
 
+async def test_description_image(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+
+    data = FormData()
+    data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('event-set-image-description', id=factory.event_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        },
+    )
+    assert r.status == 200, await r.text()
+
+    img_path = await db_conn.fetchval('SELECT description_image FROM events')
+    assert img_path == RegexStr(
+        r'https://testingbucket.example.org/tests/testing/supper-clubs/the-event-name/description/\w+/main.png'
+    )
+
+    assert sorted(dummy_server.app['log']) == [
+        RegexStr(
+            r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/'
+            r'supper-clubs/the-event-name/description/\w+/main.png'
+        ),
+        RegexStr(
+            r'PUT aws_endpoint_url/testingbucket.example.org/tests/testing/'
+            r'supper-clubs/the-event-name/description/\w+/thumb.png'
+        ),
+    ]
+
+
+async def test_description_image_exists(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    event_path = 'testingbucket.example.org/tests/testing/supper-clubs/the-event-name'
+    img_url = f'https://{event_path}/description/xxx123/main.png'
+    await db_conn.execute('update events set description_image=$1', img_url)
+
+    data = FormData()
+    data.add_field('image', create_image(), filename='testing.png', content_type='application/octet-stream')
+    r = await cli.post(
+        url('event-set-image-description', id=factory.event_id),
+        data=data,
+        headers={
+            'Referer': f'http://127.0.0.1:{cli.server.port}/foobar/',
+            'Origin': f'http://127.0.0.1:{cli.server.port}',
+        },
+    )
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/thumb.png',
+        RegexStr(rf'PUT aws_endpoint_url/{event_path}/description/\w+/main.png'),
+        RegexStr(rf'PUT aws_endpoint_url/{event_path}/description/\w+/thumb.png'),
+    ]
+
+
+async def test_remove_description_image_(cli, url, factory: Factory, db_conn, login, dummy_server):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await factory.create_event()
+    await login()
+    event_path = 'testingbucket.example.org/tests/testing/supper-clubs/the-event-name'
+    img_url = f'https://{event_path}/description/xxx123/main.png'
+    await db_conn.execute('update events set description_image=$1', img_url)
+
+    r = await cli.json_post(url('event-remove-image-description', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/thumb.png',
+    ]
+    assert None is await db_conn.fetchval('select description_image from events where id=$1', factory.event_id)
+
+    r = await cli.json_post(url('event-remove-image-description', id=factory.event_id))
+    assert r.status == 200, await r.text()
+
+    assert sorted(dummy_server.app['log']) == [
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/main.png',
+        f'DELETE aws_endpoint_url/{event_path}/description/xxx123/thumb.png',
+    ]
+    assert None is await db_conn.fetchval('select description_image from events where id=$1', factory.event_id)
+
+
 async def test_clone_event(cli, url, factory: Factory, db_conn, login):
     await factory.create_company()
     await factory.create_cat()
@@ -1411,6 +1518,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         status='pending',
         short_description='this is short',
         long_description='this is long',
+        description_intro='this is some intro texxxt',
     )
     await login()
     data = dict(
@@ -1440,6 +1548,8 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'youtube_video_id': None,
         'short_description': 'this is short',
         'long_description': 'this is long',
+        'description_intro': 'this is some intro texxxt',
+        'description_image': None,
         'public': False,
         'location_name': None,
         'location_lat': None,

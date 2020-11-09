@@ -15,6 +15,7 @@ SELECT
   iso_ts(e.start_ts, e.timezone) AS start_time, e.timezone,
   to_char(extract(epoch from e.duration)/3600, 'FM9999990.00') AS duration_hours,
   e.youtube_video_id, e.short_description, e.long_description, boolstr(e.public) AS is_public, e.location_name,
+  e.description_image, e.description_intro,
   to_char(e.location_lat, 'FM990.0000000') AS location_lat,
   to_char(e.location_lng, 'FM990.0000000') AS location_lng,
   e.ticket_limit, e.image,
