@@ -74,7 +74,7 @@ class PrepareDirectDonation(UpdateViewAuth):
             FROM ticket_types tt
             JOIN events e ON tt.event = e.id
             WHERE tt.active=TRUE AND tt.mode='donation' AND tt.id=$1 AND status = 'published' AND
-              external_ticket_url IS NULL
+              external_ticket_url IS NULL AND external_donation_url IS NULL
             """,
             ticket_type_id,
         )

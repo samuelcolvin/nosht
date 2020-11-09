@@ -20,7 +20,13 @@ import YoutubePlayer from '../general/YoutubePlayer'
 
 const DonateButton = ({event, uri}) => {
   if (event.allow_donations) {
-    return (
+    return event.external_donation_url ? (
+      <a href={event.external_donation_url}
+         className="hover-raise ml-2 btn btn-lg btn-success"
+         target="_blank" rel="noopener noreferrer">
+        Donate Now
+      </a>
+    ) : (
       <Button color="success" size="lg" className="hover-raise ml-2" tag={Link} to={uri + 'donate/'}>
         Donate
       </Button>

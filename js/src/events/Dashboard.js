@@ -448,14 +448,14 @@ export class EventsDetails extends RenderDetails {
     } else {
       event.mode = 'donations'
     }
-    const event_fields = (
-      EVENT_FIELDS.filter(f => !['category', 'price', 'suggested_donation'].includes(f.name))
-      .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
-    )
-    const internal = !event.external_ticket_url
-    const ticketed = internal && event.allow_tickets
+    const event_fields = EVENT_FIELDS
+      .filter(f => !['category', 'price', 'suggested_donation'].includes(f.name))
+      .filter(f => this.props.ctx.user.role === 'admin'
+                || !['external_ticket_url', 'external_donation_url'].includes(f.name))
+    const internalTickets = !event.external_ticket_url
+    const ticketed = internalTickets && event.allow_tickets
     return [
-      internal ?
+      internalTickets ?
         <Progress
           key="progress"
           event={event}
@@ -474,7 +474,7 @@ export class EventsDetails extends RenderDetails {
         : null,
       ticketed ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
       ticketed ? <WaitingList key="wl" waiting_list={this.state.waiting_list} user={this.props.ctx.user}/> : null,
-      internal && event.allow_donations ?
+      event.allow_donations ?
         <Donations key="dons" donations={this.state.donations} user={this.props.ctx.user}
                    id={this.id()}/>
           : null,
