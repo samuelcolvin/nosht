@@ -60,6 +60,7 @@ FROM (
          e.description_intro,
          e.long_description,
          e.external_ticket_url,
+         e.external_donation_url,
          e.allow_tickets,
          e.allow_donations,
          c.event_content AS category_content,
@@ -215,6 +216,7 @@ class EventBread(Bread):
         description_image: str = None
         description_intro: str = None
         external_ticket_url: HttpUrl = None
+        external_donation_url: HttpUrl = None
 
         @validator('public', pre=True)
         def none_bool(cls, v):
@@ -258,6 +260,7 @@ class EventBread(Bread):
         'e.description_image',
         'e.description_intro',
         'e.external_ticket_url',
+        'e.external_donation_url',
         'e.host',
         'e.timezone',
         Func('full_name', V('uh.first_name'), V('uh.last_name'), V('uh.email')).as_('host_name'),
@@ -295,8 +298,11 @@ class EventBread(Bread):
         return Where(logic)
 
     def prepare(self, data):
-        if data.get('external_ticket_url') and self.request['session']['role'] != 'admin':
-            raise JsonErrors.HTTPForbidden(message='external_ticket_url may only be set by admins')
+        if self.request['session']['role'] != 'admin':
+            if data.get('external_ticket_url'):
+                raise JsonErrors.HTTPForbidden(message='external_ticket_url may only be set by admins')
+            elif data.get('external_donation_url'):
+                raise JsonErrors.HTTPForbidden(message='external_donation_url may only be set by admins')
 
         timezone: TzInfo = data.pop('timezone', None)
         if timezone:
@@ -1024,7 +1030,7 @@ class EventClone(UpdateView):
     clone_event_sql = """
     INSERT INTO events (
       category, host, name, slug, status,
-      highlight, external_ticket_url,
+      highlight, external_ticket_url, external_donation_url,
       start_ts, timezone, duration,
       youtube_video_id, short_description, long_description,
       description_image, description_intro,
@@ -1033,7 +1039,7 @@ class EventClone(UpdateView):
     )
     SELECT
       e.category, e.host, :name, :slug, :status,
-      e.highlight, e.external_ticket_url,
+      e.highlight, e.external_ticket_url, e.external_donation_url,
       :start, e.timezone, :duration,
       e.youtube_video_id, e.short_description, e.long_description,
       e.description_image, e.description_intro,

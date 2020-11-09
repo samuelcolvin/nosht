@@ -723,3 +723,11 @@ async def add_event_description_intro_field(conn, **kwargs):
     """
     await conn.execute('ALTER TABLE events ADD COLUMN description_intro TEXT')
     await conn.execute('ALTER TABLE events ADD COLUMN description_image VARCHAR(255)')
+
+
+@patch
+async def add_external_donations(conn, **kwargs):
+    """
+    add the external_donation_url column to events
+    """
+    await conn.execute('ALTER TABLE events ADD COLUMN external_donation_url VARCHAR(255)')

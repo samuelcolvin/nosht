@@ -43,6 +43,7 @@ async def test_event_public(cli, url, factory: Factory, db_conn):
             'description_intro': RegexStr(r'.*'),
             'description_image': None,
             'external_ticket_url': None,
+            'external_donation_url': None,
             'allow_tickets': True,
             'allow_donations': False,
             'category_content': None,
@@ -212,6 +213,7 @@ async def test_bread_retrieve(cli, url, factory: Factory, login):
         'description_intro': 'zzzz',
         'description_image': None,
         'external_ticket_url': None,
+        'external_donation_url': None,
         'host': factory.user_id,
         'host_name': 'Frank Spencer',
         'link': '/pvt/supper-clubs/the-event-name/8d2a9334aa29f2151668a54433df2e9d/',
@@ -321,6 +323,7 @@ async def test_create_event(cli, url, db_conn, factory: Factory, login, dummy_se
         'description_intro': 'some intro texxxt',
         'description_image': None,
         'external_ticket_url': None,
+        'external_donation_url': None,
         'public': True,
         'location_name': 'London',
         'location_lat': 50.0,
@@ -499,6 +502,58 @@ async def test_create_event_host_external_ticketing(cli, url, db_conn, factory: 
     assert r.status == 403, await r.text()
     data = await r.json()
     assert data == {'message': 'external_ticket_url may only be set by admins'}
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+
+
+async def test_create_external_donations(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user()
+    await login()
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        long_description='longgggg descriptionnnn',
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+        timezone='America/New_York',
+        external_donation_url='https://www.example.com/give-monies-now/',
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    assert r.status == 201, await r.text()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
+    j = await r.json()
+    external_donation_url = await db_conn.fetchval('SELECT external_donation_url FROM events WHERE id=$1', j['pk'])
+    assert external_donation_url == data['external_donation_url']
+
+    cat_slug, event_slug = await db_conn.fetchrow(
+        'SELECT cat.slug, e.slug FROM events e JOIN categories cat on e.category = cat.id WHERE e.id=$1', j['pk']
+    )
+    r = await cli.get(url('event-get-public', category=cat_slug, event=event_slug))
+    j = await r.json()
+    assert r.status == 200, await r.text()
+    assert j['event']['external_donation_url'] == data['external_donation_url']
+
+
+async def test_create_event_host_external_donations(cli, url, db_conn, factory: Factory, login):
+    await factory.create_company()
+    await factory.create_cat()
+    await factory.create_user(role='host')
+    await login()
+    await db_conn.fetchval("UPDATE users SET status='pending'")
+
+    data = dict(
+        name='foobar',
+        category=factory.category_id,
+        long_description='longgggg descriptionnnn',
+        date={'dt': datetime(2032, 2, 1, 19, 0).strftime('%s'), 'dur': 3600},
+        timezone='America/New_York',
+        external_donation_url='https://www.example.com/give-monies-now/',
+    )
+    r = await cli.json_post(url('event-add'), data=data)
+    j = await r.json()
+    assert r.status == 403, await r.text()
+    assert j == {'message': 'external_donation_url may only be set by admins'}
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM events')
 
 
@@ -1542,6 +1597,7 @@ async def test_clone_event(cli, url, factory: Factory, db_conn, login):
         'allow_tickets': True,
         'allow_donations': False,
         'external_ticket_url': None,
+        'external_donation_url': None,
         'start_ts': datetime(2032, 2, 1, 19, 0, tzinfo=timezone.utc),
         'timezone': 'Europe/London',
         'duration': timedelta(0, 7200),
