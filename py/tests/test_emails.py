@@ -488,7 +488,7 @@ async def test_send_event_update_without_message(cli, url, login, factory: Facto
     await factory.buy_tickets(await factory.create_reservation(anne, None))
     assert len(dummy_server.app['emails']) == 1
 
-    d = dict({'subject': 'This is a test email'})
+    d = dict({'subject': 'This is a test email', 'group_messages': []})
     r = await cli.json_post(url('event-send-update', id=factory.event_id), data=d)
     assert r.status == 400
     data = await r.json()
@@ -514,9 +514,9 @@ async def test_send_event_update_with_group_message(cli, url, login, factory: Fa
 
     data = dict(
         {
-            "subject": 'This is a test',
-            "message": 'this is the default **message**.',
-            "groupMessages": [{'ticketType': tt[1]['id'], 'message': 'this is the first **message**.'}],
+            'subject': 'This is a test',
+            'message': 'this is the default **message**.',
+            'group_messages': [{'ticketType': tt[1]['id'], 'message': 'this is the first **message**.'}],
         }
     )
 
@@ -562,8 +562,8 @@ async def test_send_event_update_multiple_messages(cli, url, login, factory: Fac
 
     data = dict(
         {
-            "subject": 'This is a test',
-            "groupMessages": [
+            'subject': 'This is a test',
+            'group_messages': [
                 {'ticketType': tt[1]['id'], 'message': 'this is the first **message**.'},
                 {'ticketType': tt[2]['id'], 'message': 'this is the second **message**.'},
             ],

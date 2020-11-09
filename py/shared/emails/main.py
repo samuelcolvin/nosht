@@ -253,7 +253,7 @@ class EmailActor(BaseEmailActor):
                 SELECT a.company AS company_id, e.id AS event_id, e.name AS event_name,
                   full_name(u.first_name, u.last_name, u.email) AS sender_name,
                   a.extra->>'subject' AS subject, a.extra->>'message' AS message,
-                  a.extra->'groupMessages' AS group_messages,
+                  a.extra->'group_messages' AS group_messages,
                   event_link(cat.slug, e.slug, e.public, $2) AS event_link,
                   cat.name AS cat_name, cat.slug AS cat_slug
                 FROM actions AS a

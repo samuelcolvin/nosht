@@ -11,19 +11,6 @@ const MESSAGE_NAME_TT_SLUG = 'message_to_ticket_type__'
 
 
 export class SendUpdateModal extends React.Component {
-  constructor (props) {
-    super(props)
-    this.state = {
-      initialValue: {status: props.event.status},
-      fields: this.buildFieldList()
-    }
-  }
-
-  componentDidUpdate (prevProps) {
-    if (prevProps.ticketTypes !== this.props.ticketTypes)
-      this.setState({fields: this.buildFieldList()})
-  }
-
   buildFieldList () {
     if (this.props.ticketTypes && this.props.ticketTypes.length > 1) {
       const messages = this.props.ticketTypes
@@ -34,15 +21,15 @@ export class SendUpdateModal extends React.Component {
         }))
       return [EVENT_EMAIL_UPDATE_FIELDS[0]].concat(messages)
     } else {
-      return JSON.parse(JSON.stringify(EVENT_EMAIL_UPDATE_FIELDS))
+      return EVENT_EMAIL_UPDATE_FIELDS
     }
   }
 
   dataFormatter (formData) {
     return Object.keys(formData).reduce((data, k) => {
-      if (formData[k] && formData[k] !== "") {
+      if (formData[k]) {
         if (k.startsWith(MESSAGE_NAME_TT_SLUG))
-          data.groupMessages.push({
+          data.group_messages.push({
             ticketType: k.replace(MESSAGE_NAME_TT_SLUG, ''),
             message: formData[k]
           })
@@ -50,7 +37,7 @@ export class SendUpdateModal extends React.Component {
           data[k] = formData[k]
       }
       return data
-    }, {groupMessages: []})
+    }, {group_messages: []})
   }
 
   render () {
@@ -61,9 +48,9 @@ export class SendUpdateModal extends React.Component {
                  regex={/send-update\/$/}
                  mode="edit"
                  success_msg='Event Update Sent'
-                 initial={this.state.initialValue}
+                 initial={this.props.event.status}
                  action={`/events/${this.props.event.id}/updates/send/`}
-                 fields={this.state.fields}
+                 fields={this.buildFieldList()}
                  useRequestFormatter={this.dataFormatter}
                  save="Send Email" />
     )
