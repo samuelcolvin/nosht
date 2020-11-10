@@ -296,8 +296,25 @@ export class EventsDetails extends RenderDetails {
               <a target="_blank" rel="noopener noreferrer" href={`https://www.youtube.com/watch?v=${vid}`}>https://www.youtube.com/watch?v={vid}</a>
               : "—"
           },
-          long_description: {
+          description_intro: {
             index: 5,
+            wide: true,
+            render: v => <MarkdownPreview v={v}/>,
+          },
+          description_image: {
+            index: 6,
+            wide: true,
+            edit_link: can_edit && this.uri + 'set-description-image/',
+            delete_button: this.state.item.description_image && {
+              action: `/events/${this.id()}/remove-image/description/`,
+              modal_title: 'Remove Description Image',
+              content: 'Are you sure you want to remove the description Image?',
+              done: this.update,
+            },
+            render: (v, item) => <ImageThumbnail image={v} alt={item.name} image_type="thumb" width={150}/>,
+          },
+          long_description: {
+            index: 7,
             wide: true,
             render: v => <MarkdownPreview v={v}/>,
           },
@@ -307,7 +324,7 @@ export class EventsDetails extends RenderDetails {
             render: (v, item) => <MiniMap lat={v} lng={item.location_lng} name={item.location_name}/>,
             title: 'Location',
             wide: true,
-            index: 6,
+            index: 8,
           },
           donation_target: {
             render: v => v && <Money>{v}</Money>
@@ -384,20 +401,21 @@ export class EventsDetails extends RenderDetails {
     } else {
       event.mode = 'donations'
     }
-    const event_fields = (
-      EVENT_FIELDS.filter(f => !['category', 'price', 'suggested_donation'].includes(f.name))
-      .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
-    )
-    const internal = !event.external_ticket_url
-    const ticketed = internal && event.allow_tickets
-
+    const event_fields = EVENT_FIELDS
+      .filter(f => !['category', 'price', 'suggested_donation'].includes(f.name))
+      .filter(f => this.props.ctx.user.role === 'admin'
+                || !['external_ticket_url', 'external_donation_url'].includes(f.name))
+    const internalTickets = !event.external_ticket_url
+    const ticketed = internalTickets && event.allow_tickets
     return [
-      internal ?
-        <Progress key="progress"
-                  event={event}
-                  ticket_types={this.state.ticket_types}
-                  all_tickets={this.state.tickets}
-                  donations={this.state.donations}/>
+      internalTickets ?
+        <Progress
+          key="progress"
+          event={event}
+          ticket_types={this.state.ticket_types}
+          all_tickets={this.state.tickets}
+          donations={this.state.donations}
+        />
         : null,
       this.state.ticket_types ?
         <TicketTypeTable key="ttt"
@@ -412,7 +430,7 @@ export class EventsDetails extends RenderDetails {
         : null,
       ticketed ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
       ticketed ? <WaitingList key="wl" waiting_list={this.state.waiting_list} user={this.props.ctx.user}/> : null,
-      internal && event.allow_donations ?
+      event.allow_donations ?
         <Donations key="dons" donations={this.state.donations} user={this.props.ctx.user}
                    id={this.id()}/>
           : null,
@@ -462,6 +480,13 @@ export class EventsDetails extends RenderDetails {
                          title="Upload Secondary Image"
                          help_text="Image should at least 300px x 300px, it will be displayed square."
                          action={`/events/${this.id()}/set-image/secondary/`}/>,
+      <ModalDropzoneForm key="set-description-image"
+                         multiple={false}
+                         parent_uri={this.uri}
+                         regex={/set-description-image\/$/}
+                         title="Upload Description Image"
+                         help_text="Image should at least 300px x 300px."
+                         action={`/events/${this.id()}/set-image/description/`}/>,
       this.props.ctx.user.role === 'admin' ?
         <CancelTicket key="cancel"
                       tickets={this.state.tickets}

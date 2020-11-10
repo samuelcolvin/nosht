@@ -102,9 +102,22 @@ export const EVENT_FIELDS = [
     help_text: "Set if you're not selling tickets for this event through this platform.",
   },
   {
+    name: 'external_donation_url',
+    title: 'External Donations URL',
+    type: 'url',
+    help_text: "Set if you're not accepting donations for this event through this platform.",
+  },
+  {
     name: 'youtube_video_id',
     title: 'Youtube video ID',
     help_text: `Embed a Youtube video using it's ID e.g: "oD9zn9M9NBg".`,
+  },
+  {
+    name: 'description_intro',
+    title: 'Description Intro',
+    type: 'md',
+    help_text: 'Intro text to appear before image and long description.',
+    max_length: 5000,
   },
   {
     name: 'long_description',
@@ -149,14 +162,13 @@ class CreateEvent extends React.Component {
   fields () {
     const choices = (this.state.categories || []).map(c => ({value: c.id, display_name: c.name}))
     const mode = this.state.form_data.mode || 'tickets'
-    return (
-      EVENT_FIELDS
+    return EVENT_FIELDS
       .filter(f => f.name !== 'short_description' && f.name !== 'timezone')
-      .filter(f => this.props.ctx.user.role === 'admin' || f.name !== 'external_ticket_url')
+      .filter(f => this.props.ctx.user.role === 'admin'
+                || !['external_ticket_url', 'external_donation_url'].includes(f.name))
       .filter(f => mode !== 'donations' || (f.name !== 'price' && f.name !== 'ticket_limit'))
       .filter(f => mode !== 'tickets' || (f.name !== 'suggested_donation' && f.name !== 'donation_target'))
       .map(f => f.name === 'category' ? Object.assign({}, f, {choices}) : f)
-    )
   }
 
   finished (r) {

@@ -20,7 +20,13 @@ import YoutubePlayer from '../general/YoutubePlayer'
 
 const DonateButton = ({event, uri}) => {
   if (event.allow_donations) {
-    return (
+    return event.external_donation_url ? (
+      <a href={event.external_donation_url}
+         className="hover-raise ml-2 btn btn-lg btn-success"
+         target="_blank" rel="noopener noreferrer">
+        Donate Now
+      </a>
+    ) : (
       <Button color="success" size="lg" className="hover-raise ml-2" tag={Link} to={uri + 'donate/'}>
         Donate
       </Button>
@@ -149,8 +155,19 @@ const EventDetails = WithContext(({ctx, event, uri, ticket_types, existing_ticke
           <img src={image_thumb(event.secondary_image, 'main')} alt={event.name} className="img-thumbnail"/>
         </div>
       )}
+
       <h2>About</h2>
+
       {event.youtube_video_id && <YoutubePlayer vid={event.youtube_video_id} className='event-video'/>}
+
+      {event.description_intro && <Markdown content={event.description_intro}/>}
+
+      {event.description_image && (
+        <div className="py-2 description-image">
+          <img src={event.description_image} alt={event.name} className="img"/>
+        </div>
+      )}
+
       <Markdown content={event.long_description}/>
     </div>
   </div>
