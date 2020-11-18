@@ -1,6 +1,6 @@
 FROM python:3.6-alpine3.8
 
-RUN apk add -U gcc g++ musl-dev zlib-dev libuv libffi-dev make openssl-dev git jpeg-dev openjpeg libjpeg-turbo tiff-dev
+RUN apk add -U gcc g++ musl-dev zlib-dev libuv libffi-dev make libressl-dev git jpeg-dev openjpeg libjpeg-turbo tiff-dev
 
 ADD ./py/requirements.txt /home/root/requirements.txt
 RUN pip install -r /home/root/requirements.txt
