@@ -15,6 +15,7 @@ class ActionTypes(str, Enum):
     donate_prepare = 'donate-prepare'
     donate_direct_prepare = 'donate-direct-prepare'
     donate = 'donate'
+    donate_refund = 'donate-refund'
     cancel_reserved_tickets = 'cancel-reserved-tickets'
     cancel_booked_tickets = 'cancel-booked-tickets'
     create_event = 'create-event'

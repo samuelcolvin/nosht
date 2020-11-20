@@ -731,3 +731,17 @@ async def add_external_donations(conn, **kwargs):
     add the external_donation_url column to events
     """
     await conn.execute('ALTER TABLE events ADD COLUMN external_donation_url VARCHAR(255)')
+
+
+@patch
+async def add_cancel_action_to_donations(conn, **kwargs):
+    """
+    add cancel_action field to donations
+    """
+    await conn.execute('ALTER TABLE donations ADD COLUMN cancel_action INT REFERENCES actions ON DELETE SET NULL')
+    await conn.execute("CREATE TYPE DONATION_STATUS AS ENUM ('accepted', 'refunded')")
+    await conn.execute('ALTER TABLE donations ADD COLUMN status DONATION_STATUS')
+    await conn.execute("UPDATE donations SET status = 'accepted' WHERE status IS NULL")
+    await conn.execute('ALTER table donations ALTER column status SET NOT NULL')
+    await conn.execute("ALTER table donations ALTER column status SET DEFAULT 'accepted'")
+    await conn.execute('CREATE INDEX donation_status ON donations USING btree (status)')

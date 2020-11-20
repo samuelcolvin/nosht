@@ -81,6 +81,8 @@ async def test_donate_direct(cli, url, dummy_server, factory: Factory, login, db
         'city': 'Testingville',
         'postcode': 'TE11 0ST',
         'action': AnyInt(),
+        'cancel_action': None,
+        'status': 'accepted',
     }
     action = await db_conn.fetchrow('SELECT * FROM actions WHERE id= $1', r['action'])
     assert dict(action) == {
@@ -168,3 +170,90 @@ async def test_prepare_custom_amount(cli, url, dummy_server, factory: Factory, l
         'POST stripe_root_url/customers',
         'POST stripe_root_url/payment_intents',
     ]
+
+
+async def test_refund_donation(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', status='published', allow_donations=True, suggested_donation=123)
+    donor = dict(first_name='Joe', last_name='Blogs')
+    donor_details = dict(**donor, title='Mr', address='Testing Street', city='Testingville', postcode='TE11 0ST')
+    donor_email = 'donor@example.org'
+    tt_id = factory.donation_ticket_type_id_1
+    donation_amount = 123
+    factory.user_id = await factory.create_user(**donor, email=donor_email)
+    await login(donor_email)
+
+    # Prepare the donation
+    r = await cli.json_post(url('donation-direct-prepare', tt_id=tt_id), data=dict(custom_amount=2))
+    assert r.status == 200, await r.text()
+    action_id = await db_conn.fetchval('select id from actions where type=$1', ActionTypes.donate_direct_prepare)
+
+    # Pay for donation
+    r = await cli.json_post(url('donation-gift-aid', action_id=action_id), data=donor_details)
+    assert r.status == 200, await r.text()
+    await factory.fire_stripe_webhook(action_id, amount=donation_amount * 100, purpose='donate-direct')
+    donation = await db_conn.fetchrow('SELECT * FROM donations WHERE first_name = $1', donor['first_name'])
+    assert dict(donation) == {
+        'id': AnyInt(),
+        'donation_option': factory.donation_option_id,
+        'ticket_type': tt_id,
+        'amount': donation_amount,
+        'gift_aid': True,
+        'action': AnyInt(),
+        'cancel_action': None,
+        'status': 'accepted',
+        **donor_details,
+    }
+    donation_action = await db_conn.fetchrow('SELECT * FROM actions WHERE id= $1', donation['action'])
+    assert dict(donation_action) == {
+        'id': AnyInt(),
+        'company': factory.company_id,
+        'user_id': factory.user_id,
+        'event': factory.event_id,
+        'ts': CloseToNow(delta=3),
+        'type': 'donate',
+        'extra': RegexStr(r'{.*}'),
+    }
+
+    # Refund donation
+    r = await cli.json_post(url('donation-refund', tid=donation['id']), data=dict(refund_amount=donation_amount))
+    assert r.status == 200
+
+    # Check refund recorded
+    assert 'POST stripe_root_url/refunds' in dummy_server.app['log']
+    cancel_action = await db_conn.fetchrow('SELECT * FROM actions WHERE type=$1', ActionTypes.donate_refund)
+    rd = await db_conn.fetchrow('SELECT * FROM donations AS d WHERE d.cancel_action = $1', cancel_action['id'])
+    assert rd['status'] == 'refunded'
+
+
+async def test_refund_donation_wrong_amount(cli, url, dummy_server, factory: Factory, login, db_conn):
+    await factory.create_company()
+    await factory.create_cat(slug='cat')
+    await factory.create_user()
+    await factory.create_event(slug='evt', status='published', allow_donations=True, suggested_donation=123)
+    donor = dict(first_name='Joe', last_name='Blogs')
+    donor_details = dict(**donor, title='Mr', address='Testing Street', city='Testingville', postcode='TE11 0ST')
+    donor_email = 'donor@example.org'
+    tt_id = factory.donation_ticket_type_id_1
+    donation_amount = 123
+    factory.user_id = await factory.create_user(**donor, email=donor_email)
+    await login(donor_email)
+
+    # Prepare the donation
+    r = await cli.json_post(url('donation-direct-prepare', tt_id=tt_id), data=dict(custom_amount=2))
+    assert r.status == 200, await r.text()
+    action_id = await db_conn.fetchval('select id from actions where type=$1', ActionTypes.donate_direct_prepare)
+
+    # Pay for donation
+    r = await cli.json_post(url('donation-gift-aid', action_id=action_id), data=donor_details)
+    assert r.status == 200, await r.text()
+    await factory.fire_stripe_webhook(action_id, amount=donation_amount * 100, purpose='donate-direct')
+    donation = await db_conn.fetchrow('SELECT * FROM donations WHERE first_name = $1', donor['first_name'])
+
+    # Refund donation with excess
+    r = await cli.json_post(url('donation-refund', tid=donation['id']), data=dict(refund_amount=200))
+    assert r.status == 400, await r.text()
+    data = await r.json()
+    assert data == {'message': f'Refund amount cannot exceed {donation_amount}.00.'}

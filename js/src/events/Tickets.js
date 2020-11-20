@@ -219,7 +219,7 @@ export const WaitingList = ({waiting_list, user}) => {
   )
 }
 
-export const Donations = ({donations, user, id}) => {
+export const Donations = ({donations, user, id, uri}) => {
   if (!donations || !donations.length) {
     return (
       <div className="mb-5">
@@ -247,6 +247,7 @@ export const Donations = ({donations, user, id}) => {
             <th>Amount</th>
             <th>Donated At</th>
             <th>Via</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -260,6 +261,16 @@ export const Donations = ({donations, user, id}) => {
               <td>
                 <small>{t.ticket_type_id ? 'donate button' : 'donation option on thanks page'}</small>
               </td>
+              <td className="align-right">
+                {'refunded' === t.ticket_status ? (
+                    <Badge color="danger">Refunded</Badge>
+                  ) : is_admin ? (
+                    <Button tag={Link} to={`${uri}donations/${t.id}/refund/`} size="sm" color="primary">
+                      Refund
+                    </Button>
+                  ) : null
+                }
+              </td>
             </tr>
           ))}
         </tbody>
@@ -267,3 +278,52 @@ export const Donations = ({donations, user, id}) => {
     </div>
   )
 }
+
+export const RefundDonation = WithContext(withRouter(({ctx, update, uri, location, donations}) => {
+  const regex = /donations\/(\d+)\/refund\/$/
+  const m = location.pathname.match(regex)
+  if (!(m && donations && ctx.user.role === 'admin')) return (<></>)
+
+  const ticket_id = parseInt(m[1])
+  const ticket = donations.find(t => t.id === ticket_id)
+  const action = `/donation-refund/${ticket_id}/`
+  const fields = []
+  let content = <div>Donation <b>{ticket_id}</b> cannot be refunded.</div>
+
+  if (ticket) {
+    content = (
+      <div>
+        Refunding donation of <b><MoneyFree>{ticket.amount}</MoneyFree></b>
+        <b>{ticket.ticket_id}</b> made by <b>{ticket.name}</b>.
+      </div>
+    )
+    fields.push({
+        name: 'refund_amount',
+        title: 'Refund Amount',
+        default: ticket.amount,
+        required: true,
+        help_text: 'Amount to refund to the donor via Stripe, maximum is the full donation amount.',
+        type: 'number', step: 0.01, min: 1, max: ticket.amount,
+    })
+  }
+
+  return (
+    <ModalForm
+      key="refund"
+      title="Refund Donation"
+      parent_uri={uri}
+      mode="edit"
+      success_msg="Donation Refunded"
+      update={update}
+      regex={regex}
+      action={action}
+      content_before={content}
+      fields={fields}
+      submit_initial={true}
+      allow_empty_form={false}
+      cancel="Close"
+      save="Refund"
+      save_color="danger"
+    />
+  )
+}))

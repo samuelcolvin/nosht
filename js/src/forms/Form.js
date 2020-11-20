@@ -20,7 +20,7 @@ class _Form extends React.Component {
     if (this.props.submit_initial && this.props.fields) {
       const form_data = {}
       for (const field of this.props.fields) {
-        const initial = this.props.initial[field.name]
+        const initial = this.props.initial ? this.props.initial[field.name] : field.default
         if (initial) {
           form_data[field.name] = initial
         }

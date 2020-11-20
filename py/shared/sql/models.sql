@@ -135,6 +135,7 @@ CREATE TYPE ACTION_TYPES AS ENUM (
   'donate-prepare',
   'donate-direct-prepare',
   'donate',
+  'donate-refund',
   'cancel-reserved-tickets',
   'cancel-booked-tickets',
   'create-event',
@@ -238,6 +239,7 @@ CREATE INDEX IF NOT EXISTS don_opt_live ON donation_options USING btree (live);
 CREATE INDEX IF NOT EXISTS don_opt_sort_index ON donation_options USING btree (sort_index);
 
 
+CREATE TYPE DONATION_STATUS AS ENUM ('accepted', 'refunded');
 CREATE TABLE IF NOT EXISTS donations (
   id SERIAL PRIMARY KEY,
   donation_option INT REFERENCES donation_options ON DELETE CASCADE,
@@ -253,12 +255,15 @@ CREATE TABLE IF NOT EXISTS donations (
   city VARCHAR(255),
   postcode VARCHAR(31),
 
-  action INT NOT NULL REFERENCES actions ON DELETE CASCADE  -- to get event, user and ts
+  action INT NOT NULL REFERENCES actions ON DELETE CASCADE,  -- to get event, user and ts
+  cancel_action INT REFERENCES actions ON DELETE SET NULL,
+  status DONATION_STATUS NOT NULL DEFAULT 'accepted'
 );
 CREATE UNIQUE INDEX IF NOT EXISTS con_action ON donations USING btree (action);
 CREATE INDEX IF NOT EXISTS don_donation_option ON donations USING btree (donation_option);
 CREATE INDEX IF NOT EXISTS don_gift_aid ON donations USING btree (gift_aid);
 CREATE INDEX IF NOT EXISTS don_action ON donations USING btree (action);
+CREATE INDEX donation_status ON donations USING btree (status);
 -- } donations change
 
 
