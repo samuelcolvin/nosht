@@ -239,8 +239,13 @@ async def guest_signup(request):
         await check_grecaptcha(m, request)
 
     details = await siw_method(m, app=request.app)
-
     user_email = details['email'].lower()
+
+    conn = request['conn']
+    existing_user = await conn.fetchrow('SELECT * FROM users WHERE email=$1', user_email)
+    if existing_user:
+        raise JsonErrors.HTTP470(status='existing user')
+
     user_id, status = await request['conn'].fetchrow_b(
         CREATE_USER_SQL,
         values=Values(
