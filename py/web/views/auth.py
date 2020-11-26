@@ -241,8 +241,7 @@ async def guest_signup(request):
     details = await siw_method(m, app=request.app)
     user_email = details['email'].lower()
 
-    conn = request['conn']
-    existing_user = await conn.fetchrow('SELECT * FROM users WHERE email=$1', user_email)
+    existing_user = await request['conn'].fetchrow('SELECT * FROM users WHERE email=$1', user_email)
     if existing_user:
         raise JsonErrors.HTTP470(status='existing user')
 

@@ -462,7 +462,6 @@ async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
     }
 
 
-@if_online
 async def test_guest_signup_email_existing(cli, url, factory: Factory, db_conn):
     await factory.create_company()
     assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
