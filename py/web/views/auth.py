@@ -242,7 +242,7 @@ async def guest_signup(request):
     user_email = details['email'].lower()
 
     conn = request['conn']
-    existing_user = await conn.fetchrow('SELECT * FROM users WHERE email=$1', user_email)
+    existing_user = await conn.fetchval('SELECT 1 FROM users WHERE email=$1', user_email)
     if existing_user:
         raise JsonErrors.HTTP470(status='existing user')
 
