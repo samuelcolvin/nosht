@@ -978,7 +978,7 @@ class EventUpdate(UpdateView):
         def check_update_contains_message(cls, v):
             message, group_messages = v.get('message'), v.get('group_messages')
             if not (message or group_messages):
-                raise JsonErrors.HTTPBadRequest(message='You need to provide at least one message')
+                raise ValueError('You need to provide at least one message')
             return v
 
     async def check_permissions(self):
