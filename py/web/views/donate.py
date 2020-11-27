@@ -10,8 +10,8 @@ from shared.actions import ActionTypes
 from shared.images import delete_image, upload_other
 from web.actions import record_action_id
 from web.auth import check_session, is_admin, is_auth
-from web.bread import Bread
-from web.stripe import stripe_payment_intent
+from web.bread import Bread, UpdateView
+from web.stripe import stripe_payment_intent, stripe_refund
 from web.utils import JsonErrors, json_response, raw_json_response, request_image
 
 from .booking import UpdateViewAuth
@@ -269,3 +269,51 @@ async def opt_donations(request):
     donation_opt_id = int(request.match_info['pk'])
     json_str = await request['conn'].fetchval(donations_sql, donation_opt_id, request['company_id'])
     return raw_json_response(json_str)
+
+
+class RefundDonation(UpdateView):
+    class Model(BaseModel):
+        refund_amount: condecimal(ge=1, max_digits=6, decimal_places=2)
+
+    async def check_permissions(self):
+        await check_session(self.request, 'admin')
+
+    async def execute(self, m: Model):
+        ticket_id = int(self.request.match_info['tid'])
+        r = await self.conn.fetchrow(
+            """
+            SELECT d.amount, a.event AS event_id, a.extra->>'charge_id' AS charge_id
+            FROM donations AS d
+            JOIN actions AS a ON d.action = a.id
+            WHERE d.id = $1 AND d.status != 'refunded'
+            """,
+            ticket_id,
+        )
+        if not r:
+            raise JsonErrors.HTTPNotFound(message='Donation not found')
+        amount, event_id, charge_id = r
+
+        if m.refund_amount > amount:
+            raise JsonErrors.HTTPBadRequest(message=f'Refund amount cannot exceed {amount:0.2f}.')
+
+        async with self.conn.transaction():
+            await stripe_refund(
+                refund_charge_id=charge_id,
+                ticket_id=ticket_id,
+                amount=int(m.refund_amount * 100),
+                user_id=self.session['user_id'],
+                company_id=self.request['company_id'],
+                app=self.app,
+                conn=self.conn,
+            )
+            action_id = await record_action_id(
+                self.request, self.session['user_id'], ActionTypes.donate_refund, event_id=event_id
+            )
+            await self.conn.execute(
+                """
+                UPDATE donations SET status='refunded', cancel_action=$1
+                WHERE id=$2
+                """,
+                action_id,
+                ticket_id,
+            )

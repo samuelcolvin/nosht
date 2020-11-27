@@ -52,6 +52,7 @@ from .views.donate import (
     DonationGiftAid,
     DonationOptionBread,
     PrepareDirectDonation,
+    RefundDonation,
     donation_after_prepare,
     donation_image_upload,
     donation_options,
@@ -242,6 +243,7 @@ def create_app(*, settings: Settings = None, logging_client=None):
             ),
             web.post(r'/donation-prepare/{tt_id:\d+}/', PrepareDirectDonation.view(), name='donation-direct-prepare'),
             web.post(r'/donation/{action_id:\d+}/gift-aid/', DonationGiftAid.view(), name='donation-gift-aid'),
+            web.post(r'/donation-refund/{tid:\d+}/', RefundDonation.view(), name='donation-refund'),
         ]
     )
 

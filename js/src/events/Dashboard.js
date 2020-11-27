@@ -17,7 +17,7 @@ import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
 import {TicketTypes, TicketTypeTable, SuggestedDonationsTable} from './TicketTypes'
-import {Tickets, CancelTicket, WaitingList, Donations} from './Tickets'
+import {Tickets, CancelTicket, WaitingList, Donations, RefundDonation} from './Tickets'
 import {EVENT_FIELDS} from './Create'
 import {ModalDropzoneForm} from '../forms/Drop'
 import {EventUpdatesList, SendUpdateModal} from './updates'
@@ -99,7 +99,9 @@ const Progress = WithContext(({event, all_tickets, ticket_types, donations}) => 
     tickets
     .reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
   )
-  const donations_total = donations ? donations.reduce((sum, t) => sum + t.amount, 0) : 0
+  const donations_total = donations ? donations
+    .filter((d) => d.ticket_status!=='refunded')
+    .reduce((sum, t) => sum + t.amount, 0) : 0
   const donations_count = donations ? donations.length : 0
   return (
     <div>
@@ -431,9 +433,8 @@ export class EventsDetails extends RenderDetails {
       ticketed ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
       ticketed ? <WaitingList key="wl" waiting_list={this.state.waiting_list} user={this.props.ctx.user}/> : null,
       event.allow_donations ?
-        <Donations key="dons" donations={this.state.donations} user={this.props.ctx.user}
-                   id={this.id()}/>
-          : null,
+        <Donations key="dons" donations={this.state.donations} user={this.props.ctx.user} id={this.id()} uri={this.uri}/>
+        : null,
       <EventUpdatesList key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"
@@ -511,6 +512,12 @@ export class EventsDetails extends RenderDetails {
                      regex={/suggested-donations\/$/}
                      update={this.update}
                      title="Customise Suggested Donations"/>
+        : null,
+      this.props.ctx.user.role === 'admin' ?
+        <RefundDonation key="refund-donation"
+                        donations={this.state.donations}
+                        update={this.update}
+                        uri={this.uri}/>
         : null,
     ]
   }

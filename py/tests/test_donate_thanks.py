@@ -96,6 +96,8 @@ async def test_donate_with_gift_aid(cli, url, dummy_server, factory: Factory, lo
         'city': 'Testingville',
         'postcode': 'TE11 0ST',
         'action': AnyInt(),
+        'cancel_action': None,
+        'status': 'accepted',
     }
     action = await db_conn.fetchrow('SELECT * FROM actions WHERE id= $1', r['action'])
     assert dict(action) == {
