@@ -4,7 +4,7 @@ FROM nosht-python-build as python-build
 
 # ===============================================
 # final image
-FROM python:3.6-alpine3.8
+FROM python:3.6-alpine3.9
 COPY --from=python-build /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages
 COPY --from=python-build /lib/* /lib/
 COPY --from=python-build /usr/lib/* /usr/lib/
