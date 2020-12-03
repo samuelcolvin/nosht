@@ -99,7 +99,7 @@ const CLONE_INTRO = (
 
 const Progress = WithContext(({event, all_tickets, ticket_types, donations}) => {
   const tickets = all_tickets && all_tickets.filter(t => t.ticket_status === 'booked')
-  const tickets_booked = tickets && (
+  const tickets_booked = tickets && ticket_types && (
     tickets
     .reduce((sum, t) => sum + ticket_types.find(tt => tt.id === t.ticket_type_id).slots_used, 0)
   )
