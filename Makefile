@@ -14,25 +14,31 @@ format:
 	$(isort)
 	$(black)
 
-.PHONY: lint
-lint:
+.PHONY: lint-py
+lint-py:
 	flake8 py
 	$(isort) --check-only
 	$(black) --check
 	./py/tests/check_debug.sh
+
+.PHONY: lint-js
+lint-js:
 	cd js && yarn lint && cd ..
 
-.PHONY: test
-test:
+.PHONY: lint
+lint: lint-py lint-js
+
+.PHONY: test-py
+test-py:
 	mkdir -p js/build
 	pytest py/tests --cov=py --cov-config py/setup.cfg
 
-.PHONY: testjs
-testjs:
+.PHONY: test-js
+test-js:
 	cd js && CI=1 yarn test --coverage && cd ..
 
 .PHONY: testcov
-testcov: test
+testcov: test-py
 	coverage html --rcfile=py/setup.cfg
 
 .PHONY: all
