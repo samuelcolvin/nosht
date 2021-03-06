@@ -66,9 +66,9 @@ jobs:
 
     - name: install dependencies
       run: |
-      cd yarn
-      yarn
-      cd ..
+        cd yarn
+        yarn
+        cd ..
 
     - name: lint
       run: make lint-js

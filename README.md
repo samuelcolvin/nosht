@@ -1,7 +1,6 @@
 nosht
 =====
-
-[![Build Status](https://travis-ci.com/samuelcolvin/nosht.svg?branch=master)](https://travis-ci.com/samuelcolvin/nosht)
+[![CI](https://github.com/samuelcolvin/nosht/workflows/ci/badge.svg?event=push)](https://github.com/samuelcolvin/nosht/actions?query=event%3Apush+branch%3Amaster+workflow%3Aci)
 [![codecov](https://codecov.io/gh/samuelcolvin/nosht/branch/master/graph/badge.svg)](https://codecov.io/gh/samuelcolvin/nosht)
 
 
