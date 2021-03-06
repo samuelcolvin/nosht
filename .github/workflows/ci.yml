@@ -1,0 +1,88 @@
+name: ci
+
+on: push
+
+env:
+  PGPASSWORD: waffle
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:9.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: waffle
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: set up python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.6'
+
+    - name: install dependencies
+      run: |
+        pip install -U pip wheel
+        pip install -r py/tests/requirements.txt
+        pip install -r py/requirements.txt
+        cp py/setup.cfg .
+        pip freeze
+
+    - name: lint
+      run: make lint-py
+
+    - name: test
+      run: make test-py
+      env:
+        REAL_STRIPE_TESTS: 1
+
+    - run: coverage xml
+
+    - uses: codecov/codecov-action@v1.0.13
+      with:
+        file: ./coverage.xml
+
+  javascript:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: set up python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.6'
+
+    - run: pip install aiohttp
+
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '10.x'
+
+    - name: install dependencies
+      run: make install-js
+
+    - name: lint
+      run: make lint-js
+
+    - name: test
+      run: make test-js
+
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - run: make build
