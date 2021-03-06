@@ -44,12 +44,12 @@ const BookButton = ({event, existing_tickets, on_waiting_list, uri}) => {
       `hover-raise ml-2 btn btn-lg btn-${event.tickets_available !== null ? 'danger': 'primary'}` +
       (event.tickets_available === 0 ? ' disabled' : '')
     )
-    return <a className={link_classes} href={event.external_ticket_url}>Book Now</a>
+    return <a className={link_classes} href={event.external_ticket_url}>Buy Now</a>
   } else if (event.tickets_available === null) {
     return (
       <Button color={existing_tickets ? 'secondary' : 'primary'} size="lg" className="hover-raise ml-2"
               tag={Link} to={uri + 'book/'}>
-        {existing_tickets ? 'Book more tickets' : 'Book Now'}
+        {existing_tickets ? 'Book more tickets' : 'Buy Now'}
       </Button>
     )
   } else if (event.tickets_available === 0) {
@@ -66,7 +66,7 @@ const BookButton = ({event, existing_tickets, on_waiting_list, uri}) => {
     return (
       <Button color={existing_tickets ? 'secondary' : 'danger'} size="lg" className="hover-raise ml-2"
               tag={Link} to={uri + 'book/'}>
-        {existing_tickets ? 'Book more tickets' : 'Book Now'}
+        {existing_tickets ? 'Book more tickets' : 'Buy Now'}
       </Button>
     )
   }
