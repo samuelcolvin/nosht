@@ -21,6 +21,10 @@ lint-py:
 	$(black) --check
 	./py/tests/check_debug.sh
 
+.PHONY: install-js
+install-js:
+	cd js && yarn && cd ..
+
 .PHONY: lint-js
 lint-js:
 	cd js && yarn lint && cd ..
