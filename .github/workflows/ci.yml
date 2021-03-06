@@ -60,6 +60,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: set up python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.6'
+
+    - run: pip install aiohttp
+
     - uses: actions/setup-node@v1
       with:
         node-version: '10.x'
@@ -72,3 +79,10 @@ jobs:
 
     - name: test
       run: make test-js
+
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: docker-practice/actions-setup-docker@master
+    - run: make build
