@@ -1,0 +1,71 @@
+name: ci
+
+on: push
+
+env:
+  PGPASSWORD: postgres
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:9.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: set up python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.6'
+
+    - name: install dependencies
+      run: |
+        pip install -U pip wheel
+        pip install -r py/tests/requirements.txt
+        pip install -r py/requirements.txt
+        cp py/setup.cfg .
+        pip freeze
+
+    - name: test
+      run: make test
+      env:
+        REAL_STRIPE_TESTS: 1
+
+    - run: coverage xml
+
+    - uses: codecov/codecov-action@v1.0.13
+      with:
+        file: ./coverage.xml
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: set up python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.6'
+
+    - name: install dependencies
+      run: |
+        pip install -U pip wheel
+        pip install -r py/tests/requirements.txt
+
+    - name: lint
+      run: make lint
