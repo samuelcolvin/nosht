@@ -80,9 +80,8 @@ jobs:
     - name: test
       run: make test-js
 
-  ci:
+  docker-build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: docker-practice/actions-setup-docker@master
     - run: make build
