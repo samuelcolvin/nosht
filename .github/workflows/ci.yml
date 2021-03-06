@@ -66,6 +66,9 @@ jobs:
       run: |
         pip install -U pip wheel
         pip install -r py/tests/requirements.txt
+        pip install -r py/requirements.txt
+        cp py/setup.cfg .
+        pip freeze
 
     - name: lint
       run: make lint
