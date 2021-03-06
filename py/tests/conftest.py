@@ -38,7 +38,7 @@ def pytest_addoption(parser):
 
 
 settings_args = dict(
-    pg_dsn='postgres://postgres:waffle@localhost:5432/nosht_testing',
+    pg_dsn='postgres://postgres:postgres@localhost:5432/nosht_testing',
     redis_settings='redis://localhost:6379/6',
     bcrypt_work_factor=6,
     stripe_idempotency_extra=str(uuid.uuid4()),
