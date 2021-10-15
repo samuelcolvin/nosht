@@ -1,3 +1,4 @@
+import asyncio
 from arq import BaseWorker, DatetimeJob
 
 from .donorfy import DonorfyActor
@@ -17,4 +18,6 @@ class Worker(BaseWorker):
     async def shadow_kwargs(self):
         kwargs = await super().shadow_kwargs()
         kwargs['settings'] = self.settings
+        # not sure why but the worker sometimes crashes with no explanation on start, this might help
+        await asyncio.sleep(2)
         return kwargs
