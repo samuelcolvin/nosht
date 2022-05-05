@@ -1,7 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import {Alert, Button, Table, Progress as BsProgress} from 'reactstrap'
-import {format_event_start, format_event_duration, format_datetime, as_title} from '../utils'
+import {Alert, Button, Progress as BsProgress} from 'reactstrap'
+import {format_event_start, format_event_duration, as_title} from '../utils'
 import WithContext from '../utils/context'
 import requests from '../utils/requests'
 import {
@@ -13,7 +13,6 @@ import {
   MarkdownPreview
 } from '../general/Dashboard'
 import {Money} from '../general/Money'
-import {InfoModal} from '../general/Modal'
 import ButtonConfirm from '../general/Confirm'
 import {ModalForm} from '../forms/Form'
 import SetImage from './SetImage'
@@ -21,6 +20,8 @@ import {TicketTypes, TicketTypeTable, SuggestedDonationsTable} from './TicketTyp
 import {Tickets, CancelTicket, WaitingList, Donations} from './Tickets'
 import {EVENT_FIELDS} from './Create'
 import {ModalDropzoneForm} from '../forms/Drop'
+import {EventUpdatesList, SendUpdateModal} from './updates'
+
 
 export class EventsList extends RenderList {
   constructor (props) {
@@ -68,11 +69,6 @@ const EVENT_STATUS_FIELDS = [
     help_text: 'Only published events will be visible to prospective guests.',
   },
 ]
-const EVENT_EMAIL_UPDATE_FIELDS = [
-  {name: 'subject', required: true},
-  {name: 'message', required: true, type: 'md', max_length: 255000},
-]
-
 const EVENT_CLONE_FIELDS = [
   {
     name: 'name',
@@ -163,49 +159,6 @@ const Progress = WithContext(({event, all_tickets, ticket_types, donations}) => 
   )
 })
 
-class EventUpdates extends React.Component {
-  constructor (props) {
-    super(props)
-    this.state = {selected: null}
-  }
-
-  render () {
-    if (!this.props.event_updates || !this.props.event_updates.length) {
-      return (
-        <div className="mb-5">
-          <h4>Event Updates</h4>
-          <small>No Updates sent for this event</small>
-        </div>
-      )
-    }
-    return (
-      <div className="mb-5">
-        <InfoModal isOpen={!!this.state.selected}
-                   onClose={() => this.setState({selected: null})}
-                   title="Event Update"
-                   fields={{subject: {}, message: {}}}
-                   object={this.state.selected}/>
-        <h4>Event Updates</h4>
-        <Table striped>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Subject</th>
-            </tr>
-          </thead>
-          <tbody>
-            {this.props.event_updates.map((a, i) => (
-              <tr key={i} onClick={() => this.setState({selected: a})} className="cursor-pointer">
-                <td>{format_datetime(a.ts)}</td>
-                <td>{as_title(a.subject)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </div>
-    )
-  }
-}
 
 export class EventsDetails extends RenderDetails {
   constructor (props) {
@@ -465,11 +418,14 @@ export class EventsDetails extends RenderDetails {
         />
         : null,
       this.state.ticket_types ?
-        <TicketTypeTable key="ttt" ticket_types={this.state.ticket_types} uri={this.uri}
+        <TicketTypeTable key="ttt"
+                         ticket_types={this.state.ticket_types} uri={this.uri}
                          can_edit={this.can_edit_event()}/>
         : null,
       this.state.suggested_donations ?
-        <SuggestedDonationsTable key="sdt" ticket_types={this.state.suggested_donations} uri={this.uri}
+        <SuggestedDonationsTable key="sdt"
+                                 ticket_types={this.state.suggested_donations}
+                                 uri={this.uri}
                                  can_edit={this.can_edit_event()}/>
         : null,
       ticketed ? <Tickets key="tickets" tickets={this.state.tickets} event={event} id={this.id()} uri={this.uri}/> : null,
@@ -478,7 +434,7 @@ export class EventsDetails extends RenderDetails {
         <Donations key="dons" donations={this.state.donations} user={this.props.ctx.user}
                    id={this.id()}/>
           : null,
-      <EventUpdates key="event-updates" event_updates={this.state.event_updates}/>,
+      <EventUpdatesList key="event-updates" event_updates={this.state.event_updates}/>,
       <ModalForm key="edit"
                  title="Edit Event"
                  parent_uri={this.uri}
@@ -496,16 +452,10 @@ export class EventsDetails extends RenderDetails {
                  initial={{status: event.status}}
                  action={`/events/${this.id()}/set-status/`}
                  fields={EVENT_STATUS_FIELDS}/>,
-      <ModalForm key="send-update"
-                 title="Send Event update to Guests"
-                 parent_uri={this.uri}
-                 regex={/send-update\/$/}
-                 mode="edit"
-                 success_msg='Event Update Sent'
-                 initial={{status: event.status}}
-                 action={`/events/${this.id()}/updates/send/`}
-                 fields={EVENT_EMAIL_UPDATE_FIELDS}
-                 save="Send Email"/>,
+      <SendUpdateModal key="send-update"
+                       event={event}
+                       parentUri={this.uri}
+                       ticketTypes={this.state.ticket_types} />,
       <SetImage key="set-image"
                 event={event}
                 parent_uri={this.uri}
@@ -538,7 +488,11 @@ export class EventsDetails extends RenderDetails {
                          help_text="Image should at least 300px x 300px."
                          action={`/events/${this.id()}/set-image/description/`}/>,
       this.props.ctx.user.role === 'admin' ?
-        <CancelTicket key="cancel" tickets={this.state.tickets} update={this.update} id={this.id()} uri={this.uri}/>
+        <CancelTicket key="cancel"
+                      tickets={this.state.tickets}
+                      update={this.update}
+                      id={this.id()}
+                      uri={this.uri}/>
         : null,
       this.state.ticket_types ?
         <TicketTypes key="edit-ticket-types"
