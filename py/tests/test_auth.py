@@ -462,6 +462,31 @@ async def test_guest_signup_email(cli, url, factory: Factory, db_conn):
     }
 
 
+async def test_guest_signup_email_existing(cli, url, factory: Factory, db_conn):
+    await factory.create_company()
+    assert 0 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+
+    guest_1 = {
+        'email': 'testing@gmail.com',
+        'first_name': 'Tes',
+        'last_name': 'Ting',
+        'grecaptcha_token': '__ok__',
+    }
+    r = await cli.json_post(url('signup-guest', site='email'), data=guest_1)
+    assert r.status == 200, await r.text()
+
+    guest_2 = {
+        'email': 'testing@gmail.com',
+        'first_name': 'TesT',
+        'last_name': 'hot',
+        'grecaptcha_token': '__ok__',
+    }
+    r = await cli.json_post(url('signup-guest', site='email'), data=guest_2)
+    assert r.status == 470, await r.text()
+    assert {'status': 'existing user'} == await r.json()
+    assert 1 == await db_conn.fetchval('SELECT COUNT(*) FROM users')
+
+
 async def test_guest_signup_google(cli, url, factory: Factory, db_conn, mocker):
     await factory.create_company()
     data = {'id_token': 'good.test.token'}
